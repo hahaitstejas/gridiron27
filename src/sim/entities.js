@@ -18,8 +18,9 @@ export function makeSimPlayer(idx, rp, team, side, slot) {
     skin: rp.skin ?? 2,
     x: 0, z: 0, px: 0, pz: 0, vx: 0, vz: 0,
     facing: 0, pfacing: 0,
-    maxSpeed: 5.6 + r.speed * 0.047,
-    accel: 5 + r.acceleration * 0.09,
+    // Wide spread so ratings matter: SPD 56 (lineman) ~7.5 yd/s, 70 ~8.5, 90 ~10.0, 99 ~10.6.
+    maxSpeed: 3.5 + r.speed * 0.0718,
+    accel: 3 + r.acceleration * 0.11,
     agil: 0.7 + r.agility * 0.006,
     state: 'stance', // stance | active | engaged | down | tackled | stumble
     task: null,

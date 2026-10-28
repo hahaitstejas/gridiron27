@@ -231,7 +231,25 @@ export class PlaySim {
       const dl = Math.hypot(dx, dz) || 1;
       pts.push({ x: b.x + (dx / dl) * 40, z: b.z + (dz / dl) * 40 });
     }
-    return { type: 'route', name: base, pts, idx: 0, end: tpl.end, settled: false };
+    // Keep routes on the field: stop at the sideline and the back of the end zone, then settle
+    // and work back to the QB (a simple scramble drill).
+    const maxX = GOAL_X + 8, maxZ = HALF_WIDTH - 1.2;
+    let end = tpl.end;
+    for (let i = 0; i < pts.length; i++) {
+      const prev = i ? pts[i - 1] : { x: p.x, z: p.z };
+      const q = pts[i];
+      let k = 1;
+      const tdx = q.x - prev.x, tdz = q.z - prev.z;
+      if (q.x * this.dir > maxX) k = Math.min(k, (maxX - prev.x * this.dir) / (tdx * this.dir || 1e-6));
+      if (Math.abs(q.z) > maxZ) k = Math.min(k, (maxZ - Math.abs(prev.z)) / (Math.abs(tdz) || 1e-6));
+      if (k < 1) {
+        pts[i] = { x: prev.x + tdx * Math.max(0, k), z: prev.z + tdz * Math.max(0, k) };
+        pts.length = i + 1;
+        end = 'settle';
+        break;
+      }
+    }
+    return { type: 'route', name: base, pts, idx: 0, end, settled: false };
   }
 
   // ---- main tick ----
@@ -253,6 +271,8 @@ export class PlaySim {
         p.downT -= dt;
         p.desired.x = 0; p.desired.z = 0;
         if (p.downT <= 0 && this.state === 'live') { p.state = 'active'; p.anim = 'getup'; p.animT = 0; }
+      } else if (p.state === 'active' && p.recoverAt && this.t > p.recoverAt && !p.move) {
+        p.speedCap = 1; p.recoverAt = 0;
       } else if (p.state === 'stumble') {
         p.stumbleT -= dt;
         if (p.stumbleT <= 0) { p.state = 'active'; p.speedCap = 1; }
@@ -271,6 +291,8 @@ export class PlaySim {
         if (p.state === 'down') { p.vx *= 0.85; p.vz *= 0.85; p.x += p.vx * dt; p.z += p.vz * dt; continue; }
         if (p.state === 'tackled') continue;
         if (p.engagement) continue;
+        // Running with the ball costs a little top speed, so equal-speed pursuers can close.
+        if (this.ballLiveRun && b.state === 'held' && b.carrier === p.id) { p.desired.x *= 0.95; p.desired.z *= 0.95; }
         integrate(p, dt);
       }
       resolveCollisions(this.players);
@@ -406,6 +428,20 @@ export class PlaySim {
     if (c.slot === 'QB' && c.team === this.offIdx && !this.passThrown && l.down > 0.2 && !this.qbCrossed) {
       this.qbCrossed = true;
       if (c.task?.type !== 'carrier') this.setRunner(c, 'scramble');
+    }
+    // QB takes off (running at the line before the throw): underneath defenders come up right away.
+    if (!this.scramble && c.slot === 'QB' && c.team === this.offIdx && !this.passThrown && this.offPlay.type === 'pass' &&
+        c.vx * this.dir > 2.5 && l.down > -2.5) {
+      this.scramble = true;
+      this.emit('scramble', { player: c.id });
+      for (const d of this.players) {
+        if (d.team === c.team || d.engagement || d.task?.type === 'rush') continue;
+        const dl = this.toLocal(d.x, d.z);
+        const deep = d.task?.type === 'zone' && dl.down > 11;
+        const manDeep = d.task?.type === 'man' && Math.hypot(d.x - c.x, d.z - c.z) > 12;
+        if (deep || manDeep) continue;
+        d.task = { type: 'pursue', at: this.t + reactionDelay(this, d) };
+      }
     }
     if (Math.abs(c.z) > HALF_WIDTH) { this.whistle('oob'); return; }
     const td = this.teamDir(c.team);

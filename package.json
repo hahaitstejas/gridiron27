@@ -9,7 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "sim": "node tools/autosim.js"
+    "sim": "node tools/autosim.js",
+    "bot": "node tools/humanbot.js"
   },
   "engines": {
     "node": ">=20.19"

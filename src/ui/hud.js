@@ -87,7 +87,7 @@ export class Hud {
     hint.classList.toggle('hidden', !pre);
     if (pre) hint.innerHTML = session.humanSide === 'offense'
       ? `<b class="btn A">A</b> Snap &nbsp; <b class="btn X">X</b> Next play &nbsp; <b class="btn LB">LB</b> Play defense &nbsp; <b>H</b> Help`
-      : `<b class="btn X">X</b> Next play &nbsp; <b class="btn LB">LB</b> Play offense &nbsp; <b class="btn B">B</b> Switch player`;
+      : `<b class="btn X">X</b> Next play &nbsp; <b class="btn LB">LB</b> Play offense &nbsp; <b class="btn B">B</b> Switch player (before and during the play)`;
 
     // Receiver icons over heads while the QB can still throw.
     const showIcons = sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass' && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';

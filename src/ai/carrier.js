@@ -9,7 +9,6 @@ for (let a = -85; a <= 85; a += 10) ANGLES.push((a * Math.PI) / 180);
 export function carrierAI(sim, p, dt) {
   if (sim.isHumanControlled(p) && p.userActive) return;
   if (p.state !== 'active') return;
-  if (p.recoverAt && sim.t > p.recoverAt && !p.move) { p.speedCap = 1; p.recoverAt = 0; }
   const t = p.task;
   // Initial aiming point (run hole) for handoffs.
   if (t.aim && sim.t < t.aimUntil) {

@@ -11,6 +11,7 @@ npm install          # once
 npm run dev          # http://localhost:5173 (Chrome or Safari)
 npm test             # Vitest unit tests (tests/*.test.js), headless
 npm run sim -- --plays 1000 --seed 3   # headless CPU-vs-CPU play runner with invariant checks + stats
+npm run bot          # scripted 'human' exploits (blind throws, QB scrambles, holding the ball) vs CPU defense
 npm run build        # production build to dist/
 ```
 
@@ -76,7 +77,7 @@ src/data/              teams.js (32 original teams), names.js, positions.js (rat
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
 src/ui/                hud.js (connect screen, mini score bug, receiver icons, banners, help), style.css
-tools/autosim.js       headless CPU-vs-CPU runner;  tools/smoke.mjs  browser smoke test
+tools/autosim.js       headless CPU-vs-CPU runner;  tools/humanbot.js  exploit checks;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests
 ```
 Planned (later phases): `src/audio`, `src/replay`, `src/franchise`, more of `src/ui` (menus, play-call
@@ -151,5 +152,10 @@ weight in lbs. Missing rating columns default to position templates. Depth chart
 ## Conventions
 - Match the existing style: small modules, plain functions, short comments explaining *why*.
 - Keep new plays/formations in the JSON playbooks, not in code.
-- After changing gameplay logic, run `npm run sim -- --plays 2000` and check the stat lines still look like
-  football (completion %, YAC, yards/carry, sacks, INT rate) and that there are no invariant violations.
+- After changing gameplay logic, run `npm run sim -- --plays 2000` and `npm run bot` and check the numbers
+  still look like football and that there are no invariant violations. Current targets (CPU vs CPU):
+  completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
+  Bot targets: blind quick throws should average well under 15 yds/play, mindless QB scrambles ~2-4 yds,
+  a QB who just holds the ball should be sacked in ~4-5 s.
+- Player speed: `maxSpeed = 3.5 + SPD * 0.0718` yd/s (SPD 56 lineman ~7.5, 90 CB ~10.0); `accel = 3 + ACC * 0.11`.
+  Ball carriers run at 95% of top speed. Ratings must create visible differences.

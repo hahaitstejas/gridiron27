@@ -104,7 +104,7 @@ export function runDefenseAI(sim, dt) {
       const timeLeft = Math.max(0.1, b.T - b.t);
       const canReach = dist < p.maxSpeed * (timeLeft + 0.6);
       const isMyMan = p.task.type === 'man' && p.task.target === b.intended;
-      if ((isMyMan || dist < 9) && canReach) p.task = { type: 'ball', prev: p.task };
+      if (isMyMan || canReach) p.task = { type: 'ball', prev: p.task };
       else if (dist < 22 && p.task.type !== 'rush') p.task = { type: 'ball', prev: p.task, rally: true };
     }
     switch (p.task.type) {
@@ -166,12 +166,12 @@ function man(sim, p, dt) {
   }
   // Perceived velocity lags reality: better coverage/awareness = less lag.
   const cov = sim.R(p, 'coverage');
-  let tau = 0.42 - cov * 0.0028 + (sim.R(r, 'routeRunning') - 70) * 0.002;
-  tau = clamp(tau, 0.08, 0.5);
+  let tau = 0.34 - cov * 0.0024 + (sim.R(r, 'routeRunning') - 70) * 0.0018;
+  tau = clamp(tau, 0.06, 0.4);
   const k = Math.min(1, dt / tau);
   p.perceived.x += (r.vx - p.perceived.x) * k;
   p.perceived.z += (r.vz - p.perceived.z) * k;
-  const cushion = Math.max(0.8, Math.min(5, p.task.cushion) - sim.t * 3.2);
+  const cushion = Math.max(0.6, Math.min(5, p.task.cushion) - sim.t * 4);
   const rl = sim.toLocal(r.x, r.z);
   const inside = rl.lat > 0 ? -0.5 : 0.5;
   const tgt = sim.toWorld(rl.down + cushion, rl.lat + inside);
@@ -197,26 +197,35 @@ function zone(sim, p) {
   let lat = z.lat;
   lat = clamp(lat, Math.min(latLimit(-1), latLimit(1)), Math.max(latLimit(-1), latLimit(1)));
   const home = { down: z.down, lat };
-  // Find the most dangerous receiver in my area.
+  // Threats in my area. Deep defenders stay over the top of all vertical threats and split the
+  // difference between them; underneath defenders mirror the most dangerous one.
   let threat = null, ts = -1e9;
+  let deepest = -99, latSum = 0, wSum = 0;
   for (const r of sim.players) {
-    if (r.team !== sim.possTeam || r.task?.type !== 'route' && r.task?.type !== 'catch') continue;
+    if (r.team !== sim.possTeam || (r.task?.type !== 'route' && r.task?.type !== 'catch')) continue;
     const l = sim.toLocal(r.x, r.z);
     const dd = Math.hypot(l.down - home.down, l.lat - home.lat);
-    if (dd > z.r * 1.35) continue;
-    const s = (z.deep ? l.down : -dd) + (r.task.settled ? 1 : 0);
-    if (s > ts) { ts = s; threat = { r, l }; }
+    // Deep zones own their lane all the way to the end line; underneath zones have a radius.
+    if (z.deep ? Math.abs(l.lat - home.lat) > z.r * 1.1 || l.down < home.down - z.r : dd > z.r * 1.35) continue;
+    if (z.deep) {
+      if (l.down > 4) {
+        const w = Math.max(0.2, l.down - 4);
+        latSum += l.lat * w; wSum += w;
+        deepest = Math.max(deepest, l.down);
+      }
+    } else {
+      const s = -dd + (r.task.settled ? 1 : 0);
+      if (s > ts) { ts = s; threat = { r, l }; }
+    }
   }
   let tDown = home.down, tLat = home.lat;
-  if (threat) {
+  if (z.deep && wSum > 0) {
+    tDown = Math.max(home.down * 0.7, deepest + 3.5);
+    tLat = clamp(latSum / wSum, home.lat - z.r * 0.6, home.lat + z.r * 0.6);
+  } else if (threat) {
     const { l, r } = threat;
-    if (z.deep) {
-      tDown = Math.max(home.down * 0.7, l.down + 3.5);
-      tLat = home.lat + (l.lat - home.lat) * 0.7;
-    } else {
-      tDown = clamp(l.down - 0.8, 1, home.down + 3);
-      tLat = l.lat + (r.vz * sim.dir) * 0.3;
-    }
+    tDown = clamp(l.down - 0.8, 1, home.down + 3);
+    tLat = l.lat + (r.vz * sim.dir) * 0.3;
   }
   const w = sim.toWorld(tDown, tLat);
   const qb = sim.bySlot(sim.offIdx, 'QB');
@@ -269,10 +278,10 @@ function pursue(sim, p, dt) {
   seek(p, tx, tz, 1, 0.05);
   if (sim.isHumanControlled(p)) return;
   // Occasional dive at an escaping runner, or a big hit head-on.
-  if (!p.move && (p.moveCd || 0) < sim.t && dist > 1.2 && dist < 2.1) {
+  if (!p.move && (p.moveCd || 0) < sim.t && dist > 1.2 && dist < 2.6) {
     const cs = Math.hypot(c.vx, c.vz);
     const away = ((c.x - p.x) * c.vx + (c.z - p.z) * c.vz) / (dist * (cs || 1));
-    if (away > 0.5 && cs > p.maxSpeed * 0.85 && sim.rng.chance(dt * 3)) {
+    if (away > 0.3 && cs > p.maxSpeed * 0.8 && sim.rng.chance(dt * 4)) {
       p.facing = Math.atan2(c.z - p.z, c.x - p.x);
       startMove(sim, p, 'tackle_dive');
     } else if (away < -0.5 && sim.R(p, 'hitPower') > 80 && sim.rng.chance(dt * 1.2)) {
@@ -289,12 +298,24 @@ function playBall(sim, p) {
     p.task = sim.ballLiveRun ? { type: 'pursue', at: sim.t + 0.2 } : prev || { type: 'zone', zone: 'hook_middle' };
     return;
   }
-  // Aim slightly in front of the catch point (undercut).
   const qb = sim.players[b.thrower];
   let ux = qb ? qb.x - b.target.x : 0, uz = qb ? qb.z - b.target.z : 0;
   const ul = Math.hypot(ux, uz) || 1;
-  // Rallying defenders far from the catch point stop short to keep leverage on the catcher.
-  const off = p.task.rally ? 2.5 : 0.4;
-  seek(p, b.target.x + (ux / ul) * off, b.target.z + (uz / ul) * off, 1, p.task.rally ? 2 : 0.4);
+  if (p.task.rally) {
+    // Rallying defenders far from the catch point keep leverage: deep players stay downfield of it,
+    // underneath players come up in front of it.
+    const deeper = (p.x - b.target.x) * sim.dir > 0;
+    if (deeper) seek(p, b.target.x + sim.dir * 3, b.target.z, 1, 1.5);
+    else seek(p, b.target.x + (ux / ul) * 2.5, b.target.z + (uz / ul) * 2.5, 1, 2);
+  } else {
+    // Drive on the catch point at full speed: shallower defenders undercut it, deeper ones come down
+    // on top of it so the receiver runs into them. If already there, hit the receiver.
+    const rec = sim.players[b.intended];
+    const deeper = (p.x - b.target.x) * sim.dir > 0.5;
+    let tx = deeper ? b.target.x + sim.dir * 0.7 : b.target.x + (ux / ul) * 0.4;
+    let tz = deeper ? b.target.z : b.target.z + (uz / ul) * 0.4;
+    if (rec && Math.hypot(tx - p.x, tz - p.z) < 0.8) { tx = rec.x; tz = rec.z; }
+    seek(p, tx, tz, 1, 0.05);
+  }
   p.face = { x: b.x, z: b.z };
 }

@@ -61,7 +61,7 @@ export function updateMoves(sim, dt) {
         break;
       case 'tackle_dive':
         if (m.t < 0.3) {
-          p.desired.x = fx * p.maxSpeed * 1.1; p.desired.z = fz * p.maxSpeed * 1.1;
+          p.desired.x = fx * p.maxSpeed * 1.25; p.desired.z = fz * p.maxSpeed * 1.25;
           p.vx = p.desired.x; p.vz = p.desired.z;
         } else if (p.state === 'active') {
           p.state = 'down'; p.downT = 1.2; p.anim = 'down'; p.animT = 0;
@@ -92,7 +92,7 @@ export function updateTackles(sim, dt) {
     if (d.team === c.team || d.state === 'down' || d.state === 'tackled' || d.tackleCd > 0) continue;
     const dist = Math.hypot(d.x - c.x, d.z - c.z);
     let reach = 1.05;
-    if (moveActive(d, 'tackle_dive')) reach = 1.6;
+    if (moveActive(d, 'tackle_dive')) reach = 1.8;
     else if (moveActive(d, 'hitstick')) reach = 1.15;
     if (d.engagement) reach = 0.65;
     if (d.state === 'stumble') reach = 0.6;
@@ -102,12 +102,12 @@ export function updateTackles(sim, dt) {
   }
 }
 
-function attemptTackle(sim, d, c, air) {
+export function attemptTackle(sim, d, c, air) {
   const rng = sim.rng;
   d.tackleCd = 1.0;
   const tak = sim.R(d, 'tackling');
   const btk = sim.R(c, 'breakTackle');
-  let p = 0.76 + (tak - btk) * 0.006;
+  let p = 0.72 + (tak - btk) * 0.006;
   // Approach angle: hits from the side/behind are harder to escape.
   const fx = Math.cos(c.facing), fz = Math.sin(c.facing);
   let rx = d.x - c.x, rz = d.z - c.z;

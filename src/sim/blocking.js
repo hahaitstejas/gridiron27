@@ -78,7 +78,7 @@ function updateEngagement(sim, e, dt) {
   let speed;
   if (pass) {
     // Pocket slowly collapses when the rusher wins, holds when the blocker wins.
-    speed = Math.max(-0.4, Math.min(2.2, 0.35 + e.bal * 0.05));
+    speed = Math.max(0.08, Math.min(2.2, 0.6 + e.bal * 0.04)); // blockers anchor, never drive a rusher back
   } else {
     // Run blocking drives the defender toward the blocker's drive direction.
     const drive = b.task?.drive || { x: sim.dir, z: 0 };
@@ -111,7 +111,7 @@ function updateEngagement(sim, e, dt) {
   }
 
   // Shed chance.
-  let rate = (pass ? 0.17 : 0.07) * Math.exp((dPow - bPow) / 11);
+  let rate = (pass ? 0.3 : 0.07) * Math.exp((dPow - bPow) / 13);
   if (!pass && carrier && Math.hypot(carrier.x - d.x, carrier.z - d.z) < 2) rate *= 4;
   if (pass && sim.passThrown) rate *= 0.5;
   if (b.task?.type === 'escort') rate *= 3; // open-field blocks don't hold long

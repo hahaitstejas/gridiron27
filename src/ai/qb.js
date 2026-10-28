@@ -21,7 +21,7 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
     if (d.team === qb.team || d.state === 'down') continue;
     const dpx = d.x + d.vx * T * 0.5, dpz = d.z + d.vz * T * 0.5;
     const reach = d.maxSpeed * Math.max(0, T - 0.25) * 0.55;
-    const s = Math.hypot(dpx - pred.x, dpz - pred.z) - reach * 0.35;
+    const s = Math.hypot(dpx - pred.x, dpz - pred.z) - reach * 0.6;
     if (s < sep) sep = s;
     // Defenders sitting in the throwing lane.
     const proj = ((d.x - qb.x) * lx + (d.z - qb.z) * lz) / ll;
@@ -57,13 +57,14 @@ export function qbDecide(sim, qb, dt) {
   const awr = sim.R(qb, 'awareness');
   const pressure = pressureOn(sim, qb, true);
   const task = qb.task;
-  if (t < 0.55 && pressure < 0.7) return;
+  // Finish the drop before reading (unless the rush forces an early throw).
+  if ((t < 0.55 || task.phase === 'drop') && pressure < 0.7) return;
 
   const order = (sim.offPlay.read || []).map((s) => sim.bySlot(sim.offIdx, s)).filter(Boolean);
   for (const p of sim.players) if (p.team === sim.offIdx && p.task?.type === 'route' && !order.includes(p)) order.push(p);
   const readTime = 0.5 - awr * 0.0025;
   const seen = Math.max(1, Math.floor((t - 0.6) / readTime) + 1);
-  let threshold = 3.0 - clamp((t - 0.9) / 2.6, 0, 1) * 1.8;
+  let threshold = 3.0 - clamp((t - 1.0) / 2.6, 0, 1) * 1.9;
   if (pressure > 0.55) threshold = Math.min(threshold, 1.3);
   const noise = (100 - awr) * 0.02;
 

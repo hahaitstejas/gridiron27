@@ -72,7 +72,7 @@ export class DriveSession {
       offPlay: op,
       defPlay: dp,
       humanTeam: this.humanTeam,
-      camDir: humanOff || this.auto ? this.dir : -this.dir,
+      camDir: this.dir, // broadcast view from behind the offense, whichever side the human plays
       firstDownX: Math.abs(this.firstX) < GOAL_X ? this.firstX : null,
     });
     this.presnapT = 0;
@@ -85,6 +85,15 @@ export class DriveSession {
     const n = this.humanSide === 'offense' ? this.offPlays.length : this.defPlays.length;
     this.playIndex = (this.playIndex + step + n) % n;
     this.newPlay();
+  }
+
+  /** Pre-snap: B cycles the controlled defender left to right across the formation. */
+  cycleDefender() {
+    const sim = this.sim;
+    const defs = sim.players.filter((p) => p.team === sim.defIdx)
+      .sort((a, b) => sim.toLocal(a.x, a.z).lat - sim.toLocal(b.x, b.z).lat);
+    const i = defs.findIndex((p) => p.id === sim.controlledId);
+    sim.controlledId = defs[(i + 1) % defs.length].id;
   }
 
   swapSides() {
@@ -102,6 +111,7 @@ export class DriveSession {
       if (input && !this.auto) {
         if (input.pressed.X) { this.nextPlay(1); return; }
         if (input.pressed.LB) { this.swapSides(); return; }
+        if (this.humanSide === 'defense' && input.pressed.B) this.cycleDefender();
         if (this.humanSide === 'offense' && input.pressed.A) { sim.snap(); input = null; } // the snap press isn't also a throw
       }
       if ((this.auto || this.humanSide === 'defense') && this.presnapT > (this.auto ? 0.6 : 2.2)) sim.snap();

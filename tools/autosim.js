@@ -39,7 +39,16 @@ for (let i = 0; i < N; i++) {
   const evCount = {};
   while (!sim.finished && ticks < (MAX_PLAY_TIME + 5) / STEP) {
     sim.tick(STEP, null);
-    for (const e of sim.events) evCount[e.type] = (evCount[e.type] || 0) + 1;
+    for (const e of sim.events) {
+      evCount[e.type] = (evCount[e.type] || 0) + 1;
+      if (e.type === 'throw' && op.type === 'pass') {
+        add('pass:tthrow', sim.t); add('pass:thrown');
+        const qb = sim.players[e.qb];
+        let md = 99;
+        for (const d of sim.players) if (d.team !== qb.team && !d.engagement && d.state === 'active') md = Math.min(md, Math.hypot(d.x - qb.x, d.z - qb.z));
+        if (md < 3) add('pass:pressured');
+      }
+    }
     ticks++;
     for (const p of sim.players) {
       if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) { errors.push(`play ${i}: NaN position for ${p.slot}`); break; }
@@ -60,7 +69,7 @@ for (let i = 0; i < N; i++) {
     if (r.passAttempt) add('pass:att');
     if (r.complete) { add('pass:cmp'); add('pass:yds', r.yards); add('pass:air', (r.catchX - r.losX) * r.dir); }
     if (r.interception) add('pass:int');
-    if (r.sack) add('pass:sack');
+    if (r.sack) { add('pass:sack'); add('pass:pressured'); }
   } else {
     add('run:yds', r.yards); runList.push(r.yards);
   }
@@ -75,6 +84,7 @@ const passPlays = stats['type:pass'] || 0, runPlays = stats['type:run'] || 0;
 console.log(`\nRan ${stats.plays} plays in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 console.log(`Pass: ${stats['pass:cmp'] || 0}/${stats['pass:att'] || 0} (${(100 * (stats['pass:cmp'] || 0) / Math.max(1, stats['pass:att'] || 0)).toFixed(0)}%), ` +
   `${((stats['pass:yds'] || 0) / Math.max(1, stats['pass:cmp'] || 0)).toFixed(1)} yds/cmp, INT ${stats['pass:int'] || 0}, sacks ${stats['pass:sack'] || 0} of ${passPlays} dropbacks`);
+console.log(`  time to throw ${((stats['pass:tthrow'] || 0) / Math.max(1, stats['pass:thrown'] || 0)).toFixed(2)}s, pressure ${(100 * (stats['pass:pressured'] || 0) / Math.max(1, passPlays)).toFixed(0)}%, sack ${(100 * (stats['pass:sack'] || 0) / Math.max(1, passPlays)).toFixed(1)}%, INT ${(100 * (stats['pass:int'] || 0) / Math.max(1, stats['pass:att'] || 0)).toFixed(1)}%`);
 console.log(`  air yds/cmp ${((stats['pass:air'] || 0) / Math.max(1, stats['pass:cmp'] || 0)).toFixed(1)}`);
 console.log(`Run: ${((stats['run:yds'] || 0) / Math.max(1, runPlays)).toFixed(2)} yds/carry over ${runPlays} runs`);
 console.log(`TDs ${stats.td || 0}, safeties ${stats.safety || 0}, turnovers ${stats.turnover || 0}, avg play ${(stats.time / stats.plays).toFixed(1)}s`);

@@ -1,6 +1,7 @@
 import { GRAVITY, HALF_WIDTH } from '../core/constants.js';
 import { clamp } from '../core/math.js';
 import { reactionDelay } from './play.js';
+import { attemptTackle } from './tackling.js';
 
 const RELEASE_HEIGHT = 2.0;
 const CATCH_HEIGHT = 1.35;
@@ -199,12 +200,13 @@ function resolveCatch(sim, reach, late = false) {
     const d = dc.p;
     const reacted = d.task?.type === 'ball' || dc.d < 0.6;
     const userSwat = swatBonus(sim, d);
-    let pPlay = 0.2 + sim.R(d, 'coverage') * 0.0035 + (recDist - dc.d) * 0.28 + (reacted ? 0.12 : -0.15) + (userSwat ? 0.25 : 0);
+    let pPlay = 0.12 + sim.R(d, 'coverage') * 0.0035 + (recDist - dc.d) * 0.28 + (reacted ? 0.08 : -0.15) + (userSwat ? 0.25 : 0);
     if (b.kind === 'lob') pPlay += 0.05;
     if (late) pPlay -= 0.1;
     pPlay = clamp(pPlay, 0.03, 0.85);
     if (rng.next() < pPlay) {
-      let pInt = (0.06 + sim.R(d, 'catching') * 0.0034) * (dc.d < 0.7 ? 1 : 0.5);
+      let pInt = (0.03 + sim.R(d, 'catching') * 0.0026) * (dc.d < 0.7 ? 1 : 0.5);
+      if (b.tipped) pInt *= 0.4;
       if (recDist < 0.8) pInt *= 0.6;
       if (rng.next() < pInt && Math.abs(b.z) < HALF_WIDTH - 0.2) {
         interception(sim, d);
@@ -221,7 +223,7 @@ function resolveCatch(sim, reach, late = false) {
   for (const d of sim.players) {
     if (d.team === sim.possTeam || d.state === 'down') continue;
     const dd = Math.hypot(d.x - r.x, d.z - r.z);
-    if (dd < 1.6) contest += (1.6 - dd) * 0.11 * (sim.R(d, 'coverage') / 80);
+    if (dd < 2) contest += (2 - dd) * 0.13 * (sim.R(d, 'coverage') / 80);
   }
   let pCatch = 0.6 + sim.R(r, 'catching') * 0.0036 - contest - (rc.d > 0.8 ? 0.18 : 0);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
@@ -239,7 +241,19 @@ function resolveCatch(sim, reach, late = false) {
     sim.stats.catchX = r.x;
     r.anim = 'catch'; r.animT = 0;
     sim.emit('catch', { player: r.id, contested: contest > 0.15 });
+    // Securing the catch costs a step, more so in traffic: gives defenders a chance to close.
+    r.speedCap = contest > 0.15 ? 0.55 : 0.75;
+    r.recoverAt = sim.t + 0.35;
     sim.setRunner(r, 'catch');
+    // A defender closing on the catch gets a shot at him as the ball arrives.
+    let hitter = null, hd = 2.2;
+    for (const d of sim.players) {
+      if (d.team === r.team || d.state !== 'active' || d.engagement) continue;
+      const dx = r.x - d.x, dz = r.z - d.z, dd = Math.hypot(dx, dz);
+      const closing = (d.vx * dx + d.vz * dz) / (dd || 1) > 2;
+      if (dd < hd && (closing || dd < 1.2)) { hd = dd; hitter = d; }
+    }
+    if (hitter) attemptTackle(sim, hitter, r, false);
   } else {
     sim.emit('drop', { player: r.id });
     deflect(sim, r, 0.6);
@@ -262,7 +276,7 @@ function deflect(sim, p, mag = 1) {
   const rng = sim.rng;
   b.vx = b.vx * 0.15 + rng.gauss(0, 2.5) * mag;
   b.vz = b.vz * 0.15 + rng.gauss(0, 2.5) * mag;
-  b.vy = Math.abs(b.vy) * 0.2 + rng.range(1.5, 4) * mag;
+  b.vy = Math.abs(b.vy) * 0.15 + rng.range(0.8, 2.6) * mag;
   b.tipped = true;
   b.resolved = true;
   sim.emit('deflection', { player: p.id });

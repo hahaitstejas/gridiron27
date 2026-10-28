@@ -1,0 +1,811 @@
+{
+ "_doc": "Special teams. Kicking team is the 'offense' frame (downfield = toward the receiving team). Kickoff spot / line of scrimmage is the ball. Slots: K kicker, P punter, H holder, LS long snapper, KR/PR returners, G gunners, V vises.",
+ "formations": {
+  "offense": {
+   "kickoff": {
+    "name": "Kickoff",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "K",
+      "p": "K",
+      "d": 0,
+      "at": [
+       -7,
+       -1.5
+      ]
+     },
+     {
+      "s": "L1",
+      "p": "CB",
+      "d": 3,
+      "at": [
+       -1,
+       -23
+      ]
+     },
+     {
+      "s": "L2",
+      "p": "SS",
+      "d": 1,
+      "at": [
+       -1,
+       -18
+      ]
+     },
+     {
+      "s": "L3",
+      "p": "OLB",
+      "d": 2,
+      "at": [
+       -1,
+       -13
+      ]
+     },
+     {
+      "s": "L4",
+      "p": "MLB",
+      "d": 1,
+      "at": [
+       -1,
+       -8
+      ]
+     },
+     {
+      "s": "L5",
+      "p": "FS",
+      "d": 1,
+      "at": [
+       -1,
+       -3
+      ]
+     },
+     {
+      "s": "R5",
+      "p": "SS",
+      "d": 2,
+      "at": [
+       -1,
+       3
+      ]
+     },
+     {
+      "s": "R4",
+      "p": "MLB",
+      "d": 2,
+      "at": [
+       -1,
+       8
+      ]
+     },
+     {
+      "s": "R3",
+      "p": "OLB",
+      "d": 3,
+      "at": [
+       -1,
+       13
+      ]
+     },
+     {
+      "s": "R2",
+      "p": "LE",
+      "d": 1,
+      "at": [
+       -1,
+       18
+      ]
+     },
+     {
+      "s": "R1",
+      "p": "CB",
+      "d": 4,
+      "at": [
+       -1,
+       23
+      ]
+     }
+    ]
+   },
+   "punt": {
+    "name": "Punt",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "C",
+      "p": "C",
+      "d": 1,
+      "at": [
+       -0.5,
+       0
+      ]
+     },
+     {
+      "s": "LG",
+      "p": "OLB",
+      "d": 3,
+      "at": [
+       -0.7,
+       -1.3
+      ]
+     },
+     {
+      "s": "RG",
+      "p": "MLB",
+      "d": 2,
+      "at": [
+       -0.7,
+       1.3
+      ]
+     },
+     {
+      "s": "LT",
+      "p": "TE",
+      "d": 1,
+      "at": [
+       -0.8,
+       -2.6
+      ]
+     },
+     {
+      "s": "RT",
+      "p": "FB",
+      "d": 0,
+      "at": [
+       -0.8,
+       2.6
+      ]
+     },
+     {
+      "s": "LW",
+      "p": "SS",
+      "d": 2,
+      "at": [
+       -1.6,
+       -3.8
+      ]
+     },
+     {
+      "s": "RW",
+      "p": "OLB",
+      "d": 2,
+      "at": [
+       -1.6,
+       3.8
+      ]
+     },
+     {
+      "s": "GL",
+      "p": "CB",
+      "d": 3,
+      "at": [
+       -0.8,
+       -21
+      ]
+     },
+     {
+      "s": "GR",
+      "p": "CB",
+      "d": 4,
+      "at": [
+       -0.8,
+       21
+      ]
+     },
+     {
+      "s": "PP",
+      "p": "FS",
+      "d": 1,
+      "at": [
+       -7,
+       1
+      ]
+     },
+     {
+      "s": "P",
+      "p": "P",
+      "d": 0,
+      "at": [
+       -15,
+       0
+      ]
+     }
+    ]
+   },
+   "field_goal": {
+    "name": "Field Goal",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "C",
+      "p": "C",
+      "d": 1,
+      "at": [
+       -0.5,
+       0
+      ]
+     },
+     {
+      "s": "LG",
+      "p": "LG",
+      "d": 0,
+      "at": [
+       -0.7,
+       -1.3
+      ]
+     },
+     {
+      "s": "RG",
+      "p": "RG",
+      "d": 0,
+      "at": [
+       -0.7,
+       1.3
+      ]
+     },
+     {
+      "s": "LT",
+      "p": "LT",
+      "d": 0,
+      "at": [
+       -0.8,
+       -2.6
+      ]
+     },
+     {
+      "s": "RT",
+      "p": "RT",
+      "d": 0,
+      "at": [
+       -0.8,
+       2.6
+      ]
+     },
+     {
+      "s": "LE",
+      "p": "TE",
+      "d": 0,
+      "at": [
+       -0.9,
+       -3.9
+      ]
+     },
+     {
+      "s": "RE",
+      "p": "TE",
+      "d": 1,
+      "at": [
+       -0.9,
+       3.9
+      ]
+     },
+     {
+      "s": "LW",
+      "p": "TE",
+      "d": 2,
+      "at": [
+       -1.8,
+       -5.1
+      ]
+     },
+     {
+      "s": "RW",
+      "p": "LG",
+      "d": 1,
+      "at": [
+       -1.8,
+       5.1
+      ]
+     },
+     {
+      "s": "H",
+      "p": "P",
+      "d": 0,
+      "at": [
+       -7,
+       0
+      ]
+     },
+     {
+      "s": "K",
+      "p": "K",
+      "d": 0,
+      "at": [
+       -9.5,
+       -2
+      ]
+     }
+    ]
+   },
+   "victory": {
+    "name": "Victory",
+    "family": "Special",
+    "players": [
+     {
+      "s": "QB",
+      "p": "QB",
+      "d": 0,
+      "at": [
+       -1.1,
+       0
+      ]
+     },
+     {
+      "s": "RB",
+      "p": "HB",
+      "d": 0,
+      "at": [
+       -5,
+       0
+      ]
+     },
+     {
+      "s": "LT",
+      "p": "LT",
+      "d": 0,
+      "at": [
+       -0.8,
+       -2.6
+      ]
+     },
+     {
+      "s": "LG",
+      "p": "LG",
+      "d": 0,
+      "at": [
+       -0.7,
+       -1.3
+      ]
+     },
+     {
+      "s": "C",
+      "p": "C",
+      "d": 0,
+      "at": [
+       -0.5,
+       0
+      ]
+     },
+     {
+      "s": "RG",
+      "p": "RG",
+      "d": 0,
+      "at": [
+       -0.7,
+       1.3
+      ]
+     },
+     {
+      "s": "RT",
+      "p": "RT",
+      "d": 0,
+      "at": [
+       -0.8,
+       2.6
+      ]
+     },
+     {
+      "s": "Y",
+      "p": "TE",
+      "d": 0,
+      "at": [
+       -0.9,
+       3.9
+      ]
+     },
+     {
+      "s": "H",
+      "p": "TE",
+      "d": 1,
+      "at": [
+       -0.9,
+       -3.9
+      ]
+     },
+     {
+      "s": "X",
+      "p": "FB",
+      "d": 0,
+      "at": [
+       -2.5,
+       -2
+      ]
+     },
+     {
+      "s": "Z",
+      "p": "WR",
+      "d": 0,
+      "at": [
+       -2.5,
+       2
+      ]
+     }
+    ]
+   }
+  },
+  "defense": {
+   "kick_return": {
+    "name": "Kick Return",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "F1",
+      "p": "OLB",
+      "d": 1,
+      "at": [
+       12,
+       -16
+      ]
+     },
+     {
+      "s": "F2",
+      "p": "MLB",
+      "d": 1,
+      "at": [
+       12,
+       -8
+      ]
+     },
+     {
+      "s": "F3",
+      "p": "DE",
+      "d": 2,
+      "at": [
+       12,
+       0
+      ]
+     },
+     {
+      "s": "F4",
+      "p": "MLB",
+      "d": 2,
+      "at": [
+       12,
+       8
+      ]
+     },
+     {
+      "s": "F5",
+      "p": "OLB",
+      "d": 2,
+      "at": [
+       12,
+       16
+      ]
+     },
+     {
+      "s": "M1",
+      "p": "TE",
+      "d": 1,
+      "at": [
+       28,
+       -8
+      ]
+     },
+     {
+      "s": "M2",
+      "p": "FB",
+      "d": 0,
+      "at": [
+       28,
+       8
+      ]
+     },
+     {
+      "s": "B1",
+      "p": "SS",
+      "d": 1,
+      "at": [
+       44,
+       -6
+      ]
+     },
+     {
+      "s": "B2",
+      "p": "TE",
+      "d": 2,
+      "at": [
+       44,
+       6
+      ]
+     },
+     {
+      "s": "KR2",
+      "p": "KR",
+      "d": 1,
+      "at": [
+       57,
+       5
+      ]
+     },
+     {
+      "s": "KR",
+      "p": "KR",
+      "d": 0,
+      "at": [
+       63,
+       -1
+      ]
+     }
+    ]
+   },
+   "punt_return": {
+    "name": "Punt Return",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "R1",
+      "p": "DE",
+      "d": 1,
+      "at": [
+       1,
+       -5
+      ]
+     },
+     {
+      "s": "R2",
+      "p": "DT",
+      "d": 1,
+      "at": [
+       1,
+       -2.5
+      ]
+     },
+     {
+      "s": "R3",
+      "p": "MLB",
+      "d": 1,
+      "at": [
+       1,
+       0
+      ]
+     },
+     {
+      "s": "R4",
+      "p": "DT",
+      "d": 2,
+      "at": [
+       1,
+       2.5
+      ]
+     },
+     {
+      "s": "R5",
+      "p": "DE",
+      "d": 2,
+      "at": [
+       1,
+       5
+      ]
+     },
+     {
+      "s": "VL1",
+      "p": "CB",
+      "d": 2,
+      "at": [
+       1.2,
+       -19.5
+      ]
+     },
+     {
+      "s": "VL2",
+      "p": "CB",
+      "d": 3,
+      "at": [
+       1.2,
+       -22.5
+      ]
+     },
+     {
+      "s": "VR1",
+      "p": "CB",
+      "d": 4,
+      "at": [
+       1.2,
+       19.5
+      ]
+     },
+     {
+      "s": "VR2",
+      "p": "SS",
+      "d": 1,
+      "at": [
+       1.2,
+       22.5
+      ]
+     },
+     {
+      "s": "LB",
+      "p": "OLB",
+      "d": 2,
+      "at": [
+       7,
+       0
+      ]
+     },
+     {
+      "s": "PR",
+      "p": "PR",
+      "d": 0,
+      "at": [
+       42,
+       0
+      ]
+     }
+    ]
+   },
+   "fg_block": {
+    "name": "FG Block",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "B1",
+      "p": "DE",
+      "d": 0,
+      "at": [
+       1,
+       -6
+      ]
+     },
+     {
+      "s": "B2",
+      "p": "DE",
+      "d": 1,
+      "at": [
+       1,
+       -4.5
+      ]
+     },
+     {
+      "s": "B3",
+      "p": "DT",
+      "d": 0,
+      "at": [
+       1,
+       -2.6
+      ]
+     },
+     {
+      "s": "B4",
+      "p": "DT",
+      "d": 1,
+      "at": [
+       1,
+       -1
+      ]
+     },
+     {
+      "s": "B5",
+      "p": "DT",
+      "d": 2,
+      "at": [
+       1,
+       1
+      ]
+     },
+     {
+      "s": "B6",
+      "p": "DE",
+      "d": 2,
+      "at": [
+       1,
+       2.6
+      ]
+     },
+     {
+      "s": "B7",
+      "p": "DE",
+      "d": 3,
+      "at": [
+       1,
+       4.5
+      ]
+     },
+     {
+      "s": "B8",
+      "p": "OLB",
+      "d": 0,
+      "at": [
+       1,
+       6
+      ]
+     },
+     {
+      "s": "B9",
+      "p": "MLB",
+      "d": 0,
+      "at": [
+       3.5,
+       0
+      ]
+     },
+     {
+      "s": "S1",
+      "p": "CB",
+      "d": 0,
+      "at": [
+       9,
+       -8
+      ]
+     },
+     {
+      "s": "S2",
+      "p": "CB",
+      "d": 1,
+      "at": [
+       9,
+       8
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "offense": [
+  {
+   "id": "st_kickoff",
+   "name": "Kickoff",
+   "formation": "kickoff",
+   "type": "kickoff",
+   "kick": "deep"
+  },
+  {
+   "id": "st_squib",
+   "name": "Squib Kick",
+   "formation": "kickoff",
+   "type": "kickoff",
+   "kick": "squib"
+  },
+  {
+   "id": "st_onside",
+   "name": "Onside Kick",
+   "formation": "kickoff",
+   "type": "kickoff",
+   "kick": "onside"
+  },
+  {
+   "id": "st_punt",
+   "name": "Punt",
+   "formation": "punt",
+   "type": "punt"
+  },
+  {
+   "id": "st_fg",
+   "name": "Field Goal",
+   "formation": "field_goal",
+   "type": "fg"
+  },
+  {
+   "id": "st_kneel",
+   "name": "QB Kneel",
+   "formation": "victory",
+   "type": "kneel"
+  },
+  {
+   "id": "st_spike",
+   "name": "Spike Ball",
+   "formation": "singleback_ace",
+   "type": "spike"
+  }
+ ],
+ "defense": [
+  {
+   "id": "st_kick_return",
+   "name": "Kick Return",
+   "formation": "kick_return",
+   "type": "return"
+  },
+  {
+   "id": "st_punt_return",
+   "name": "Punt Return",
+   "formation": "punt_return",
+   "type": "return"
+  },
+  {
+   "id": "st_fg_block",
+   "name": "Field Goal Block",
+   "formation": "fg_block",
+   "type": "block"
+  }
+ ]
+}

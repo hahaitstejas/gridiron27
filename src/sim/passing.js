@@ -2,6 +2,7 @@ import { GRAVITY, HALF_WIDTH } from '../core/constants.js';
 import { clamp } from '../core/math.js';
 import { reactionDelay } from './play.js';
 import { attemptTackle } from './tackling.js';
+import { addFoul, foulRate } from './fouls.js';
 
 const RELEASE_HEIGHT = 2.0;
 const CATCH_HEIGHT = 1.35;
@@ -83,7 +84,7 @@ function release(sim, qb, rec, kind, lead) {
     const dist = Math.hypot(tx - qb.x, tz - qb.z);
     const pressure = pressureOn(sim, qb);
     const moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
-    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30) * (1 + pressure * 0.9 + moving * 0.6);
+    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22) * (1 + pressure * 0.9 + moving * 0.6);
     if (kind === 'bullet') sd *= 1.1;
     if (sim.difficulty && qb.team !== sim.humanTeam) sd *= sim.difficulty.cpuAccuracy ?? 1;
     tx += rng.gauss(0, sd);
@@ -116,6 +117,12 @@ function release(sim, qb, rec, kind, lead) {
   b.tipped = false;
   sim.passThrown = true;
   sim.stats.passer = qb.id;
+  // Intentional grounding: throwing it away from inside the tackle box.
+  if (kind === 'throwaway') {
+    const l = sim.toLocal(qb.x, qb.z);
+    if (Math.abs(l.lat) < 4.5 && l.down < 0) addFoul(sim, 'grounding', qb.team, qb, { spotX: qb.x });
+  }
+  sim.releaseT = sim.t;
   sim.stats.target = b.intended >= 0 ? b.intended : null;
   qb.face = null;
   sim.emit('throw', { qb: qb.id, rec: b.intended, kind, T });
@@ -228,6 +235,19 @@ function resolveCatch(sim, reach, late = false) {
       return;
     }
   }
+  // Pass interference: a defender who didn't play the ball and is on top of the receiver.
+  const ir = sim.players[b.intended];
+  if (ir && !late) {
+    for (const d of sim.players) {
+      if (d.team === sim.possTeam || d.state !== 'active') continue;
+      const dd = Math.hypot(d.x - ir.x, d.z - ir.z);
+      const playingBall = d.task?.type === 'ball' && Math.hypot(d.x - b.x, d.z - b.z) < 1.2;
+      if (dd < 0.75 && !playingBall && rng.next() < 0.22 * foulRate(sim)) {
+        addFoul(sim, 'dpi', d.team, d, { spotX: b.x });
+        break;
+      }
+    }
+  }
   if (!offC.length) return;
   const rc = offC[0];
   const r = rc.p;
@@ -241,6 +261,7 @@ function resolveCatch(sim, reach, late = false) {
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
   if (b.tipped) pCatch -= 0.2;
+  pCatch -= Math.max(0, b.T - 1.3) * 0.12; // long balls: more time for the defense to get a hand in
   pCatch = clamp(pCatch, 0.1, 0.97);
   if (Math.abs(r.z) > HALF_WIDTH - 0.15) {
     // Caught out of bounds.

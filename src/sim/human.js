@@ -34,6 +34,13 @@ export function applyHuman(sim, inp, dt) {
   if (p.state !== 'active') return;
   // Handoffs are automatic (no QB keepers on straight runs): the QB is locked until the mesh.
   if (p.task?.type === 'qb_handoff') { p.userActive = false; return; }
+  // Kickers follow the meter; the left stick aims (handled in kicking.js).
+  if (p.task?.type === 'kicker' || p.task?.type === 'kneel' || p.task?.type === 'spike') { p.userActive = false; return; }
+  // Returner while the kick is in the air: Y = fair catch (punts), X = kneel it in the end zone.
+  if (sim.kick && p.task?.type === 'returner' && sim.ball.state === 'kick') {
+    if (inp.pressed.Y && sim.kick.type === 'punt' && !p.fairCatch) { p.fairCatch = true; sim.emit('fairCatchSignal', { player: p.id }); }
+    if (inp.pressed.X) p.kneel = true;
+  }
 
   // Movement.
   if (p.userActive && !p.engagement && !(p.move && ['juke', 'dive', 'slide', 'tackle_dive', 'hitstick'].includes(p.move.type) && p.move.t < 0.3)) {

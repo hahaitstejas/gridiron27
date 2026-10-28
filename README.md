@@ -15,24 +15,33 @@ npm run dev
 ```
 
 Open **http://localhost:5173** in Chrome or Safari. Turn on your Xbox controller (paired over Bluetooth)
-and press **A** — or press **Enter** to use the keyboard.
+and press **A** — or press **Enter** to use the keyboard. Pick **Play Now**, choose teams, which side you
+control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalties, then **Start Game**.
 
-### Controls (Phase 1)
+### Controls
 | | Xbox | Keyboard |
 |---|---|---|
+| Menus: move · select · back · tabs | D-pad / left stick · A · B · LB/RB | WASD or 1–4 · J · K · Q/O |
+| Play call: flip play · timeout | X · View | U · T |
+| Snap | A | J or Space |
+| Pause | Menu | Enter / Esc |
 | Move | Left stick | W A S D |
-| Snap / stiff arm / swat | A | J or Space |
-| Throw to receiver | A B X Y RB (tap = lob, hold = bullet) | J K U I O |
-| Change play (pre-snap) | X | U |
-| Play defense / offense (pre-snap) | LB | Q |
 | Sprint | RT | Shift |
-| Juke / truck / hit stick | Right stick ← → / ↑ | Arrow keys |
-| Spin · Dive · Hurdle | B · X · Y | K · U · I |
-| Switch defender | B | K |
+| Throw to receiver | A B X Y RB (tap = lob, hold = bullet) | J K U I O |
 | Throw away | RS click | R |
+| Juke / truck / hit stick | Right stick ← → / ↑ | Arrow keys |
+| Stiff arm · Spin · Dive (QB: slide) · Hurdle | A · B · X · Y | J · K · U · I |
+| Switch defender (pre-snap and during the play) | B | K |
+| Defense: dive tackle · strip · swat/catch | X · Y · A | U · I · J |
+| Kick meter: start · power · accuracy | A · A · A | J · J · J |
+| Returner: fair catch · kneel in end zone | Y · X | I · U |
 | Controls panel | — | H |
 
-Debug: `http://localhost:5173/?auto&speed=6` watches CPU vs CPU at 6x speed.
+Kicks use a three-press meter: press A to start the kicker, A again to set power on the way up, and A a
+third time as the needle comes back to set accuracy (closest to the line = straightest).
+
+Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6x speed
+(`&q=1` for 1-minute quarters).
 
 ### Customize your league (personal use)
 ```bash

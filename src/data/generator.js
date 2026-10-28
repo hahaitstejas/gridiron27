@@ -3,6 +3,7 @@ import { FIRST_NAMES, LAST_NAMES, COLLEGES } from './names.js';
 import { POSITION_TEMPLATES, RATING_KEYS, ROSTER_COUNTS, JERSEY_RANGES, BODY, overall } from './positions.js';
 import { buildDepthChart } from './depthChart.js';
 
+const PHYSICAL = new Set(['speed', 'acceleration', 'agility', 'strength']);
 let nextPlayerId = 1;
 export function setNextPlayerId(n) { nextPlayerId = Math.max(nextPlayerId, n); }
 
@@ -20,7 +21,9 @@ export function generatePlayer(pos, rng, quality = 0, opts = {}) {
     if (base === undefined) {
       ratings[k] = clampR(rng.gauss(32, 8));
     } else {
-      ratings[k] = clampR(base + quality + rng.gauss(0, 5.5));
+      // Starters and backups differ mostly in skill; physical tools (speed etc.) vary less with quality.
+      const q = PHYSICAL.has(k) ? quality * 0.35 : quality;
+      ratings[k] = clampR(base + q + rng.gauss(0, 5.5));
     }
   }
   const [h, w] = BODY[pos];

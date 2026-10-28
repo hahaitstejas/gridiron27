@@ -56,6 +56,22 @@ export class GameRenderer {
     this.ballShadow.position.y = 0.02;
     scene.add(this.ballShadow);
 
+    // Kick aim arrow and penalty flag.
+    const aimGeo = new THREE.ConeGeometry(0.5, 1.6, 3);
+    aimGeo.rotateZ(-Math.PI / 2);
+    this.aim = new THREE.Group();
+    const shaft = new THREE.Mesh(new THREE.PlaneGeometry(6, 0.25), new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.85, depthWrite: false }));
+    shaft.rotation.x = -Math.PI / 2; shaft.position.x = 3;
+    const tip = new THREE.Mesh(aimGeo, new THREE.MeshBasicMaterial({ color: 0xffe14d }));
+    tip.position.set(6.6, 0.05, 0); tip.scale.y = 0.2;
+    this.aim.add(shaft, tip);
+    this.aim.position.y = 0.04;
+    this.aim.visible = false;
+    scene.add(this.aim);
+    this.flag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 0.35), new THREE.MeshLambertMaterial({ color: 0xffd400, emissive: 0x332a00 }));
+    this.flag.visible = false;
+    scene.add(this.flag);
+
     this.rig = new CameraRig(container.clientWidth / container.clientHeight);
     this.container = container;
     window.addEventListener('resize', () => this.resize());
@@ -94,6 +110,8 @@ export class GameRenderer {
   /** Draw a frame of a play simulation. */
   drawSim(sim, alpha, time) {
     const players = this.players;
+    this._lastSim = sim;
+    this.ball.visible = true;
     players.update(sim, alpha, time, sim.humanTeam !== null ? sim.controlledId : -1);
     // Ball
     const b = sim.ball;
@@ -123,7 +141,47 @@ export class GameRenderer {
     this.key.target.position.set(bm.position.x, 0, bm.position.z);
   }
 
+  hidePlayers() {
+    for (const m of Object.values(this.players.parts)) m.count = 0;
+    this.players.ring.visible = false;
+    this.ball.visible = false;
+    this.ballShadow.visible = false;
+    this.aim.visible = false;
+  }
+
+  /** Aim arrow while the human sets up a kick. */
+  setAim(sim) {
+    const show = sim && sim.meter && sim.isKick && !(sim.kick && sim.kick.launched);
+    this.aim.visible = !!show;
+    if (!show) return;
+    const b = sim.ball;
+    let yaw;
+    if (sim.offPlay.type === 'fg') yaw = Math.atan2((sim.kickAim || 0) * 6 - b.z, 60 * sim.dir - b.x);
+    else yaw = Math.atan2((sim.kickAim || 0) * (sim.offPlay.type === 'punt' ? 14 : 18), sim.dir * 40);
+    this.aim.position.set(b.x, 0.04, b.z);
+    this.aim.rotation.y = -yaw;
+  }
+
+  showFlag(e) {
+    if (!e || e.presnap) return;
+    const sim = this._lastSim;
+    const p = sim?.players.find((q) => q.team === e.team) || null;
+    this.flag.position.set((p?.x ?? 0) + (Math.random() - 0.5) * 2, 0.03, (p?.z ?? 0) + (Math.random() - 0.5) * 2);
+    this.flag.visible = true;
+    this.flagT = 6;
+  }
+
+  /** Slow orbit over the empty stadium for menus. */
+  renderOrbit(dt, t) {
+    this.stadium.update(dt, 0.2);
+    const cam = this.rig.camera;
+    cam.position.set(Math.cos(t) * 70, 28, Math.sin(t) * 45);
+    cam.lookAt(0, 0, 0);
+    this.renderer.render(this.scene, cam);
+  }
+
   render(dt, focus, dir, phase, snap, excitement = 0.2) {
+    if (this.flagT > 0 && (this.flagT -= dt) <= 0) this.flag.visible = false;
     this.stadium.update(dt, excitement);
     this.rig.update(dt, focus, dir, phase, snap);
     this.renderer.render(this.scene, this.rig.camera);

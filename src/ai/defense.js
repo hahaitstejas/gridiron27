@@ -292,8 +292,12 @@ function pursue(sim, p, dt) {
   // low-awareness pursuers undershoot and end up chasing.
   const td = sim.teamDir(c.team);
   const ahead = (p.x - c.x) * td > 1;
-  const k = ahead ? 1.15 : clamp(0.55 + awr * 0.0055, 0.55, 1.05);
+  // ...but a defender squarely in the runner's path should meet him, not overrun him.
+  const cs = Math.hypot(c.vx, c.vz) || 1;
+  const headOn = ((p.x - c.x) * c.vx + (p.z - c.z) * c.vz) / (cs * (dist || 1)) > 0.8;
+  const k = ahead && !headOn ? 1.15 : headOn ? 0.85 : clamp(0.55 + awr * 0.0055, 0.55, 1.05);
   let tx = c.x + c.vx * ti * k, tz = c.z + c.vz * ti * k;
+  if (p.task.lane !== undefined && dist > 6) tz = tz * 0.6 + (c.z + p.task.lane) * 0.4;
   seek(p, tx, tz, 1, 0.05);
   if (sim.isHumanControlled(p)) return;
   // Occasional dive at an escaping runner, or a big hit head-on.

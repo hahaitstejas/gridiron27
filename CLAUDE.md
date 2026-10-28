@@ -11,18 +11,20 @@ npm install          # once
 npm run dev          # http://localhost:5173 (Chrome or Safari)
 npm test             # Vitest unit tests (tests/*.test.js), headless
 npm run sim -- --plays 1000 --seed 3   # headless CPU-vs-CPU play runner with invariant checks + stats
+npm run games -- --games 16 --quarter 15  # headless full CPU-vs-CPU games (rules/clock invariants, box-score averages)
 npm run export-league  # write editable league spreadsheets to public/local/ (see below)
-npm run bot          # scripted 'human' exploits (blind throws, QB scrambles, holding the ball) vs CPU defense
+npm run bot          # scripted 'human' exploits vs CPU defense  (-- --difficulty rookie|pro|allpro|legend)
 npm run build        # production build to dist/
 ```
 
 URL flags (dev server):
-- `?auto&speed=6` — CPU vs CPU in the browser, sim running 6x real time (debug).
-- `?autostart` — skip the "Press A" screen. `?seed=N` — fixed RNG seed. `?home=9&away=28` — team indices.
+- `?auto&speed=6` — full CPU-vs-CPU game in the browser at 6x real time (debug); `&q=1` = 1-minute quarters.
+- `?play` — skip the menus straight into a game (`&side=home|away|cpu`). `?seed=N` — fixed RNG seed.
+- `?home=9&away=28` — team index or abbreviation (`?home=CHI`).
 
 Optional browser smoke test (needs Playwright: `npm i -D playwright && npx playwright install chromium`):
-`node tools/smoke.mjs http://localhost:5173/ test-output` — drives offense, runs, defense and auto mode and
-fails on console errors.
+`node tools/smoke.mjs http://localhost:5173/ test-output` — drives the menus, a stretch of a human game (play
+calls, snaps, kicks), the pause menu and a full 1-minute-quarter CPU game; fails on console errors.
 
 In-game: `H` toggles the controls panel, `` ` `` toggles the FPS / draw-call overlay.
 
@@ -52,6 +54,25 @@ Each tick: ball update → offense AI → defense AI → human input → moves �
 and stat attributions (passer, receiver, tackler…). `sim.events` lists what happened this tick (snap, throw,
 catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 
+### Game layer (`src/game`)
+- `match.js` → `Match`: pure rules/game state — quarter, clock, score, possession, `phase`
+  (`kickoff | scrimmage | try`), down/distance, yard line (`yardLine` = 0–100 from the possessing team's own
+  goal), timeouts, two-minute warning, halftime, overtime (both teams possess, then sudden death), team and
+  player stats. `applyResult(result)` consumes a `PlaySim.result` and moves the game on. `dirOf(team)` /
+  `xOf(team, yl)` / `ylOf(team, x)` map between yard lines and world x (home attacks +x in Q1/Q3).
+- `penalties.js`: foul table, enforcement (half the distance, automatic first downs, loss of down, spot
+  fouls), accept/decline by `expectedPoints()`, pre-snap fouls.
+- `session.js` → `GameSession`: drives one game — states `playcall → presnap → live → post` (→ `over`).
+  Gets play calls from the human (`humanChoose`) or `ai/playcaller.js`, builds each `PlaySim`, runs the
+  play clock / runoff (accelerated clock option), enforces fouls via `penalties.js`, then `match.applyResult`.
+  Emits `message`, `flag`, `result`, `gameOver` plus the sim's events. The UI only reads it.
+- Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
+  plane, returns, fair catches, touchbacks, onside kicks. Special plays/formations are in
+  `playbooks/special.json` (ids `st_*`; `listOffPlays()`/`listDefPlays()` hide them unless `all=true`).
+- `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
+  clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
+  plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
+
 Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `carrier`, `qb_pass`,
 `rush`, `man`, `zone`, `pursue`, `ball`, …) that the AI modules interpret. Ratings drive everything via
 `sim.R(player, key)` (which also applies difficulty boosts).
@@ -60,29 +81,35 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 
 ```
 index.html, vite.config.js, package.json
-src/main.js            boot + main loop (fixed-step sim, render, HUD)
+src/main.js            boot, app states (title/menu/game/paused/over), fixed-step session loop, render, HUD
 src/core/              constants (field dims), rng (seeded), math helpers, event emitter
 src/input/             gamepad.js (Xbox standard mapping, dead zones, rumble), keyboard.js (fallback),
                        actions.js (ControllerState with latched edges + RS flicks), input.js (manager, "Press A")
 src/sim/               play.js (PlaySim), entities.js, movement.js (accel/agility steering, collisions),
                        blocking.js (engagements, shedding, pass-rush moves), passing.js (throws, flight,
                        catch/INT/deflection), tackling.js (tackles, broken tackles, ball-carrier moves),
-                       human.js (controller → player), anim.js (animation state selection)
+                       human.js (controller → player), anim.js (animation state selection), kicking.js (kick
+                       meter, kick flight, returns, special-teams AI), fouls.js (in-play penalty flags)
 src/ai/                offense.js (QB drop/handoff, protection, run blocking, routes, escort), qb.js (reads),
                        carrier.js (lane finding + moves), defense.js (man matching, zones, rush, pursuit),
-                       zones.js (zone landmarks)
-src/game/drive.js      Phase 1 drive loop (downs/distance, resets). Replaced by full game state in Phase 2.
+                       zones.js (zone landmarks), playcaller.js (CPU play calling), difficulty.js (tiers)
+src/game/              match.js (rules, clock, score, stats), penalties.js (enforcement), session.js (game loop)
 src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/), positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
-                       playbooks/*.json (formations, offense, defense)
+                       playbooks/*.json (formations, offense, defense, special)
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
-src/ui/                hud.js (connect screen, mini score bug, receiver icons, banners, help), style.css
-tools/autosim.js       headless CPU-vs-CPU runner;  tools/humanbot.js  exploit checks; tools/separation.js  receiver openness; tools/export-league.js;  tools/smoke.mjs  browser smoke test
+src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu orbit camera.
+src/ui/                nav.js (controller/keyboard menu focus), screens.js (title, main menu, Play Now setup,
+                       controls, settings, pause, game-over box score; prefs in localStorage `g27.settings`),
+                       playcall.js (play-call screen), playart.js (canvas play diagrams), hud.js (score bug,
+                       banners, flag box, ticker, receiver icons, kick meter, help, FPS), style.css
+tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;  tools/humanbot.js  exploit checks;
+                       tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests
 ```
-Planned (later phases): `src/audio`, `src/replay`, `src/franchise`, more of `src/ui` (menus, play-call
-screen, editors), `src/data/storage.js` + `csv.js`.
+Planned (later phases): `src/audio`, `src/replay`, `src/franchise`, more of `src/ui` (editors),
+`src/data/storage.js`.
 
 ## Performance notes (target: 60 fps on an M3 MacBook Air, Chrome + Safari)
 - Players are ~15 `InstancedMesh` draw calls total; posing uses a preallocated matrix pool (no per-frame GC).
@@ -120,6 +147,12 @@ shallow, cross, curl, hitch, stick, comeback, post, skinny_post, corner, flat, a
 sit, whip, zig, out_up, screen`); suffix `_l`/`_r` forces a side. Non-routes: `block`, `stalk`.
 Run plays add `"run": { "carrier": "RB", "aim": [1, 1.5], "mesh": [-4.2, 0.6], "scheme": "zone"|"gap",
 "side": 1|-1, "pull": ["RG"] }`. `mirrorOffPlay()` flips any play.
+
+### Special teams (`special.json`)
+Same shape as the other playbooks, with `formations.offense/defense` and `offense`/`defense` play lists.
+Offense: `st_kickoff`, `st_squib`, `st_onside`, `st_punt`, `st_fg` (also the PAT), `st_kneel`, `st_spike`;
+defense: `st_kick_return`, `st_punt_return`, `st_fg_block`. Plays carry `"type": "kickoff" | "punt" | "fg" |
+"kneel" | "spike"`; the session picks the matching defense automatically.
 
 ### Defensive plays (`defense.json`)
 ```json
@@ -166,8 +199,10 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   light towers, video boards), instanced players with procedural animation, Xbox controller + keyboard,
   playable plays (3 pass, 2 run) with snap, passing (lob/bullet, lead), running with moves, blocking,
   coverage, tackling; play defense too; CPU-vs-CPU auto mode; headless autosim + unit tests.
-- [ ] Phase 2 — full Play Now game (rules, clock, kicking meter, play-call screen, CPU AI/difficulty,
-  penalties, score bug)
+- [x] **Phase 2** — Play Now: menus (title, main, setup, settings, controls, pause, box score), full rules
+  (downs, clock + accelerated clock, two-minute warning, halftime, OT, timeouts), kickoffs/punts/FGs/PATs/
+  2-pt tries with a 3-press kick meter, returns and fair catches, fumbles, penalties with enforcement,
+  play-call screen (formation → play, flip, suggestions), CPU play calling, 4 difficulty tiers, score bug.
 - [ ] Phase 3 — large playbooks, audibles/hot routes, replay, audio, Practice mode, settings
 - [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
 - [ ] Phase 5 — Franchise mode
@@ -179,7 +214,9 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   still look like football and that there are no invariant violations. Current targets (CPU vs CPU):
   completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
   Bot targets: blind quick throws should average well under 15 yds/play, mindless QB scrambles ~2-4 yds,
-  a QB who just holds the ball should be sacked in ~4-5 s.
+  a QB who just holds the ball should be sacked in ~4-5 s. Full games (`npm run games -- --games 16`): ~20-24
+  pts and ~350 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
+  violations. Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.
 - Ball spotting: the dead-ball spot and the goal-line plane use the **ball's** position
   (`PlaySim.carrierBallPos`), which moves forward as a tackled runner falls (matching the animation). A QB
   slide is spotted where the slide began.

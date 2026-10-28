@@ -80,3 +80,14 @@ export const BODY = {
   QB: [75, 220], HB: [70, 212], FB: [72, 245], WR: [73, 200], TE: [77, 252], T: [78, 315], G: [76, 315], C: [75, 305],
   DE: [76, 270], DT: [75, 310], OLB: [74, 242], MLB: [73, 240], CB: [71, 192], FS: [72, 205], SS: [72, 210], K: [72, 195], P: [74, 210],
 };
+
+/** Team overall ratings from starters (simple weighted averages of player overalls). */
+export function teamRatings(team) {
+  const byId = new Map(team.roster.map((p) => [p.id, p]));
+  const ovrAt = (slot, n = 1) => (team.depth[slot] || []).slice(0, n).map((id) => byId.get(id)?.ovr ?? 50);
+  const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 50);
+  const off = avg([...ovrAt('QB', 1), ...ovrAt('QB', 1), ...ovrAt('HB', 1), ...ovrAt('WR', 3), ...ovrAt('TE', 1), ...ovrAt('LT'), ...ovrAt('LG'), ...ovrAt('C'), ...ovrAt('RG'), ...ovrAt('RT')]);
+  const def = avg([...ovrAt('LE'), ...ovrAt('RE'), ...ovrAt('DT', 2), ...ovrAt('LOLB'), ...ovrAt('MLB'), ...ovrAt('ROLB'), ...ovrAt('CB', 3), ...ovrAt('FS'), ...ovrAt('SS')]);
+  const st = avg([...ovrAt('K'), ...ovrAt('P')]);
+  return { ovr: Math.round(off * 0.46 + def * 0.46 + st * 0.08), off: Math.round(off), def: Math.round(def) };
+}

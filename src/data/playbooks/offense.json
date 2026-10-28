@@ -1,33 +1,787 @@
 {
-  "_doc": "Offensive plays. routes: slot -> route name (see src/data/routes.js) or block/stalk. Append _l/_r to force a route's side. read = QB progression. run plays add a run object: carrier slot, aim [downfield, lateral] relative to the ball, scheme zone|gap, pull = slots that pull.",
-  "plays": [
-    {
-      "id": "gun_trips_slants", "name": "Slants", "formation": "gun_trips_te", "type": "pass", "concept": "Slants",
-      "dropback": 3,
-      "routes": { "X": "slant", "Z": "slant", "H": "slant", "Y": "flat", "RB": "block" },
-      "read": ["H", "Z", "X", "Y"]
-    },
-    {
-      "id": "gun_doubles_four_verts", "name": "Four Verticals", "formation": "gun_doubles", "type": "pass", "concept": "Four Verticals",
-      "dropback": 5,
-      "routes": { "X": "go", "H": "seam", "Y": "seam", "Z": "go", "RB": "swing_l" },
-      "read": ["H", "Y", "X", "Z", "RB"]
-    },
-    {
-      "id": "gun_doubles_mesh", "name": "Mesh", "formation": "gun_doubles", "type": "pass", "concept": "Mesh",
-      "dropback": 5,
-      "routes": { "X": "corner", "H": "drag", "Y": "shallow", "Z": "dig", "RB": "flat_r" },
-      "read": ["H", "Y", "Z", "RB", "X"]
-    },
-    {
-      "id": "ace_inside_zone", "name": "Inside Zone", "formation": "singleback_ace", "type": "run", "concept": "Inside Zone",
-      "routes": { "X": "stalk", "Z": "stalk", "Y": "block", "H": "block" },
-      "run": { "carrier": "RB", "aim": [1, 1.5], "mesh": [-4.2, 0.6], "scheme": "zone", "side": 1 }
-    },
-    {
-      "id": "ace_power_l", "name": "Power O", "formation": "singleback_ace", "type": "run", "concept": "Power",
-      "routes": { "X": "stalk", "Z": "stalk", "Y": "block", "H": "block" },
-      "run": { "carrier": "RB", "aim": [1, -3.2], "mesh": [-4.2, -0.6], "scheme": "gap", "side": -1, "pull": ["RG"] }
-    }
-  ]
+ "_doc": "Offensive plays. routes: slot -> route name (see src/data/routes.js) or block/stalk. Append _l/_r to force a route's side. read = QB progression. run plays add a run object: carrier slot, aim [downfield, lateral] relative to the ball, scheme zone|gap, pull = slots that pull.",
+ "plays": [
+  {
+   "id": "gun_trips_slants",
+   "name": "Slants",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "slant",
+    "H": "slant",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Z",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "gun_trips_smash",
+   "name": "Smash",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Smash",
+   "dropback": 5,
+   "routes": {
+    "X": "hitch",
+    "Z": "corner",
+    "H": "hitch",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "gun_trips_flood",
+   "name": "Flood",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "deep_out",
+    "H": "flat",
+    "Y": "drag",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "H",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "gun_trips_stick",
+   "name": "Stick",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Stick",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "Z": "stick",
+    "H": "flat",
+    "Y": "sit",
+    "RB": "swing_l"
+   },
+   "read": [
+    "Z",
+    "H",
+    "Y",
+    "RB",
+    "X"
+   ]
+  },
+  {
+   "id": "gun_trips_draw",
+   "name": "HB Draw",
+   "formation": "gun_trips_te",
+   "type": "run",
+   "concept": "Draw",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -0.8
+    ],
+    "mesh": [
+     -5.5,
+     -0.6
+    ],
+    "scheme": "zone",
+    "side": -1,
+    "style": "draw"
+   },
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "gun_doubles_four_verts",
+   "name": "Four Verticals",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "H": "seam",
+    "Y": "seam",
+    "Z": "go",
+    "RB": "swing_l"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z",
+    "RB"
+   ]
+  },
+  {
+   "id": "gun_doubles_mesh",
+   "name": "Mesh",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Mesh",
+   "dropback": 5,
+   "routes": {
+    "X": "corner",
+    "H": "drag",
+    "Y": "shallow",
+    "Z": "dig",
+    "RB": "flat_r"
+   },
+   "read": [
+    "H",
+    "Y",
+    "Z",
+    "RB",
+    "X"
+   ]
+  },
+  {
+   "id": "gun_doubles_curls",
+   "name": "Curl Flats",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "H": "flat",
+    "Y": "flat",
+    "Z": "curl",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "gun_doubles_dagger",
+   "name": "Dagger",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Dagger",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "H": "seam",
+    "Y": "drag",
+    "Z": "go",
+    "RB": "flat_r"
+   },
+   "read": [
+    "H",
+    "X",
+    "Y",
+    "RB",
+    "Z"
+   ]
+  },
+  {
+   "id": "gun_doubles_levels",
+   "name": "Levels",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Levels",
+   "dropback": 5,
+   "routes": {
+    "X": "in",
+    "H": "drag",
+    "Y": "in",
+    "Z": "hitch",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "X",
+    "Y",
+    "Z"
+   ]
+  },
+  {
+   "id": "gun_doubles_ycross",
+   "name": "Y-Cross",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Y-Cross",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "H": "flat",
+    "Y": "cross",
+    "Z": "comeback",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "Z",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "gun_doubles_iz",
+   "name": "Gun Inside Zone",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.2
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "gun_bunch_drive",
+   "name": "Bunch Drive",
+   "formation": "gun_bunch",
+   "type": "pass",
+   "concept": "Drive",
+   "dropback": 5,
+   "routes": {
+    "X": "post",
+    "Z": "drag",
+    "H": "dig",
+    "Y": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "H",
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "gun_bunch_snag",
+   "name": "Bunch Snag",
+   "formation": "gun_bunch",
+   "type": "pass",
+   "concept": "Snag",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "sit",
+    "H": "corner",
+    "Y": "flat",
+    "RB": "swing_l"
+   },
+   "read": [
+    "Z",
+    "Y",
+    "H",
+    "X",
+    "RB"
+   ]
+  },
+  {
+   "id": "gun_empty_quick",
+   "name": "Empty Quick",
+   "formation": "gun_empty",
+   "type": "pass",
+   "concept": "Quick Game",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "H": "stick",
+    "Y": "hitch",
+    "RB": "quick_out",
+    "Z": "slant"
+   },
+   "read": [
+    "H",
+    "Y",
+    "RB",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "gun_empty_verts",
+   "name": "Empty Verticals",
+   "formation": "gun_empty",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "H": "seam",
+    "Y": "curl",
+    "RB": "seam",
+    "Z": "go"
+   },
+   "read": [
+    "H",
+    "RB",
+    "Y",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "gun_empty_levels",
+   "name": "Empty Levels",
+   "formation": "gun_empty",
+   "type": "pass",
+   "concept": "Levels",
+   "dropback": 5,
+   "routes": {
+    "X": "in",
+    "H": "drag",
+    "Y": "stick",
+    "RB": "out",
+    "Z": "dig"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "RB",
+    "Z"
+   ]
+  },
+  {
+   "id": "pistol_iz",
+   "name": "Pistol Inside Zone",
+   "formation": "pistol_ace",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.5
+    ],
+    "mesh": [
+     -5.2,
+     0.5
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "pistol_power",
+   "name": "Pistol Power",
+   "formation": "pistol_ace",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3.2
+    ],
+    "mesh": [
+     -5.2,
+     -0.5
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "pistol_curls",
+   "name": "Pistol Curls",
+   "formation": "pistol_ace",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "Z": "curl",
+    "Y": "flat",
+    "H": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "X",
+    "Z",
+    "Y"
+   ]
+  },
+  {
+   "id": "ace_inside_zone",
+   "name": "Inside Zone",
+   "formation": "singleback_ace",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.5
+    ],
+    "mesh": [
+     -4.2,
+     0.6
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "ace_power_l",
+   "name": "Power O",
+   "formation": "singleback_ace",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3.2
+    ],
+    "mesh": [
+     -4.2,
+     -0.6
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "ace_stretch",
+   "name": "Outside Zone",
+   "formation": "singleback_ace",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     5.0
+    ],
+    "mesh": [
+     -4.5,
+     2
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "ace_counter",
+   "name": "Counter",
+   "formation": "singleback_ace",
+   "type": "run",
+   "concept": "Counter",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     2.6
+    ],
+    "mesh": [
+     -4.6,
+     -1.4
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "ace_drive",
+   "name": "Drive",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Drive",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "Z": "shallow",
+    "Y": "corner",
+    "H": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y",
+    "H"
+   ]
+  },
+  {
+   "id": "ace_curl_flat",
+   "name": "Curl Flat",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "Z": "curl",
+    "Y": "flat",
+    "H": "block",
+    "RB": "flat_l"
+   },
+   "read": [
+    "X",
+    "Z",
+    "Y",
+    "RB"
+   ]
+  },
+  {
+   "id": "i_dive",
+   "name": "HB Dive",
+   "formation": "iform_pro",
+   "type": "run",
+   "concept": "Dive",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     0.8
+    ],
+    "mesh": [
+     -3.6,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "i_toss",
+   "name": "HB Toss",
+   "formation": "iform_pro",
+   "type": "run",
+   "concept": "Toss",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0,
+     10
+    ],
+    "mesh": [
+     -6,
+     4
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "pitch"
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "i_power",
+   "name": "I-Form Power",
+   "formation": "iform_pro",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.4
+    ],
+    "mesh": [
+     -4.5,
+     0.5
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "i_post_corner",
+   "name": "Post Corner",
+   "formation": "iform_pro",
+   "type": "pass",
+   "concept": "Deep Shot",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Z": "corner",
+    "Y": "drag",
+    "F": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y",
+    "F"
+   ]
+  },
+  {
+   "id": "gl_sneak",
+   "name": "QB Sneak",
+   "formation": "goal_line",
+   "type": "run",
+   "concept": "Sneak",
+   "run": {
+    "carrier": "QB",
+    "aim": [
+     1.2,
+     0.3
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "block",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "gl_dive",
+   "name": "Goal Line Dive",
+   "formation": "goal_line",
+   "type": "run",
+   "concept": "Dive",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.2
+    ],
+    "mesh": [
+     -3.4,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "block",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "gl_fade",
+   "name": "Goal Line Fade",
+   "formation": "goal_line",
+   "type": "pass",
+   "concept": "Fade",
+   "dropback": 3,
+   "routes": {
+    "X": "flat",
+    "Y": "fade",
+    "H": "fade",
+    "F": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "X",
+    "F"
+   ]
+  }
+ ]
 }

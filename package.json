@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sim": "node tools/autosim.js",
+    "games": "node tools/gamesim.js",
     "bot": "node tools/humanbot.js",
     "export-league": "node tools/export-league.js"
   },

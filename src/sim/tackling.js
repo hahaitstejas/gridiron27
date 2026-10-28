@@ -1,4 +1,6 @@
 import { clamp } from '../core/math.js';
+import { HALF_WIDTH } from '../core/constants.js';
+import { addFoul, foulRate } from './fouls.js';
 
 // Ball-carrier moves: duration and the window during which they affect tackles.
 export const MOVES = {
@@ -87,12 +89,17 @@ function moveActive(p, type) {
 
 export function updateTackles(sim, dt) {
   if (sim.state !== 'live') return;
+  if (sim.kick && !sim.kick.launched) return; // nobody gets to the punter/holder before the kick
   const c = sim.carrier();
   if (!c || c.state === 'tackled' || c.state === 'down') return;
   const air = moveActive(c, 'hurdle') && c.move.t > 0.1 && c.move.t < 0.45;
   for (const d of sim.players) {
     if (d.team === c.team || d.state === 'down' || d.state === 'tackled' || d.tackleCd > 0) continue;
     const dist = Math.hypot(d.x - c.x, d.z - c.z);
+    // Near the sideline a pursuer on the inside shoves the runner out of bounds.
+    if (!d.engagement && d.state === 'active' && dist < 1.6 && Math.abs(c.z) > HALF_WIDTH - 2.2 && Math.abs(d.z) < Math.abs(c.z)) {
+      c.vz += Math.sign(c.z) * 9 * dt;
+    }
     let reach = 1.05;
     if (moveActive(d, 'tackle_dive')) reach = 1.8;
     else if (moveActive(d, 'hitstick')) reach = 1.15;
@@ -121,6 +128,8 @@ export function attemptTackle(sim, d, c, air) {
   const cSpeed = Math.hypot(c.vx, c.vz);
   if (cSpeed > 7 && front > 0.3) p -= 0.05;
   if (d.engagement) p = 0.18 + (tak - btk) * 0.003;
+  // QB sneak / short-yardage pile: the surge behind him is hard to stop right at the line.
+  if (c.task?.sneak && Math.abs(sim.toLocal(c.x, c.z).down) < 1.8) p *= 0.45;
 
   let knockDown = false;
   let bigHit = false;
@@ -156,7 +165,15 @@ export function attemptTackle(sim, d, c, air) {
     d.vx = c.vx * 0.5; d.vz = c.vz * 0.5;
     c.vx *= bigHit ? 0.2 : 0.55; c.vz *= bigHit ? 0.2 : 0.55;
     if (bigHit) sim.emit('bigHit', { player: c.id, tackler: d.id });
+    // Fumble? More likely on big hits and strip attempts, less when protecting the ball.
+    let pf = 0.008 + (sim.R(d, 'hitPower') - sim.R(c, 'carrying')) * 0.0005 + (bigHit ? 0.05 : 0) + (moveActive(d, 'strip') ? 0.12 : 0);
+    if (front < -0.2) pf += 0.01;
+    if (c.protect) pf *= 0.3;
+    if (sim.difficulty) pf *= c.team === sim.humanTeam ? (sim.difficulty.humanFumble ?? 1) : (sim.difficulty.cpuFumble ?? 1);
+    const fumbled = sim.rng.next() < Math.max(0.002, pf);
+    if (sim.rng.next() < 0.006 * foulRate(sim)) addFoul(sim, 'facemask_def', d.team, d, { spotX: c.x });
     sim.tackleCarrier(c, d, power);
+    if (fumbled) sim.fumble(c, d);
   } else {
     // Broken tackle.
     if (knockDown || moveActive(d, 'tackle_dive') || moveActive(d, 'hitstick')) {

@@ -7,7 +7,7 @@ export const GOAL_X = 50;
 export const END_X = 60;
 export const FIELD_WIDTH = 160 / 3; // 53.33 yd
 export const HALF_WIDTH = FIELD_WIDTH / 2;
-export const HASH_Z = HALF_WIDTH - 70.75 / 3; // NFL hashes, ~3.08 yd from center
+export const HASH_Z = HALF_WIDTH - 70.75 / 3; // pro-style hashes, ~3.08 yd from center
 export const GRAVITY = 10.72; // yd/s^2
 
 export const PLAYER_RADIUS = 0.42;

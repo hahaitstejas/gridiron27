@@ -4,101 +4,186 @@ import { generateLeagueRosters } from './data/generator.js';
 import { loadLocalLeague } from './data/localLeague.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
-import { DriveSession } from './game/drive.js';
+import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
+import { Nav } from './ui/nav.js';
+import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
+import { PlayCallScreen } from './ui/playcall.js';
 
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 const local = await loadLocalLeague(teams);
-// Home team: ?home=<index or abbr>, else the "play_as" team from teams.csv, else the team in a
-// partial roster file, else a default.
-const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
-let homeIdx = 9;
-if (local?.playAs !== null && local?.playAs !== undefined) homeIdx = local.playAs;
-else if (local?.rosterTeams?.length === 1) homeIdx = teams.findIndex((t) => t.abbr === local.rosterTeams[0]);
-if (params.has('home')) homeIdx = teamArg(params.get('home'));
-let awayIdx = params.has('away') ? teamArg(params.get('away')) : 28;
-if (awayIdx === homeIdx || awayIdx < 0) awayIdx = (homeIdx + 13) % 32;
-const home = teams[homeIdx];
-const away = teams[awayIdx];
-const matchTeams = [home, away];
+const prefs = loadPrefs();
+if (local?.playAs !== null && local?.playAs !== undefined) prefs.home = local.playAs;
+else if (local?.rosterTeams?.length === 1) prefs.home = teams.findIndex((t) => t.abbr === local.rosterTeams[0]);
+if (prefs.away === prefs.home) prefs.away = (prefs.home + 8) % 32;
 
 const input = new InputManager();
 const hud = new Hud(document.getElementById('hud'));
-const renderer = new GameRenderer(document.getElementById('game'), home, away);
-const auto = params.has('auto');
-const speed = Math.max(1, +(params.get('speed') || 1));
-let session = new DriveSession({ teams: matchTeams, seed: +(params.get('seed') || Date.now() % 100000), auto });
-let started = params.has('autostart') || auto;
+const renderer = new GameRenderer(document.getElementById('game'), teams[prefs.home], teams[prefs.away]);
+const nav = new Nav();
+const screens = new Screens(document.getElementById('screen'), nav);
+const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
+
+let app = 'title'; // title | menu | game | paused | over
+let session = null;
+let speed = 1;
 let snapCam = true;
-let lastSimRef = null;
-hud.showConnect(!started);
-if (local) hud.toast(`Loaded your league files: ${local.loaded.join(', ')}${local.problems.length ? ` (${local.problems.length} warnings, see console)` : ''}`, 4500);
+let lastSim = null;
+let padName = '';
+
+function toMenu() {
+  app = 'menu';
+  session = null;
+  lastSim = null;
+  hud.hideAll();
+  playcall.hide();
+  screens.mainMenu({
+    onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
+    onControls: () => screens.controls({ onBack: toMenu }),
+    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); toMenu(); }, onBack: toMenu }),
+  });
+}
+
+function startGame(p, opts = {}) {
+  Object.assign(prefs, p);
+  savePrefs(prefs);
+  const home = teams[prefs.home], away = teams[prefs.away];
+  const humanTeam = prefs.side === 'cpu' ? null : prefs.side === 'home' ? 0 : 1;
+  session = new GameSession({
+    teams: [home, away],
+    settings: { quarterMinutes: prefs.quarterMinutes, accelClock: prefs.accelClock, difficulty: prefs.difficulty, penalties: prefs.penalties },
+    humanTeam,
+    seed: opts.seed ?? (Date.now() % 1e9),
+  });
+  renderer.setTeams(home, away);
+  screens.clear();
+  hud.toggleHelp(false);
+  app = 'game';
+  snapCam = true;
+  lastSim = null;
+  speed = opts.speed || 1;
+  for (const e of session.events) onSessionEvent(e);
+}
+
+function pause() {
+  app = 'paused';
+  screens.pause({
+    onResume: () => { screens.clear(); app = 'game'; },
+    onControls: () => screens.controls({ onBack: pause }),
+    onQuit: toMenu,
+  });
+}
 
 input.onConnect = (id) => {
-  hud.setPadName(id);
-  hud.toast('Controller connected');
-  start();
+  padName = id;
+  hud.ticker('Controller connected');
+  if (app === 'title') toMenu();
 };
-function start() {
-  if (started) return;
-  started = true;
-  hud.showConnect(false);
-}
 window.addEventListener('keydown', (e) => {
-  if (!started && (e.code === 'Enter' || e.code === 'Space')) { input.keyboard.tapped.delete(e.code); input.keyboard.keys.delete(e.code); start(); return; }
-  if (e.code === 'KeyH') hud.toggleHelp();
+  if (app === 'title' && (e.code === 'Enter' || e.code === 'Space')) { input.keyboard.tapped.delete(e.code); input.keyboard.keys.delete(e.code); toMenu(); return; }
+  if (e.code === 'KeyH' && app === 'game') hud.toggleHelp();
   if (e.code === 'Backquote') hud.fpsShow = !hud.fpsShow;
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { get session() { return session; }, renderer, input, hud };
+window.__g27 = { get session() { return session; }, get app() { return app; }, renderer, input, hud, startGame, teams, prefs, toMenu };
+
+// URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
+const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
+if (params.has('home')) prefs.home = teamArg(params.get('home'));
+if (params.has('away')) prefs.away = teamArg(params.get('away'));
+if (params.has('auto')) startGame({ ...prefs, side: 'cpu', quarterMinutes: +(params.get('q') || prefs.quarterMinutes) }, { speed: Math.max(1, +(params.get('speed') || 1)), seed: +(params.get('seed') || 1) });
+else if (params.has('play')) startGame({ ...prefs, side: params.get('side') || 'home' }, { seed: +(params.get('seed') || Date.now() % 1e9) });
+else screens.title(padName);
+
+function onSessionEvent(e) {
+  if (e.type === 'message') hud.message(e, session);
+  else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
+  else if (e.type === 'gameOver') {
+    app = 'over';
+    playcall.hide();
+    setTimeout(() => { if (app === 'over' && session) { hud.hideAll(); screens.gameOver(session, { onDone: toMenu }); } }, 2500);
+  } else if (e.type === 'tackle' && e.power > 0.9) renderer.rig.shake = Math.min(1, e.power * 0.5);
+  else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
+  else if (e.type === 'tackle') input.rumble(0.35, 110);
+  else if (e.type === 'flag') renderer.showFlag?.(e);
+}
 
 // ---- Main loop: fixed 60 Hz simulation, render every animation frame ----
 let acc = 0;
 let last = performance.now();
 let time = 0;
+let attract = 0;
 function frame(now) {
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;
   time += dt;
   input.poll(dt);
-  if (started) {
-    if (input.frame.pressed.Menu && session.sim.state === 'presnap') hud.toggleHelp();
+  const f = input.frame;
+  let consumed = false;
+
+  if (app === 'title') {
+    if (f.pressed.A || f.pressed.Menu) toMenu();
+    consumed = true;
+  } else if (app === 'menu' || app === 'paused' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
+    nav.update(f, dt);
+    consumed = true;
+  } else if (app === 'game' && session) {
+    if (f.pressed.Menu) { pause(); input.consume(); requestAnimationFrame(frame); return; }
+    // Play-call screen.
+    if (session.needsHumanCall && !playcall.open) playcall.show(session, (play) => session.humanChoose(play));
+    if (playcall.open && !session.needsHumanCall) playcall.hide();
+    const pcOpen = playcall.open;
+    if (pcOpen) { playcall.update(f, dt); }
     acc += dt * speed;
     let steps = 0;
     while (acc >= STEP && steps < 6 * speed) {
-      session.tick(STEP, input.frame);
-      input.consume();
+      session.tick(STEP, pcOpen ? null : f);
+      for (const e of session.events) onSessionEvent(e);
+      if (!pcOpen) input.consume();
       acc -= STEP;
       steps++;
-      for (const e of session.events) onEvent(e);
+      if (app !== 'game') break;
     }
     if (steps >= 6 * speed) acc = 0;
+    consumed = pcOpen;
   }
-  const sim = session.sim;
-  if (sim !== lastSimRef) { renderer.players.setColors(sim, session.teams); lastSimRef = sim; }
-  const alpha = started ? acc / STEP : 1;
-  renderer.drawSim(sim, alpha, time);
-  renderer.lines.set(sim.losX, sim.firstDownX);
-  const b = renderer.ball.position;
-  const phase = sim.state === 'presnap' ? 'presnap' : sim.ball.state === 'air' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
-  const focus = sim.state === 'presnap' ? { x: sim.losX, z: sim.ballZ } : { x: b.x, z: b.z };
-  const excite = sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : session.message?.big?.includes('TOUCH') ? 1 : 0.15;
-  renderer.render(dt, focus, sim.camDir, phase, snapCam, excite);
-  snapCam = false;
-  hud.update(session, renderer, dt, frameMs);
+
+  // ---- Render ----
+  const sim = session?.sim || null;
+  if (sim !== lastSim) { if (sim) renderer.players.setColors(sim, session.teams); lastSim = sim; }
+  const alpha = Math.min(1, acc / STEP);
+  if (session && app !== 'menu') {
+    const m = session.match;
+    if (sim) renderer.drawSim(sim, alpha, time); else renderer.hidePlayers();
+    const scrim = m.phase === 'scrimmage';
+    const losX = sim ? sim.losX : m.xOf(m.possession, m.yardLine);
+    renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null);
+    renderer.setAim(sim);
+    const b = renderer.ball.position;
+    const live = sim && sim.state !== 'presnap';
+    const phase = !live || session.state === 'playcall' ? 'presnap' : sim.ball.state === 'air' || sim.ball.state === 'kick' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
+    let focus;
+    if (session.state === 'playcall' || session.state === 'post') focus = { x: m.xOf(m.possession, m.yardLine), z: m.phase === 'scrimmage' ? m.ballZ : 0 };
+    else if (!live) focus = { x: losX, z: sim.ballZ };
+    else focus = { x: b.x, z: b.z };
+    const camDir = m.dirOf(m.possession);
+    const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15;
+    renderer.render(dt, focus, camDir, phase, snapCam, excite);
+    snapCam = false;
+    hud.update(session, renderer, dt, frameMs, playcall.open);
+  } else {
+    // Menus: slow orbit over the empty stadium.
+    renderer.hidePlayers();
+    renderer.lines.set(null, null);
+    attract += dt * 0.05;
+    renderer.renderOrbit(dt, attract);
+  }
+  if (consumed) input.consume();
   renderer.adapt(frameMs);
   requestAnimationFrame(frame);
 }
-
-function onEvent(e) {
-  if (e.type === 'tackle' && e.power > 0.9) renderer.rig.shake = Math.min(1, e.power * 0.5);
-  if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
-  if (e.type === 'tackle') input.rumble(0.4, 120);
-  if (e.type === 'firstDown') hud.toast('First down!');
-}
-
 requestAnimationFrame(frame);

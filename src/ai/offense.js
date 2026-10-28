@@ -73,10 +73,24 @@ function qbHandoff(sim, p) {
   const play = sim.offPlay;
   const rb = sim.bySlot(sim.offIdx, play.run.carrier);
   if (sim.ball.state === 'snap') { stop(p); return; }
+  // Toss: pitch the ball to the back as he flows to the edge.
+  if (play.run.style === 'pitch') {
+    stop(p);
+    if (rb) p.face = { x: rb.x, z: rb.z };
+    if (sim.ball.carrier === p.id && sim.ball.state === 'held' && rb && sim.t > 0.3) {
+      const b = sim.ball;
+      b.state = 'snap'; b.t = 0; b.T = 0.38; b.from = { x: p.x, y: 1.2, z: p.z }; b.carrier = rb.id; b.pitch = true;
+      p.anim = 'throw'; p.animT = 0.15;
+      p.task = { type: 'qb_fake', to: { x: p.x - sim.dir * 1.5, z: p.z } };
+      sim.emit('pitch', { from: p.id, to: rb.id });
+    }
+    return;
+  }
   const mesh = play.run.mesh ? sim.toWorld(play.run.mesh[0] + 0.6, play.run.mesh[1] - (play.run.side || 1) * 0.9) : { x: p.x - sim.dir, z: p.z };
-  seek(p, mesh.x, mesh.z, 0.75, 0.6);
-  if (rb) p.face = { x: rb.x, z: rb.z };
-  if (sim.ball.carrier === p.id && sim.ball.state === 'held' && rb && rb.state === 'active' && sim.t > 0.35 && Math.hypot(rb.x - p.x, rb.z - p.z) < 1.3) {
+  seek(p, mesh.x, mesh.z, play.run.style === 'draw' ? 0.55 : 0.75, 0.6);
+  if (rb) p.face = play.run.style === 'draw' && sim.t < 0.8 ? { x: p.x + sim.dir * 10, z: p.z } : { x: rb.x, z: rb.z };
+  const minT = play.run.style === 'draw' ? 1.0 : 0.35;
+  if (sim.ball.carrier === p.id && sim.ball.state === 'held' && rb && rb.state === 'active' && sim.t > minT && Math.hypot(rb.x - p.x, rb.z - p.z) < 1.3) {
     sim.handedOff = true;
     sim.emit('handoff', { from: p.id, to: rb.id });
     const aim = sim.toWorld(play.run.aim[0], play.run.aim[1]);
@@ -86,7 +100,7 @@ function qbHandoff(sim, p) {
     p.task = { type: 'qb_fake', to: sim.toWorld(sim.toLocal(p.x, p.z).down - 2, -(play.run.side || 1) * 4) };
   }
   // Safety net: if the RB never arrives, the QB keeps it.
-  if (sim.t > 2.2 && sim.ball.carrier === p.id && sim.ball.state === 'held') sim.setRunner(p, 'keep');
+  if (sim.t > 2.6 && sim.ball.carrier === p.id && sim.ball.state === 'held') sim.setRunner(p, 'keep');
 }
 
 function runPath(sim, p) {
@@ -94,8 +108,8 @@ function runPath(sim, p) {
   const mesh = sim.toWorld(play.run.mesh?.[0] ?? -4, play.run.mesh?.[1] ?? 0);
   const aim = sim.toWorld(play.run.aim[0], play.run.aim[1]);
   if (p.task.phase === 'mesh') {
-    // Delay slightly so the QB reaches the mesh point.
-    if (sim.t < 0.15) { stop(p); return; }
+    // Delay slightly so the QB reaches the mesh point (much longer on draws: sell the pass first).
+    if (sim.t < (play.run.style === 'draw' ? 0.6 : 0.15)) { stop(p); return; }
     const d = seek(p, mesh.x, mesh.z, 0.7, 0.3);
     if (d < 0.6) p.task.phase = 'hole';
   } else {

@@ -1,8 +1,9 @@
 // Offensive line blocking, pass rush and block shedding.
+import { addFoul, foulRate } from './fouls.js';
 const ENGAGE_DIST = 1.05;
 const CONTACT_DIST = 0.85;
 
-const BLOCKER_TASKS = new Set(['pass_block', 'run_block', 'stalk', 'escort']);
+const BLOCKER_TASKS = new Set(['pass_block', 'run_block', 'stalk', 'escort', 'kr_block']);
 
 export function canBlock(sim, b) {
   return b.team === sim.possTeam && b.state === 'active' && !b.engagement && BLOCKER_TASKS.has(b.task?.type) && b.id !== sim.ball.carrier;
@@ -110,11 +111,19 @@ function updateEngagement(sim, e, dt) {
     h.anim = 'block';
   }
 
+  // Holding: a beaten blocker grabs, mostly when the defender is about to make a play.
+  if (e.bal > 6 && !sim.kick) {
+    const target = pass ? qb : carrier;
+    if (target && Math.hypot(target.x - d.x, target.z - d.z) < 4 && rng.next() < 0.05 * foulRate(sim) * dt * (e.bal / 8)) {
+      addFoul(sim, 'holding_off', b.team, b, { spotX: b.x });
+    }
+  }
   // Shed chance.
-  let rate = (pass ? 0.2 : 0.07) * Math.exp((dPow - bPow) / 13);
+  let rate = (pass ? 0.2 : 0.055) * Math.exp((dPow - bPow) / 13);
   if (!pass && carrier && Math.hypot(carrier.x - d.x, carrier.z - d.z) < 2) rate *= 4;
   if (pass && sim.passThrown) rate *= 0.5;
-  if (b.task?.type === 'escort') rate *= 3; // open-field blocks don't hold long
+  if (b.task?.type === 'escort') rate *= sim.kick ? 10 : 3; // open-field blocks don't hold long
+  if (b.task?.type === 'kr_block') rate *= 6; // gunners and coverage fight through return blocks
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);
 }
 

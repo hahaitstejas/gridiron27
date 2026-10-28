@@ -67,6 +67,8 @@ export function resolveCollisions(players) {
       const b = players[j];
       if (b.state === 'down') continue;
       if (a.engagement && a.engagement === b.engagement) continue;
+      // A sneaking QB goes over the top of his own linemen.
+      if (a.team === b.team && (a.task?.sneak || b.task?.sneak)) continue;
       const dx = b.x - a.x, dz = b.z - a.z;
       const d2 = dx * dx + dz * dz;
       if (d2 >= minD * minD || d2 < 1e-8) continue;

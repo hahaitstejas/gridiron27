@@ -1,33 +1,27 @@
 import { KEY_HELP } from '../input/keyboard.js';
 import { logoDataURL } from '../render/logo.js';
-import { getOffFormation } from '../data/playbook.js';
+import { downText, yardLineText, clockText } from '../game/match.js';
+import { METER } from '../sim/kicking.js';
 
 const ICON_COLORS = { A: '#3fbf3f', B: '#e0403a', X: '#3a7be0', Y: '#e8c32c', RB: '#9aa0a8' };
-const ORD = ['', '1st', '2nd', '3rd', '4th'];
+const Q = ['', '1st', '2nd', '3rd', '4th', 'OT'];
 
-/** DOM overlays: connect screen, mini score bug, receiver icons, banners, help, FPS. */
+/** In-game overlays: score bug, banners, penalty flags, ticker, receiver icons, kick meter, help, FPS. */
 export class Hud {
   constructor(root) {
     this.root = root;
     root.innerHTML = `
-      <div id="connect" class="screen">
-        <div class="title">GRIDIRON <span>27</span></div>
-        <div class="sub">Press <b class="btn A">A</b> on your Xbox controller to connect</div>
-        <div class="sub small">or press <b>Enter</b> to play with the keyboard</div>
-        <div class="sub tiny" id="padname"></div>
-      </div>
-      <div id="bug" class="hidden">
-        <div class="team" id="bug-off"></div>
-        <div class="dd" id="bug-dd"></div>
-        <div class="spot" id="bug-spot"></div>
-      </div>
+      <div id="scorebug" class="hidden"></div>
       <div id="playname" class="hidden"></div>
       <div id="hint" class="hidden"></div>
       <div id="icons"></div>
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
+      <div id="flagbox" class="hidden"><div class="flagtitle">FLAG</div><div class="flagtext"></div></div>
+      <div id="ticker"></div>
+      <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="fps"></div>
-      <div id="toast" class="hidden"></div>`;
+      <div id="playcall" class="hidden"></div>`;
     this.$ = (id) => root.querySelector('#' + id);
     this.icons = {};
     for (const b of Object.keys(ICON_COLORS)) {
@@ -40,14 +34,19 @@ export class Hud {
     }
     this.buildHelp();
     this.fpsAcc = 0; this.fpsN = 0; this.fpsShow = false;
+    this.bannerT = 0; this.flagT = 0;
+    this._logos = new Map();
   }
 
   buildHelp() {
     const pad = [
-      ['Pre-snap', 'A snap · X change play · LB swap offense/defense'],
+      ['Pre-snap', 'A snap · View timeout · (defense) B switch player'],
+      ['Play call', 'LB/RB tabs · A select · B back · X flip play · View timeout'],
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · left stick leads · RS click throw away'],
       ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect'],
       ['Defense', 'B switch player · RT sprint · A swat · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
+      ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
+      ['Returns', 'Y fair catch (punts) · X kneel in the end zone'],
     ];
     this.$('help').innerHTML = `<h2>Controls</h2>
       <table>${pad.map(([a, b]) => `<tr><th>${a}</th><td>${b}</td></tr>`).join('')}</table>
@@ -56,56 +55,107 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  showConnect(show) { this.$('connect').classList.toggle('hidden', !show); }
-  setPadName(name) { this.$('padname').textContent = name ? `Connected: ${name}` : ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
-  toast(text, ms = 1800) {
-    const t = this.$('toast');
-    t.textContent = text;
-    t.classList.remove('hidden');
-    clearTimeout(this._toastT);
-    this._toastT = setTimeout(() => t.classList.add('hidden'), ms);
+  logoFor(team) {
+    const key = team.id + team.logo.shape + team.logo.text + team.colors.primary;
+    if (!this._logos.has(key)) this._logos.set(key, logoDataURL(team.logo, 64));
+    return this._logos.get(key);
   }
 
-  update(session, renderer, dt, frameMs) {
+  /** Show a match/session message as banner, flag, or ticker line. */
+  message(msg, session) {
+    const k = msg.kind;
+    if (k === 'score') {
+      const what = session.match.lastScore?.what || 'Score';
+      const big = /touchdown|pick six/i.test(what) ? (/pick six/i.test(what) ? 'PICK SIX!' : 'TOUCHDOWN!') : /field goal/i.test(what) ? 'FIELD GOAL' : /safety/i.test(what) ? 'SAFETY' : /PAT/.test(what) ? 'EXTRA POINT' : /2-point/.test(what) ? 'TWO-POINT CONVERSION' : what.toUpperCase();
+      this.banner(big, msg.text.replace(/^[^!]*!\s*/, ''), 2.6, 'score');
+    } else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
+    else if (k === 'penalty') this.flag(msg.text);
+    else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
+    else if (k === 'final') this.banner('FINAL', msg.text, 99, 'final');
+    else if (k === 'half' || k === 'twoMinute') this.banner(k === 'half' ? msg.text.split('!')[0].toUpperCase() : 'TWO-MINUTE WARNING', k === 'half' ? msg.text : '', 2.4, 'info');
+    else this.ticker(msg.text);
+  }
+
+  banner(big, small, secs = 2.2, cls = '') {
+    const b = this.$('banner');
+    b.className = cls;
+    b.querySelector('.big').textContent = big;
+    b.querySelector('.small').textContent = small || '';
+    b.classList.remove('hidden');
+    this.bannerT = secs;
+  }
+
+  flag(text) {
+    const f = this.$('flagbox');
+    f.querySelector('.flagtext').textContent = text;
+    f.classList.remove('hidden');
+    this.flagT = 3.2;
+  }
+
+  ticker(text) {
+    const t = this.$('ticker');
+    const d = document.createElement('div');
+    d.className = 'tick';
+    d.textContent = text;
+    t.prepend(d);
+    setTimeout(() => d.remove(), 3500);
+    while (t.children.length > 3) t.lastChild.remove();
+  }
+
+  /** Update everything that depends on the game state. */
+  update(session, renderer, dt, frameMs, playcallOpen) {
+    const m = session.match;
     const sim = session.sim;
-    const off = session.teams[session.offIdx];
-    this.$('bug').classList.remove('hidden');
-    this.$('bug-off').innerHTML = `<img src="${this.logoFor(off)}"/>${off.abbr} ball`;
-    this.$('bug-dd').textContent = `${ORD[session.down]} & ${session.toGoText()}`;
-    this.$('bug-spot').textContent = `Ball on ${session.yardLineText()}`;
-    const pre = sim.state === 'presnap';
+    this.renderBug(session);
+    if ((this.bannerT -= dt) <= 0) this.$('banner').classList.add('hidden');
+    if ((this.flagT -= dt) <= 0) this.$('flagbox').classList.add('hidden');
+
+    const pre = session.state === 'presnap' && sim && sim.state === 'presnap' && !playcallOpen;
     const pn = this.$('playname');
-    pn.classList.toggle('hidden', !pre);
-    if (pre) {
+    pn.classList.toggle('hidden', !pre || session.humanTeam === null);
+    if (pre && session.humanTeam !== null) {
       const human = session.humanSide;
-      pn.innerHTML = human === 'offense'
-        ? `<small>${sim.offPlay.concept || ''}</small>${formationName(sim.offPlay)} · <b>${sim.offPlay.name}</b>`
-        : `<small>Defense</small><b>${sim.defPlay.name}</b>`;
+      const play = human === 'offense' ? sim.offPlay : sim.defPlay;
+      pn.innerHTML = `<small>${human === 'offense' ? play.concept || 'Offense' : 'Defense'}</small><b>${play.name}</b>`;
     }
     const hint = this.$('hint');
-    hint.classList.toggle('hidden', !pre);
-    if (pre) hint.innerHTML = session.humanSide === 'offense'
-      ? `<b class="btn A">A</b> Snap &nbsp; <b class="btn X">X</b> Next play &nbsp; <b class="btn LB">LB</b> Play defense &nbsp; <b>H</b> Help`
-      : `<b class="btn X">X</b> Next play &nbsp; <b class="btn LB">LB</b> Play offense &nbsp; <b class="btn B">B</b> Switch player (before and during the play)`;
+    let h = '';
+    if (pre && session.humanSide === 'offense') {
+      h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout` : `<b class="btn A">A</b> Snap &nbsp; <b class="btn view">View</b> Timeout`;
+    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; <b class="btn view">View</b> Timeout`;
+    else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
+    else if (sim && sim.meter && sim.state === 'live' && !sim.kick?.launched) h = sim.meter.phase === 'power' ? '<b class="btn A">A</b> Set power' : sim.meter.phase === 'accuracy' ? '<b class="btn A">A</b> Set accuracy — stop at the line!' : '';
+    hint.innerHTML = h;
+    hint.classList.toggle('hidden', !h || playcallOpen);
 
-    // Receiver icons over heads while the QB can still throw.
-    const showIcons = sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass' && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';
-    for (const [btn, el] of Object.entries(this.icons)) {
-      const id = sim.icons?.[btn];
-      if (!showIcons || id === undefined) { el.style.display = 'none'; continue; }
+    // Receiver icons while the human QB can still throw.
+    const showIcons = sim && !playcallOpen && sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass' && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';
+    for (const [btn, elx] of Object.entries(this.icons)) {
+      const id = sim?.icons?.[btn];
+      if (!showIcons || id === undefined) { elx.style.display = 'none'; continue; }
       const p = sim.players[id];
       const s = renderer.project(p.x, p.height + 0.25, p.z);
-      el.style.display = s.visible ? 'flex' : 'none';
-      el.style.transform = `translate(${s.x - 14}px, ${s.y - 30}px)`;
+      elx.style.display = s.visible ? 'flex' : 'none';
+      elx.style.transform = `translate(${s.x - 14}px, ${s.y - 30}px)`;
     }
-    // Result banner.
-    const b = this.$('banner');
-    if (session.message) {
-      b.classList.remove('hidden');
-      b.querySelector('.big').textContent = session.message.big;
-      b.querySelector('.small').textContent = session.message.small;
-    } else b.classList.add('hidden');
+    // Kick meter.
+    const km = this.$('kickmeter');
+    const meter = sim?.meter;
+    const showMeter = meter && sim.isKick && (sim.state === 'presnap' || !sim.kick?.launched) && !playcallOpen;
+    km.classList.toggle('hidden', !showMeter);
+    if (showMeter) {
+      const fill = meter.phase === 'power' ? meter.value : meter.power;
+      km.querySelector('.km-fill').style.height = `${fill * 100}%`;
+      const needle = meter.phase === 'accuracy' ? meter.needle : meter.phase === 'done' ? meter.accuracy + METER.accLine : -1;
+      const nd = km.querySelector('.km-needle');
+      nd.style.display = needle > -0.5 ? 'block' : 'none';
+      nd.style.bottom = `${((needle - METER.floor) / (1 - METER.floor)) * 100}%`;
+      km.querySelector('.km-zone').style.bottom = `${((METER.accLine - METER.floor) / (1 - METER.floor)) * 100}%`;
+      km.querySelector('.km-bar').style.setProperty('--zero', `${((0 - METER.floor) / (1 - METER.floor)) * 100}%`);
+      km.querySelector('.km-label').textContent = sim.offPlay.type === 'fg' ? `FG ${Math.round(Math.abs(60 * sim.dir - sim.losX)) + 7} yd` : sim.offPlay.name.toUpperCase();
+    }
     // FPS
     this.fpsAcc += frameMs; this.fpsN++;
     if (this.fpsAcc > 500) {
@@ -115,13 +165,20 @@ export class Hud {
     }
   }
 
-  logoFor(team) {
-    this._logos ||= new Map();
-    if (!this._logos.has(team.id)) this._logos.set(team.id, logoDataURL(team.logo, 64));
-    return this._logos.get(team.id);
+  renderBug(session) {
+    const m = session.match;
+    const bug = this.$('scorebug');
+    bug.classList.remove('hidden');
+    const team = (i) => {
+      const t = m.teams[i];
+      const dots = [0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : ''}"></i>`).join('');
+      const poss = m.possession === i && m.phase !== 'kickoff' ? '<span class="poss">●</span>' : m.phase === 'kickoff' && m.kicker !== i ? '<span class="poss">●</span>' : '';
+      return `<div class="sb-team" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}"/><span class="ab">${t.abbr}</span>${poss}<span class="sc">${m.score[i]}</span><div class="to">${dots}</div></div>`;
+    };
+    const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? `${downText(m)} <small>· ${yardLineText(m)}</small>` : downText(m);
+    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over].join('|');
+    if (key === this._bugKey) return;
+    this._bugKey = key;
+    bug.innerHTML = `${team(1)}${team(0)}<div class="sb-time"><span>${m.over ? 'FINAL' : Q[Math.min(5, m.quarter)]}</span><b>${clockText(m.clock)}</b></div><div class="sb-dd">${dd}</div><div class="sb-pc ${m.playClock <= 10 ? 'low' : ''}">${Math.ceil(m.playClock)}</div>`;
   }
-}
-
-function formationName(play) {
-  return getOffFormation(play.formation)?.name || play.formation;
 }

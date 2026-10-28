@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Browser smoke test (optional, needs Playwright installed: `npm i -D playwright && npx playwright install chromium`).
-// Starts from a running dev server (npm run dev) and drives the game, reporting console errors.
+// Browser smoke test (optional, needs Playwright: `npm i -D playwright && npx playwright install chromium`).
+// Drives the menus, plays a stretch of a human game, opens the pause menu, and runs a full CPU-vs-CPU
+// game with 1-minute quarters. Fails on console errors.
 //   node tools/smoke.mjs [baseUrl] [outDir]
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -21,47 +22,61 @@ async function open(query) {
   await page.waitForTimeout(1500);
   return page;
 }
-const state = (page) => page.evaluate(() => { const s = window.__g27.session; return { plays: s.playsRun || 0, state: s.sim.state, side: s.humanSide, controlled: s.sim.controlledId }; });
+const state = (page) => page.evaluate(() => {
+  const s = window.__g27.session;
+  if (!s) return { app: window.__g27.app };
+  const m = s.match;
+  return { app: window.__g27.app, state: s.state, side: s.humanSide, needs: s.needsHumanCall, phase: m.phase, q: m.quarter, clock: Math.round(m.clock), score: m.score.join('-'), plays: s.plays, meter: s.sim?.meter?.phase };
+});
 
-// 1) CPU vs CPU at high speed.
-let page = await open('?auto&speed=6&seed=3');
-await page.waitForTimeout(25000);
-const autoState = await state(page);
-await page.screenshot({ path: `${out}/auto.png` });
-console.log('auto mode:', JSON.stringify(autoState));
+// 1) Menus -> Play Now -> a stretch of a human game.
+let page = await open('');
+await page.keyboard.press('Enter'); await page.waitForTimeout(600);
+await page.screenshot({ path: `${out}/menu.png` });
+await page.keyboard.press('KeyJ'); await page.waitForTimeout(600); // Play Now
+await page.screenshot({ path: `${out}/setup.png` });
+await page.keyboard.press('KeyJ'); await page.waitForTimeout(1500); // Start Game
+for (let i = 0; i < 40; i++) {
+  const s = await state(page);
+  if (s.app !== 'game') break;
+  if (s.needs) { await page.keyboard.press('KeyJ'); await page.waitForTimeout(400); continue; }
+  if (s.state === 'presnap' && s.side === 'offense') {
+    await page.keyboard.press('KeyJ'); // snap (or start the kick meter)
+    if (s.meter !== undefined) {
+      await page.waitForFunction(() => window.__g27.session.sim?.meter?.value > 0.85 || window.__g27.session.state !== 'live', null, { timeout: 20000 }).catch(() => {});
+      await page.keyboard.press('KeyJ');
+      await page.waitForTimeout(250);
+      await page.keyboard.press('KeyJ');
+    } else {
+      await page.waitForTimeout(1500);
+      await page.keyboard.down('KeyK'); await page.waitForTimeout(250); await page.keyboard.up('KeyK'); // throw to B on pass plays
+    }
+  }
+  await page.waitForTimeout(1200);
+  if (i === 12) await page.screenshot({ path: `${out}/game.png` });
+}
+console.log('human game:', JSON.stringify(await state(page)));
+// Pause menu.
+await page.keyboard.press('Enter'); await page.waitForTimeout(500);
+const paused = await state(page);
+await page.screenshot({ path: `${out}/pause.png` });
+await page.keyboard.press('KeyK');
+await page.waitForFunction(() => window.__g27.app !== 'paused', null, { timeout: 5000 }).catch(() => {});
+const resumed = await state(page);
+console.log('pause:', paused.app, '-> resume:', resumed.app);
+if (paused.app !== 'paused' || resumed.app !== 'game') errors.push('pause menu did not open/resume');
 await page.close();
 
-// 2) Human offense: snap, run a play, throw to each receiver button.
-page = await open('?autostart&seed=4');
-for (const key of ['KeyK', 'KeyJ', 'KeyU', 'KeyI']) {
-  await page.keyboard.press('KeyJ');
-  await page.waitForTimeout(1600);
-  await page.keyboard.down(key); await page.waitForTimeout(250); await page.keyboard.up(key);
-  await page.waitForTimeout(4500);
+// 2) Full CPU-vs-CPU game with 1-minute quarters at 10x.
+page = await open('?auto&speed=10&q=1&seed=11');
+for (let i = 0; i < 30; i++) {
+  await page.waitForTimeout(5000);
+  const s = await state(page);
+  if (s.app === 'over') break;
 }
-console.log('offense:', JSON.stringify(await state(page)));
-await page.screenshot({ path: `${out}/offense.png` });
-// Run plays: cycle to a run play (X twice) and use moves.
-await page.keyboard.press('KeyU'); await page.waitForTimeout(300);
-await page.keyboard.press('KeyU'); await page.waitForTimeout(300);
-await page.keyboard.press('KeyU'); await page.waitForTimeout(300);
-await page.keyboard.press('KeyJ'); await page.waitForTimeout(1200);
-await page.keyboard.down('KeyW'); await page.keyboard.down('ShiftLeft');
-await page.keyboard.press('ArrowRight'); await page.waitForTimeout(500);
-await page.keyboard.press('KeyK'); await page.waitForTimeout(500);
-await page.keyboard.press('KeyJ'); await page.waitForTimeout(1500);
-await page.keyboard.up('KeyW'); await page.keyboard.up('ShiftLeft');
-await page.waitForTimeout(3000);
-console.log('run:', JSON.stringify(await state(page)));
-
-// 3) Defense: swap sides, switch players, dive.
-await page.keyboard.press('KeyQ'); await page.waitForTimeout(3200);
-await page.keyboard.press('KeyK'); await page.waitForTimeout(400);
-await page.keyboard.down('KeyS'); await page.waitForTimeout(800); await page.keyboard.up('KeyS');
-await page.keyboard.press('KeyU'); await page.waitForTimeout(400);
-await page.keyboard.press('ArrowUp'); await page.waitForTimeout(4000);
-console.log('defense:', JSON.stringify(await state(page)));
-await page.screenshot({ path: `${out}/defense.png` });
+await page.waitForTimeout(3500);
+await page.screenshot({ path: `${out}/final.png` });
+console.log('auto game:', JSON.stringify(await state(page)));
 await browser.close();
 if (errors.length) { console.log('ERRORS:\n' + errors.slice(0, 20).join('\n')); process.exit(1); }
 console.log('No console errors.');

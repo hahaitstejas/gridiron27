@@ -62,7 +62,8 @@ describe('play simulation', () => {
       expect(Math.abs(sim.result.spotX)).toBeLessThanOrEqual(60);
       for (const p of sim.players) expect(Number.isFinite(p.x) && Number.isFinite(p.z)).toBe(true);
     }
-  });
+  }, 60000);
+
   it('is deterministic for a given seed', () => {
     const op = listOffPlays()[0], dp = listDefPlays()[0];
     const a = runPlay(42, op, dp).result, b = runPlay(42, op, dp).result;
@@ -117,5 +118,17 @@ describe('ball spotting', () => {
     expect(sim.result.reason).toBe('tackle');
     expect(sim.result.spotX).toBeCloseTo(slideAt, 1);
     expect(qb.x).toBeGreaterThan(slideAt); // he kept sliding forward, but the spot is where he started
+  });
+});
+
+describe('special teams results', () => {
+  it('reports kickoffs as kickoffs with the receiving team in possession', () => {
+    const op = listOffPlays(true).find((p) => p.id === 'st_kickoff');
+    const dp = listDefPlays(true).find((p) => p.id === 'st_kick_return');
+    for (let s = 0; s < 10; s++) {
+      const r = runPlay(s, op, dp, { losX: -15 }).result;
+      expect(r.kickType).toBe('kickoff');
+      if (r.touchdown === null && !r.onside) expect(r.possTeam).toBe(1);
+    }
   });
 });

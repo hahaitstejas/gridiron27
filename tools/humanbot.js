@@ -8,6 +8,10 @@ import { generateLeagueRosters } from '../src/data/generator.js';
 import { listOffPlays, listDefPlays } from '../src/data/playbook.js';
 import { PlaySim } from '../src/sim/play.js';
 import { emptyFrame } from '../src/input/actions.js';
+import { difficultyConfig } from '../src/ai/difficulty.js';
+
+const di = process.argv.indexOf('--difficulty');
+const DIFF = difficultyConfig(di > 0 ? process.argv[di + 1] : 'pro', 0);
 
 const pi = process.argv.indexOf('--plays');
 const N = pi > 0 ? +process.argv[pi + 1] : 200;
@@ -31,7 +35,7 @@ for (const [name, st] of Object.entries(strategies)) {
   for (let i = 0; i < N; i++) {
     const rng = new RNG(1000 + i);
     const sim = new PlaySim({ rng, teams: [teams[i % 32], teams[(i + 7) % 32]], offIdx: 0, dir: 1, losX: -25, ballZ: 0,
-      offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 0 });
+      offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 0, ...DIFF });
     sim.snap();
     const f = emptyFrame();
     let k = 0;

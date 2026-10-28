@@ -1,16 +1,20 @@
 import formationsJson from './playbooks/formations.json' with { type: 'json' };
 import offenseJson from './playbooks/offense.json' with { type: 'json' };
 import defenseJson from './playbooks/defense.json' with { type: 'json' };
+import specialJson from './playbooks/special.json' with { type: 'json' };
 
-const offFormations = { ...formationsJson.offense };
-const defFormations = { ...formationsJson.defense };
-const offPlays = [...offenseJson.plays];
-const defPlays = [...defenseJson.plays];
+const offFormations = { ...formationsJson.offense, ...specialJson.formations.offense };
+const defFormations = { ...formationsJson.defense, ...specialJson.formations.defense };
+const offPlays = [...offenseJson.plays, ...specialJson.offense];
+const defPlays = [...defenseJson.plays, ...specialJson.defense];
+const SPECIAL = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike', 'return', 'block']);
+/** Plays a team can pick from the normal play-call list (no special teams). */
+export const isScrimmagePlay = (p) => !SPECIAL.has(p.type);
 
 export const getOffFormation = (id) => offFormations[id];
 export const getDefFormation = (id) => defFormations[id];
-export const listOffPlays = () => offPlays;
-export const listDefPlays = () => defPlays;
+export const listOffPlays = (all = false) => (all ? offPlays : offPlays.filter(isScrimmagePlay));
+export const listDefPlays = (all = false) => (all ? defPlays : defPlays.filter(isScrimmagePlay));
 export const getOffPlay = (id) => offPlays.find((p) => p.id === id);
 export const getDefPlay = (id) => defPlays.find((p) => p.id === id);
 

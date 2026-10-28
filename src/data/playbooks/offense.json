@@ -1,0 +1,33 @@
+{
+  "_doc": "Offensive plays. routes: slot -> route name (see src/data/routes.js) or block/stalk. Append _l/_r to force a route's side. read = QB progression. run plays add a run object: carrier slot, aim [downfield, lateral] relative to the ball, scheme zone|gap, pull = slots that pull.",
+  "plays": [
+    {
+      "id": "gun_trips_slants", "name": "Slants", "formation": "gun_trips_te", "type": "pass", "concept": "Slants",
+      "dropback": 3,
+      "routes": { "X": "slant", "Z": "slant", "H": "slant", "Y": "flat", "RB": "block" },
+      "read": ["H", "Z", "X", "Y"]
+    },
+    {
+      "id": "gun_doubles_four_verts", "name": "Four Verticals", "formation": "gun_doubles", "type": "pass", "concept": "Four Verticals",
+      "dropback": 5,
+      "routes": { "X": "go", "H": "seam", "Y": "seam", "Z": "go", "RB": "swing_l" },
+      "read": ["H", "Y", "X", "Z", "RB"]
+    },
+    {
+      "id": "gun_doubles_mesh", "name": "Mesh", "formation": "gun_doubles", "type": "pass", "concept": "Mesh",
+      "dropback": 5,
+      "routes": { "X": "corner", "H": "drag", "Y": "shallow", "Z": "dig", "RB": "flat_r" },
+      "read": ["H", "Y", "Z", "RB", "X"]
+    },
+    {
+      "id": "ace_inside_zone", "name": "Inside Zone", "formation": "singleback_ace", "type": "run", "concept": "Inside Zone",
+      "routes": { "X": "stalk", "Z": "stalk", "Y": "block", "H": "block" },
+      "run": { "carrier": "RB", "aim": [1, 1.5], "mesh": [-4.2, 0.6], "scheme": "zone", "side": 1 }
+    },
+    {
+      "id": "ace_power_l", "name": "Power O", "formation": "singleback_ace", "type": "run", "concept": "Power",
+      "routes": { "X": "stalk", "Z": "stalk", "Y": "block", "H": "block" },
+      "run": { "carrier": "RB", "aim": [1, -3.2], "mesh": [-4.2, -0.6], "scheme": "gap", "side": -1, "pull": ["RG"] }
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "_doc": "Each player: s = slot id, p = depth chart slot, d = depth index, at = [downfield, lateral] from the ball (lateral + is offense's right). Offense downfield is negative (backfield).",
+  "offense": {
+    "gun_trips_te": {
+      "name": "Gun Trips TE", "family": "Shotgun",
+      "players": [
+        { "s": "QB", "p": "QB", "d": 0, "at": [-5, 0] },
+        { "s": "RB", "p": "HB", "d": 0, "at": [-5, -1.6] },
+        { "s": "LT", "p": "LT", "d": 0, "at": [-0.8, -2.6] },
+        { "s": "LG", "p": "LG", "d": 0, "at": [-0.7, -1.3] },
+        { "s": "C", "p": "C", "d": 0, "at": [-0.5, 0] },
+        { "s": "RG", "p": "RG", "d": 0, "at": [-0.7, 1.3] },
+        { "s": "RT", "p": "RT", "d": 0, "at": [-0.8, 2.6] },
+        { "s": "Y", "p": "TE", "d": 0, "at": [-0.9, -3.9] },
+        { "s": "X", "p": "WR", "d": 0, "at": [-0.8, 18] },
+        { "s": "Z", "p": "WR", "d": 1, "at": [-1.4, 12] },
+        { "s": "H", "p": "WR", "d": 2, "at": [-1.4, 6.5] }
+      ]
+    },
+    "gun_doubles": {
+      "name": "Gun Doubles", "family": "Shotgun",
+      "players": [
+        { "s": "QB", "p": "QB", "d": 0, "at": [-5, 0] },
+        { "s": "RB", "p": "HB", "d": 0, "at": [-5, 1.6] },
+        { "s": "LT", "p": "LT", "d": 0, "at": [-0.8, -2.6] },
+        { "s": "LG", "p": "LG", "d": 0, "at": [-0.7, -1.3] },
+        { "s": "C", "p": "C", "d": 0, "at": [-0.5, 0] },
+        { "s": "RG", "p": "RG", "d": 0, "at": [-0.7, 1.3] },
+        { "s": "RT", "p": "RT", "d": 0, "at": [-0.8, 2.6] },
+        { "s": "X", "p": "WR", "d": 0, "at": [-0.8, -18] },
+        { "s": "H", "p": "WR", "d": 2, "at": [-1.4, -9] },
+        { "s": "Y", "p": "TE", "d": 0, "at": [-1.4, 8] },
+        { "s": "Z", "p": "WR", "d": 1, "at": [-0.8, 17] }
+      ]
+    },
+    "singleback_ace": {
+      "name": "Singleback Ace", "family": "Singleback",
+      "players": [
+        { "s": "QB", "p": "QB", "d": 0, "at": [-1.1, 0] },
+        { "s": "RB", "p": "HB", "d": 0, "at": [-7, 0] },
+        { "s": "LT", "p": "LT", "d": 0, "at": [-0.8, -2.6] },
+        { "s": "LG", "p": "LG", "d": 0, "at": [-0.7, -1.3] },
+        { "s": "C", "p": "C", "d": 0, "at": [-0.5, 0] },
+        { "s": "RG", "p": "RG", "d": 0, "at": [-0.7, 1.3] },
+        { "s": "RT", "p": "RT", "d": 0, "at": [-0.8, 2.6] },
+        { "s": "Y", "p": "TE", "d": 0, "at": [-0.9, 3.9] },
+        { "s": "H", "p": "TE", "d": 1, "at": [-0.9, -3.9] },
+        { "s": "X", "p": "WR", "d": 0, "at": [-0.8, -18] },
+        { "s": "Z", "p": "WR", "d": 1, "at": [-1.4, 16] }
+      ]
+    }
+  },
+  "defense": {
+    "43_base": {
+      "name": "4-3 Base", "family": "4-3",
+      "players": [
+        { "s": "LE", "p": "LE", "d": 0, "at": [1, -3.6] },
+        { "s": "LDT", "p": "DT", "d": 0, "at": [1, -1.0] },
+        { "s": "RDT", "p": "DT", "d": 1, "at": [1, 1.4] },
+        { "s": "RE", "p": "RE", "d": 0, "at": [1, 3.8] },
+        { "s": "LOLB", "p": "LOLB", "d": 0, "at": [4.5, -5] },
+        { "s": "MLB", "p": "MLB", "d": 0, "at": [5, 0] },
+        { "s": "ROLB", "p": "ROLB", "d": 0, "at": [4.5, 5] },
+        { "s": "LCB", "p": "CB", "d": 0, "at": [6, -16], "align": "L1" },
+        { "s": "RCB", "p": "CB", "d": 1, "at": [6, 16], "align": "R1" },
+        { "s": "FS", "p": "FS", "d": 0, "at": [13, -4] },
+        { "s": "SS", "p": "SS", "d": 0, "at": [11, 5] }
+      ]
+    },
+    "nickel_43": {
+      "name": "Nickel 4-2-5", "family": "Nickel",
+      "players": [
+        { "s": "LE", "p": "LE", "d": 0, "at": [1, -3.6] },
+        { "s": "LDT", "p": "DT", "d": 0, "at": [1, -1.0] },
+        { "s": "RDT", "p": "DT", "d": 1, "at": [1, 1.4] },
+        { "s": "RE", "p": "RE", "d": 0, "at": [1, 3.8] },
+        { "s": "LOLB", "p": "MLB", "d": 0, "at": [5, -2] },
+        { "s": "MLB", "p": "LOLB", "d": 0, "at": [5, 2.5] },
+        { "s": "NB", "p": "CB", "d": 2, "at": [5, 8], "align": "slot" },
+        { "s": "LCB", "p": "CB", "d": 0, "at": [6, -16], "align": "L1" },
+        { "s": "RCB", "p": "CB", "d": 1, "at": [6, 16], "align": "R1" },
+        { "s": "FS", "p": "FS", "d": 0, "at": [13, -4] },
+        { "s": "SS", "p": "SS", "d": 0, "at": [12, 5] }
+      ]
+    }
+  }
+}

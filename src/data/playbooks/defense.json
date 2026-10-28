@@ -1,0 +1,37 @@
+{
+  "_doc": "Defensive plays. assign: slot -> 'rush' | 'man:L1|L2|L3|R1|R2|R3|RB|TE' | 'zone:<zone id>' | 'spy' | 'blitz'. Zones are defined in src/ai/zones.js.",
+  "plays": [
+    {
+      "id": "43_cover1", "name": "Cover 1", "formation": "43_base", "coverage": "man",
+      "assign": {
+        "LE": "rush", "LDT": "rush", "RDT": "rush", "RE": "rush",
+        "LOLB": "man:TE", "MLB": "man:RB", "ROLB": "zone:hook_r",
+        "LCB": "man:L1", "RCB": "man:R1", "SS": "man:R2", "FS": "zone:deep_middle"
+      }
+    },
+    {
+      "id": "43_cover3", "name": "Cover 3", "formation": "43_base", "coverage": "zone",
+      "assign": {
+        "LE": "rush", "LDT": "rush", "RDT": "rush", "RE": "rush",
+        "LOLB": "zone:curl_flat_l", "MLB": "zone:hook_middle", "ROLB": "zone:curl_flat_r",
+        "LCB": "zone:deep_third_l", "RCB": "zone:deep_third_r", "FS": "zone:deep_third_m", "SS": "zone:hook_r"
+      }
+    },
+    {
+      "id": "43_cover2", "name": "Cover 2", "formation": "43_base", "coverage": "zone",
+      "assign": {
+        "LE": "rush", "LDT": "rush", "RDT": "rush", "RE": "rush",
+        "LOLB": "zone:hook_l", "MLB": "zone:hook_middle", "ROLB": "zone:hook_r",
+        "LCB": "zone:flat_l", "RCB": "zone:flat_r", "FS": "zone:deep_half_l", "SS": "zone:deep_half_r"
+      }
+    },
+    {
+      "id": "nickel_cover1_blitz", "name": "Nickel Blitz 1", "formation": "nickel_43", "coverage": "man",
+      "assign": {
+        "LE": "rush", "LDT": "rush", "RDT": "rush", "RE": "rush",
+        "LOLB": "blitz", "MLB": "man:RB", "NB": "man:R2",
+        "LCB": "man:L1", "RCB": "man:R1", "SS": "man:TE", "FS": "zone:deep_middle"
+      }
+    }
+  ]
+}

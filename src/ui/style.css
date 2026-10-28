@@ -1,0 +1,41 @@
+:root { --gold: #ffd34d; --panel: rgba(8, 12, 26, 0.88); --line: rgba(255, 255, 255, 0.12); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #05070d; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; overflow: hidden; user-select: none; }
+#game { position: fixed; inset: 0; }
+#game canvas { display: block; }
+#hud { position: fixed; inset: 0; pointer-events: none; }
+.hidden { display: none !important; }
+
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(20,30,70,0.75), rgba(0,0,0,0.92)); pointer-events: auto; }
+.title { font: 900 88px/1 "Arial Black", Impact, sans-serif; letter-spacing: 4px; font-style: italic; text-shadow: 0 6px 30px rgba(0,0,0,0.7); }
+.title span { color: var(--gold); }
+.sub { margin-top: 26px; font-size: 22px; opacity: 0.95; }
+.sub.small { font-size: 16px; margin-top: 10px; opacity: 0.7; }
+.sub.tiny, .tiny { font-size: 13px; opacity: 0.6; }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; border-radius: 12px; font-size: 13px; font-weight: 800; padding: 0 6px; color: #fff; }
+.btn.A { background: #3fbf3f; } .btn.B { background: #e0403a; } .btn.X { background: #3a7be0; } .btn.Y { background: #e8c32c; color: #222; }
+.btn.LB, .btn.RB { background: #59606b; border-radius: 6px; }
+
+#bug { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: stretch; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; font-weight: 700; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+#bug > div { padding: 8px 16px; display: flex; align-items: center; gap: 8px; }
+#bug img { width: 26px; height: 26px; }
+#bug .dd { background: var(--gold); color: #111; font-size: 18px; }
+#bug .spot { opacity: 0.85; font-weight: 600; }
+
+#playname { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); background: var(--panel); padding: 8px 20px; border-radius: 6px; font-size: 18px; text-align: center; border: 1px solid var(--line); }
+#playname small { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--gold); }
+#hint { position: absolute; bottom: 86px; left: 50%; transform: translateX(-50%); font-size: 14px; background: rgba(0,0,0,0.5); padding: 6px 14px; border-radius: 20px; white-space: nowrap; }
+
+#icons .icon { position: absolute; left: 0; top: 0; width: 28px; height: 28px; border-radius: 50%; display: none; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; border: 2px solid rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+
+#banner { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); text-align: center; animation: pop 0.25s ease-out; }
+#banner .big { font: 900 64px/1 "Arial Black", Impact, sans-serif; font-style: italic; text-shadow: 0 4px 20px rgba(0,0,0,0.8); }
+#banner .small { font-size: 20px; margin-top: 8px; text-shadow: 0 2px 8px rgba(0,0,0,0.9); }
+@keyframes pop { from { transform: translateX(-50%) scale(0.6); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+#help { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px 28px; max-width: 760px; font-size: 14px; }
+#help h2 { margin: 0 0 10px; color: var(--gold); } #help h3 { margin: 16px 0 6px; }
+#help th { text-align: left; padding: 3px 14px 3px 0; color: #9fb3ff; white-space: nowrap; vertical-align: top; }
+#fps { position: absolute; top: 8px; left: 10px; font: 12px monospace; opacity: 0.7; }
+#toast { position: absolute; top: 80px; left: 50%; transform: translateX(-50%); background: var(--panel); padding: 8px 18px; border-radius: 20px; font-size: 15px; }

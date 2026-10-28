@@ -1,0 +1,85 @@
+import { describe, it, expect } from 'vitest';
+import { RNG } from '../src/core/rng.js';
+import { STEP } from '../src/core/constants.js';
+import { defaultTeams } from '../src/data/teams.js';
+import { generateLeagueRosters } from '../src/data/generator.js';
+import { ROSTER_COUNTS } from '../src/data/positions.js';
+import { listOffPlays, listDefPlays, mirrorOffPlay, getOffFormation } from '../src/data/playbook.js';
+import { PlaySim } from '../src/sim/play.js';
+import { flightTime } from '../src/sim/passing.js';
+
+const teams = generateLeagueRosters(defaultTeams(), 2027);
+
+function runPlay(seed, op, dp, opts = {}) {
+  const sim = new PlaySim({ rng: new RNG(seed), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: dp, humanTeam: null, ...opts });
+  sim.snap();
+  let n = 0;
+  while (!sim.finished && n < 4000) { sim.tick(STEP, null); n++; }
+  return sim;
+}
+
+describe('league data', () => {
+  it('has 32 teams in 2 conferences x 4 divisions', () => {
+    expect(teams).toHaveLength(32);
+    const keys = new Set(teams.map((t) => `${t.conference}-${t.division}`));
+    expect(keys.size).toBe(8);
+    expect(new Set(teams.map((t) => t.abbr)).size).toBe(32);
+  });
+  it('generates 53-man rosters with unique numbers and a depth chart', () => {
+    const total = Object.values(ROSTER_COUNTS).reduce((a, b) => a + b, 0);
+    expect(total).toBe(53);
+    for (const t of teams) {
+      expect(t.roster).toHaveLength(53);
+      expect(new Set(t.roster.map((p) => p.number)).size).toBe(53);
+      for (const slot of ['QB', 'HB', 'WR', 'TE', 'LT', 'LG', 'C', 'RG', 'RT', 'LE', 'RE', 'DT', 'MLB', 'CB', 'FS', 'SS', 'K', 'P']) {
+        expect(t.depth[slot]?.length, `${t.abbr} ${slot}`).toBeGreaterThan(0);
+      }
+      expect(t.depth.LT[0]).not.toBe(t.depth.RT[0]);
+    }
+  });
+});
+
+describe('playbook', () => {
+  it('every play references a formation with 11 players', () => {
+    for (const p of listOffPlays()) expect(getOffFormation(p.formation)?.players).toHaveLength(11);
+  });
+  it('mirrors plays left/right', () => {
+    const run = listOffPlays().find((p) => p.type === 'run');
+    const m = mirrorOffPlay(run);
+    expect(m.run.aim[1]).toBe(-run.run.aim[1]);
+    expect(m.run.side).toBe(-(run.run.side || 1));
+    const f = getOffFormation(m.formation);
+    expect(f.players[0].at[1]).toBe(-getOffFormation(run.formation).players[0].at[1]);
+  });
+});
+
+describe('play simulation', () => {
+  it('every offense/defense combination ends with a valid result', () => {
+    for (const op of listOffPlays()) for (const dp of listDefPlays()) {
+      const sim = runPlay(5, op, dp);
+      expect(sim.result, `${op.id} vs ${dp.id}`).toBeTruthy();
+      expect(sim.result.reason).not.toBe('timeout');
+      expect(Math.abs(sim.result.spotX)).toBeLessThanOrEqual(60);
+      for (const p of sim.players) expect(Number.isFinite(p.x) && Number.isFinite(p.z)).toBe(true);
+    }
+  });
+  it('is deterministic for a given seed', () => {
+    const op = listOffPlays()[0], dp = listDefPlays()[0];
+    const a = runPlay(42, op, dp).result, b = runPlay(42, op, dp).result;
+    expect(a.spotX).toBe(b.spotX);
+    expect(a.reason).toBe(b.reason);
+  });
+  it('scores a touchdown when the carrier crosses the goal line', () => {
+    const op = listOffPlays().find((p) => p.type === 'run');
+    let tds = 0;
+    for (let s = 0; s < 40; s++) {
+      const sim = runPlay(s, op, listDefPlays()[1], { losX: 49 });
+      if (sim.result.touchdown === 0) { tds++; expect(sim.result.yards).toBeCloseTo(1, 5); }
+    }
+    expect(tds).toBeGreaterThan(5);
+  });
+  it('flight time grows with distance and lobs hang longer than bullets', () => {
+    expect(flightTime(30, 'bullet', 90)).toBeGreaterThan(flightTime(10, 'bullet', 90));
+    expect(flightTime(20, 'lob', 90)).toBeGreaterThan(flightTime(20, 'bullet', 90));
+  });
+});

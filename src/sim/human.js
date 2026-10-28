@@ -32,6 +32,8 @@ export function applyHuman(sim, inp, dt) {
   }
   p.userActive = mag > 0.2;
   if (p.state !== 'active') return;
+  // Handoffs are automatic (no QB keepers on straight runs): the QB is locked until the mesh.
+  if (p.task?.type === 'qb_handoff') { p.userActive = false; return; }
 
   // Movement.
   if (p.userActive && !p.engagement && !(p.move && ['juke', 'dive', 'slide', 'tackle_dive', 'hitstick'].includes(p.move.type) && p.move.t < 0.3)) {

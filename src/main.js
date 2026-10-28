@@ -1,6 +1,7 @@
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
+import { loadLocalRoster } from './data/localRoster.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { DriveSession } from './game/drive.js';
@@ -9,7 +10,9 @@ import { Hud } from './ui/hud.js';
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
-const home = teams[params.has('home') ? +params.get('home') : 9];
+const localRoster = await loadLocalRoster(teams);
+const localHome = localRoster?.teams?.length ? teams.findIndex((t) => t.abbr === localRoster.teams[0]) : -1;
+const home = teams[params.has('home') ? +params.get('home') : localHome >= 0 ? localHome : 9];
 const away = teams[params.has('away') ? +params.get('away') : 28];
 const matchTeams = [home, away];
 
@@ -23,6 +26,7 @@ let started = params.has('autostart') || auto;
 let snapCam = true;
 let lastSimRef = null;
 hud.showConnect(!started);
+if (localRoster) hud.toast(`Loaded local roster: ${localRoster.imported} players (${localRoster.teams.join(', ')})`, 3500);
 
 input.onConnect = (id) => {
   hud.setPadName(id);

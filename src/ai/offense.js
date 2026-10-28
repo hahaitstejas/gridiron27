@@ -109,8 +109,16 @@ function assignProtection(sim) {
   const qb = sim.bySlot(sim.offIdx, 'QB');
   if (!qb) return;
   const blockers = sim.players.filter((p) => p.team === sim.possTeam && p.task?.type === 'pass_block' && p.state !== 'down');
-  const threats = sim.players.filter((d) => d.team !== sim.possTeam && d.state !== 'down' &&
-    (d.task?.type === 'rush' || (sim.toLocal(d.x, d.z).down < 3 && Math.hypot(d.x - qb.x, d.z - qb.z) < 9)));
+  // Threats: designed rushers, plus anyone (blitzers, the human's defender) coming at the QB from the box.
+  const threats = sim.players.filter((d) => {
+    if (d.team === sim.possTeam || d.state === 'down') return false;
+    if (d.task?.type === 'rush') return true;
+    const dist = Math.hypot(d.x - qb.x, d.z - qb.z);
+    if (sim.toLocal(d.x, d.z).down > 6 || dist > 11) return false;
+    const closing = ((qb.x - d.x) * d.vx + (qb.z - d.z) * d.vz) / (dist || 1);
+    if (sim.isHumanControlled(d) && closing > 2) return true; // the user's blitzer
+    return sim.toLocal(d.x, d.z).down < 2.5 && dist < 9;
+  });
   const taken = new Map();
   // Keep blockers already engaged on their man.
   for (const b of blockers) if (b.engagement && b.engagement.b === b) { b.task.target = b.engagement.d.id; taken.set(b.engagement.d.id, b); }

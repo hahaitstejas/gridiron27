@@ -13,16 +13,18 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
   }
   const dist = Math.hypot(pred.x - qb.x, pred.z - qb.z);
   if (dist > maxThrowDist(thp) * 0.95) return { score: -9, pred, T, dist };
-  let sep = 99;
+  // For each defender: yards still between him and the catch point once the ball arrives,
+  // assuming he reacts in ~0.3s and runs flat out. Negative = he gets there first.
+  let sep = 99, sep2 = 99;
   let lane = 0;
   const lx = pred.x - qb.x, lz = pred.z - qb.z;
   const ll = Math.hypot(lx, lz) || 1;
   for (const d of sim.players) {
     if (d.team === qb.team || d.state === 'down') continue;
-    const dpx = d.x + d.vx * T * 0.5, dpz = d.z + d.vz * T * 0.5;
-    const reach = d.maxSpeed * Math.max(0, T - 0.25) * 0.55;
-    const s = Math.hypot(dpx - pred.x, dpz - pred.z) - reach * 0.6;
-    if (s < sep) sep = s;
+    // Matches the defense: ~0.2s read, full-speed break, ~1.2 yd reach at the catch.
+    const close = d.maxSpeed * Math.max(0, T - 0.2) * (d.engagement ? 0.2 : 1) + 1.2;
+    const s = Math.hypot(d.x - pred.x, d.z - pred.z) - close;
+    if (s < sep) { sep2 = sep; sep = s; } else if (s < sep2) sep2 = s;
     // Defenders sitting in the throwing lane.
     const proj = ((d.x - qb.x) * lx + (d.z - qb.z) * lz) / ll;
     if (proj > 2 && proj < ll - 1.5) {
@@ -31,6 +33,7 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
       if (off < 1.3) lane += (1.3 - off) * h * (d.engagement ? 0.3 : 1);
     }
   }
+  sep += Math.min(sep2, 4) * 0.25;
   const gain = (pred.x - sim.losX) * sim.dir;
   let score = sep - lane * 1.6 + clamp(gain, -5, 30) * 0.04;
   if (sim.firstDownX !== null && (pred.x - sim.firstDownX) * sim.dir >= 0) score += 0.4;
@@ -64,14 +67,16 @@ export function qbDecide(sim, qb, dt) {
   for (const p of sim.players) if (p.team === sim.offIdx && p.task?.type === 'route' && !order.includes(p)) order.push(p);
   const readTime = 0.5 - awr * 0.0025;
   const seen = Math.max(1, Math.floor((t - 0.6) / readTime) + 1);
-  let threshold = 3.0 - clamp((t - 1.0) / 2.6, 0, 1) * 1.9;
-  if (pressure > 0.55) threshold = Math.min(threshold, 1.3);
+  let threshold = 0.6 - clamp((t - 0.9) / 2.2, 0, 1) * 1.3;
+  if (pressure > 0.55) threshold = Math.min(threshold, -0.5);
   const noise = (100 - awr) * 0.02;
 
+  const hot = pressure > 0.6;
   let pick = null, best = null;
   for (let i = 0; i < order.length; i++) {
     const r = order[i];
-    if (!routeDeveloped(sim, r) || r.state !== 'active') continue;
+    // Under pressure the QB takes his hot read even if the route hasn't broken yet.
+    if ((!routeDeveloped(sim, r) && !(hot && sim.t > 0.45)) || r.state !== 'active') continue;
     const deep = r.task && DEEP.has(r.task.name) && r.task.name !== 'comeback';
     const kind = deep ? 'lob' : 'bullet';
     const ev = evaluateTarget(sim, qb, r, kind);
@@ -84,8 +89,8 @@ export function qbDecide(sim, qb, dt) {
     return;
   }
   // Under heavy pressure or holding too long: best available, scramble or throw it away.
-  if ((pressure > 0.7 && t > 1.2) || t > 4.2) {
-    if (best && best.s > 0.6) { startThrow(sim, qb, best.r, best.kind); return; }
+  if ((pressure > 0.7 && t > 0.5) || t > 4.2) {
+    if (best && best.s > -1.0) { startThrow(sim, qb, best.r, best.kind); return; }
     const mobile = sim.R(qb, 'speed') > 76;
     if (mobile && task.phase !== 'scramble' && pressure > 0.5) {
       task.phase = 'scramble';

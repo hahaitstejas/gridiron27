@@ -16,7 +16,8 @@ export function buildDepthChart(roster) {
   const byPos = (positions) => {
     const list = [];
     positions.forEach((pos, pri) => {
-      for (const p of roster) if (p.pos === pos) list.push({ p, score: overall({ ...p, pos: positions[0] }) - pri * 6 });
+      // Pinned (imported) players start ahead of everyone at their own position, in file order.
+      for (const p of roster) if (p.pos === pos) list.push({ p, score: overall({ ...p, pos: positions[0] }) - pri * 6 + (p.pinned && pri === 0 ? 1000 - p.pinned : 0) });
     });
     list.sort((a, b) => b.score - a.score);
     return list.map((x) => x.p.id);

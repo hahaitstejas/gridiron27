@@ -71,7 +71,7 @@ src/ai/                offense.js (QB drop/handoff, protection, run blocking, ro
                        carrier.js (lane finding + moves), defense.js (man matching, zones, rush, pursuit),
                        zones.js (zone landmarks)
 src/game/drive.js      Phase 1 drive loop (downs/distance, resets). Replaced by full game state in Phase 2.
-src/data/              teams.js (32 original teams), names.js, positions.js (ratings, templates, overall),
+src/data/              teams.js (32 original teams), names.js, csv.js (roster CSV), localRoster.js, positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense)
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
@@ -135,8 +135,16 @@ One row per player, UTF-8, comma separated, header row required, quoted fields a
 team,first,last,pos,number,age,height,weight,college,SPD,ACC,AGI,STR,AWR,CTH,CAR,BTK,THP,THA,RBK,PBK,PRS,BSH,TAK,POW,COV,RTE,KPW,KAC
 BOS,Marcus,Hale,QB,12,27,75,221,Granite U,72,75,70,58,80,40,60,50,90,85,30,30,30,30,30,30,30,30,30,30
 ```
-`team` = team abbreviation; `pos` ∈ QB HB FB WR TE T G C DE DT OLB MLB CB FS SS K P; height in inches,
-weight in lbs. Missing rating columns default to position templates. Depth charts are rebuilt on import.
+`team` = team abbreviation; `pos` ∈ QB HB FB WR TE T G C DE DT OLB MLB CB FS SS K P (aliases accepted: RB→HB,
+LB→OLB, ILB→MLB, NB→CB, S→FS, OT→T, OG→G, EDGE→DE, NT→DT); height in inches, weight in lbs. Only `team`,
+`first`, `last`, `pos` are required. Blank/missing ratings use the position template; blank `number` keeps
+or auto-assigns a number. A file may list just a few players: each one replaces the best generated player
+at that position and is **pinned** to the top of the depth chart in file order (e.g. list CBs as
+CB1, CB2, nickel, CB4). Implemented in `src/data/csv.js` (`parseCSV`, `importRosterRows`, `exportRosterCSV`).
+
+**Local roster override:** if `public/local/roster.csv` exists it is imported at startup and its first team
+becomes the home team. `public/local/` is git-ignored — personal rosters (e.g. real player names) must stay
+there and never be committed (this repo is public; see the IP rule at the top).
 
 ## Phase status
 - [x] **Phase 1** — Vite/Three.js setup, stadium (field paint, end zones, goalposts, stands, animated crowd,

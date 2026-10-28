@@ -9,7 +9,7 @@ const WINDUP = 0.2;
 
 export function flightTime(dist, kind, thp) {
   if (kind === 'bullet') return dist / (15 + thp * 0.12) + 0.05;
-  if (kind === 'throwaway') return dist / 20 + 0.3;
+  if (kind === 'throwaway') return dist / 26 + 0.1;
   return dist / (11 + thp * 0.07) + 0.25; // lob / touch
 }
 
@@ -65,8 +65,8 @@ function release(sim, qb, rec, kind, lead) {
   if (kind === 'throwaway' || !rec) {
     // Throw it out of bounds toward the nearest sideline, downfield.
     const side = Math.sign(qb.z) || 1;
-    tx = qb.x + sim.dir * 8;
-    tz = side * (HALF_WIDTH + 4);
+    tx = qb.x + sim.dir * 5;
+    tz = side * (HALF_WIDTH + 2);
     kind = 'throwaway';
     T = flightTime(Math.hypot(tx - qb.x, tz - qb.z), kind, thp);
   } else {
@@ -156,7 +156,7 @@ export function updateBallFlight(sim, dt) {
   b.spin += dt * 20;
 
   if (b.kind === 'throwaway') {
-    if (b.y <= 0.15 || Math.abs(b.z) > HALF_WIDTH + 2) incomplete(sim, 'throwaway');
+    if (b.y <= 0.15 || Math.abs(b.z) > HALF_WIDTH + 0.5) incomplete(sim, 'throwaway');
     return;
   }
   // Primary resolution when the ball reaches catch height at the target.
@@ -203,9 +203,19 @@ function resolveCatch(sim, reach, late = false) {
     let pPlay = 0.12 + sim.R(d, 'coverage') * 0.0035 + (recDist - dc.d) * 0.28 + (reacted ? 0.08 : -0.15) + (userSwat ? 0.25 : 0);
     if (b.kind === 'lob') pPlay += 0.05;
     if (late) pPlay -= 0.1;
-    pPlay = clamp(pPlay, 0.03, 0.85);
+    pPlay = clamp(pPlay, 0.03, 0.95);
     if (rng.next() < pPlay) {
+      // Base hands, then much better odds when the defender beat the receiver to the ball, when the
+      // ball is thrown into a crowd, or when the receiver is out of the play entirely.
+      const ir = sim.players[b.intended];
+      const irDist = ir ? Math.hypot(ir.x - b.x, ir.z - b.z) : 9;
+      const away = Math.min(recDist, irDist);
+      const crowd = defC.filter((c) => c.d < 1.6).length;
       let pInt = (0.03 + sim.R(d, 'catching') * 0.0026) * (dc.d < 0.7 ? 1 : 0.5);
+      pInt += clamp(away - dc.d - 0.2, 0, 1.5) * 0.12 + Math.max(0, crowd - 1) * 0.14;
+      const clean = dc.d < 0.9 && away > 2 ? clamp(0.5 + (away - 2) / 1.5, 0, 1) : 0;
+      pInt += (0.5 + sim.R(d, 'catching') * 0.004 - pInt) * clean;
+      pInt = Math.min(0.9, pInt);
       if (b.tipped) pInt *= 0.4;
       if (recDist < 0.8) pInt *= 0.6;
       if (rng.next() < pInt && Math.abs(b.z) < HALF_WIDTH - 0.2) {

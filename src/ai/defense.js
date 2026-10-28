@@ -104,7 +104,12 @@ export function runDefenseAI(sim, dt) {
       const timeLeft = Math.max(0.1, b.T - b.t);
       const canReach = dist < p.maxSpeed * (timeLeft + 0.6);
       const isMyMan = p.task.type === 'man' && p.task.target === b.intended;
-      if (isMyMan || canReach) p.task = { type: 'ball', prev: p.task };
+      // A man defender trailing his receiver has his back to the QB: he stays in phase and only
+      // finds the ball in the last moment.
+      const rec = sim.players[b.intended];
+      const trailing = isMyMan && rec && (rec.x - p.x) * sim.dir > 0.3;
+      if (trailing && timeLeft > 0.4) { /* keep running with the receiver */ }
+      else if (isMyMan || canReach) p.task = { type: 'ball', prev: p.task };
       else if (dist < 22 && p.task.type !== 'rush') p.task = { type: 'ball', prev: p.task, rally: true };
     }
     switch (p.task.type) {

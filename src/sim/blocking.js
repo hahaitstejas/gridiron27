@@ -111,7 +111,7 @@ function updateEngagement(sim, e, dt) {
   }
 
   // Shed chance.
-  let rate = (pass ? 0.3 : 0.07) * Math.exp((dPow - bPow) / 13);
+  let rate = (pass ? 0.2 : 0.07) * Math.exp((dPow - bPow) / 13);
   if (!pass && carrier && Math.hypot(carrier.x - d.x, carrier.z - d.z) < 2) rate *= 4;
   if (pass && sim.passThrown) rate *= 0.5;
   if (b.task?.type === 'escort') rate *= 3; // open-field blocks don't hold long

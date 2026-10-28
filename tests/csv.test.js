@@ -30,3 +30,27 @@ describe('roster CSV', () => {
     expect(rows[0]).toHaveProperty('SPD');
   });
 });
+
+describe('league spreadsheets', () => {
+  it('round-trips teams, full rosters and depth charts', async () => {
+    const { exportTeamsCSV, importTeamsRows, exportDepthCSV, importDepthRows } = await import('../src/data/csv.js');
+    const a = generateLeagueRosters(defaultTeams(), 3);
+    a[5].city = 'Lakeview'; a[5].name = 'Herons'; a[5].abbr = 'LKV';
+    const lkv = a[5];
+    const qb2 = lkv.roster.find((p) => p.id === lkv.depth.QB[1]);
+    lkv.depth.QB = [qb2.id, ...lkv.depth.QB.filter((id) => id !== qb2.id)];
+    const teamsCsv = exportTeamsCSV(a, 5), rosterCsv = exportRosterCSV(a), depthCsv = exportDepthCSV(a);
+
+    const b = generateLeagueRosters(defaultTeams(), 99); // a different league, overwritten by the files
+    const tr = importTeamsRows(b, parseCSV(teamsCsv));
+    expect(tr.playAs).toBe(5);
+    expect(b[5].name).toBe('Herons');
+    importRosterRows(b, parseCSV(rosterCsv));
+    expect(importDepthRows(b, parseCSV(depthCsv))).toEqual([]);
+    const bl = b[5];
+    expect(bl.roster).toHaveLength(53);
+    const starter = bl.roster.find((p) => p.id === bl.depth.QB[0]);
+    expect(`${starter.first} ${starter.last} ${starter.number}`).toBe(`${qb2.first} ${qb2.last} ${qb2.number}`);
+    expect(starter.ratings).toEqual(qb2.ratings);
+  });
+});

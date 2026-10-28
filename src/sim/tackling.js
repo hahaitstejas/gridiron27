@@ -19,6 +19,8 @@ export function startMove(sim, p, type, dir = 0) {
   const m = MOVES[type];
   if (!m || p.move || (p.moveCd || 0) > sim.t || p.state !== 'active' || p.engagement) return false;
   p.move = { type, t: 0, dur: m.dur, window: m.window, dir, startFacing: p.facing };
+  // A sliding runner gives himself up: the ball is spotted where the slide begins.
+  if (type === 'slide' && sim.ball.state === 'held' && sim.ball.carrier === p.id) p.slideSpot = sim.carrierBallPos(p);
   p.anim = type;
   p.animT = 0;
   sim.emit('move', { player: p.id, type });

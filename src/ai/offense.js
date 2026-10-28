@@ -286,7 +286,13 @@ function route(sim, p) {
 function catchBall(sim, p) {
   const b = sim.ball;
   if (b.state !== 'air' || !b.target) { p.task.type = 'route'; return; }
-  seek(p, b.target.x, b.target.z, 1, 0.5);
+  // Time the run to meet the ball: arrive as it does, settle under it if early.
+  const dx = b.target.x - p.x, dz = b.target.z - p.z;
+  const d = Math.hypot(dx, dz);
+  const left = Math.max(0.05, b.T - b.t);
+  const v = d < 0.3 ? 0 : Math.min(p.maxSpeed * p.speedCap, (d / left) * 1.15 + 0.5);
+  p.desired.x = d > 1e-3 ? (dx / d) * v : 0;
+  p.desired.z = d > 1e-3 ? (dz / d) * v : 0;
   p.face = { x: b.x, z: b.z };
 }
 

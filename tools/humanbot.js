@@ -9,7 +9,8 @@ import { listOffPlays, listDefPlays } from '../src/data/playbook.js';
 import { PlaySim } from '../src/sim/play.js';
 import { emptyFrame } from '../src/input/actions.js';
 
-const N = +(process.argv[process.argv.indexOf('--plays') + 1] || 200);
+const pi = process.argv.indexOf('--plays');
+const N = pi > 0 ? +process.argv[pi + 1] : 200;
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 
 // Each strategy returns an input frame for time t.
@@ -18,6 +19,7 @@ const strategies = {
   qbScrambleWide: { plays: (p) => p.type === 'pass', input: (t) => ({ ly: t > 0.5 ? -0.7 : 0, lx: t > 0.5 ? 0.7 : 0, rt: 1 }) },
   quickThrowA: { plays: (p) => p.type === 'pass', input: (t) => ({ press: t > 1.1 && t < 1.12 ? 'A' : null, hold: t > 1.1 && t < 1.4 ? 'A' : null }) },
   quickThrowB: { plays: (p) => p.type === 'pass', input: (t) => ({ press: t > 1.3 && t < 1.32 ? 'B' : null, hold: t > 1.3 && t < 1.6 ? 'B' : null }) },
+  smartThrow: { plays: (p) => p.type === 'pass', smart: true, input: () => ({}) },
   holdBall: { plays: (p) => p.type === 'pass', input: () => ({}) },
   runUpfield: { plays: (p) => p.type === 'run', input: (t) => ({ ly: t > 0.9 ? -1 : 0, rt: 1 }) },
 };
@@ -35,6 +37,16 @@ for (const [name, st] of Object.entries(strategies)) {
     let k = 0;
     while (!sim.finished && k < 3000) {
       const s = st.input(sim.t);
+      if (st.smart && sim.t > 1.7 && sim.t < 1.72) {
+        let bestBtn = null, bestSep = -1;
+        for (const [btn, id] of Object.entries(sim.icons)) {
+          const r = sim.players[id];
+          let md = 99; for (const d of sim.players) if (d.team !== 0) md = Math.min(md, Math.hypot(d.x - r.x, d.z - r.z));
+          if (md > bestSep) { bestSep = md; bestBtn = btn; }
+        }
+        s.press = bestBtn; st._btn = bestBtn;
+      }
+      if (st.smart && sim.t > 1.7 && sim.t < 2.0) s.hold = st._btn;
       f.lx = s.lx || 0; f.ly = s.ly || 0; f.rt = s.rt || 0;
       for (const b in f.pressed) { f.pressed[b] = false; f.down[b] = false; }
       if (s.press) f.pressed[s.press] = true;

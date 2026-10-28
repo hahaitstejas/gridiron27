@@ -11,6 +11,7 @@ npm install          # once
 npm run dev          # http://localhost:5173 (Chrome or Safari)
 npm test             # Vitest unit tests (tests/*.test.js), headless
 npm run sim -- --plays 1000 --seed 3   # headless CPU-vs-CPU play runner with invariant checks + stats
+npm run export-league  # write editable league spreadsheets to public/local/ (see below)
 npm run bot          # scripted 'human' exploits (blind throws, QB scrambles, holding the ball) vs CPU defense
 npm run build        # production build to dist/
 ```
@@ -71,13 +72,13 @@ src/ai/                offense.js (QB drop/handoff, protection, run blocking, ro
                        carrier.js (lane finding + moves), defense.js (man matching, zones, rush, pursuit),
                        zones.js (zone landmarks)
 src/game/drive.js      Phase 1 drive loop (downs/distance, resets). Replaced by full game state in Phase 2.
-src/data/              teams.js (32 original teams), names.js, csv.js (roster CSV), localRoster.js, positions.js (ratings, templates, overall),
+src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/), positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense)
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
 src/ui/                hud.js (connect screen, mini score bug, receiver icons, banners, help), style.css
-tools/autosim.js       headless CPU-vs-CPU runner;  tools/humanbot.js  exploit checks;  tools/smoke.mjs  browser smoke test
+tools/autosim.js       headless CPU-vs-CPU runner;  tools/humanbot.js  exploit checks; tools/separation.js  receiver openness; tools/export-league.js;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests
 ```
 Planned (later phases): `src/audio`, `src/replay`, `src/franchise`, more of `src/ui` (menus, play-call
@@ -142,9 +143,23 @@ or auto-assigns a number. A file may list just a few players: each one replaces 
 at that position and is **pinned** to the top of the depth chart in file order (e.g. list CBs as
 CB1, CB2, nickel, CB4). Implemented in `src/data/csv.js` (`parseCSV`, `importRosterRows`, `exportRosterCSV`).
 
-**Local roster override:** if `public/local/roster.csv` exists it is imported at startup and its first team
-becomes the home team. `public/local/` is git-ignored — personal rosters (e.g. real player names) must stay
-there and never be committed (this repo is public; see the IP rule at the top).
+### Local league spreadsheets (git-ignored, personal use)
+`npm run export-league` writes `public/local/teams.csv`, `roster.csv`, `depth.csv` (keeping any edits already
+there and backing up the old files to `public/local/backup-*/`). The game loads whichever exist at startup,
+in the order teams → roster → depth (`src/data/localLeague.js`). **`public/local/` is git-ignored: personal
+content (e.g. real player names, logo images) must stay there and never be committed — this repo is public;
+see the IP rule at the top.**
+- `teams.csv`: `id,city,name,abbr,primary,secondary,accent,conference,division,logo_shape,logo_text,logo_image,play_as`.
+  Rows are matched by `id` (0–31). Colors are hex. `conference` = Liberty|Frontier, `division` = East|North|
+  South|West. `logo_shape` = circle|shield|diamond|hex|star|triangle. `logo_image` = optional file name in
+  `public/local/logos/` (PNG/JPG/SVG) that replaces the generated logo. `play_as = Y` picks your team.
+  If you change an `abbr`, change the `team` column in roster.csv/depth.csv to match.
+- `roster.csv`: format above. A team with 40+ rows is a **full roster** (replaces the generated one);
+  fewer rows = partial (pinned starters).
+- `depth.csv`: `team,slot,players[,names]` — `players` = jersey numbers in order, space separated;
+  `names` is informational only. Slots: QB HB FB WR TE LT LG C RG RT LE RE DT LOLB MLB ROLB CB FS SS K P KR PR.
+  Formations use WR1–3, TE1–2, CB1–3 (CB3 = nickel), DT1–2, etc. Unlisted slots are filled automatically.
+Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a partial roster file > default.
 
 ## Phase status
 - [x] **Phase 1** — Vite/Three.js setup, stadium (field paint, end zones, goalposts, stands, animated crowd,
@@ -165,5 +180,8 @@ there and never be committed (this repo is public; see the IP rule at the top).
   completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
   Bot targets: blind quick throws should average well under 15 yds/play, mindless QB scrambles ~2-4 yds,
   a QB who just holds the ball should be sacked in ~4-5 s.
+- Ball spotting: the dead-ball spot and the goal-line plane use the **ball's** position
+  (`PlaySim.carrierBallPos`), which moves forward as a tackled runner falls (matching the animation). A QB
+  slide is spotted where the slide began.
 - Player speed: `maxSpeed = 3.5 + SPD * 0.0718` yd/s (SPD 56 lineman ~7.5, 90 CB ~10.0); `accel = 3 + ACC * 0.11`.
   Ball carriers run at 95% of top speed. Ratings must create visible differences.

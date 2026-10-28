@@ -109,7 +109,11 @@ export function runDefenseAI(sim, dt) {
       const rec = sim.players[b.intended];
       const trailing = isMyMan && rec && (rec.x - p.x) * sim.dir > 0.3;
       if (trailing && timeLeft > 0.4) { /* keep running with the receiver */ }
-      else if (isMyMan || canReach) p.task = { type: 'ball', prev: p.task };
+      else if (isMyMan || canReach) {
+        // Defenders read the throw rather than knowing the exact spot: error grows with distance.
+        const sd = (0.15 + dist * 0.045) * (1.6 - sim.R(p, "awareness") / 100);
+        p.task = { type: 'ball', prev: p.task, err: { x: sim.rng.gauss(0, sd), z: sim.rng.gauss(0, sd) } };
+      }
       else if (dist < 22 && p.task.type !== 'rush') p.task = { type: 'ball', prev: p.task, rally: true };
     }
     switch (p.task.type) {
@@ -231,6 +235,16 @@ function zone(sim, p) {
     const { l, r } = threat;
     tDown = clamp(l.down - 0.8, 1, home.down + 3);
     tLat = l.lat + (r.vz * sim.dir) * 0.3;
+  } else {
+    // Nobody in my area: sink under the nearest vertical route (e.g. a Cover 2 corner under the go).
+    let v = null, vd = z.r * 2.2;
+    for (const r of sim.players) {
+      if (r.team !== sim.possTeam || r.task?.type !== 'route') continue;
+      const l = sim.toLocal(r.x, r.z);
+      const dd = Math.abs(l.lat - home.lat);
+      if (l.down > home.down + 2 && dd < vd) { vd = dd; v = l; }
+    }
+    if (v) { tDown = Math.min(v.down - 2.5, home.down + 9); tLat = home.lat + (v.lat - home.lat) * 0.8; }
   }
   const w = sim.toWorld(tDown, tLat);
   const qb = sim.bySlot(sim.offIdx, 'QB');
@@ -317,8 +331,11 @@ function playBall(sim, p) {
     // on top of it so the receiver runs into them. If already there, hit the receiver.
     const rec = sim.players[b.intended];
     const deeper = (p.x - b.target.x) * sim.dir > 0.5;
-    let tx = deeper ? b.target.x + sim.dir * 0.7 : b.target.x + (ux / ul) * 0.4;
-    let tz = deeper ? b.target.z : b.target.z + (uz / ul) * 0.4;
+    const e = p.task.err || { x: 0, z: 0 };
+    // The error shrinks as the ball gets close and the defender can track it.
+    const k = Math.min(1, Math.max(0, (b.T - b.t) / 0.6));
+    let tx = (deeper ? b.target.x + sim.dir * 0.7 : b.target.x + (ux / ul) * 0.4) + e.x * k;
+    let tz = (deeper ? b.target.z : b.target.z + (uz / ul) * 0.4) + e.z * k;
     if (rec && Math.hypot(tx - p.x, tz - p.z) < 0.8) { tx = rec.x; tz = rec.z; }
     seek(p, tx, tz, 1, 0.05);
   }

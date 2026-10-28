@@ -338,12 +338,30 @@ export class PlaySim {
 
   syncBall() {
     const b = this.ball;
-    if (b.state === 'held' || b.state === 'presnap') {
-      const c = this.players[b.carrier];
-      if (!c) return;
-      if (b.state === 'presnap') return;
-      b.x = c.x; b.z = c.z; b.y = c.state === 'tackled' ? 0.4 : BALL_CARRY_HEIGHT;
+    if (b.state !== 'held') return;
+    const c = this.players[b.carrier];
+    if (!c) return;
+    const pos = this.carrierBallPos(c);
+    b.x = pos.x; b.z = pos.z; b.y = pos.y;
+  }
+
+  /**
+   * Where the ball actually is for a carrier: tucked just in front of the body while running, and
+   * carried forward as he falls (matches the falling animation, which pitches the body forward from
+   * the feet). The dead-ball spot and goal-line plane both use this, not the player's feet.
+   */
+  carrierBallPos(c) {
+    const fx = Math.cos(c.facing), fz = Math.sin(c.facing);
+    const sc = c.height / 2.06;
+    let fwd = 0.15, y = BALL_CARRY_HEIGHT;
+    const falling = c.state === 'tackled' || (c.state === 'down' && c.anim !== 'getup');
+    if (falling && c.move?.type !== 'slide' && !c.slideSpot) {
+      const k = c.state === 'down' ? 1 : Math.min(1, c.animT / 0.45);
+      const a = k * 1.45;
+      fwd = 0.15 + 1.05 * Math.sin(a) * sc;
+      y = 0.18 + 1.0 * Math.cos(a) * sc;
     }
+    return { x: c.x + fx * fwd, z: c.z + fz * fwd, y };
   }
 
   /** Called whenever someone new gains possession of the ball as a runner. */
@@ -412,6 +430,9 @@ export class PlaySim {
     c.fallT -= dt;
     c.vx *= 0.9; c.vz *= 0.9;
     c.x += c.vx * dt; c.z += c.vz * dt;
+    // Reaching the ball over the goal line while going down is a touchdown.
+    const bp = this.carrierBallPos(c);
+    if (bp.x * this.teamDir(c.team) >= GOAL_X && Math.abs(bp.z) < HALF_WIDTH) { this.whistle('td'); return; }
     if (c.fallT <= 0) {
       c.state = 'down';
       c.downT = 2;
@@ -445,7 +466,8 @@ export class PlaySim {
     }
     if (Math.abs(c.z) > HALF_WIDTH) { this.whistle('oob'); return; }
     const td = this.teamDir(c.team);
-    if (c.x * td >= GOAL_X && c.state !== 'tackled') { this.whistle('td'); return; }
+    const bp = this.carrierBallPos(c);
+    if (bp.x * td >= GOAL_X && c.state !== 'tackled') { this.whistle('td'); return; }
     if (c.x * td <= -END_X) { this.whistle('oob'); return; }
   }
 
@@ -491,11 +513,13 @@ export class PlaySim {
     }
     if (c) {
       r.carrierId = c.id;
-      r.spotX = clamp(c.x, -END_X, END_X);
-      r.spotZ = c.z;
+      // Spot the ball where it is (or where a QB began his slide), not where the feet are.
+      const bp = c.slideSpot || this.carrierBallPos(c);
+      r.spotX = clamp(bp.x, -END_X, END_X);
+      r.spotZ = bp.z;
       const td = this.teamDir(c.team);
       if (reason === 'td') r.touchdown = c.team;
-      else if (c.x * td <= -GOAL_X) {
+      else if (r.spotX * td <= -GOAL_X) {
         if (c.caughtInEZ) r.touchback = true;
         else r.safety = true;
       }

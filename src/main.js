@@ -1,7 +1,7 @@
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
-import { loadLocalRoster } from './data/localRoster.js';
+import { loadLocalLeague } from './data/localLeague.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { DriveSession } from './game/drive.js';
@@ -10,10 +10,18 @@ import { Hud } from './ui/hud.js';
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
-const localRoster = await loadLocalRoster(teams);
-const localHome = localRoster?.teams?.length ? teams.findIndex((t) => t.abbr === localRoster.teams[0]) : -1;
-const home = teams[params.has('home') ? +params.get('home') : localHome >= 0 ? localHome : 9];
-const away = teams[params.has('away') ? +params.get('away') : 28];
+const local = await loadLocalLeague(teams);
+// Home team: ?home=<index or abbr>, else the "play_as" team from teams.csv, else the team in a
+// partial roster file, else a default.
+const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
+let homeIdx = 9;
+if (local?.playAs !== null && local?.playAs !== undefined) homeIdx = local.playAs;
+else if (local?.rosterTeams?.length === 1) homeIdx = teams.findIndex((t) => t.abbr === local.rosterTeams[0]);
+if (params.has('home')) homeIdx = teamArg(params.get('home'));
+let awayIdx = params.has('away') ? teamArg(params.get('away')) : 28;
+if (awayIdx === homeIdx || awayIdx < 0) awayIdx = (homeIdx + 13) % 32;
+const home = teams[homeIdx];
+const away = teams[awayIdx];
 const matchTeams = [home, away];
 
 const input = new InputManager();
@@ -26,7 +34,7 @@ let started = params.has('autostart') || auto;
 let snapCam = true;
 let lastSimRef = null;
 hud.showConnect(!started);
-if (localRoster) hud.toast(`Loaded local roster: ${localRoster.imported} players (${localRoster.teams.join(', ')})`, 3500);
+if (local) hud.toast(`Loaded your league files: ${local.loaded.join(', ')}${local.problems.length ? ` (${local.problems.length} warnings, see console)` : ''}`, 4500);
 
 input.onConnect = (id) => {
   hud.setPadName(id);

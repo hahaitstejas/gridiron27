@@ -83,3 +83,39 @@ describe('play simulation', () => {
     expect(flightTime(20, 'lob', 90)).toBeGreaterThan(flightTime(20, 'bullet', 90));
   });
 });
+
+describe('ball spotting', () => {
+  it('spots a tackled runner where the ball is, ahead of his feet', () => {
+    const op = listOffPlays().find((p) => p.type === 'run');
+    for (let s = 0; s < 20; s++) {
+      const sim = runPlay(s, op, listDefPlays()[0]);
+      const r = sim.result;
+      if (r.reason !== 'tackle') continue;
+      const c = sim.players[r.carrierId];
+      // Ball is spotted ahead of the carrier's feet in his facing direction (he falls forward).
+      const ahead = (r.spotX - c.x) * Math.cos(c.facing) + (r.spotZ - c.z) * Math.sin(c.facing);
+      expect(ahead).toBeGreaterThan(0.5);
+      expect(ahead).toBeLessThan(1.6);
+    }
+  });
+  it('spots a QB slide where the slide begins', async () => {
+    const { startMove } = await import('../src/sim/tackling.js');
+    const op = listOffPlays().find((p) => p.type === 'pass');
+    const sim = new PlaySim({ rng: new RNG(1), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: listDefPlays()[2], humanTeam: null });
+    sim.snap();
+    while (sim.ball.state !== 'held') sim.tick(STEP, null);
+    // Put the QB in the open field running upfield, defenders far away, then slide.
+    const qb = sim.bySlot(0, 'QB');
+    qb.x = -10; qb.z = 0; qb.vx = 8; qb.vz = 0; qb.facing = 0;
+    for (const d of sim.defense()) { d.x = 20; d.z = d.z * 0.1; }
+    sim.setRunner(qb, 'scramble');
+    sim.tick(STEP, null);
+    const slideAt = sim.carrierBallPos(qb).x;
+    expect(startMove(sim, qb, 'slide')).toBe(true);
+    let n = 0;
+    while (!sim.finished && n++ < 2000) sim.tick(STEP, null);
+    expect(sim.result.reason).toBe('tackle');
+    expect(sim.result.spotX).toBeCloseTo(slideAt, 1);
+    expect(qb.x).toBeGreaterThan(slideAt); // he kept sliding forward, but the spot is where he started
+  });
+});

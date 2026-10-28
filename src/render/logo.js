@@ -42,6 +42,12 @@ function shapePath(ctx, shape, cx, cy, r) {
 
 /** Draw a logo centered at (cx, cy) with radius r. */
 export function drawLogo(ctx, logo, cx, cy, r) {
+  // A custom image (from public/local/logos, see teams.csv) replaces the generated logo.
+  if (logo._img) {
+    const img = logo._img, k = Math.min((2 * r) / img.width, (2 * r) / img.height);
+    ctx.drawImage(img, cx - (img.width * k) / 2, cy - (img.height * k) / 2, img.width * k, img.height * k);
+    return;
+  }
   ctx.save();
   shapePath(ctx, logo.shape, cx, cy, r);
   ctx.fillStyle = logo.border;

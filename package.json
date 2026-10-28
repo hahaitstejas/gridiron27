@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "sim": "node tools/autosim.js",
-    "bot": "node tools/humanbot.js"
+    "bot": "node tools/humanbot.js",
+    "export-league": "node tools/export-league.js"
   },
   "engines": {
     "node": ">=20.19"

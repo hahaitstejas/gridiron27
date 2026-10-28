@@ -83,7 +83,7 @@ function release(sim, qb, rec, kind, lead) {
     const dist = Math.hypot(tx - qb.x, tz - qb.z);
     const pressure = pressureOn(sim, qb);
     const moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
-    let sd = (0.12 + (100 - tha) * 0.02) * (0.45 + dist / 28) * (1 + pressure * 0.9 + moving * 0.6);
+    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30) * (1 + pressure * 0.9 + moving * 0.6);
     if (kind === 'bullet') sd *= 1.1;
     if (sim.difficulty && qb.team !== sim.humanTeam) sd *= sim.difficulty.cpuAccuracy ?? 1;
     tx += rng.gauss(0, sd);
@@ -186,7 +186,9 @@ function resolveCatch(sim, reach, late = false) {
     if (p.state === 'down' || p.state === 'tackled' || p.engagement) continue;
     if (late && b.tried.has(p.id)) continue;
     const d = Math.hypot(p.x - b.x, p.z - b.z);
-    const r = reach + (p.team !== sim.possTeam && swatBonus(sim, p) ? 0.6 : 0) + (p.move?.type === 'dive' ? 0.6 : 0);
+    // Receivers can extend for the ball (intended receiver most of all); defenders reach less unless swatting.
+    const isRec = p.team === sim.possTeam;
+    const r = reach + (isRec ? (p.id === b.intended ? 0.45 : 0.2) : 0) + (!isRec && swatBonus(sim, p) ? 0.6 : 0) + (p.move?.type === 'dive' ? 0.6 : 0);
     if (d <= r) cands.push({ p, d });
   }
   if (!cands.length) return;
@@ -235,7 +237,7 @@ function resolveCatch(sim, reach, late = false) {
     const dd = Math.hypot(d.x - r.x, d.z - r.z);
     if (dd < 2) contest += (2 - dd) * 0.13 * (sim.R(d, 'coverage') / 80);
   }
-  let pCatch = 0.6 + sim.R(r, 'catching') * 0.0036 - contest - (rc.d > 0.8 ? 0.18 : 0);
+  let pCatch = 0.6 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
   if (b.tipped) pCatch -= 0.2;

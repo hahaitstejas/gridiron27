@@ -34,4 +34,12 @@ and press **A** — or press **Enter** to use the keyboard.
 
 Debug: `http://localhost:5173/?auto&speed=6` watches CPU vs CPU at 6x speed.
 
+### Customize your league (personal use)
+```bash
+npm run export-league
+```
+creates `public/local/teams.csv`, `roster.csv` and `depth.csv`. Open them in Numbers, Excel or Google Sheets,
+edit team names/colors, players, numbers, ratings and depth charts, save as CSV (same names), and reload the
+game. That folder is not uploaded to GitHub.
+
 See [CLAUDE.md](CLAUDE.md) for architecture, data formats and testing.

@@ -86,13 +86,8 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
 
-### Audio (`src/audio/audio.js`)
-`GameAudio` synthesizes everything with the Web Audio API (no sample files): a crowd bed whose loudness follows
-the render loop's excitement value, crowd roars/groans from the home team's point of view (`teams[0]` is home),
-whistle, hits scaled by tackle power, catches, kicks, a "hut" on the snap, the stadium horn on home scores, and
-menu clicks (`Nav.onSound`). `main.js` maps session/sim events to sounds (`playSounds`). The context starts on the
-first key/pointer press (browser autoplay rules); volumes (master/crowd/effects, 0–10) are in Settings.
-Other settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
+### Settings
+Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays
 (touchdowns, interceptions, big hits, onside recoveries; not in practice).
 
@@ -129,7 +124,6 @@ src/data/              teams.js (32 original teams), names.js, csv.js (teams/ros
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)
 src/replay/replay.js   instant replay recorder + ghost-sim player
-src/audio/audio.js     procedural Web Audio sounds + crowd
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
 src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu orbit camera.
@@ -239,8 +233,8 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   2-pt tries with a 3-press kick meter, returns and fair catches, fumbles, penalties with enforcement,
   play-call screen (formation → play, flip, suggestions), CPU play calling, 4 difficulty tiers, score bug.
 - [x] **Phase 3** — 17 offensive / 8 defensive formations, 131 offensive / 53 defensive plays (play action,
-  bootlegs, screens), audibles + hot routes, instant replay (manual + auto on big plays), procedural audio,
-  Practice mode, settings (volumes, camera, name tags, stat card, auto replay); plus fatigue-based rotation.
+  bootlegs, screens), audibles + hot routes, instant replay (manual + auto on big plays),
+  Practice mode, settings (camera, name tags, stat card, auto replay); plus fatigue-based rotation.
 - [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
 - [ ] Phase 5 — Franchise mode
 

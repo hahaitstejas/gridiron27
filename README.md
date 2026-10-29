@@ -43,8 +43,7 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 Kicks use a three-press meter: press A to start the kicker, A again to set power on the way up, and A a
 third time as the needle comes back to set accuracy (closest to the line = straightest).
 
-**Practice** (main menu) runs any play from any spot and situation with no clock. **Settings** has volumes,
-camera (standard / wide / tight / high), name tags, the post-play stat card and automatic replays of big plays.
+**Practice** (main menu) runs any play from any spot and situation with no clock. **Settings** has the camera (standard / wide / tight / high), name tags, the post-play stat card and automatic replays of big plays.
 
 Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6x speed
 (`&q=1` for 1-minute quarters).

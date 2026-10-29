@@ -10,7 +10,6 @@ import { Nav } from './ui/nav.js';
 import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
-import { GameAudio } from './audio/audio.js';
 
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
@@ -27,18 +26,12 @@ const renderer = new GameRenderer(document.getElementById('game'), teams[prefs.h
 const nav = new Nav();
 const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
-const audio = new GameAudio();
-const applyVolumes = () => audio.setLevels({ master: prefs.volMaster / 10, crowd: prefs.volCrowd / 10, sfx: prefs.volSfx / 10 });
-applyVolumes();
-Nav.onSound = (k) => audio.ui(k);
 hud.prefs = prefs;
 const applyCamera = () => {
   renderer.rig.mode = prefs.camera === 'high' ? 'sky' : 'broadcast';
   renderer.rig.zoom = { wide: 1.3, tight: 0.8 }[prefs.camera] || 1;
 };
 applyCamera();
-// Browsers only allow sound after a user gesture.
-for (const ev of ['keydown', 'pointerdown']) window.addEventListener(ev, () => { audio.ensure(); applyVolumes(); });
 
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
@@ -59,7 +52,7 @@ function toMenu() {
     onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
     onPractice: () => screens.practice(teams, prefs, { onStart: (p, practice) => startGame({ ...p, side: 'home' }, { practice }), onBack: toMenu }),
     onControls: () => screens.controls({ onBack: toMenu }),
-    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyVolumes(); applyCamera(); toMenu(); }, onBack: toMenu }),
+    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
   });
 }
 
@@ -107,7 +100,8 @@ function endReplay() {
 
 function updateReplay(f, dt) {
   const r = replay;
-  if (f.pressed.B || f.pressed.Menu) { endReplay(); return; }
+  // An automatic replay gets out of the way as soon as you press anything (you're picking a play).
+  if (f.pressed.B || f.pressed.Menu || (r.auto && (f.pressed.A || f.pressed.X || f.pressed.Y))) { endReplay(); return; }
   if (f.pressed.A) r.playing = !r.playing;
   if (f.pressed.X) r.speed = r.speed < 1 ? 1 : 0.25;
   if (f.pressed.Y) { r.player.seek(0); r.playing = true; }
@@ -135,7 +129,6 @@ function pause() {
 
 input.onConnect = (id) => {
   padName = id;
-  audio.ensure();
   hud.ticker('Controller connected');
   if (app === 'title') toMenu();
 };
@@ -146,7 +139,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { get session() { return session; }, get app() { return app; }, renderer, input, hud, startGame, teams, prefs, toMenu };
+window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
@@ -156,32 +149,7 @@ if (params.has('auto')) startGame({ ...prefs, side: 'cpu', quarterMinutes: +(par
 else if (params.has('play')) startGame({ ...prefs, side: params.get('side') || 'home' }, { seed: +(params.get('seed') || Date.now() % 1e9) });
 else screens.title(padName);
 
-// Crowd reactions from the home team's point of view (teams[0] is the home team).
-const homeSign = (team) => (team === 0 ? 1 : -1);
-function playSounds(e) {
-  const sim = session?.sim;
-  const teamOf = (id) => sim?.players[id]?.team;
-  switch (e.type) {
-    case 'snap': if (!sim?.isKick) audio.hut(); break;
-    case 'whistle': audio.whistle(); break;
-    case 'tackle': audio.hit(e.power ?? 0.5); break;
-    case 'bigHit': audio.hit(1.3); audio.react(0.35); break;
-    case 'catch': audio.catchBall(); audio.react(homeSign(teamOf(e.player)) * 0.15); break;
-    case 'kick': audio.kick(); break;
-    case 'interception': audio.react(homeSign(teamOf(e.player)) * 0.8); break;
-    case 'fumble': audio.react(0.3); break;
-    case 'message':
-      if (e.kind === 'score') {
-        const t = session.match.lastScore?.team;
-        if (t === 0) audio.horn();
-        audio.react(homeSign(t) * (/touchdown|pick six/i.test(e.text) ? 1 : 0.6));
-      } else if (e.kind === 'miss') audio.react(homeSign(session.match.possession) * -0.5);
-      break;
-  }
-}
-
 function onSessionEvent(e) {
-  playSounds(e);
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') hud.message(e, session);
   else if (e.type === 'result') hud.statCard(e.statLines, session.teams);
@@ -261,8 +229,7 @@ function frame(now) {
     renderer.setAim(null);
     renderer.renderReplay(dt, replay.player.focus(), replay.yaw, replay.pitch, replay.dist, replay.fresh);
     replay.fresh = false;
-    audio.setExcitement(0.25);
-    hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed });
+    hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed, auto: replay.auto });
   } else if (session && app !== 'menu') {
     const m = session.match;
     if (sim) renderer.drawSim(sim, alpha, time); else renderer.hidePlayers();
@@ -280,7 +247,6 @@ function frame(now) {
     const camDir = m.dirOf(m.possession);
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15;
     renderer.render(dt, focus, camDir, phase, snapCam, excite);
-    audio.setExcitement(app === 'paused' ? 0.1 : excite);
     snapCam = false;
     hud.update(session, renderer, dt, frameMs, playcall.open);
   } else {
@@ -289,7 +255,6 @@ function frame(now) {
     renderer.lines.set(null, null);
     attract += dt * 0.05;
     renderer.renderOrbit(dt, attract);
-    audio.setExcitement(0.08);
   }
   if (consumed) input.consume();
   renderer.adapt(frameMs);

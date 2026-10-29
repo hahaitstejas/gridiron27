@@ -130,9 +130,19 @@ export function leverage(sim) {
   return s === 'in' ? 1.4 : s === 'out' ? -0.9 : 0.5;
 }
 
+/** Special-teams units caught by a fake (no assignments): the front rushes, everyone else plays zone. */
+function fakeKickAssign(sim) {
+  const out = {};
+  for (const d of sim.defense()) {
+    const down = sim.toLocal(d.x, d.z).down;
+    out[d.slot] = down < 2.5 ? 'rush' : down > 14 ? 'zone:deep_middle' : 'zone:mid_robber';
+  }
+  return out;
+}
+
 /** Resolve the defensive play's assignments against the offense's alignment at the snap. */
 export function assignDefense(sim) {
-  const assign = sim.defPlay.assign || {};
+  const assign = sim.defPlay.assign || fakeKickAssign(sim);
   const man = sim.manMatch || matchMan(sim);
   for (const d of sim.defense()) {
     const a = assign[d.slot] || 'zone:hook_middle';

@@ -29,6 +29,9 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 | Sprint | RT | Shift |
 | Throw to receiver | A B X Y RB (tap = lob, hold = bullet) | J K U I O |
 | Throw away | RS click | R |
+| High / low pass | hold LB / LT while throwing | Q / E |
+| Pump fake | LS click | F |
+| Option: pitch / keep | LB pitches (speed option); hold LT through the mesh to keep (zone read) | Q / E |
 | Juke / truck / hit stick | Right stick ← → / ↑ | Arrow keys |
 | Stiff arm · Spin · Dive (QB: slide) · Hurdle | A · B · X · Y | J · K · U · I |
 | Switch defender (pre-snap and during the play) | B | K |
@@ -63,6 +66,11 @@ presses A on a second controller when asked. Each picks their own plays and cont
 League → **Playbook**: design your own plays. Pick a formation, give every receiver a route (or a block), the
 primary read, QB drop, play action or a bootleg, or build a run (ball carrier, direction, hole, zone or power
 blocking). Test runs it against CPU defenses. Your plays appear in the **My Plays** tab when you call a play.
+
+### Trick plays
+Zone read and speed option, jet sweep (the snap button starts the motion, the ball is snapped as he reaches the QB),
+designed QB runs, and fake punts / a fake field goal in the Special Teams tab on 4th down. The CPU calls QB runs
+only with a mobile quarterback and fakes now and then on 4th and short.
 
 ### Weather
 Play Now has Weather (clear, rain, snow, windy, random) and Time of day (day, dusk, night, random). Rain makes the ball

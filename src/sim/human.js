@@ -33,7 +33,12 @@ export function applyHuman(sim, inp, dt) {
   p.userActive = mag > 0.2;
   if (p.state !== 'active') return;
   // Handoffs are automatic (no QB keepers on straight runs): the QB is locked until the mesh.
-  if (p.task?.type === 'qb_handoff') { p.userActive = false; return; }
+  if (p.task?.type === 'qb_handoff') {
+    // Read option: hold LT through the mesh to keep it yourself.
+    if (inp.lt > 0.5 && sim.offPlay.run?.style === 'read') p.task.forceKeep = true;
+    p.userActive = false;
+    return;
+  }
   // Kickers follow the meter; the left stick aims (handled in kicking.js).
   if (p.task?.type === 'kicker' || p.task?.type === 'kneel' || p.task?.type === 'spike') { p.userActive = false; return; }
   // Returner while the kick is in the air: Y = fair catch (punts), X = kneel it in the end zone.
@@ -76,6 +81,7 @@ export function applyHuman(sim, inp, dt) {
 function handlePassing(sim, qb, inp) {
   const st = sim._passBtn || (sim._passBtn = { btn: null, t0: 0 });
   if (inp.pressed.RS) { startThrow(sim, qb, null, 'throwaway'); return; }
+  if (inp.pressed.LS && !st.btn) { pumpFake(sim, qb); return; }
   for (const btn of RECEIVER_BUTTONS) {
     if (inp.pressed[btn] && sim.icons[btn] !== undefined && !st.btn) { st.btn = btn; st.t0 = sim.t; }
   }
@@ -87,7 +93,9 @@ function handlePassing(sim, qb, inp) {
     const kind = held >= BULLET_HOLD ? 'bullet' : 'lob';
     const cam = sim.camDir;
     const lead = Math.hypot(inp.lx, inp.ly) > 0.3 ? { x: -inp.ly * cam * 3, z: inp.lx * cam * 3 } : null;
-    if (startThrow(sim, qb, rec, kind, lead)) {
+    // Placement: hold LB for a high pass (over underneath defenders), LT for a low one (away from them).
+    const place = inp.down.LB ? 'high' : inp.lt > 0.5 ? 'low' : null;
+    if (startThrow(sim, qb, rec, kind, lead, place)) {
       sim.controlledId = rec.id; // follow the receiver once the ball is out
       sim.emit('userThrow', { kind, btn: st.btn });
     }
@@ -97,6 +105,7 @@ function handlePassing(sim, qb, inp) {
 
 function handleCarrier(sim, p, inp, cam) {
   p.protect = !!inp.down.RB;
+  if (p.task?.option && inp.pressed.LB && sim.pitchOption()) return; // speed option pitch
   const isQB = p.slot === 'QB';
   if (inp.pressed.A) startMove(sim, p, 'stiffarm');
   else if (inp.pressed.B) startMove(sim, p, 'spin');
@@ -129,4 +138,20 @@ function handleDefense(sim, p, inp) {
   if (inp.pressed.X) { faceCarrier(); startMove(sim, p, 'tackle_dive'); }
   else if (inp.pressed.Y) startMove(sim, p, 'strip');
   else if (inp.flick.up) { faceCarrier(); startMove(sim, p, 'hitstick'); }
+}
+
+/**
+ * Pump fake (LS click): the QB shows a throw toward his first open read. Defenders in coverage may bite
+ * (freeze for a moment): better awareness bites less. Once per 0.8 s.
+ */
+function pumpFake(sim, qb) {
+  if (sim.t - (sim._pumpT ?? -9) < 0.8 || sim.pendingThrow) return;
+  sim._pumpT = sim.t;
+  qb.anim = 'throw'; qb.animT = 0.12;
+  for (const d of sim.players) {
+    if (d.team === qb.team || d.state !== 'active' || !['man', 'zone'].includes(d.task?.type)) continue;
+    const bite = Math.max(0.12, Math.min(0.55, 0.75 - sim.R(d, 'awareness') * 0.006));
+    if (sim.rng.next() < bite) { d.speedCap = Math.min(d.speedCap, 0.3); d.recoverAt = sim.t + 0.4; }
+  }
+  sim.emit('pumpFake', { qb: qb.id });
 }

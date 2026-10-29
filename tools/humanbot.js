@@ -39,6 +39,8 @@ const strategies = {
   quickThrowB: { plays: (p) => p.type === 'pass', input: (t) => ({ press: t > 1.3 && t < 1.32 ? 'B' : null, hold: t > 1.3 && t < 1.6 ? 'B' : null }) },
   smartThrow: { plays: (p) => p.type === 'pass', smart: true, input: () => ({}) },
   smartTap: { plays: (p) => p.type === 'pass', smart: true, tap: true, input: () => ({}) },
+  smartTapHigh: { plays: (p) => p.type === 'pass', smart: true, tap: true, place: 'high', input: () => ({}) },
+  smartTapLow: { plays: (p) => p.type === 'pass', smart: true, tap: true, place: 'low', input: () => ({}) },
   holdBall: { plays: (p) => p.type === 'pass', input: () => ({}) },
   runUpfield: { plays: (p) => p.type === 'run', input: (t) => ({ ly: t > 0.9 ? -1 : 0, rt: 1 }) },
 };
@@ -70,6 +72,8 @@ for (const [name, st] of Object.entries(strategies)) {
       for (const b in f.pressed) { f.pressed[b] = false; f.down[b] = false; }
       if (s.press) f.pressed[s.press] = true;
       if (s.hold) f.down[s.hold] = true;
+      if (st.place === 'high') f.down.LB = true;
+      if (st.place === 'low') f.lt = 1;
       const wasAir = sim.ball.state === 'air';
       sim.tick(STEP, f);
       k++;

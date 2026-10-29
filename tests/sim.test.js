@@ -253,3 +253,53 @@ describe('custom plays (playbook editor)', () => {
     expect(list().some((p) => p.custom)).toBe(false);
   }, 60000);
 });
+
+describe('gameplay extras', () => {
+  const run = (op, dp, seed, opts = {}) => {
+    const sim = new PlaySim({ rng: new RNG(seed), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: dp, humanTeam: null, ...opts });
+    return sim;
+  };
+  it('fake punt / fake FG run as scrimmage plays against the kicking defenses', async () => {
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const { defenseForSpecial } = await import('../src/ai/playcaller.js');
+    for (const id of ['st_fake_punt', 'st_fake_punt_pass', 'st_fake_fg']) {
+      const op = getOffPlay(id);
+      const dp = defenseForSpecial(op);
+      expect(dp.id).toMatch(/^st_/);
+      for (let s = 1; s <= 4; s++) {
+        const sim = run(op, dp, s);
+        expect(sim.isKick).toBe(false);
+        sim.snap();
+        let n = 0;
+        while (!sim.finished && n < 4000) { sim.tick(STEP, null); n++; }
+        expect(sim.result, id).toBeTruthy();
+      }
+    }
+  });
+
+  it('speed option pitches; placed passes and pump fakes work for the human QB', async () => {
+    const { getOffPlay } = await import('../src/data/playbook.js');
+    const dp = listDefPlays().find((d) => d.coverage === 'zone');
+    let pitched = 0;
+    for (let s = 1; s <= 6; s++) {
+      const sim = run(getOffPlay('spread_speed_option'), dp, s);
+      sim.snap();
+      let n = 0;
+      while (!sim.finished && n < 4000) { sim.tick(STEP, null); if (sim.events.some((e) => e.type === 'pitch')) pitched++; n++; }
+    }
+    expect(pitched).toBeGreaterThan(2);
+    // Human QB: pump fake (LS) then a high pass (LB held) to the A receiver.
+    const op = listOffPlays().find((p) => p.type === 'pass' && p.formation === 'gun_doubles');
+    const sim = run(op, dp, 3, { humanTeam: 0 });
+    sim.snap();
+    const frame = (o = {}) => ({ lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0, down: {}, pressed: {}, released: {}, held: {}, flick: {}, ...o });
+    for (let i = 0; i < 50; i++) sim.tick(STEP, frame());
+    sim.tick(STEP, frame({ pressed: { LS: true } }));
+    expect(sim.events.some((e) => e.type === 'pumpFake')).toBe(true);
+    for (let i = 0; i < 20; i++) sim.tick(STEP, frame());
+    sim.tick(STEP, frame({ pressed: { A: true }, down: { A: true, LB: true } }));
+    for (let i = 0; i < 20 && !sim.passThrown; i++) sim.tick(STEP, frame({ down: { LB: true } }));
+    expect(sim.passThrown).toBe(true);
+    expect(sim.ball.place).toBe('high');
+  });
+});

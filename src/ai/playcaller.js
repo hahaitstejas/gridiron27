@@ -50,8 +50,9 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   // 4th down / end-of-half field goals.
   if (m.down === 4) {
     const d = fourthDown(m, team, rng);
-    if (d === 'punt') return getOffPlay('st_punt');
-    if (d === 'fg') return getOffPlay('st_fg');
+    // Now and then a gamble: a fake on 4th and short.
+    if (d === 'punt') return m.toGo <= 2 && m.yardLine >= 30 && m.yardLine <= 60 && rng.next() < 0.04 ? getOffPlay(rng.next() < 0.5 ? 'st_fake_punt' : 'st_fake_punt_pass') : getOffPlay('st_punt');
+    if (d === 'fg') return m.toGo <= 3 && rng.next() < 0.025 ? getOffPlay('st_fake_fg') : getOffPlay('st_fg');
   }
   const fgDist = fgDistance(m.yardLine);
   if ((m.quarter === 2 || q4) && m.clock < 8 && !m.clockRunning && fgDist <= kickerMaxFG(m.teams[team]) && (m.quarter === 2 || (lead >= -3 && lead <= 0))) return getOffPlay('st_fg');
@@ -77,8 +78,14 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   });
 }
 
+// Plays built around the QB running the ball (designed runs, options): only for a QB who can run.
+const qbRun = (p) => p.type === 'run' && (p.run.carrier === 'QB' || p.run.style === 'read' || p.run.style === 'speed_option') && p.id !== 'gl_sneak';
+
 function pickPlay(m, rng, want) {
-  let pool = listOffPlays().filter((p) => !p.custom); // the CPU sticks to the stock playbook
+  const team = m.teams?.[m.possession];
+  const qb = team?.roster.find((x) => x.id === team.depth?.QB?.[0]);
+  const mobile = (qb?.ratings?.speed ?? 0) >= 76;
+  let pool = listOffPlays().filter((p) => !p.custom && (mobile || !qbRun(p))); // the CPU sticks to the stock playbook
   const score = (p) => {
     const t = playTags(p);
     let w = 1;
@@ -170,6 +177,7 @@ function pickDefense(m, rng, all, blitzRate) {
 /** Special-teams defensive look for a known special offensive call. */
 export function defenseForSpecial(offPlay) {
   if (offPlay.type === 'kickoff') return getDefPlay('st_kick_return');
+  if (offPlay.fake) return getDefPlay(offPlay.fake === 'punt' ? 'st_punt_return' : 'st_fg_block'); // the fake fools them
   if (offPlay.type === 'punt') return getDefPlay('st_punt_return');
   if (offPlay.type === 'fg') return getDefPlay('st_fg_block');
   return null;

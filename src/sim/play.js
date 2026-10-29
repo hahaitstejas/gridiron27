@@ -262,7 +262,7 @@ export class PlaySim {
    * side (jet / across motion), otherwise out wider. He's still moving at the snap (a running start)
    * and his route starts from wherever he is.
    */
-  startMotion(id, across = true) {
+  startMotion(id, across = true, { depth = null, speed = null } = {}) {
     const p = this.players[id];
     if (!p || this.state !== 'presnap' || this.motion) return false;
     const l = this.toLocal(p.x, p.z);
@@ -271,8 +271,10 @@ export class PlaySim {
     let lat = across ? -side * Math.max(3, Math.abs(l.lat) * 0.6) : l.lat + side * 6;
     const wz = clamp(this.toWorld(0, lat).z, -lim, lim);
     lat = this.toLocal(this.losX, wz).lat;
-    const to = this.toWorld(Math.min(l.down, -1), lat);
-    this.motion = { id, to, speed: 5.5 + this.R(p, 'speed') * 0.01 };
+    const down = depth ?? Math.min(l.down, -1);
+    if (depth !== null) { const w = this.toWorld(down, l.lat); p.x = w.x; p.z = w.z; } // jet: drop off the line first
+    const to = this.toWorld(down, lat);
+    this.motion = { id, to, speed: speed ?? 5.5 + this.R(p, 'speed') * 0.01 };
     return true;
   }
 
@@ -311,8 +313,8 @@ export class PlaySim {
       const a = (play.routes || {})[p.slot];
       if (p.slot === 'QB' && (play.type === 'kneel' || play.type === 'spike')) {
         p.task = { type: play.type };
-      } else if (p.slot === 'QB' && play.type === 'run' && play.run?.carrier === 'QB') {
-        p.task = { type: 'qb_keep' };
+      } else if (p.slot === 'QB' && play.type === 'run' && (play.run?.carrier === 'QB' || play.run?.style === 'speed_option')) {
+        p.task = { type: 'qb_keep', option: play.run.style === 'speed_option' };
       } else if (p.slot === 'QB') {
         p.task = play.type === 'pass'
           ? { type: 'qb_pass', drop: dropFor(play, this.toLocal(p.x, p.z).down), phase: 'drop' }
@@ -323,7 +325,7 @@ export class PlaySim {
         // Play action: carry out the fake through the mesh, then pick up a rusher.
         p.task = { type: 'pa_fake', to: this.toWorld(-3.2, -this.toLocal(p.x, p.z).lat * 0.3 + (play.boot ? -play.boot * 1.5 : 0)) };
       } else if (play.type === 'run' && play.run && play.run.carrier === p.slot) {
-        p.task = { type: 'run_path', phase: 'mesh' };
+        p.task = play.run.style === 'speed_option' ? { type: 'pitch_trail' } : { type: 'run_path', phase: 'mesh' };
       } else if (a && ROUTES[a.replace(/_(l|r)$/, '')]) {
         p.task = this.makeRoute(p, a);
       } else if (a === 'stalk') {
@@ -422,6 +424,7 @@ export class PlaySim {
         else updateSpecial(this, dt, this.humanTeam !== null ? input : null);
       }
       this.updateQBSpecial();
+      this.updateOption();
       updatePendingThrow(this, dt);
       runOffenseAI(this, dt);
       runDefenseAI(this, dt);
@@ -573,14 +576,53 @@ export class PlaySim {
     const t = qb.task?.type;
     if (t === 'kneel' && this.t > 0.35 && qb.state === 'active') { qb.anim = 'down'; this.tackleCarrier(qb, null, 0); qb.fallT = 0.15; qb.vx = qb.vz = 0; }
     else if (t === 'spike' && this.t > 0.3 && qb.state === 'active') { this.ball.vx = this.ball.vz = 0; this.ball.vy = -6; this.ball.y = 1.6; qb.anim = 'throw'; qb.animT = 0.2; this.stats.spike = true; incomplete(this, 'spike'); }
-    else if (t === 'qb_keep' && this.t > 0.15) {
-      const aim = this.toWorld(this.offPlay.run.aim[0], this.offPlay.run.aim[1]);
+    // Designed QB runs ride the mesh with the back for a beat so the blocks set up (draws sell the pass longer).
+    else if (t === 'qb_keep' && this.t > (this.offPlay.run.style === 'draw' ? 1.0 : qb.task.option || this.toLocal(qb.x, qb.z).down > -2 ? 0.15 : 0.6)) {
+      const run = this.offPlay.run;
+      const option = qb.task.option;
+      // A sneak is a straight-ahead QB run from under center; everything else is a designed run (or the option keep).
+      const sneak = !option && Math.abs(run.aim[1]) < 1 && run.style !== 'draw' && this.toLocal(qb.x, qb.z).down > -2;
+      const aim = option ? this.toWorld(0.5, (run.side || 1) * 7) : this.toWorld(run.aim[0], run.aim[1]);
       this.setRunner(qb, 'keep');
-      qb.task.aim = aim; qb.task.aimUntil = this.t + 0.8; qb.task.sneak = true;
-      // Lunge over the pile behind the center.
-      qb.facing = this.dir > 0 ? 0 : Math.PI;
-      startMove(this, qb, 'dive');
+      qb.task.aim = aim; qb.task.aimUntil = this.t + (sneak ? 0.8 : 1.3);
+      if (sneak) {
+        qb.task.sneak = true;
+        // Lunge over the pile behind the center.
+        qb.facing = this.dir > 0 ? 0 : Math.PI;
+        startMove(this, qb, 'dive');
+      }
+      if (option) {
+        qb.task.option = true;
+        const rb = this.bySlot(this.offIdx, run.carrier);
+        if (rb && rb.state === 'active') rb.task = { type: 'pitch_trail' };
+      }
     }
+  }
+
+  /** Speed option: the QB pitches to the trailing back (CPU when a defender closes; the human with LB). */
+  pitchOption() {
+    const b = this.ball;
+    const qb = this.players[b.carrier];
+    if (!qb?.task?.option || b.state !== 'held') return false;
+    const rb = this.bySlot(this.offIdx, this.offPlay.run.carrier);
+    if (!rb || rb.task?.type !== 'pitch_trail' || rb.state !== 'active') return false;
+    if (this.toLocal(qb.x, qb.z).down > 0.5) return false; // no forward laterals
+    b.state = 'snap'; b.t = 0; b.T = 0.35; b.from = { x: qb.x, y: 1.1, z: qb.z }; b.carrier = rb.id; b.pitch = true;
+    qb.task = { type: 'escort' };
+    qb.anim = 'throw'; qb.animT = 0.15;
+    this.emit('pitch', { from: qb.id, to: rb.id });
+    return true;
+  }
+
+  updateOption() {
+    const b = this.ball;
+    if (b.state !== 'held') return;
+    const qb = this.players[b.carrier];
+    if (!qb?.task?.option || this.isHumanControlled(qb)) return;
+    const l = this.toLocal(qb.x, qb.z);
+    let near = 99;
+    for (const d of this.players) if (d.team !== qb.team && d.state === 'active' && !d.engagement) near = Math.min(near, Math.hypot(d.x - qb.x, d.z - qb.z));
+    if (near < 3 || Math.abs(l.lat) > 6.5) this.pitchOption();
   }
 
   syncBall() {

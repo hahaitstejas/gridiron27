@@ -220,6 +220,7 @@ export class GameSession {
     });
     this.state = 'presnap';
     this.presnapT = 0;
+    this.jetWait = false;
     this.emit('presnap', { sim: this.sim });
   }
 
@@ -227,6 +228,13 @@ export class GameSession {
   snap() {
     const m = this.match;
     const sim = this.sim;
+    // Jet motion plays: the snap call starts the motion; the ball is snapped as he reaches the QB (see tick).
+    const mo = sim.offPlay.motion;
+    if (mo && !sim.isKick && !this.jetGo) {
+      const p = sim.offense().find((q) => q.slot === mo.slot);
+      if (p && !sim.motion) sim.startMotion(p.id, mo.across !== false, { depth: mo.depth ?? null, speed: mo.speed ?? null });
+      if (sim.motion) { this.jetWait = true; return; }
+    }
     const cpuOff = !this.isHuman(this.offTeam);
     // Clock between plays.
     if (m.clockRunning && m.phase === 'scrimmage') {
@@ -365,6 +373,18 @@ export class GameSession {
       if (humanInvolved && !this.fast) this.realtimePresnap(dt);
       if (this.state !== 'presnap') return;
       this.presnapT += dt;
+      if (this.jetWait) {
+        const p = sim.players[sim.motion.id];
+        const lat = sim.toLocal(p.x, p.z).lat - (sim.offPlay.run?.mesh?.[1] ?? 0);
+        if (Math.abs(lat) < 1.3 || sim.motion.done) {
+          this.jetWait = false;
+          this.jetGo = true;
+          this.snap();
+          this.jetGo = false;
+          if (this.sim && this.state === 'live') this.sim.tick(dt, null);
+        } else sim.tick(dt, input);
+        return;
+      }
       const off = this.offTeam, def = this.defTeam;
       const offIn = this.inputFor(input, off), defIn = this.inputFor(input, def);
       if (this.audible) {

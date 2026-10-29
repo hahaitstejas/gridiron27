@@ -3,7 +3,7 @@ import { seek, stop, moveDir } from '../sim/movement.js';
 import { carrierAI } from './carrier.js';
 import { qbDecide } from './qb.js';
 
-const OFF_TASKS = new Set(['pa_fake', 'qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
+const OFF_TASKS = new Set(['pitch_trail', 'pa_fake', 'qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
 
 export function runOffenseAI(sim, dt) {
   if ((sim._protT = (sim._protT || 0) - dt) <= 0) {
@@ -29,6 +29,7 @@ export function runOffenseAI(sim, dt) {
       case 'run_path': runPath(sim, p); break;
       case 'carrier': carrierAI(sim, p, dt); break;
       case 'escort': escort(sim, p); break;
+      case 'pitch_trail': pitchTrail(sim, p); break;
     }
   }
 }
@@ -101,9 +102,20 @@ function qbHandoff(sim, p) {
     return;
   }
   const mesh = play.run.mesh ? sim.toWorld(play.run.mesh[0] + 0.6, play.run.mesh[1] - (play.run.side || 1) * 0.9) : { x: p.x - sim.dir, z: p.z };
+  // Read option: at the mesh the QB reads the backside end: if he crashes on the back, the QB keeps.
+  if (play.run.style === 'read' && rb && p.task.read === undefined && sim.t > 0.62 && sim.ball.carrier === p.id && sim.ball.state === 'held' && Math.hypot(rb.x - p.x, rb.z - p.z) < 1.6) {
+    p.task.read = p.task.forceKeep || readKeep(sim, rb);
+    if (p.task.read) {
+      sim.emit('keep', { qb: p.id });
+      sim.setRunner(p, 'keep');
+      p.task.aim = sim.toWorld(1, -(play.run.side || 1) * 5.5);
+      p.task.aimUntil = sim.t + 1.1;
+      return;
+    }
+  }
   seek(p, mesh.x, mesh.z, play.run.style === 'draw' ? 0.55 : 0.75, 0.6);
   if (rb) p.face = play.run.style === 'draw' && sim.t < 0.8 ? { x: p.x + sim.dir * 10, z: p.z } : { x: rb.x, z: rb.z };
-  const minT = play.run.style === 'draw' ? 1.0 : 0.35;
+  const minT = play.run.style === 'draw' ? 1.0 : play.run.style === 'jet' ? 0.05 : play.run.style === 'read' ? 0.62 : 0.35;
   if (sim.ball.carrier === p.id && sim.ball.state === 'held' && rb && rb.state === 'active' && sim.t > minT && Math.hypot(rb.x - p.x, rb.z - p.z) < 1.3) {
     sim.handedOff = true;
     sim.emit('handoff', { from: p.id, to: rb.id });
@@ -123,12 +135,42 @@ function runPath(sim, p) {
   const aim = sim.toWorld(play.run.aim[0], play.run.aim[1]);
   if (p.task.phase === 'mesh') {
     // Delay slightly so the QB reaches the mesh point (much longer on draws: sell the pass first).
-    if (sim.t < (play.run.style === 'draw' ? 0.6 : 0.15)) { stop(p); return; }
+    if (sim.t < (play.run.style === 'draw' ? 0.6 : play.run.style === 'jet' ? 0 : 0.15)) { stop(p); return; }
     const d = seek(p, mesh.x, mesh.z, 0.7, 0.3);
     if (d < 0.6) p.task.phase = 'hole';
   } else {
     seek(p, aim.x, aim.z, 0.55, 0.1);
   }
+}
+
+/** The read on a zone read: the unblocked backside end crashing down on the back means keep. */
+function readKeep(sim, rb) {
+  const side = sim.offPlay.run.side || 1;
+  let end = null, best = 99;
+  for (const d of sim.players) {
+    if (d.team === sim.offIdx || d.engagement || d.state !== 'active') continue;
+    const l = sim.toLocal(d.x, d.z);
+    const back = -side * l.lat; // how far toward the backside
+    if (back > 2 && back < 9 && l.down < 4 && back < best) { best = back; end = d; }
+  }
+  if (!end) return false;
+  const toRb = Math.hypot(rb.x - end.x, rb.z - end.z);
+  const closing = (end.vx * (rb.x - end.x) + end.vz * (rb.z - end.z)) / (toRb || 1);
+  return toRb < 3.2 || closing > 3;
+}
+
+/** Speed option pitch man: stay a few yards outside and behind the QB. */
+function pitchTrail(sim, p) {
+  const qb = sim.carrier();
+  if (!qb || !qb.task?.option) {
+    const l = sim.toLocal(p.x, p.z);
+    const w = sim.toWorld(l.down, l.lat + (sim.offPlay.run.side || 1) * 2);
+    seek(p, w.x, w.z, 0.6);
+    return;
+  }
+  const l = sim.toLocal(qb.x, qb.z);
+  const w = sim.toWorld(l.down - 1.6, l.lat + (sim.offPlay.run.side || 1) * 4);
+  seek(p, w.x, w.z, 1, 0.3);
 }
 
 // ---------- Protection ----------

@@ -3071,6 +3071,166 @@
     "X"
    ],
    "pa": true
+  },
+  {
+   "id": "gd_read_option",
+   "name": "Zone Read",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "Read option",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.2
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": -1,
+    "style": "read"
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "pistol_read",
+   "name": "Pistol Read",
+   "formation": "pistol_ace",
+   "type": "run",
+   "concept": "Read option",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.5
+    ],
+    "mesh": [
+     -5.2,
+     0.5
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "read"
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "block",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "spread_speed_option",
+   "name": "Speed Option",
+   "formation": "gun_spread",
+   "type": "run",
+   "concept": "Speed option",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     7
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "speed_option"
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Y": "stalk",
+    "Z": "stalk"
+   }
+  },
+  {
+   "id": "sbt_jet_sweep",
+   "name": "Jet Sweep",
+   "formation": "singleback_trips",
+   "type": "run",
+   "concept": "Jet sweep",
+   "motion": {
+    "slot": "H",
+    "across": true,
+    "depth": -2.2,
+    "speed": 8.5
+   },
+   "run": {
+    "carrier": "H",
+    "aim": [
+     0.5,
+     -9
+    ],
+    "mesh": [
+     -2.2,
+     0
+    ],
+    "scheme": "zone",
+    "side": -1,
+    "style": "jet"
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "RB": "block"
+   }
+  },
+  {
+   "id": "gd_qb_power",
+   "name": "QB Power",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "QB run",
+   "run": {
+    "carrier": "QB",
+    "aim": [
+     1,
+     2.6
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block",
+    "RB": "block"
+   }
+  },
+  {
+   "id": "spread_qb_draw",
+   "name": "QB Draw",
+   "formation": "gun_spread",
+   "type": "run",
+   "concept": "QB draw",
+   "run": {
+    "carrier": "QB",
+    "aim": [
+     1,
+     0.8
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "draw"
+   },
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "H": "stalk",
+    "Y": "stalk",
+    "RB": "block"
+   }
   }
  ]
 }

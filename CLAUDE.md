@@ -183,6 +183,19 @@ rounds}, history[], seed, offseason{step, …} }`.
   rookie class; `makePick`, `simToUserPick`, `finishDraft`) → cutdown (`cutDown` to 53 keeping position minimums)
   → `startNextSeason`.
 
+### Trick plays and QB controls
+- Run styles (`run.style`): `read` (zone read: at the mesh the QB reads the backside end, `readKeep()` in offense.js; the
+  human holds LT to keep), `speed_option` (QB keeps toward the edge with the back in `pitch_trail`; `PlaySim.pitchOption()`
+  on LB or automatically when a defender closes / he reaches the edge), `jet` (play `motion: { slot, across, depth, speed }`:
+  the session's snap starts the motion and snaps when he reaches the QB, `jetWait`), `draw`, `pitch`. QB carriers
+  (`qb_keep`): a sneak only straight ahead from under center; otherwise a designed run after a short ride.
+- The CPU only calls QB-run / option plays with a mobile QB (speed ≥ 76, `qbRun` in playcaller.js).
+- Fakes (`special.json`, `fake: 'punt'|'fg'`, formations `punt_fake` / `fg_fake`): scrimmage plays the defense reads as a
+  kick (`defenseForSpecial`); unassigned special-teams defenders rush up front / zone behind (`fakeKickAssign`). Hidden
+  from the normal lists (`isScrimmagePlay`), offered in the 4th-down Special Teams tab; the CPU fakes ~3% on 4th & short.
+- Passing: hold LB (high) / LT (low) while throwing (`b.place`: harder for defenders to play, -5% catch, no YAC);
+  LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
+
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays

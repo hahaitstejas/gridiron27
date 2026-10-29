@@ -47,8 +47,8 @@ export class Hud {
     const pad = [
       ['Pre-snap', 'A snap · X audible · Y hot route (receiver button, then stick) · RB motion (receiver button, then stick) · View timeout · (defense) B switch player, X audible, LB coverage (press / off / shade)'],
       ['Play call', 'LB/RB tabs · A select · B back · X flip play · View timeout'],
-      ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · left stick leads · RS click throw away'],
-      ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect'],
+      ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · hold LB high / LT low · left stick leads · LS click pump fake · RS click throw away'],
+      ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect · LB pitch (speed option) · hold LT at the mesh to keep (zone read)'],
       ['Defense', 'B switch player · RT sprint · A swat · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
       ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
       ['Returns', 'Y fair catch (punts) · X kneel in the end zone'],

@@ -68,6 +68,8 @@ export class PlayCallScreen {
       else {
         st.push(getOffPlay('st_punt'));
         if (fgDistance(m.yardLine) <= 66) st.push(getOffPlay('st_fg'));
+        st.push(getOffPlay('st_fake_punt'), getOffPlay('st_fake_punt_pass'));
+        if (fgDistance(m.yardLine) <= 55) st.push(getOffPlay('st_fake_fg'));
         st.push(getOffPlay('st_kneel'), getOffPlay('st_spike'));
       }
       tabs.push({ name: m.phase === 'try' ? 'Extra Point' : 'Special Teams', special: true, plays: st });

@@ -35,10 +35,10 @@ export function predictPos(sim, r, T) {
 }
 
 /** Begin a throw. kind: 'bullet' | 'lob' | 'throwaway'. lead: {x,z} world-space stick lead (yards). */
-export function startThrow(sim, qb, receiver, kind, lead = null) {
+export function startThrow(sim, qb, receiver, kind, lead = null, place = null) {
   if (sim.passThrown || sim.pendingThrow || sim.ball.state !== 'held' || sim.ball.carrier !== qb.id) return false;
   if (sim.qbCrossed) return false;
-  sim.pendingThrow = { qb: qb.id, rec: receiver ? receiver.id : -1, kind, lead, at: sim.t + WINDUP };
+  sim.pendingThrow = { qb: qb.id, rec: receiver ? receiver.id : -1, kind, lead, place, at: sim.t + WINDUP };
   qb.anim = 'throw';
   qb.animT = 0;
   if (receiver) qb.face = { x: receiver.x, z: receiver.z };
@@ -55,10 +55,10 @@ export function updatePendingThrow(sim) {
   }
   if (sim.t < pt.at) return;
   sim.pendingThrow = null;
-  release(sim, qb, pt.rec >= 0 ? sim.players[pt.rec] : null, pt.kind, pt.lead);
+  release(sim, qb, pt.rec >= 0 ? sim.players[pt.rec] : null, pt.kind, pt.lead, pt.place);
 }
 
-function release(sim, qb, rec, kind, lead) {
+function release(sim, qb, rec, kind, lead, place = null) {
   const rng = sim.rng;
   const thp = sim.R(qb, 'throwPower');
   const tha = sim.R(qb, 'throwAccuracy');
@@ -110,7 +110,10 @@ function release(sim, qb, rec, kind, lead) {
   b.T = T;
   b.vx = (tx - qb.x) / T;
   b.vz = (tz - qb.z) / T;
-  b.vy = (CATCH_HEIGHT - RELEASE_HEIGHT + 0.5 * GRAVITY * T * T) / T;
+  // High passes arrive above the receiver's head, low ones at his knees.
+  const arrive = CATCH_HEIGHT + (place === 'high' ? 0.7 : place === 'low' ? -0.65 : 0);
+  b.vy = (arrive - RELEASE_HEIGHT + 0.5 * GRAVITY * T * T) / T;
+  b.place = place;
   b.target = { x: tx, z: tz };
   b.intended = rec ? rec.id : -1;
   b.thrower = qb.id;
@@ -221,6 +224,12 @@ function resolveCatch(sim, reach, late = false) {
       pPlay += under ? -0.1 : 0.03;
     }
     if (late) pPlay -= 0.1;
+    // Placement keeps the ball away from defenders: high over the underneath ones, low away from all of them.
+    if (b.place) {
+      const qb = sim.players[b.thrower];
+      const under = qb && Math.hypot(d.x - qb.x, d.z - qb.z) < Math.hypot(b.target.x - qb.x, b.target.z - qb.z) - 1;
+      pPlay -= b.place === 'low' ? 0.08 : under ? 0.16 : 0.04;
+    }
     pPlay = clamp(pPlay, 0.03, 0.95);
     if (rng.next() < pPlay) {
       // Base hands, then much better odds when the defender beat the receiver to the ball, when the
@@ -235,6 +244,7 @@ function resolveCatch(sim, reach, late = false) {
       pInt += (0.5 + sim.R(d, 'catching') * 0.004 - pInt) * clean;
       pInt = Math.min(0.9, pInt * (1 + 0.7 * sim.sl(d.team, 'interceptions')));
       if (b.tipped) pInt *= 0.4;
+      if (b.place) pInt *= 0.6;
       if (recDist < 0.8) pInt *= 0.6;
       if (rng.next() < pInt && Math.abs(b.z) < HALF_WIDTH - 0.2) {
         interception(sim, d);
@@ -270,6 +280,7 @@ function resolveCatch(sim, reach, late = false) {
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
   if (b.tipped) pCatch -= 0.2;
+  if (b.place) pCatch -= 0.05; // harder to catch away from the body
   pCatch -= Math.max(0, b.T - 1.3) * 0.12; // long balls: more time for the defense to get a hand in
   pCatch += 0.12 * sim.sl(r.team, 'catching');
   pCatch = clamp(pCatch, 0.1, 0.97);
@@ -287,6 +298,8 @@ function resolveCatch(sim, reach, late = false) {
     // Securing the catch costs a step, more so in traffic: gives defenders a chance to close.
     r.speedCap = contest > 0.15 ? 0.55 : 0.75;
     r.recoverAt = sim.t + 0.35;
+    // Going up or down for the ball costs the run after the catch.
+    if (b.place) { r.speedCap = Math.min(r.speedCap, b.place === 'low' ? 0.35 : 0.45); r.recoverAt = sim.t + 0.6; }
     sim.setRunner(r, 'catch');
     // A defender closing on the catch gets a shot at him as the ball arrives.
     let hitter = null, hd = 2.2;

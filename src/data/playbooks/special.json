@@ -421,6 +421,216 @@
       ]
      }
     ]
+   },
+   "punt_fake": {
+    "name": "Punt (fake)",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "C",
+      "p": "C",
+      "d": 1,
+      "at": [
+       -0.5,
+       0
+      ]
+     },
+     {
+      "s": "LG",
+      "p": "OLB",
+      "d": 3,
+      "at": [
+       -0.7,
+       -1.3
+      ]
+     },
+     {
+      "s": "RG",
+      "p": "MLB",
+      "d": 2,
+      "at": [
+       -0.7,
+       1.3
+      ]
+     },
+     {
+      "s": "LT",
+      "p": "TE",
+      "d": 1,
+      "at": [
+       -0.8,
+       -2.6
+      ]
+     },
+     {
+      "s": "RT",
+      "p": "FB",
+      "d": 0,
+      "at": [
+       -0.8,
+       2.6
+      ]
+     },
+     {
+      "s": "Y",
+      "p": "SS",
+      "d": 2,
+      "at": [
+       -1.6,
+       -3.8
+      ]
+     },
+     {
+      "s": "H",
+      "p": "OLB",
+      "d": 2,
+      "at": [
+       -1.6,
+       3.8
+      ]
+     },
+     {
+      "s": "X",
+      "p": "CB",
+      "d": 3,
+      "at": [
+       -0.8,
+       -21
+      ]
+     },
+     {
+      "s": "Z",
+      "p": "CB",
+      "d": 4,
+      "at": [
+       -0.8,
+       21
+      ]
+     },
+     {
+      "s": "QB",
+      "p": "FS",
+      "d": 1,
+      "at": [
+       -7,
+       1
+      ]
+     },
+     {
+      "s": "P",
+      "p": "P",
+      "d": 0,
+      "at": [
+       -15,
+       0
+      ]
+     }
+    ]
+   },
+   "fg_fake": {
+    "name": "Field Goal (fake)",
+    "family": "Special Teams",
+    "players": [
+     {
+      "s": "C",
+      "p": "C",
+      "d": 1,
+      "at": [
+       -0.5,
+       0
+      ]
+     },
+     {
+      "s": "LG",
+      "p": "LG",
+      "d": 0,
+      "at": [
+       -0.7,
+       -1.3
+      ]
+     },
+     {
+      "s": "RG",
+      "p": "RG",
+      "d": 0,
+      "at": [
+       -0.7,
+       1.3
+      ]
+     },
+     {
+      "s": "LT",
+      "p": "LT",
+      "d": 0,
+      "at": [
+       -0.8,
+       -2.6
+      ]
+     },
+     {
+      "s": "RT",
+      "p": "RT",
+      "d": 0,
+      "at": [
+       -0.8,
+       2.6
+      ]
+     },
+     {
+      "s": "Y",
+      "p": "TE",
+      "d": 0,
+      "at": [
+       -0.9,
+       -3.9
+      ]
+     },
+     {
+      "s": "Z",
+      "p": "TE",
+      "d": 1,
+      "at": [
+       -0.9,
+       3.9
+      ]
+     },
+     {
+      "s": "H",
+      "p": "TE",
+      "d": 2,
+      "at": [
+       -1.8,
+       -5.1
+      ]
+     },
+     {
+      "s": "F",
+      "p": "LG",
+      "d": 1,
+      "at": [
+       -1.8,
+       5.1
+      ]
+     },
+     {
+      "s": "QB",
+      "p": "P",
+      "d": 0,
+      "at": [
+       -7,
+       0
+      ]
+     },
+     {
+      "s": "K",
+      "p": "K",
+      "d": 0,
+      "at": [
+       -9.5,
+       -2
+      ]
+     }
+    ]
    }
   },
   "defense": {
@@ -786,6 +996,70 @@
    "name": "Spike Ball",
    "formation": "singleback_ace",
    "type": "spike"
+  },
+  {
+   "id": "st_fake_punt",
+   "name": "Fake Punt Run",
+   "formation": "punt_fake",
+   "type": "run",
+   "fake": "punt",
+   "concept": "Fake punt",
+   "run": {
+    "carrier": "QB",
+    "aim": [
+     1,
+     3
+    ],
+    "scheme": "gap",
+    "side": 1
+   },
+   "routes": {
+    "Y": "block",
+    "H": "block",
+    "X": "stalk",
+    "Z": "stalk"
+   }
+  },
+  {
+   "id": "st_fake_punt_pass",
+   "name": "Fake Punt Pass",
+   "formation": "punt_fake",
+   "type": "pass",
+   "fake": "punt",
+   "concept": "Fake punt",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "Y": "block",
+    "H": "flat"
+   },
+   "read": [
+    "X",
+    "H",
+    "Z"
+   ]
+  },
+  {
+   "id": "st_fake_fg",
+   "name": "Fake FG Pass",
+   "formation": "fg_fake",
+   "type": "pass",
+   "fake": "fg",
+   "concept": "Fake field goal",
+   "dropback": 3,
+   "boot": 1,
+   "routes": {
+    "Z": "flat",
+    "F": "corner",
+    "Y": "drag",
+    "H": "block"
+   },
+   "read": [
+    "Z",
+    "F",
+    "Y"
+   ]
   }
  ],
  "defense": [

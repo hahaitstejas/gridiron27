@@ -9,7 +9,7 @@ const offPlays = [...offenseJson.plays, ...specialJson.offense];
 const defPlays = [...defenseJson.plays, ...specialJson.defense];
 const SPECIAL = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike', 'return', 'block']);
 /** Plays a team can pick from the normal play-call list (no special teams). */
-export const isScrimmagePlay = (p) => !SPECIAL.has(p.type);
+export const isScrimmagePlay = (p) => !SPECIAL.has(p.type) && !p.fake;
 
 export const getOffFormation = (id) => offFormations[id];
 export const getDefFormation = (id) => defFormations[id];

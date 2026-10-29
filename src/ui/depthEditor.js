@@ -12,7 +12,7 @@ const SLOT_NAMES = {
  * Coaching: depth chart editor for one team (changes apply from the next snap).
  * energy(id) -> 0..1 shows how fresh each player is during a game (optional).
  */
-export function depthChartScreen(screens, team, { energy = null, onDone }) {
+export function depthChartScreen(screens, team, { energy = null, onDone, onChange = () => {} }) {
   const byId = new Map(team.roster.map((p) => [p.id, p]));
   const who = (p) => `#${p.number} ${p.first[0]}. ${p.last}`;
   const fresh = (p) => {
@@ -50,9 +50,9 @@ export function depthChartScreen(screens, team, { energy = null, onDone }) {
       row.activate = () => edit(slot, i, holding === id ? null : id); // A: pick up / put down
       row.onfocusitem = () => {
         // Moving the stick while holding a player carries him to the new spot.
-        if (holding && holding !== id) { placeInDepth(team, slot, holding, i); edit(slot, i, holding); }
+        if (holding && holding !== id) { placeInDepth(team, slot, holding, i); onChange(); edit(slot, i, holding); }
       };
-      row.removePlayer = () => { removeFromDepth(team, slot, id); edit(slot, Math.min(i, team.depth[slot].length - 1)); };
+      row.removePlayer = () => { removeFromDepth(team, slot, id); onChange(); edit(slot, Math.min(i, team.depth[slot].length - 1)); };
       return row;
     });
     rows.push(...depthRows);
@@ -60,7 +60,7 @@ export function depthChartScreen(screens, team, { energy = null, onDone }) {
       const row = el('div.dc-row.avail', {},
         el('span.dc-rank', { text: '+' }), el('span.dc-name', { text: who(p) }), el('span.dc-pos', { text: p.pos }),
         el('span.dc-ovr', { text: String(slotRating(p, slot)) }), fresh(p));
-      row.activate = () => { placeInDepth(team, slot, p.id, team.depth[slot]?.length ?? 0); edit(slot, team.depth[slot].length - 1, p.id); };
+      row.activate = () => { placeInDepth(team, slot, p.id, team.depth[slot]?.length ?? 0); onChange(); edit(slot, team.depth[slot].length - 1, p.id); };
       return row;
     });
     rows.push(...avail);

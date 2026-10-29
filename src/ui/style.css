@@ -192,3 +192,11 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .st-empty { padding: 20px; opacity: 0.7; text-align: center; }
 .over-buttons { display: flex; gap: 16px; }
 .start-btn.secondary { background: var(--panel); color: #fff; border: 2px solid var(--line); }
+/* League screens */
+.league-status { color: var(--gold); font-size: 13px; font-weight: 700; margin: -4px 0 12px; text-align: center; }
+.tp-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; width: min(1180px, 95vw); }
+.tp-card { background: var(--panel); border: 2px solid transparent; border-bottom: 4px solid var(--tc); border-radius: 8px; padding: 8px 6px; text-align: center; cursor: pointer; }
+.tp-card canvas { display: block; margin: 0 auto 4px; }
+.tp-card-name { font-size: 12px; font-weight: 800; line-height: 1.2; }
+.tp-card-abbr { font-size: 11px; opacity: 0.6; }
+@media (max-width: 900px) { .tp-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }

@@ -2,6 +2,9 @@ import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
 import { loadLocalLeague } from './data/localLeague.js';
+import { deserializeLeague } from './data/league.js';
+import { activeSlot, readSave } from './data/storage.js';
+import { LeagueUI, attachLogos } from './ui/league.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
@@ -17,8 +20,16 @@ import { energyOf } from './game/fatigue.js';
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
-const local = await loadLocalLeague(teams);
 const prefs = loadPrefs();
+// A saved league (Phase 4) wins; without one, the optional spreadsheets in public/local/ apply.
+let saved = null;
+try { const slot = activeSlot(); saved = slot ? deserializeLeague(await readSave(slot)) : null; } catch (e) { console.warn('Could not load the saved league', e); }
+let local = null;
+if (saved) {
+  teams.splice(0, teams.length, ...saved.teams);
+  await attachLogos(teams);
+  if (saved.playAs !== null) prefs.home = saved.playAs;
+} else local = await loadLocalLeague(teams);
 if (local?.playAs !== null && local?.playAs !== undefined) prefs.home = local.playAs;
 else if (local?.rosterTeams?.length === 1) prefs.home = teams.findIndex((t) => t.abbr === local.rosterTeams[0]);
 if (prefs.away === prefs.home) prefs.away = (prefs.home + 8) % 32;
@@ -30,6 +41,21 @@ const nav = new Nav();
 const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
 hud.prefs = prefs;
+const league = new LeagueUI({
+  teams, prefs, screens,
+  onExit: () => toMenu(),
+  onLeagueReplaced: () => {
+    prefs.home = Math.min(prefs.home, teams.length - 1);
+    if (prefs.away === prefs.home || prefs.away >= teams.length) prefs.away = (prefs.home + 8) % teams.length;
+    renderer.setTeams(teams[prefs.home], teams[prefs.away]);
+  },
+});
+if (saved) league.name = saved.name;
+league.onDepth = () => {
+  // Pick a team, then edit its depth chart.
+  const pick = (i) => depthChartScreen(screens, teams[i], { onDone: () => league.menu(2), onChange: () => league.changed() });
+  screens.teamPicker(teams, prefs.home, { title: 'Depth chart: pick a team', onPick: pick, onBack: () => league.menu(2) });
+};
 const applyCamera = () => {
   renderer.rig.mode = prefs.camera === 'high' ? 'sky' : 'broadcast';
   renderer.rig.zoom = { wide: 1.3, tight: 0.8 }[prefs.camera] || 1;
@@ -54,6 +80,7 @@ function toMenu() {
   screens.mainMenu({
     onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
     onPractice: () => screens.practice(teams, prefs, { onStart: (p, practice) => startGame({ ...p, side: 'home' }, { practice }), onBack: toMenu }),
+    onLeague: () => league.menu(),
     onControls: () => screens.controls({ onBack: toMenu }),
     onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
   });
@@ -132,7 +159,7 @@ function pause() {
     onReplay: session?.lastReplay ? () => startReplay() : null,
     onStats: session ? () => statsScreen(screens, session.match, { onBack: () => { screens.extraButtons = null; pause(); } }) : null,
     onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
-      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause }) : null,
+      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => league.changed() }) : null,
     onControls: () => screens.controls({ onBack: pause }),
     onQuit: toMenu,
   });
@@ -150,7 +177,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu };
+window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));

@@ -122,6 +122,21 @@ describe('ball spotting', () => {
 });
 
 describe('special teams results', () => {
+  it('a mis-hit human kickoff still travels and the play ends', () => {
+    const op = listOffPlays(true).find((p) => p.id === 'st_kickoff');
+    const dp = listDefPlays(true).find((p) => p.id === 'st_kick_return');
+    for (let s = 0; s < 4; s++) {
+      const sim = new PlaySim({ rng: new RNG(s), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -15, ballZ: 0, offPlay: op, defPlay: dp, humanTeam: 0 });
+      sim.snap();
+      Object.assign(sim.meter, { phase: 'done', power: 0.02, accuracy: 0 });
+      let n = 0;
+      while (!sim.finished && n < 4000) { sim.tick(STEP, null); n++; }
+      expect(sim.finished).toBe(true);
+      expect(sim.t).toBeLessThan(15);
+      expect(sim.result.kickDistance).toBeGreaterThan(25);
+    }
+  });
+
   it('reports kickoffs as kickoffs with the receiving team in possession', () => {
     const op = listOffPlays(true).find((p) => p.id === 'st_kickoff');
     const dp = listDefPlays(true).find((p) => p.id === 'st_kick_return');

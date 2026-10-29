@@ -61,7 +61,8 @@ export function launchKick(sim, kicker, params) {
   const kpw = sim.R(kicker, 'kickPower');
   const type = params.type;
   const spec = KICKS[type];
-  const power = clamp(params.power, 0.05, 1);
+  // A mis-timed meter press is a shank, not a dribbler that dies at the tee.
+  const power = clamp(params.power, type === 'fg' ? 0.05 : type === 'squib' ? 0.6 : 0.45, 1);
   const R = type === 'onside' ? spec.range(kpw) : spec.range(kpw) * power;
   const theta = (spec.angle * Math.PI) / 180;
   const v = Math.sqrt((R * GRAVITY) / Math.sin(2 * theta));
@@ -266,15 +267,18 @@ function updateKickFlight(sim, dt) {
     return;
   }
 
-  // Catchable kicks.
-  if (b.vy < 0 && b.y < 2.6 && b.y > 0.3) {
+  // Catchable kicks: in the air on the way down, or loose on the ground after a bounce.
+  const onGround = b.bounces > 0 && b.y <= 0.35;
+  if ((b.vy < 0 && b.y < 2.6 && b.y > 0.3) || onGround) {
+    // The kicking team can only recover a kickoff once it has gone 10 yards.
+    const traveled = (b.x - b.kickedFrom.x) * sim.dir;
     for (const p of sim.players) {
       if (p.state !== 'active' || p.engagement) continue;
       const d = Math.hypot(p.x - b.x, p.z - b.z);
       const isRet = p.task?.type === 'returner';
-      if (d > (isRet ? 1.2 : 0.7)) continue;
+      if (d > (isRet || onGround ? 1.2 : 0.7)) continue;
       // Only the receiving team fields kicks in the air (kicking team must let it land, except onside).
-      if (p.team === sim.offIdx && !(k.type === 'kickoff' && b.bounces > 0)) continue;
+      if (p.team === sim.offIdx && !(k.type === 'kickoff' && b.bounces > 0 && traveled >= 10)) continue;
       if (p.team === sim.defIdx && !isRet && b.bounces === 0) continue;
       catchKick(sim, p);
       return;
@@ -305,6 +309,11 @@ function updateKickFlight(sim, dt) {
       const toucher = sim.players.find((p) => p.team === sim.offIdx && Math.hypot(p.x - b.x, p.z - b.z) < 1.2);
       if (toucher || b.t > 7.5) kickDead(sim, b.x * sim.dir > GOAL_X ? 'touchback' : 'downed');
     } else if (b.x * sim.dir > GOAL_X) kickDead(sim, 'touchback');
+    else {
+      // A loose kickoff nobody falls on is the receiving team's ball where it stops.
+      k.restT = (k.restT || 0) + dt;
+      if (k.restT > 2.5) kickDead(sim, 'downed');
+    }
   }
 }
 
@@ -375,7 +384,7 @@ function runSpecialAI(sim, dt) {
       }
       case 'cover': {
         const ret = sim.players.find((q) => q.team === sim.defIdx && q.task?.type === 'returner');
-        const tgt = b.state === 'kick' ? b.target : b;
+        const tgt = b.state === 'kick' && !b.bounces ? b.target : b;
         // Stay in lanes until close, then converge on the returner/ball.
         const lat0 = sim.toLocal(p.alignX, p.alignZ).lat;
         const d = Math.hypot(tgt.x - p.x, tgt.z - p.z);
@@ -389,7 +398,10 @@ function runSpecialAI(sim, dt) {
         p.face = { x: p.x + sim.dir * 10, z: p.z };
         break;
       case 'returner': {
-        if (b.state === 'kick' && b.target) {
+        if (b.state === 'kick' && b.bounces > 0 && k.type === 'kickoff') {
+          // Short or bouncing kickoff: go get it.
+          seek(p, b.x, b.z, 1, 0.1);
+        } else if (b.state === 'kick' && b.target) {
           // Field the kick; let punts landing inside the 10 bounce into the end zone.
           const recvDir = sim.teamDir(sim.defIdx);
           const landYL = GOAL_X + b.target.x * recvDir; // yards from own goal line
@@ -409,6 +421,7 @@ function runSpecialAI(sim, dt) {
       }
       case 'kr_block': {
         // Set up a wall in front of the landing spot, then block whoever comes through.
+        if (b.state === 'kick' && b.bounces > 0 && Math.hypot(b.x - p.x, b.z - p.z) < 10) { seek(p, b.x, b.z, 1, 0.1); break; } // loose ball: fall on it
         const tgt = b.state === 'kick' && b.target ? b.target : null;
         if (!tgt) {
           if (k.type === 'punt' && p.task.target !== undefined) {

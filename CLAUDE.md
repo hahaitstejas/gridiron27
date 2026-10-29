@@ -170,7 +170,8 @@ team,first,last,pos,number,age,height,weight,college,SPD,ACC,AGI,STR,AWR,CTH,CAR
 BOS,Marcus,Hale,QB,12,27,75,221,Granite U,72,75,70,58,80,40,60,50,90,85,30,30,30,30,30,30,30,30,30,30
 ```
 `team` = team abbreviation; `pos` ∈ QB HB FB WR TE T G C DE DT OLB MLB CB FS SS K P (aliases accepted: RB→HB,
-LB→OLB, ILB→MLB, NB→CB, S→FS, OT→T, OG→G, EDGE→DE, NT→DT); height in inches, weight in lbs. Only `team`,
+LB→OLB, ILB→MLB, NB→CB, S→FS, OT→T, OG→G, EDGE→DE, NT→DT, and the depth slot names LT/RT→T,
+LG/RG→G, LE/RE→DE, LOLB/ROLB→OLB); height in inches, weight in lbs. Only `team`,
 `first`, `last`, `pos` are required. Blank/missing ratings use the position template; blank `number` keeps
 or auto-assigns a number. A file may list just a few players: each one replaces the best generated player
 at that position and is **pinned** to the top of the depth chart in file order (e.g. list CBs as

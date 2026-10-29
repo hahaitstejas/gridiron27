@@ -23,6 +23,15 @@ describe('roster CSV', () => {
     expect(byId(chi.depth.CB[0]).number).toBe(24);
     expect(new Set(chi.roster.map((p) => p.number)).size).toBe(53);
   });
+  it('accepts depth-chart slot names as positions (LT, RG, LE, ROLB...)', () => {
+    const teams = generateLeagueRosters(defaultTeams(), 6);
+    const csv = 'team,first,last,pos,number\n' + ['LT', 'RG', 'LE', 'ROLB', 'MIKE'].map((pos, i) => `${teams[2].abbr},Test,Player${i},${pos},${60 + i}`).join('\n');
+    const r = importRosterRows(teams, parseCSV(csv));
+    expect(r.skipped).toEqual([]);
+    const got = ['Player0', 'Player1', 'Player2', 'Player3', 'Player4'].map((last) => teams[2].roster.find((p) => p.last === last).pos);
+    expect(got).toEqual(['T', 'G', 'DE', 'OLB', 'MLB']);
+  });
+
   it('round-trips through export', () => {
     const teams = generateLeagueRosters(defaultTeams(), 2);
     const rows = parseCSV(exportRosterCSV(teams));

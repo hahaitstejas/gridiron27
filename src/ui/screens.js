@@ -6,8 +6,20 @@ import { KEY_HELP } from '../input/keyboard.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true,
-  nameTags: true, statCard: true, autoReplay: true, camera: 'standard',
+  nameTags: true, statCard: true, autoReplay: true, camera: 'standard', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
+
+// Gameplay sliders (0..100, 50 = default); `user` applies to human teams, `cpu` to the CPU's.
+export const SLIDER_KEYS = [
+  ['qbAccuracy', 'QB accuracy'], ['passBlocking', 'Pass blocking'], ['catching', 'WR catching'], ['runBlocking', 'Run blocking'],
+  ['fumbles', 'Fumbles'], ['passCoverage', 'Pass coverage'], ['interceptions', 'Interceptions'], ['passRush', 'Pass rush'],
+  ['runDefense', 'Run defense'], ['tackling', 'Tackling'], ['fgPower', 'FG power'], ['fgAccuracy', 'FG accuracy'],
+  ['puntPower', 'Punt power'], ['puntAccuracy', 'Punt accuracy'], ['kickoffPower', 'Kickoff power'],
+];
+export function defaultSliders() {
+  const side = () => Object.fromEntries(SLIDER_KEYS.map(([k]) => [k, 50]));
+  return { user: side(), cpu: side(), penalties: 50, fatigue: 50 };
+}
 
 const CAMERAS = { standard: 'Standard', wide: 'Wide', tight: 'Tight', high: 'High (sky cam)' };
 const FIELD_SPOTS = [[20, 'Own 20'], [25, 'Own 25'], [35, 'Own 35'], [50, 'Midfield'], [65, 'Opponent 35'], [80, 'Red zone (opp 20)'], [90, 'Opp 10'], [97, 'Goal line (opp 3)']];
@@ -140,6 +152,33 @@ export class Screens {
     this.nav.set([...rows, start], { columns: 1, onBack, index: rows.length });
   }
 
+  /** Gameplay sliders: LB/RB switch User / CPU / League; ◀▶ change by 5. */
+  sliders(prefs, { onSave, onBack }, tab = 0, draft = null) {
+    const s = draft || JSON.parse(JSON.stringify(prefs.sliders || defaultSliders()));
+    const tabs = ['User', 'CPU', 'League'];
+    const row = (label, get, set) => {
+      const r = el('div.opt-row');
+      const draw = () => { const v = get(); r.innerHTML = ''; r.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ <span class="sl-bar"><i style="width:${v}%"></i></span> ${v} ▶` })); };
+      r.spin = (d) => { set(Math.max(0, Math.min(100, get() + d * 5))); draw(); };
+      r.activate = () => r.spin(1);
+      draw();
+      return r;
+    };
+    const rows = tab < 2
+      ? SLIDER_KEYS.map(([k, label]) => { const side = tab === 0 ? s.user : s.cpu; return row(label, () => side[k], (v) => { side[k] = v; }); })
+      : [row('Penalty frequency', () => s.penalties, (v) => { s.penalties = v; }), row('Fatigue', () => s.fatigue, (v) => { s.fatigue = v; })];
+    const reset = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Reset all to default' }));
+    reset.activate = () => this.sliders(prefs, { onSave, onBack }, tab, defaultSliders());
+    const save = el('div.start-btn', { text: 'Save' });
+    save.activate = () => onSave(s);
+    this.frame('depth-screen', el('h1', { text: 'Gameplay Sliders' }),
+      el('div.pc-tabs', {}, tabs.map((t, i) => el(`div.pc-tab${i === tab ? '.on' : ''}`, { text: t }))),
+      el('div.league-status', { text: tab === 0 ? 'Your team (higher = better for you)' : tab === 1 ? 'CPU teams (higher = better for the CPU)' : 'Both teams' }),
+      el('div.setup-opts.card-opts', {}, ...rows, reset, save),
+      el('div.setup-help', { html: '◀▶ change &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> User / CPU / League &nbsp; <b class="btn B">B</b> back' }));
+    this.nav.set([...rows, reset, save], { columns: 1, onBack, onTab: (d) => this.sliders(prefs, { onSave, onBack }, (tab + d + 3) % 3, s) });
+  }
+
   /** Grid of all teams with logos; A picks one. */
   teamPicker(teams, focus, { title, onPick, onBack }) {
     this.extraButtons = null;
@@ -195,10 +234,12 @@ export class Screens {
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
     ];
+    const sliders = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Gameplay sliders…' }));
+    sliders.activate = () => this.sliders(p, { onSave: (sl) => { p.sliders = sl; this.settings(p, { onSave, onBack }); }, onBack: () => this.settings(p, { onSave, onBack }) });
     const save = el('div.start-btn', { text: 'Save' });
     save.activate = () => onSave(p);
-    this.frame('setup-screen', el('h1', { text: 'Settings' }), el('div.setup-opts', {}, ...rows, save));
-    this.nav.set([...rows, save], { onBack });
+    this.frame('setup-screen', el('h1', { text: 'Settings' }), el('div.setup-opts', {}, ...rows, sliders, save));
+    this.nav.set([...rows, sliders, save], { onBack });
   }
 
   pause({ onResume, onTimeout, timeoutsLeft = 0, onReplay, onStats, onDepth, onControls, onQuit }) {

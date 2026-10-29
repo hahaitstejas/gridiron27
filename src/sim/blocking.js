@@ -122,6 +122,8 @@ function updateEngagement(sim, e, dt) {
   let rate = (pass ? 0.2 : 0.055) * Math.exp((dPow - bPow) / 13);
   if (!pass && carrier && Math.hypot(carrier.x - d.x, carrier.z - d.z) < 2) rate *= 4;
   if (pass && sim.passThrown) rate *= 0.5;
+  // Sliders: blockers hold longer, rushers/defenders shed faster.
+  rate *= (1 - 0.45 * sim.sl(b.team, pass ? 'passBlocking' : 'runBlocking')) * (1 + 0.45 * sim.sl(d.team, pass ? 'passRush' : 'runDefense'));
   if (b.task?.type === 'escort') rate *= sim.kick ? 10 : 3; // open-field blocks don't hold long
   if (b.task?.type === 'kr_block') rate *= 6; // gunners and coverage fight through return blocks
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);

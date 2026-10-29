@@ -63,7 +63,8 @@ export function launchKick(sim, kicker, params) {
   const spec = KICKS[type];
   // A mis-timed meter press is a shank, not a dribbler that dies at the tee.
   const power = clamp(params.power, type === 'fg' ? 0.05 : type === 'squib' ? 0.6 : 0.45, 1);
-  const R = type === 'onside' ? spec.range(kpw) : spec.range(kpw) * power;
+  const kickKey = type === 'fg' ? 'fg' : type === 'punt' ? 'punt' : 'kickoff';
+  const R = (type === 'onside' ? spec.range(kpw) : spec.range(kpw) * power) * (1 + 0.15 * sim.sl(kicker.team, kickKey + 'Power'));
   const theta = (spec.angle * Math.PI) / 180;
   const v = Math.sqrt((R * GRAVITY) / Math.sin(2 * theta));
   // Aim: a point downfield; field goals aim at the posts.
@@ -81,7 +82,7 @@ export function launchKick(sim, kicker, params) {
   // Real kickers miss: ~3 deg spread for an 85-accuracy CPU kicker. A human's meter press replaces
   // most of that randomness with skill.
   const human = sim.humanTeam === sim.offIdx;
-  const noise = (human ? 0.5 + (100 - kac) * 0.04 : 1.0 + (100 - kac) * 0.1) * (type === 'fg' ? 0.7 + 0.5 * power : 1);
+  const noise = (human ? 0.5 + (100 - kac) * 0.04 : 1.0 + (100 - kac) * 0.1) * (type === 'fg' ? 0.7 + 0.5 * power : 1) * (1 - 0.5 * sim.sl(kicker.team, kickKey + 'Accuracy'));
   const errDeg = (params.accuracy || 0) * 26 * (1.3 - kac / 100) + sim.rng.gauss(0, noise);
   yaw += (errDeg * Math.PI) / 180 * (sim.dir > 0 ? 1 : -1);
   const vh = v * Math.cos(theta);

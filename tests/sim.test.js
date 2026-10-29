@@ -153,3 +153,24 @@ describe('special teams results', () => {
     }
   });
 });
+
+describe('gameplay sliders', () => {
+  it('move the needle: offense sliders at 100 beat sliders at 0', () => {
+    const passes = listOffPlays().filter((p) => p.type === 'pass').slice(0, 12);
+    const defs = listDefPlays().slice(0, 6);
+    const run = (v) => {
+      const sl = { qbAccuracy: v, catching: v, passBlocking: v };
+      let cmp = 0, att = 0, yds = 0;
+      for (let i = 0; i < 120; i++) {
+        const sim = runPlay(500 + i, passes[i % passes.length], defs[i % defs.length], { sliders: [sl, null] });
+        const r = sim.result;
+        if (r.passAttempt) { att++; if (r.complete) cmp++; }
+        yds += r.yards || 0;
+      }
+      return { pct: cmp / Math.max(1, att), yds };
+    };
+    const lo = run(0), hi = run(100);
+    expect(hi.pct).toBeGreaterThan(lo.pct + 0.08);
+    expect(hi.yds).toBeGreaterThan(lo.yds);
+  }, 60000);
+});

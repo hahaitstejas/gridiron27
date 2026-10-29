@@ -50,6 +50,7 @@ export class PlaySim {
     this.energy = cfg.energy || null; // [Map, Map] roster id -> 0..1 (game/fatigue.js)
     this.subRelax = cfg.subRelax || 0; // big moments: starters stay in longer
     this.difficulty = cfg.difficulty || null;
+    this.sliders = cfg.sliders || null; // [team0, team1] gameplay sliders, 0..100 (50 = default)
     this.firstDownX = cfg.firstDownX ?? null;
 
     this.t = 0;
@@ -82,6 +83,8 @@ export class PlaySim {
   bySlot(team, slot) { return this.players.find((p) => p.team === team && p.slot === slot); }
   isHumanControlled(p) { return this.controlled[p.team] === p.id && this.humanTeams.includes(p.team); }
   isHuman(team) { return this.humanTeams.includes(team); }
+  /** Gameplay slider for a team as -1..1 (0 = default). */
+  sl(team, key) { const v = this.sliders?.[team]?.[key]; return v === undefined ? 0 : (v - 50) / 50; }
   get controlledId() { return this.humanTeam === null ? -1 : this.controlled[this.humanTeam] ?? -1; }
   set controlledId(id) { if (this.humanTeam !== null) this.controlled[this.humanTeam] = id; }
   /** Run fn with `team` as the current human (2-player: each human's input runs in their own context). */
@@ -799,5 +802,6 @@ export function reactionDelay(sim, p) {
   const awr = sim.R(p, 'awareness');
   let d = 0.6 - awr * 0.0045;
   if (sim.difficulty && p.team !== sim.humanTeam) d *= sim.difficulty.cpuReact ?? 1;
+  d *= 1 - 0.3 * sim.sl(p.team, 'passCoverage');
   return Math.max(0.08, d);
 }

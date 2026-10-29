@@ -64,6 +64,17 @@ export class GameSession {
   }
 
   get twoPlayer() { return this.humanTeams.length === 2; }
+  /** Gameplay sliders for a team: the user set for human teams, the CPU set otherwise. */
+  slidersFor(team) {
+    const s = this.settings.sliders;
+    if (!s) return null;
+    return this.isHuman(team) ? s.user : s.cpu;
+  }
+  /** Penalty frequency (Penalties off = 0; the slider scales it, 50 = normal). */
+  penaltyRate() {
+    if (this.settings.penalties === false) return 0;
+    return (this.settings.sliders?.penalties ?? 50) / 50;
+  }
   isHuman(team) { return this.humanTeams.includes(team); }
   /**
    * The human the UI is serving right now. One player: that team. Two players: whoever is calling a play,
@@ -192,7 +203,8 @@ export class GameSession {
       // Starters stay in for the big moments: late in a close game, two-minute drill, goal line.
       subRelax: (m.quarter >= 4 && Math.abs(m.score[0] - m.score[1]) <= 8) || m.inTwoMinutes || m.yardLine >= 92 ? 0.15 : 0,
       difficulty: this.diff.difficulty,
-      penaltyRate: m.phase === 'scrimmage' ? 1 : 0,
+      penaltyRate: m.phase === 'scrimmage' ? this.penaltyRate() : 0,
+      sliders: [0, 1].map((t) => this.slidersFor(t)),
     });
     this.state = 'presnap';
     this.presnapT = 0;
@@ -215,7 +227,7 @@ export class GameSession {
       if (!m.clockRunning) { this.flushMessages(); } // two-minute warning stopped it
     }
     // Pre-snap fouls (false start / offsides) kill the play before it starts.
-    const foul = rollPresnapFoul(m, sim, this.rng, this.settings.penalties === false ? 0 : 1);
+    const foul = rollPresnapFoul(m, sim, this.rng, this.penaltyRate());
     if (foul) {
       const out = enforce(m, foul, null);
       m.stats.team[foul.team].penalties++;
@@ -438,7 +450,7 @@ export class GameSession {
     const scrimmage = m.phase === 'scrimmage';
     const quarter = m.quarter;
     if (!this.fast) this.lastReplay = this.recorder.take();
-    applyPlayFatigue(this.energy, sim, r.duration || 5);
+    applyPlayFatigue(this.energy, sim, (r.duration || 5) * ((this.settings.sliders?.fatigue ?? 50) / 50));
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break
     if (this.practice) {

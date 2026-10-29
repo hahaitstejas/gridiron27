@@ -87,6 +87,7 @@ function release(sim, qb, rec, kind, lead) {
     let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22) * (1 + pressure * 0.9 + moving * 0.6);
     if (kind === 'bullet') sd *= 1.1;
     if (sim.difficulty) sd *= qb.team !== sim.humanTeam ? sim.difficulty.cpuAccuracy ?? 1 : sim.difficulty.humanAccuracy ?? 1;
+    sd *= 1 - 0.45 * sim.sl(qb.team, 'qbAccuracy');
     tx += rng.gauss(0, sd);
     tz += rng.gauss(0, sd);
     // Arm strength limit.
@@ -229,7 +230,7 @@ function resolveCatch(sim, reach, late = false) {
       pInt += clamp(away - dc.d - 0.2, 0, 1.5) * 0.12 + Math.max(0, crowd - 1) * 0.14;
       const clean = dc.d < 0.9 && away > 2 ? clamp(0.5 + (away - 2) / 1.5, 0, 1) : 0;
       pInt += (0.5 + sim.R(d, 'catching') * 0.004 - pInt) * clean;
-      pInt = Math.min(0.9, pInt);
+      pInt = Math.min(0.9, pInt * (1 + 0.7 * sim.sl(d.team, 'interceptions')));
       if (b.tipped) pInt *= 0.4;
       if (recDist < 0.8) pInt *= 0.6;
       if (rng.next() < pInt && Math.abs(b.z) < HALF_WIDTH - 0.2) {
@@ -267,6 +268,7 @@ function resolveCatch(sim, reach, late = false) {
   if (late) pCatch -= 0.15;
   if (b.tipped) pCatch -= 0.2;
   pCatch -= Math.max(0, b.T - 1.3) * 0.12; // long balls: more time for the defense to get a hand in
+  pCatch += 0.12 * sim.sl(r.team, 'catching');
   pCatch = clamp(pCatch, 0.1, 0.97);
   if (Math.abs(r.z) > HALF_WIDTH - 0.15) {
     // Caught out of bounds.

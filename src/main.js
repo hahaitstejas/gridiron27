@@ -133,7 +133,7 @@ function startGame(p, opts = {}) {
   const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : cfg.side === 'home' ? 0 : 1;
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed: opts.seed ?? (Date.now() % 1e9),

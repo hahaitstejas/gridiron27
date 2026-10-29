@@ -153,6 +153,13 @@ Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.j
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays
 (touchdowns, interceptions, big hits, onside recoveries; not in practice).
 
+Gameplay sliders (Settings → Gameplay sliders, `prefs.sliders`, `SLIDER_KEYS`/`defaultSliders()` in `ui/screens.js`):
+`{ user: {...}, cpu: {...}, penalties, fatigue }`, 0–100 with 50 = default. The session hands each `PlaySim` per-team
+sets (`slidersFor(team)`: user set for human teams); `sim.sl(team, key)` maps a slider to -1..1. Effects: QB accuracy
+(throw scatter), pass/run blocking and pass rush/run defense (block shed rate), WR catching, interceptions, pass
+coverage (reaction delay), tackling, fumbles, FG/punt/kickoff power and accuracy; penalties scale the foul rate,
+fatigue scales energy costs.
+
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/
 move, ball) from the snap to the end of the play; the session keeps the last one (`session.lastReplay`, not

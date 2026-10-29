@@ -155,6 +155,7 @@ export function attemptTackle(sim, d, c, air) {
     if (Math.hypot(o.x - c.x, o.z - c.z) < 1.4) p += 0.1;
   }
   if (sim.difficulty) p += c.team === sim.humanTeam ? (sim.difficulty.cpuTackle ?? 0) : -(sim.difficulty.humanTackle ?? 0);
+  p += 0.12 * sim.sl(d.team, 'tackling');
   p = clamp(p, 0.04, 0.97);
 
   if (rng.next() < p) {
@@ -169,6 +170,7 @@ export function attemptTackle(sim, d, c, air) {
     let pf = 0.008 + (sim.R(d, 'hitPower') - sim.R(c, 'carrying')) * 0.0005 + (bigHit ? 0.05 : 0) + (moveActive(d, 'strip') ? 0.12 : 0);
     if (front < -0.2) pf += 0.01;
     if (c.protect) pf *= 0.3;
+    pf *= 1 + 0.8 * sim.sl(c.team, 'fumbles');
     if (sim.difficulty) pf *= c.team === sim.humanTeam ? (sim.difficulty.humanFumble ?? 1) : (sim.difficulty.cpuFumble ?? 1);
     const fumbled = sim.rng.next() < Math.max(0.002, pf);
     if (sim.rng.next() < 0.006 * foulRate(sim)) addFoul(sim, 'facemask_def', d.team, d, { spotX: c.x });

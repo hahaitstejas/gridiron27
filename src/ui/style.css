@@ -266,3 +266,5 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #penaltybox .pb-sub { color: #9aa0aa; font-size: 15px; }
 #penaltybox .pb-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; background: #15171c; border-radius: 0 0 8px 8px; padding: 0 0 0 18px; overflow: hidden; font-weight: 900; color: #aab; }
 #penaltybox .pb-foot img { height: 44px; width: 64px; object-fit: contain; background: rgba(255,255,255,0.06); }
+.sl-bar { display: inline-block; width: 90px; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; vertical-align: middle; margin: 0 6px; overflow: hidden; }
+.sl-bar i { display: block; height: 100%; background: var(--gold); }

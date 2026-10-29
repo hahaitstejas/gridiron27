@@ -3,11 +3,14 @@
 // (same field names as Match stats). Pure logic, seeded.
 import { RNG } from '../core/rng.js';
 import { teamRatings } from '../data/positions.js';
+import { rollInjury } from '../sim/injuries.js';
+
+const healthy = (t, id) => !(t.roster.find((p) => p.id === id)?.injury?.weeks > 0);
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /** Simulate home vs away. Returns { score: [home, away], lines: { rid: statLine } }. */
-export function quickSim(home, away, seed, { neutral = false, noTies = false } = {}) {
+export function quickSim(home, away, seed, { neutral = false, noTies = false, injuryRate = 1 } = {}) {
   const rng = new RNG(seed);
   const rh = teamRatings(home), ra = teamRatings(away);
   const lines = {};
@@ -22,7 +25,15 @@ export function quickSim(home, away, seed, { neutral = false, noTies = false } =
     scores[w].fgs++; scores[w].pts += 3;
   }
   sides.forEach((s, i) => teamLines(rng, s, scores[i], scores[1 - i], lines));
-  return { score: [scores[0].pts, scores[1].pts], lines };
+  // Injuries that cost games (minor knocks don't show up in a quick sim).
+  const injuries = [];
+  for (const t of [home, away]) {
+    if (!rng.chance(0.45 * injuryRate)) continue;
+    const pool = [...new Set(Object.values(t.depth).flatMap((ids) => ids.slice(0, 2)))].filter((id) => healthy(t, id));
+    const inj = rollInjury(rng);
+    if (pool.length && inj.weeks > 0) injuries.push({ rid: rng.pick(pool), ...inj });
+  }
+  return { score: [scores[0].pts, scores[1].pts], lines, injuries };
 }
 
 /** Points as touchdowns and field goals (expected ~22, better offense vs worse defense scores more). */
@@ -36,7 +47,8 @@ function scoreFor(rng, edge) {
 function teamLines(rng, side, mine, theirs, lines) {
   const t = side.team;
   const byId = new Map(t.roster.map((p) => [p.id, p]));
-  const at = (slot, i = 0) => byId.get(t.depth[slot]?.[i])?.id;
+  // The i-th healthy player at a depth spot (injured players don't play).
+  const at = (slot, i = 0) => (t.depth[slot] || []).filter((id) => healthy(t, id))[i];
   const ovr = (id) => byId.get(id)?.ovr ?? 60;
   const line = (id) => (id === undefined ? null : (lines[id] ||= {}));
   const add = (id, f, v) => { const l = line(id); if (l) l[f] = (l[f] || 0) + v; };

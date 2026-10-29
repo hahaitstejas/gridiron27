@@ -40,16 +40,34 @@ function playerInfo(teams) {
 }
 
 /** Store a final score and its player lines. */
-export function recordGame(f, teams, g, score, lines) {
+export function recordGame(f, teams, g, score, lines, injuries = []) {
   g.score = score;
   addStats(f, lines, playerInfo(teams));
+  // Injuries that cost games stick to the player until he heals (see heal()).
+  for (const inj of injuries) {
+    if (!(inj.weeks > 0)) continue;
+    for (const t of teams) {
+      const p = t.roster.find((q) => q.id === inj.rid);
+      if (p) { p.injury = { type: inj.type, weeks: Math.max(inj.weeks, p.injury?.weeks || 0) }; break; }
+    }
+  }
+}
+
+/** A week passes: injured players get a week closer to returning. */
+export function heal(teams) {
+  for (const t of teams) for (const p of t.roster) if (p.injury && --p.injury.weeks <= 0) delete p.injury;
+}
+
+/** Roster ids of injured players per side, for a game being played ([home ids, away ids]). */
+export function unavailableFor(teams, g) {
+  return [g.home, g.away].map((ti) => teams[ti].roster.filter((p) => p.injury?.weeks > 0).map((p) => p.id));
 }
 
 /** Quick-sim one game. */
 export function simGame(f, teams, g) {
   const seed = (f.seed += 1);
-  const r = quickSim(teams[g.home], teams[g.away], seed, { neutral: !!g.neutral, noTies: f.phase === 'playoffs' });
-  recordGame(f, teams, g, r.score, r.lines);
+  const r = quickSim(teams[g.home], teams[g.away], seed, { neutral: !!g.neutral, noTies: f.phase === 'playoffs', injuryRate: f.settings.injuryRate ?? 1 });
+  recordGame(f, teams, g, r.score, r.lines, r.injuries);
   return r;
 }
 
@@ -74,6 +92,7 @@ export function matchToResult(match) {
 /** Everything this week/round is decided? Then move on (next week, playoffs, next round, offseason). */
 export function advance(f, teams) {
   if (currentGames(f).some((g) => !g.score)) return false;
+  heal(teams);
   if (f.phase === 'regular') {
     f.week++;
     if (f.week >= f.weeks) startPlayoffs(f, teams);

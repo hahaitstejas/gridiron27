@@ -91,6 +91,12 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Tempo: on the play-call screen Y = no-huddle (`session.noHuddle()` reruns `lastOffPlay`, no accelerated-clock
   runoff); at the line B = spike (`session.spike()` swaps in `st_spike` and snaps). View (or the Share button,
   gamepad button 17) calls a timeout between plays; the pause menu has Call Timeout too.
+- Injuries (`sim/injuries.js`): each successful tackle may hurt the carrier (`injuryChance`: power, big hits, age;
+  rarely the tackler) when `cfg.injuryRate` > 0 (league "Injuries" slider, 0 = off, never in practice). `rollInjury`:
+  ~40% out for the game, else 1–6 weeks, ~6% the season. The session collects `sim.injuries` into `session.injuries`
+  and passes `unavailable` ids to later plays (`place()` skips them); `settings.unavailable` seeds players already hurt.
+  Franchise: `recordGame(..., injuries)` sets `player.injury = { type, weeks }`, `heal()` runs each week/round,
+  quick-sims skip injured players and roll their own injuries; hub → Injury Report.
 - Local 2-player: `GameSession({ humanTeams: [0, 1] })` (Play Now → "2 players"; P1 = home with pad 1 + keyboard,
   P2 = away with a second pad claimed by pressing A, `InputManager({ keyboard: false, other })`). The session's
   `humanTeam` getter is the human the UI serves right now (the play caller, the penalty chooser, else the offense);

@@ -45,7 +45,7 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
     const depthRows = list.map((id, i) => {
       const p = byId.get(id);
       const row = el(`div.dc-row${holding === id ? '.holding' : ''}`, {},
-        el('span.dc-rank', { text: String(i + 1) }), el('span.dc-name', { text: who(p) }), el('span.dc-pos', { text: p.pos }),
+        el('span.dc-rank', { text: String(i + 1) }), el('span.dc-name', { text: who(p) + (p.injury ? ` · INJ ${p.injury.weeks >= 8 ? 'season' : p.injury.weeks + ' wk'}` : '') }), el('span.dc-pos', { text: p.pos }),
         el('span.dc-ovr', { text: String(slotRating(p, slot)) }), fresh(p));
       row.activate = () => edit(slot, i, holding === id ? null : id); // A: pick up / put down
       row.onfocusitem = () => {
@@ -58,7 +58,7 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
     rows.push(...depthRows);
     const avail = eligibleForSlot(team, slot).slice(0, 12).map((p) => {
       const row = el('div.dc-row.avail', {},
-        el('span.dc-rank', { text: '+' }), el('span.dc-name', { text: who(p) }), el('span.dc-pos', { text: p.pos }),
+        el('span.dc-rank', { text: '+' }), el('span.dc-name', { text: who(p) + (p.injury ? ` · INJ ${p.injury.weeks >= 8 ? 'season' : p.injury.weeks + ' wk'}` : '') }), el('span.dc-pos', { text: p.pos }),
         el('span.dc-ovr', { text: String(slotRating(p, slot)) }), fresh(p));
       row.activate = () => { placeInDepth(team, slot, p.id, team.depth[slot]?.length ?? 0); onChange(); edit(slot, team.depth[slot].length - 1, p.id); };
       return row;

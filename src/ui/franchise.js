@@ -114,6 +114,8 @@ export class FranchiseUI {
     if (f.phase === 'playoffs') add('Playoff Bracket', 'Seeds and results', () => this.bracketScreen());
     add('Team Stats', 'Your players\' season totals: passing, rushing, receiving, defense, kicking', () => this.teamStatsScreen());
     add('League Leaders', 'Season stats', () => this.leadersScreen());
+    const hurt = me.roster.filter((p) => p.injury).length;
+    add('Injury Report', hurt ? `${hurt} of your players injured` : 'Everyone healthy', () => this.injuryScreen());
     add('Roster', `${me.roster.length} players`, () => this.ctx.rosterScreen(f.userTeam, () => this.hub(items.length - 3)));
     add('Depth Chart', 'Starters and rotation', () => this.ctx.depthScreen(f.userTeam, () => this.hub(items.length - 2)));
     add('Main Menu', 'Your franchise autosaves', this.ctx.onExit);
@@ -135,9 +137,9 @@ export class FranchiseUI {
   }
 
   /** Called by the app when a franchise game the human played ends. */
-  recordPlayed(g, match) {
+  recordPlayed(g, match, injuries = []) {
     const r = matchToResult(match);
-    recordGame(this.f, this.teams, g, r.score, r.lines);
+    recordGame(this.f, this.teams, g, r.score, r.lines, injuries);
     this.afterUserGame();
   }
 
@@ -221,6 +223,24 @@ export class FranchiseUI {
       el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> category &nbsp; <b class="btn X">X</b> my team / league &nbsp; ▲▼ scroll &nbsp; <b class="btn B">B</b> back' }));
     screens.nav.set(rows.length ? rows : [empty], { columns: 1, onBack: () => this.hub(), onTab: go });
     screens.extraButtons = (fr) => { if (fr.pressed.X) this.teamStatsScreen(tab, !mine); };
+  }
+
+  // ---------- injuries ----------
+  injuryScreen(mine = true) {
+    const { screens } = this.ctx;
+    const f = this.f, teams = this.teams;
+    const list = teams.flatMap((t, ti) => (mine && ti !== f.userTeam ? [] : t.roster.filter((p) => p.injury).map((p) => ({ p, t }))))
+      .sort((a, b) => b.p.injury.weeks - a.p.injury.weeks);
+    const rows = list.map(({ p, t }) => el('div.st-row', { style: { borderLeftColor: t.colors.primary } }, el('span.st-team', { text: t.abbr }),
+      el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: `${p.first} ${p.last}` }), el('small', { text: ` ${p.injury.type}` })),
+      el('span.st-num', { text: String(p.ovr) }), el('span.st-num.down', { text: p.injury.weeks >= 8 ? 'Season' : `${p.injury.weeks} wk` })));
+    const empty = el('div.st-empty', { text: mine ? 'Your team is healthy.' : 'No injuries around the league.' });
+    screens.frame('stats-screen', el('h1', { text: 'Injury Report' }),
+      el('div.st-team-filter', { text: mine ? `${teams[f.userTeam].city} ${teams[f.userTeam].name}` : 'Whole league' }),
+      el('div.st-table', {}, rows.length ? rows : empty),
+      el('div.setup-help', { html: 'Injured players sit out until they heal (a week per game). &nbsp; <b class="btn X">X</b> my team / league &nbsp; <b class="btn B">B</b> back' }));
+    screens.nav.set(rows.length ? rows : [empty], { columns: 1, onBack: () => this.hub() });
+    screens.extraButtons = (fr) => { if (fr.pressed.X) this.injuryScreen(!mine); };
   }
 
   // ---------- leaders ----------

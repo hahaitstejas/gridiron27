@@ -18,7 +18,7 @@ export const SLIDER_KEYS = [
 ];
 export function defaultSliders() {
   const side = () => Object.fromEntries(SLIDER_KEYS.map(([k]) => [k, 50]));
-  return { user: side(), cpu: side(), penalties: 50, fatigue: 50 };
+  return { user: side(), cpu: side(), penalties: 50, fatigue: 50, injuries: 50 };
 }
 
 const CAMERAS = { standard: 'Standard', wide: 'Wide', tight: 'Tight', high: 'High (sky cam)' };
@@ -166,7 +166,8 @@ export class Screens {
     };
     const rows = tab < 2
       ? SLIDER_KEYS.map(([k, label]) => { const side = tab === 0 ? s.user : s.cpu; return row(label, () => side[k], (v) => { side[k] = v; }); })
-      : [row('Penalty frequency', () => s.penalties, (v) => { s.penalties = v; }), row('Fatigue', () => s.fatigue, (v) => { s.fatigue = v; })];
+      : [row('Penalty frequency', () => s.penalties, (v) => { s.penalties = v; }), row('Fatigue', () => s.fatigue, (v) => { s.fatigue = v; }),
+        row('Injuries (0 = off)', () => s.injuries ?? 50, (v) => { s.injuries = v; })];
     const reset = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Reset all to default' }));
     reset.activate = () => this.sliders(prefs, { onSave, onBack }, tab, defaultSliders());
     const save = el('div.start-btn', { text: 'Save' });

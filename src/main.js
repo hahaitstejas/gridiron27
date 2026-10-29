@@ -10,6 +10,7 @@ import { teamEditor } from './ui/teamEditor.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
+import { unavailableFor } from './franchise/franchise.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
@@ -70,7 +71,7 @@ const franchiseUI = new FranchiseUI({
   playGame: (g) => {
     const f = league.franchise;
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
-      quarterMinutes: f.settings.quarterMinutes }, { franchise: g });
+      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, unavailable: unavailableFor(teams, g) });
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
@@ -133,7 +134,7 @@ function startGame(p, opts = {}) {
   const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : cfg.side === 'home' ? 0 : 1;
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed: opts.seed ?? (Date.now() % 1e9),
@@ -191,7 +192,7 @@ function updateReplay(f, dt) {
 function showFinal() {
   screens.extraButtons = null;
   const g = session.franchiseGame;
-  const done = g ? () => { const m = session.match; leaveGame(); franchiseUI.recordPlayed(g, m); } : toMenu;
+  const done = g ? () => { const m = session.match, inj = session.injuries; leaveGame(); franchiseUI.recordPlayed(g, m, inj); } : toMenu;
   screens.gameOver(session, { onDone: done, doneLabel: g ? 'Back to Franchise' : 'Main Menu', onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
 }
 

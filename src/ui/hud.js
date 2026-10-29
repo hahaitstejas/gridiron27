@@ -80,6 +80,7 @@ export class Hud {
     } else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
     else if (k === 'penalty') this.flag(msg.text);
     else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
+    else if (k === 'injury') this.banner('INJURY', msg.text.replace(/^Injury: /, ''), 2.6, 'miss');
     else if (k === 'final') this.banner('FINAL', msg.text, 99, 'final');
     else if (k === 'half' || k === 'twoMinute') this.banner(k === 'half' ? msg.text.split('!')[0].toUpperCase() : 'TWO-MINUTE WARNING', k === 'half' ? msg.text : '', 2.4, 'info');
     else this.ticker(msg.text);

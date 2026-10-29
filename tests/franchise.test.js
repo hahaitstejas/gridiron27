@@ -108,3 +108,26 @@ describe('offseason', () => {
     expect(f.year).toBe(2028);
   });
 });
+
+describe('franchise injuries', () => {
+  it('quick-sim injuries stick, keep players out, and heal week by week', async () => {
+    const { heal } = await import('../src/franchise/franchise.js');
+    const lg = generateLeagueRosters(defaultTeams(), 55);
+    const f = createFranchise(lg, { userTeam: 0, weeks: 10, seed: 3 });
+    let seen = null;
+    for (let w = 0; w < 10 && !seen; w++) {
+      simOthers(f, lg); const g = userGame(f); if (g && !g.score) simGame(f, lg, g);
+      for (const t of lg) { const p = t.roster.find((q) => q.injury); if (p) seen = { p, weeks: p.injury.weeks }; }
+      if (!seen) advance(f, lg);
+    }
+    expect(seen).not.toBeNull();
+    const { quickSim } = await import('../src/franchise/quicksim.js');
+    const team = lg.find((t) => t.roster.includes(seen.p));
+    const opp = lg.find((t) => t !== team);
+    const r = quickSim(team, opp, 99);
+    expect(r.lines[seen.p.id]).toBeUndefined(); // injured players get no stats
+    heal(lg);
+    if (seen.weeks <= 1) expect(seen.p.injury).toBeUndefined();
+    else expect(seen.p.injury.weeks).toBe(seen.weeks - 1);
+  });
+});

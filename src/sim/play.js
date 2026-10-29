@@ -58,6 +58,7 @@ export class PlaySim {
     this.events = [];
     this.players = [];
     this.engagements = [];
+    this.injuries = []; // players hurt on this play (tackling.js)
     this.possTeam = this.offIdx;
     this.passThrown = false;
     this.pendingThrow = null;
@@ -142,7 +143,8 @@ export class PlaySim {
 
   place(formation, teamIdx, side) {
     const team = this.teams[teamIdx];
-    const used = new Set();
+    // Injured players are unavailable: treat them as already on the field.
+    const used = new Set(this.cfg.unavailable?.[teamIdx] || []);
     const byId = new Map(team.roster.map((p) => [p.id, p]));
     // Depth-chart slot if there is one, else players of that position by overall (special teams
     // use position groups like DE/OLB). Never pull the starting QB onto special teams.

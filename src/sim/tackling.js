@@ -1,5 +1,6 @@
 import { clamp } from '../core/math.js';
 import { HALF_WIDTH } from '../core/constants.js';
+import { injuryChance, rollInjury } from './injuries.js';
 import { addFoul, foulRate } from './fouls.js';
 
 // Ball-carrier moves: duration and the window during which they affect tackles.
@@ -175,6 +176,12 @@ export function attemptTackle(sim, d, c, air) {
     const fumbled = sim.rng.next() < Math.max(0.002, pf);
     if (sim.rng.next() < 0.006 * foulRate(sim)) addFoul(sim, 'facemask_def', d.team, d, { spotX: c.x });
     sim.tackleCarrier(c, d, power);
+    // Injuries (off unless the session sets an injury rate).
+    const rate = sim.cfg.injuryRate || 0;
+    if (rate > 0) {
+      if (!c.injured && sim.rng.next() < injuryChance(c, power, bigHit, rate)) injure(sim, c);
+      else if (bigHit && !d.injured && sim.rng.next() < injuryChance(d, 0.3, false, rate) * 0.3) injure(sim, d);
+    }
     if (fumbled) sim.fumble(c, d);
   } else {
     // Broken tackle.
@@ -188,4 +195,12 @@ export function attemptTackle(sim, d, c, air) {
     c.recoverAt = sim.t + 0.35;
     sim.emit('brokenTackle', { player: c.id, tackler: d.id, move: brokenBy || null });
   }
+}
+
+/** Hurt a player: he finishes this play, then the session keeps him out (see game/session.js). */
+function injure(sim, p) {
+  const inj = rollInjury(sim.rng);
+  p.injured = inj;
+  sim.injuries.push({ id: p.id, rid: p.rid, team: p.team, name: p.name, pos: p.pos, number: p.number, ...inj });
+  sim.emit('injury', { player: p.id, ...inj });
 }

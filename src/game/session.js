@@ -5,6 +5,7 @@ import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
+import { injuryText } from '../sim/injuries.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
@@ -33,6 +34,9 @@ export class GameSession {
     this.lastReplay = null;
     this.smart = humanTeam === null ? 0.9 : (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).smart;
     this.pendingPenalty = null;
+    // Injuries this game ({ team, rid, name, pos, type, weeks }); those players sit out the rest of the game.
+    // settings.unavailable = [[ids], [ids]] lists players already hurt (franchise).
+    this.injuries = [];
     this.state = 'playcall';
     this.sim = null;
     this.events = [];
@@ -205,6 +209,8 @@ export class GameSession {
       difficulty: this.diff.difficulty,
       penaltyRate: m.phase === 'scrimmage' ? this.penaltyRate() : 0,
       sliders: [0, 1].map((t) => this.slidersFor(t)),
+      injuryRate: this.practice ? 0 : (this.settings.sliders?.injuries ?? 50) / 50,
+      unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t).map((i) => i.rid)]),
     });
     this.state = 'presnap';
     this.presnapT = 0;
@@ -443,6 +449,10 @@ export class GameSession {
     const m = this.match;
     const sim = this.sim;
     const r = sim.result;
+    for (const inj of sim.injuries) {
+      this.injuries.push({ team: inj.team, rid: inj.rid, name: inj.name, pos: inj.pos, number: inj.number, type: inj.type, weeks: inj.weeks });
+      m.say(`Injury: ${this.teams[inj.team].abbr} ${inj.pos} #${inj.number} ${inj.name} (${inj.type}), ${injuryText(inj.weeks)}`, 'injury');
+    }
     if (outcome && outcome.accepted && !outcome.offsetting) {
       m.stats.team[outcome.team].penalties++;
       m.stats.team[outcome.team].penYds += Math.round(Math.abs(outcome.newYL - m.yardLine));

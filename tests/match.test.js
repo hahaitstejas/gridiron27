@@ -404,3 +404,23 @@ describe('local 2-player', () => {
     expect(['post', 'penalty', 'playcall']).toContain(s.state);
   });
 });
+
+describe('injuries', () => {
+  it('injured players sit out the rest of the game', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const sl = { user: {}, cpu: {}, penalties: 50, fatigue: 50, injuries: 5000 }; // absurd rate to force injuries
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15, sliders: sl }, humanTeam: null, seed: 6, fast: true });
+    let checked = false;
+    for (let i = 0; i < 400000 && !s.match.over && !checked; i++) {
+      s.tick(STEP, null);
+      if (s.injuries.length && s.state === 'presnap' && s.sim?.state === 'presnap') {
+        const hurt = new Set(s.injuries.map((x) => `${x.team}:${x.rid}`));
+        for (const p of s.sim.players) expect(hurt.has(`${p.team}:${p.rid}`)).toBe(false);
+        checked = true;
+      }
+    }
+    expect(checked).toBe(true);
+    expect(s.injuries[0].type).toBeTruthy();
+  }, 60000);
+});

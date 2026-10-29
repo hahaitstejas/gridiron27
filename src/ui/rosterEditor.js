@@ -26,7 +26,7 @@ export function rosterScreen(ctx, ti, focus = 0) {
   const rows = players.map((p) => {
     const row = el('div.dc-row', {},
       el('span.dc-pos', { text: p.pos }), el('span.dc-rank', { text: String(p.number) }),
-      el('span.dc-name', { text: `${p.first} ${p.last}` }), el('span.dc-pos', { text: `${p.age}` }), el('span.dc-ovr', { text: String(p.ovr) }));
+      el('span.dc-name', { text: `${p.first} ${p.last}` + (p.injury ? ` · INJ ${p.injury.weeks >= 8 ? 'season' : p.injury.weeks + ' wk'}` : '') }), el('span.dc-pos', { text: `${p.age}` }), el('span.dc-ovr', { text: String(p.ovr) }));
     row.activate = () => playerCard(ctx, ti, p.id);
     return row;
   });

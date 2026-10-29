@@ -53,4 +53,18 @@ describe('league spreadsheets', () => {
     expect(`${starter.first} ${starter.last} ${starter.number}`).toBe(`${qb2.first} ${qb2.last} ${qb2.number}`);
     expect(starter.ratings).toEqual(qb2.ratings);
   });
+
+  it('uses the names column for shared numbers and players listed without one', async () => {
+    const { importDepthRows } = await import('../src/data/csv.js');
+    const t = generateLeagueRosters(defaultTeams(), 4)[0];
+    const [te1, te2] = t.roster.filter((p) => p.pos === 'TE');
+    te2.number = te1.number; // two players wearing the same number
+    const [g1, g2] = t.roster.filter((p) => p.pos === 'G');
+    const csv = `team,slot,players,names
+${t.abbr},TE,${te1.number} ${te1.number},${te2.first[0]}. ${te2.last} / ${te1.first[0]}. ${te1.last}
+${t.abbr},LG,-- ${g1.number},${g2.first[0]}. ${g2.last} Jr. / ${g1.first[0]}. ${g1.last}`;
+    expect(importDepthRows([t], parseCSV(csv))).toEqual([]);
+    expect(t.depth.TE).toEqual([te2.id, te1.id]);
+    expect(t.depth.LG).toEqual([g2.id, g1.id]);
+  });
 });

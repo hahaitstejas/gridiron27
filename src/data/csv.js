@@ -164,6 +164,19 @@ export function exportDepthCSV(teams) {
   return toCSV(rows, ['team', 'slot', 'players', 'names']);
 }
 
+const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+
+/** "D. Reed", "Reed" or "Dan Reed" against a roster player. */
+function nameMatches(p, name) {
+  const parts = name.replace(/\b(jr|sr|ii|iii|iv|v)\.?$/i, '').trim().split(/\s+/);
+  const first = parts.length > 1 ? parts[0] : '';
+  const last = parts.slice(parts.length > 1 ? 1 : 0).join(' ');
+  const a = norm(p.last).replace(/(jr|sr|ii|iii|iv|v)$/, ''), b = norm(last).replace(/(jr|sr|ii|iii|iv|v)$/, '');
+  if (!a || !b || !(a === b || a.endsWith(b) || b.endsWith(a))) return false; // "Michael Schmitz" ~ "Schmitz"
+  const f = norm(first);
+  return !f || norm(p.first).startsWith(f);
+}
+
 /** Apply depth rows ("CHI, WR, 10 11 14 83"). Unknown numbers are skipped; unlisted slots stay automatic. */
 export function importDepthRows(teams, rows) {
   const byAbbr = new Map(teams.map((t) => [t.abbr.toUpperCase(), t]));
@@ -173,10 +186,17 @@ export function importDepthRows(teams, rows) {
     const slot = (r.slot || '').toUpperCase();
     if (!t || !DEPTH_ORDER.includes(slot)) { skipped.push(`depth row ${i + 2}: unknown team or slot`); return; }
     const ids = [];
-    for (const n of (r.players || '').split(/[\s,;/]+/).filter(Boolean)) {
-      const p = t.roster.find((q) => q.number === parseInt(n, 10));
-      if (p && !ids.includes(p.id)) ids.push(p.id); else if (!p) skipped.push(`depth row ${i + 2}: ${t.abbr} has no #${n}`);
-    }
+    // `names` ("F. Last / F. Last") lines up with `players`; it breaks ties when two players share a
+    // number and finds players listed without one ("--").
+    const names = (r.names || '').split('/').map((x) => x.trim());
+    (r.players || '').split(/[\s,;/]+/).filter(Boolean).forEach((n, j) => {
+      const num = parseInt(n, 10);
+      const byNum = Number.isFinite(num) ? t.roster.filter((q) => q.number === num) : [];
+      const named = names[j] ? (byNum.length ? byNum : t.roster).filter((q) => nameMatches(q, names[j])) : [];
+      const p = named.find((q) => !ids.includes(q.id)) || byNum.find((q) => !ids.includes(q.id)) || named[0] || byNum[0];
+      if (p && !ids.includes(p.id)) ids.push(p.id);
+      else if (!p) skipped.push(`depth row ${i + 2}: ${t.abbr} has no ${Number.isFinite(num) ? '#' + n : names[j] || n}`);
+    });
     if (ids.length) t.depth[slot] = ids;
   });
   return skipped;

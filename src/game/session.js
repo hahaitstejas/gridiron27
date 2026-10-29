@@ -17,18 +17,22 @@ import { getOffPlay, getDefPlay } from '../data/playbook.js';
  * States: 'playcall' (waiting for calls) -> 'presnap' (at the line) -> 'live' -> 'post' -> ...
  */
 export class GameSession {
-  constructor({ teams, settings = {}, humanTeam = null, seed = 1, fast = false }) {
+  constructor({ teams, settings = {}, humanTeam = null, humanTeams = null, seed = 1, fast = false }) {
     this.teams = teams;
     this.rng = new RNG(seed);
-    this.humanTeam = humanTeam;
+    // Human-controlled teams: [] (CPU vs CPU), [0] or [1], or [0, 1] for local 2-player.
+    this.humanTeams = humanTeams || (humanTeam !== null ? [humanTeam] : []);
+    humanTeam = this.humanTeams.length === 1 ? this.humanTeams[0] : null;
     this.fast = fast; // headless autosim: no waiting for animations or UI
     this.match = new Match({ teams, settings, rng: this.rng, humanTeam });
     this.settings = this.match.settings;
+    // Difficulty only applies against the CPU (none in 2-player).
     this.diff = difficultyConfig(this.settings.difficulty, humanTeam);
     this.energy = newEnergy(); // player fatigue for substitutions (game/fatigue.js)
     this.recorder = new ReplayRecorder(); // last play, for instant replay (not in fast/headless mode)
     this.lastReplay = null;
     this.smart = humanTeam === null ? 0.9 : (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).smart;
+    this.pendingPenalty = null;
     this.state = 'playcall';
     this.sim = null;
     this.events = [];
@@ -59,6 +63,29 @@ export class GameSession {
     m.takeMessages(); // no coin toss / drive chatter in practice
   }
 
+  get twoPlayer() { return this.humanTeams.length === 2; }
+  isHuman(team) { return this.humanTeams.includes(team); }
+  /**
+   * The human the UI is serving right now. One player: that team. Two players: whoever is calling a play,
+   * then whoever decides a pending penalty, otherwise the offense.
+   */
+  get humanTeam() {
+    if (!this.humanTeams.length) return null;
+    if (!this.twoPlayer) return this.humanTeams[0];
+    if (this.state === 'playcall' && this.choice) {
+      if (!this.choice.off) return this.offTeam;
+      if (!this.choice.def) return this.defTeam;
+    }
+    if (this.state === 'penalty' && this.pendingPenalty) return 1 - this.pendingPenalty.outcome.team;
+    return this.offTeam;
+  }
+  /** One human's controller frame from `input` (a frame for one player, { perTeam, 0, 1 } for two). */
+  inputFor(input, team) {
+    if (!input || !this.isHuman(team)) return null;
+    if (input.perTeam) return input[team] || null;
+    return input;
+  }
+
   get offTeam() { return this.match.possession; }
   get defTeam() { return 1 - this.match.possession; }
   /** 'offense' | 'defense' | null — which side the human is on for the coming play. */
@@ -68,8 +95,8 @@ export class GameSession {
   }
   /** True when the play-call screen should be open for the human. */
   get needsHumanCall() {
-    if (this.state !== 'playcall' || this.humanTeam === null) return false;
-    return this.humanSide === 'offense' ? !this.choice.off : !this.choice.def;
+    if (this.state !== 'playcall' || !this.humanTeams.length) return false;
+    return (this.isHuman(this.offTeam) && !this.choice.off) || (this.isHuman(this.defTeam) && !this.choice.def);
   }
 
   emit(type, data = {}) { this.events.push({ type, ...data }); }
@@ -82,10 +109,10 @@ export class GameSession {
     this.choice = { off: null, def: null };
     this.presnapUsed = 0;
     // CPU timeouts (stopping the clock between plays).
-    for (const t of [0, 1]) if (t !== this.humanTeam && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
+    for (const t of [0, 1]) if (!this.isHuman(t) && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
-    if (off !== this.humanTeam) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
-    if (def !== this.humanTeam) this.choice.def = this.cpuDefenseFor(this.choice.off);
+    if (!this.isHuman(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
+    if (!this.isHuman(def)) this.choice.def = this.cpuDefenseFor(this.choice.off);
     // The human's special-teams unit comes on automatically (kick return, punt return, FG block).
     else if (m.phase === 'kickoff' || (this.choice.off && defenseForSpecial(this.choice.off))) this.choice.def = this.cpuDefenseFor(this.choice.off);
     this.flushMessages();
@@ -106,6 +133,8 @@ export class GameSession {
     if (this.humanSide === 'offense') {
       this.choice.off = play;
       if (!/^st_/.test(play.id)) this.lastOffPlay = play;
+      // 2-player: a special-teams call brings the other human's matching unit on automatically.
+      if (this.isHuman(this.defTeam) && !this.choice.def && (this.match.phase === 'kickoff' || defenseForSpecial(play))) this.choice.def = this.cpuDefenseFor(play);
     } else this.choice.def = play;
     this.hurry = false;
   }
@@ -156,6 +185,7 @@ export class GameSession {
       rng: this.rng,
       teams: this.teams,
       humanTeam: human,
+      humanTeams: this.humanTeams,
       camDir: m.dirOf(m.possession),
       boost: this.diff.boost,
       energy: this.energy,
@@ -173,7 +203,7 @@ export class GameSession {
   snap() {
     const m = this.match;
     const sim = this.sim;
-    const cpuOff = this.offTeam !== this.humanTeam;
+    const cpuOff = !this.isHuman(this.offTeam);
     // Clock between plays.
     if (m.clockRunning && m.phase === 'scrimmage') {
       const target = cpuOff ? cpuTempo(m, this.offTeam, this.rng) : this.presnapUsed;
@@ -205,14 +235,14 @@ export class GameSession {
   }
 
   // ---------- audibles & hot routes ----------
-  openAudible(mode) {
-    const humanOff = this.offTeam === this.humanTeam;
+  openAudible(mode, team = this.humanTeam) {
+    const humanOff = this.offTeam === team;
     if (mode === 'menu') {
       const options = humanOff ? offenseAudibles(this.sim.offPlay) : defenseAudibles(this.sim.defPlay);
-      if (options.length) this.audible = { mode, options };
+      if (options.length) this.audible = { mode, options, team };
     } else {
       this.sim.computeIcons(true); // every eligible receiver gets a button
-      this.audible = { mode: 'hot', slot: null };
+      this.audible = { mode: 'hot', slot: null, team };
     }
   }
 
@@ -223,7 +253,7 @@ export class GameSession {
 
   audibleInput(input) {
     const a = this.audible;
-    const humanOff = this.offTeam === this.humanTeam;
+    const humanOff = this.offTeam === a.team;
     if (input.pressed.LB || input.pressed.View) { this.closeAudible(); return; }
     if (a.mode === 'menu') {
       const opt = a.options.find((o) => input.pressed[o.btn]);
@@ -284,24 +314,28 @@ export class GameSession {
       if (humanInvolved && !this.fast) this.realtimePresnap(dt);
       if (this.state !== 'presnap') return;
       this.presnapT += dt;
-      const humanOff = this.offTeam === this.humanTeam;
-      if (input && humanInvolved && this.audible) {
+      const off = this.offTeam, def = this.defTeam;
+      const offIn = this.inputFor(input, off), defIn = this.inputFor(input, def);
+      if (this.audible) {
         // Audible / hot-route menus are modal: the play waits (the play clock doesn't).
-        this.audibleInput(input);
+        const f = this.inputFor(input, this.audible.team);
+        if (f) this.audibleInput(f);
         if (this.state === 'presnap') this.sim.tick(dt, null);
         return;
       }
-      if (input && humanInvolved && !sim.isKick && (input.pressed.X || (humanOff && input.pressed.Y && this.match.phase === 'scrimmage'))) {
-        this.openAudible(input.pressed.X ? 'menu' : 'hot');
-        this.sim.tick(dt, null);
-        return;
+      for (const [team, f] of [[off, offIn], [def, defIn]]) {
+        if (!f || sim.isKick) continue;
+        if (f.pressed.X || (team === off && f.pressed.Y && this.match.phase === 'scrimmage')) {
+          this.openAudible(f.pressed.X ? 'menu' : 'hot', team);
+          this.sim.tick(dt, null);
+          return;
+        }
       }
-      if (input && humanInvolved) {
-        if (input.pressed.View) this.callTimeout(this.humanTeam);
-        if (humanOff && input.pressed.B && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
-        if (humanOff && input.pressed.A) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
-        if (!humanOff && input.pressed.B && sim.isKick === false) cyclePresnapDefender(sim);
-      }
+      for (const [team, f] of [[off, offIn], [def, defIn]]) if (f?.pressed.View) this.callTimeout(team);
+      if (offIn?.pressed.B && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      if (offIn?.pressed.A) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      if (defIn?.pressed.B && sim.isKick === false) sim.withHuman(def, () => cyclePresnapDefender(sim));
+      const humanOff = this.isHuman(off);
       // CPU offense snaps after a short beat at the line (instantly in fast mode).
       if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? 1.6 : 0.5)) { this.snap(); return; }
       sim.tick(dt, input);
@@ -321,9 +355,10 @@ export class GameSession {
     }
 
     if (this.state === 'penalty') {
-      // Waiting for the human: A accepts, X declines.
-      if (input?.pressed.A) this.choosePenalty(true);
-      else if (input?.pressed.X) this.choosePenalty(false);
+      // Waiting for the fouled human: A accepts, X declines.
+      const f = this.inputFor(input, 1 - this.pendingPenalty.outcome.team);
+      if (f?.pressed.A) this.choosePenalty(true);
+      else if (f?.pressed.X) this.choosePenalty(false);
       return;
     }
 
@@ -342,7 +377,7 @@ export class GameSession {
     this.flushMessages();
     if (m.clock <= 0 && m.clockRunning) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
     // Delay of game on the human offense.
-    if (m.playClock <= 0 && this.humanTeam === this.offTeam && m.phase === 'scrimmage') {
+    if (m.playClock <= 0 && this.isHuman(this.offTeam) && m.phase === 'scrimmage') {
       const foul = { type: 'delay_of_game', team: this.offTeam };
       const out = enforce(m, foul, null);
       m.applyPenalty(out, { offTeam: m.possession });
@@ -368,7 +403,7 @@ export class GameSession {
         // The most damaging foul for the offending team.
         outcome = enforce(m, fouls[0], r);
         // A foul against the human's opponent: the human accepts or declines (the play waits).
-        if (this.humanTeam !== null && !this.fast && outcome.team !== this.humanTeam && !outcome.dead) {
+        if (!this.fast && this.isHuman(1 - outcome.team) && !outcome.dead) {
           const choice = describeChoice(m, outcome, r, (yl) => yardLineText(m, m.possession, yl));
           this.pendingPenalty = { outcome, choice, foul: fouls[0], recommend: outcome.accepted };
           this.state = 'penalty';

@@ -35,10 +35,10 @@ export function readGamepad(index) {
   };
 }
 
-/** Index of any connected pad whose A button is down (used for "Press A to connect"). */
-export function findPadPressingA() {
+/** Index of any connected pad whose A button is down (used for "Press A to connect"); skips `exclude`. */
+export function findPadPressingA(exclude = -1) {
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
-  for (const gp of pads) if (gp && gp.connected && gp.buttons[0] && gp.buttons[0].pressed) return gp.index;
+  for (const gp of pads) if (gp && gp.connected && gp.index !== exclude && gp.buttons[0] && gp.buttons[0].pressed) return gp.index;
   return -1;
 }
 

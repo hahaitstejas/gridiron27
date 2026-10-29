@@ -14,7 +14,7 @@ import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
-import { Nav } from './ui/nav.js';
+import { Nav, el } from './ui/nav.js';
 import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
@@ -39,7 +39,10 @@ if (local?.playAs !== null && local?.playAs !== undefined) prefs.home = local.pl
 else if (local?.rosterTeams?.length === 1) prefs.home = teams.findIndex((t) => t.abbr === local.rosterTeams[0]);
 if (prefs.away === prefs.home) prefs.away = (prefs.home + 8) % 32;
 
-const input = new InputManager();
+let input2 = null;
+const input = new InputManager({ other: () => input2?.padIndex ?? -1 });
+input2 = new InputManager({ keyboard: false, other: () => input.padIndex }); // player 2 (local 2-player)
+let p2Wait = null; // start callback waiting for player 2's controller
 const hud = new Hud(document.getElementById('hud'));
 const renderer = new GameRenderer(document.getElementById('game'), teams[prefs.home], teams[prefs.away]);
 const nav = new Nav();
@@ -118,11 +121,21 @@ function startGame(p, opts = {}) {
   const cfg = opts.franchise ? { ...prefs, ...p } : Object.assign(prefs, p);
   if (!opts.franchise) savePrefs(prefs);
   const home = teams[cfg.home], away = teams[cfg.away];
-  const humanTeam = cfg.side === 'cpu' ? null : cfg.side === 'home' ? 0 : 1;
+  // Local 2-player needs a second controller: ask player 2 to press A first.
+  if (cfg.side === '2p' && !input2.connected) {
+    input2.claiming = true;
+    screens.frame('menu-screen', el('div.logo-small', { html: '2 PLAYERS' }),
+      el('div.league-status', { text: 'Player 2: press A on the second controller (player 1 is home, player 2 is away)' }));
+    screens.nav.set([], { onBack: () => { p2Wait = null; toMenu(); } });
+    p2Wait = () => startGame(p, opts);
+    return;
+  }
+  const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : cfg.side === 'home' ? 0 : 1;
   session = new GameSession({
     teams: [home, away],
     settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null },
     humanTeam,
+    humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed: opts.seed ?? (Date.now() % 1e9),
   });
   session.franchiseGame = opts.franchise || null;
@@ -221,7 +234,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI };
+window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2 };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
@@ -259,6 +272,8 @@ function frameBody(now) {
   last = now;
   time += dt;
   input.poll(dt);
+  input2.poll(dt);
+  if (p2Wait && input2.connected) { const go = p2Wait; p2Wait = null; input2.consume(); go(); }
   const f = input.frame;
   let consumed = false;
 
@@ -273,7 +288,8 @@ function frameBody(now) {
     updateReplay(f, dt);
     consumed = true;
   } else if (app === 'game' && session) {
-    if (f.pressed.Menu) { pause(); input.consume(); requestAnimationFrame(frame); return; }
+    const two = session.twoPlayer;
+    if (f.pressed.Menu || (two && input2.frame.pressed.Menu)) { pause(); input.consume(); input2.consume(); requestAnimationFrame(frame); return; }
     // Automatic replay of a big play once the play-call screen is up.
     if (autoReplayPending && session.state === 'playcall' && session.lastReplay) {
       autoReplayPending = false;
@@ -287,13 +303,15 @@ function frameBody(now) {
     if (session.needsHumanCall && !playcall.open) playcall.show(session, (play) => session.humanChoose(play));
     if (playcall.open && !session.needsHumanCall) playcall.hide();
     const pcOpen = playcall.open;
-    if (pcOpen) { playcall.update(f, dt); }
+    // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
+    if (pcOpen) { playcall.update(two && session.humanTeam === 1 ? input2.frame : f, dt); }
+    const gameInput = two ? { perTeam: true, 0: f, 1: input2.frame } : f;
     acc += dt * speed;
     let steps = 0;
     while (acc >= STEP && steps < 6 * speed) {
-      session.tick(STEP, pcOpen ? null : f);
+      session.tick(STEP, pcOpen ? null : gameInput);
       for (const e of session.events) onSessionEvent(e);
-      if (!pcOpen) input.consume();
+      if (!pcOpen) { input.consume(); input2.consume(); }
       acc -= STEP;
       steps++;
       if (app !== 'game') break;
@@ -339,7 +357,7 @@ function frameBody(now) {
     attract += dt * 0.05;
     renderer.renderOrbit(dt, attract);
   }
-  if (consumed) input.consume();
+  if (consumed) { input.consume(); input2.consume(); }
   renderer.adapt(frameMs);
   requestAnimationFrame(frame);
 }

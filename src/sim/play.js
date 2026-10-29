@@ -41,6 +41,10 @@ export class PlaySim {
     this.offPlay = cfg.offPlay;
     this.defPlay = cfg.defPlay;
     this.humanTeam = cfg.humanTeam ?? null;
+    // Local 2-player: every human team has its own controlled player (controlled[team]); `humanTeam`
+    // is the team whose context the human-control code is running in (see withHuman()).
+    this.humanTeams = cfg.humanTeams || (this.humanTeam !== null ? [this.humanTeam] : []);
+    this.controlled = {};
     this.camDir = cfg.camDir ?? this.dir;
     this.boost = cfg.boost || [0, 0];
     this.energy = cfg.energy || null; // [Map, Map] roster id -> 0..1 (game/fatigue.js)
@@ -54,7 +58,6 @@ export class PlaySim {
     this.players = [];
     this.engagements = [];
     this.possTeam = this.offIdx;
-    this.controlledId = -1;
     this.passThrown = false;
     this.pendingThrow = null;
     this.qbCrossed = false;
@@ -77,7 +80,22 @@ export class PlaySim {
   offense() { return this.players.filter((p) => p.team === this.offIdx); }
   defense() { return this.players.filter((p) => p.team === this.defIdx); }
   bySlot(team, slot) { return this.players.find((p) => p.team === team && p.slot === slot); }
-  isHumanControlled(p) { return p.id === this.controlledId && this.humanTeam === p.team; }
+  isHumanControlled(p) { return this.controlled[p.team] === p.id && this.humanTeams.includes(p.team); }
+  isHuman(team) { return this.humanTeams.includes(team); }
+  get controlledId() { return this.humanTeam === null ? -1 : this.controlled[this.humanTeam] ?? -1; }
+  set controlledId(id) { if (this.humanTeam !== null) this.controlled[this.humanTeam] = id; }
+  /** Run fn with `team` as the current human (2-player: each human's input runs in their own context). */
+  withHuman(team, fn) {
+    const prev = this.humanTeam;
+    this.humanTeam = team;
+    try { return fn(); } finally { this.humanTeam = prev; }
+  }
+  /** One human's controller frame: `input` is either a frame (single player) or { perTeam: true, 0: f, 1: f }. */
+  inputFor(input, team) {
+    if (!input) return null;
+    if (input.perTeam) return input[team] || null;
+    return team === this.humanTeam ? input : null;
+  }
 
   setup() {
     const offF = getOffFormation(this.offPlay.formation);
@@ -101,8 +119,13 @@ export class PlaySim {
     this.ball.carrier = c ? c.id : -1;
     this.computeIcons();
     this.isKick = KICK_PLAYS.has(this.offPlay.type);
+    if (this.isKick && this.offPlay.type === 'kickoff') { this.ball.state = 'tee'; this.ball.carrier = -1; this.ball.y = 0.25; }
+    for (const t of this.humanTeams) this.withHuman(t, () => this.pickControlled());
+  }
+
+  /** The human's starting player: kicker/returner on kicks, QB on offense, a defender on defense. */
+  pickControlled() {
     if (this.isKick) {
-      if (this.offPlay.type === 'kickoff') { this.ball.state = 'tee'; this.ball.carrier = -1; this.ball.y = 0.25; }
       if (this.humanTeam === this.offIdx) {
         this.meter = newMeter();
         this.kickAim = 0;
@@ -341,12 +364,16 @@ export class PlaySim {
 
     if (this.state === 'live') {
       this.updateBall(dt);
-      if (this.kick) updateSpecial(this, dt, this.humanTeam !== null ? input : null);
+      if (this.kick) {
+        if (input?.perTeam) this.withHuman(this.isHuman(this.offIdx) ? this.offIdx : this.humanTeam, () => updateSpecial(this, dt, this.inputFor(input, this.offIdx)));
+        else updateSpecial(this, dt, this.humanTeam !== null ? input : null);
+      }
       this.updateQBSpecial();
       updatePendingThrow(this, dt);
       runOffenseAI(this, dt);
       runDefenseAI(this, dt);
-      if (this.humanTeam !== null && input) applyHuman(this, input, dt);
+      if (input?.perTeam) { for (const t of this.humanTeams) { const f = input[t]; if (f) this.withHuman(t, () => applyHuman(this, f, dt)); } }
+      else if (this.humanTeam !== null && input) applyHuman(this, input, dt);
       updateMoves(this, dt);
       updateBlocking(this, dt);
       for (const p of this.players) {
@@ -543,12 +570,12 @@ export class PlaySim {
       this.possTeam = p.team;
       this.emit('turnover', { how, player: p.id });
     }
-    if (this.humanTeam !== null) {
-      if (p.team === this.humanTeam) this.controlledId = p.id;
-      else if (!this.players[this.controlledId] || this.players[this.controlledId].team !== this.humanTeam) {
-        this.controlledId = this.nearestTo(this.humanTeam, p).id;
+    for (const t of this.humanTeams) this.withHuman(t, () => {
+      if (p.team === t) this.controlledId = p.id;
+      else if (!this.players[this.controlledId] || this.players[this.controlledId].team !== t) {
+        this.controlledId = this.nearestTo(t, p).id;
       }
-    }
+    });
     for (const q of this.players) {
       if (q === p) continue;
       if (q.team === p.team) {

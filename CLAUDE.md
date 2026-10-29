@@ -91,6 +91,12 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Tempo: on the play-call screen Y = no-huddle (`session.noHuddle()` reruns `lastOffPlay`, no accelerated-clock
   runoff); at the line B = spike (`session.spike()` swaps in `st_spike` and snaps). View (or the Share button,
   gamepad button 17) calls a timeout between plays; the pause menu has Call Timeout too.
+- Local 2-player: `GameSession({ humanTeams: [0, 1] })` (Play Now → "2 players"; P1 = home with pad 1 + keyboard,
+  P2 = away with a second pad claimed by pressing A, `InputManager({ keyboard: false, other })`). The session's
+  `humanTeam` getter is the human the UI serves right now (the play caller, the penalty chooser, else the offense);
+  `inputFor(input, team)` splits `{ perTeam: true, 0: frame, 1: frame }`. `PlaySim` keeps `controlled[team]` per
+  human and runs human control in each team's context (`withHuman`); two rings show both controlled players.
+  Difficulty boosts don't apply (no CPU side).
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).

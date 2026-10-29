@@ -112,7 +112,7 @@ export class GameRenderer {
     const players = this.players;
     this._lastSim = sim;
     this.ball.visible = true;
-    players.update(sim, alpha, time, sim.humanTeam !== null ? sim.controlledId : -1);
+    players.update(sim, alpha, time, sim.humanTeams?.length ? sim.humanTeams.map((t) => sim.controlled[t] ?? -1) : sim.humanTeam !== null ? sim.controlledId : -1);
     // Ball
     const b = sim.ball;
     const bm = this.ball;
@@ -144,6 +144,7 @@ export class GameRenderer {
   hidePlayers() {
     for (const m of Object.values(this.players.parts)) m.count = 0;
     this.players.ring.visible = false;
+    this.players.ring2.visible = false;
     this.ball.visible = false;
     this.ballShadow.visible = false;
     this.aim.visible = false;

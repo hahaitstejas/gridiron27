@@ -3,12 +3,15 @@ import { readGamepad, findPadPressingA, rumble } from './gamepad.js';
 import { Keyboard } from './keyboard.js';
 
 /**
- * Input manager for player 1. Starts unassigned; the first gamepad to press A claims the slot
- * (browsers only expose pads after a button press). The keyboard always works as a fallback.
+ * Input manager for one player. Starts unassigned; the first gamepad to press A claims the slot
+ * (browsers only expose pads after a button press). Player 1 also gets the keyboard; player 2
+ * (`{ keyboard: false, other }`) claims any pad except player 1's (`other()` = its pad index).
  */
 export class InputManager {
-  constructor() {
-    this.keyboard = new Keyboard();
+  constructor({ keyboard = true, other = () => -1 } = {}) {
+    this.keyboard = keyboard ? new Keyboard() : null;
+    this.other = other;
+    this.claiming = keyboard; // player 2 only claims a pad while 2-player setup asks for one
     this.padIndex = -1;
     this.padId = '';
     this.state = new ControllerState();
@@ -19,8 +22,8 @@ export class InputManager {
   }
   get connected() { return this.padIndex >= 0; }
   poll(dt) {
-    if (this.padIndex < 0) {
-      const i = findPadPressingA();
+    if (this.padIndex < 0 && this.claiming) {
+      const i = findPadPressingA(this.other());
       if (i >= 0) {
         this.padIndex = i;
         this.padId = navigator.getGamepads()[i].id;
@@ -28,7 +31,7 @@ export class InputManager {
         this.onConnect?.(this.padId);
       }
     }
-    const kb = this.keyboard.read();
+    const kb = this.keyboard ? this.keyboard.read() : { lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0, buttons: {} };
     const gp = this.padIndex >= 0 ? readGamepad(this.padIndex) : null;
     let raw = kb;
     if (gp) {

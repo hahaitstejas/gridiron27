@@ -93,7 +93,7 @@ export class Screens {
     };
     const home = teamPanel('home', 'HOME');
     const away = teamPanel('away', 'AWAY');
-    const side = option('You play as', ['home', 'away', 'cpu'], 'side', (v) => (v === 'cpu' ? 'Watch CPU vs CPU' : v === 'home' ? 'Home team' : 'Away team'));
+    const side = option('You play as', ['home', 'away', '2p', 'cpu'], 'side', (v) => (v === 'cpu' ? 'Watch CPU vs CPU' : v === '2p' ? '2 players (P1 home, P2 away)' : v === 'home' ? 'Home team' : 'Away team'));
     const diff = option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label);
     const qlen = option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'quarterMinutes', (v) => `${v} min`);
     const accel = option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `run to ${v}s` : 'Off'));

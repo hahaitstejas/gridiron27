@@ -53,6 +53,10 @@ third time as the needle comes back to set accuracy (closest to the line = strai
 Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6x speed
 (`&q=1` for 1-minute quarters).
 
+### Two players
+Play Now → **You play as: 2 players**. Player 1 (home) uses the first controller (or the keyboard), player 2 (away)
+presses A on a second controller when asked. Each picks their own plays and controls their own team.
+
 ### Franchise
 Main menu → **Franchise**: pick your team and season length (6, 10 or 17 games). Play your games or sim them,
 follow standings, results and league leaders, make the playoffs, then run the offseason: progression and

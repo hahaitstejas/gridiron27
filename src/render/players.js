@@ -114,6 +114,10 @@ export class PlayerRenderer {
     this.ring.renderOrder = 2;
     this.ring.visible = false;
     scene.add(this.ring);
+    // Second ring for player 2 in local 2-player games.
+    this.ring2 = this.ring.clone();
+    this.ring2.material = this.ring.material.clone();
+    scene.add(this.ring2);
 
     this._m = new THREE.Matrix4();
     this._t = new THREE.Matrix4();
@@ -170,13 +174,15 @@ export class PlayerRenderer {
     for (const m of Object.values(P)) m.count = m === P.thigh || m === P.shin || m === P.shoe || m === P.upper || m === P.fore || m === P.hand || m === P.num ? n * 2 : n;
     for (let i = 0; i < n; i++) this.drawPlayer(sim, sim.players[i], i, alpha, time);
     for (const m of Object.values(P)) m.instanceMatrix.needsUpdate = true;
-    const cp = sim.players[controlledId];
-    if (cp) {
-      this.ring.visible = true;
-      this.ring.position.x = cp.px + (cp.x - cp.px) * alpha;
-      this.ring.position.z = cp.pz + (cp.z - cp.pz) * alpha;
-      this.ring.material.color.set(cp.team === sim.possTeam ? 0xffe14d : 0x4dd2ff);
-    } else this.ring.visible = false;
+    const ids = Array.isArray(controlledId) ? controlledId : [controlledId];
+    [this.ring, this.ring2].forEach((ring, i) => {
+      const cp = sim.players[ids[i]];
+      ring.visible = !!cp;
+      if (!cp) return;
+      ring.position.x = cp.px + (cp.x - cp.px) * alpha;
+      ring.position.z = cp.pz + (cp.z - cp.pz) * alpha;
+      ring.material.color.set(cp.team === sim.possTeam ? 0xffe14d : 0x4dd2ff);
+    });
   }
 
   drawPlayer(sim, p, i, alpha, time) {

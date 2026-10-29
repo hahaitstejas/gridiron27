@@ -371,3 +371,36 @@ describe('penalty choice', () => {
     expect(['post', 'playcall']).toContain(s.state);
   });
 });
+
+describe('local 2-player', () => {
+  it('lets both humans call plays and routes each controller to its own team', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const { emptyFrame } = await import('../src/input/actions.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeams: [0, 1], seed: 4 });
+    expect(s.twoPlayer).toBe(true);
+    s.match.newPossession(0, 30, 0);
+    s.enterPlaycall();
+    expect(s.needsHumanCall).toBe(true);
+    expect(s.humanSide).toBe('offense');       // offense (team 0) calls first
+    s.humanChoose(getOffPlay('gun_doubles_mesh'));
+    expect(s.humanTeam).toBe(1);               // then the defense (team 1)
+    expect(s.humanSide).toBe('defense');
+    s.humanChoose(getDefPlay('43_cover3'));
+    s.tick(STEP, null);
+    expect(s.state).toBe('presnap');
+    const sim = s.sim;
+    expect(sim.controlled[0]).toBe(sim.bySlot(0, 'QB').id);
+    expect(sim.players[sim.controlled[1]].team).toBe(1);
+    // Player 2's A must not snap the ball; player 1's A does.
+    const p2 = emptyFrame(); p2.pressed.A = true;
+    s.tick(STEP, { perTeam: true, 0: emptyFrame(), 1: p2 });
+    expect(s.state).toBe('presnap');
+    const p1 = emptyFrame(); p1.pressed.A = true;
+    s.tick(STEP, { perTeam: true, 0: p1, 1: emptyFrame() });
+    expect(s.state).toBe('live');
+    for (let i = 0; i < 3000 && s.state === 'live'; i++) s.tick(STEP, { perTeam: true, 0: emptyFrame(), 1: emptyFrame() });
+    expect(['post', 'penalty', 'playcall']).toContain(s.state);
+  });
+});

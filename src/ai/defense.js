@@ -111,7 +111,8 @@ export function runDefenseAI(sim, dt) {
       if (trailing && timeLeft > 0.4) { /* keep running with the receiver */ }
       else if (isMyMan || canReach) {
         // Defenders read the throw rather than knowing the exact spot: error grows with distance.
-        const sd = (0.15 + dist * 0.045) * (1.6 - sim.R(p, "awareness") / 100);
+        let sd = (0.15 + dist * 0.045) * (1.6 - sim.R(p, "awareness") / 100);
+        if (sim.difficulty && p.team !== sim.humanTeam) sd *= sim.difficulty.cpuRead ?? 1;
         p.task = { type: 'ball', prev: p.task, err: { x: sim.rng.gauss(0, sd), z: sim.rng.gauss(0, sd) } };
       }
       else if (dist < 22 && p.task.type !== 'rush') p.task = { type: 'ball', prev: p.task, rally: true };

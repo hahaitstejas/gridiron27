@@ -214,7 +214,8 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
 - After changing gameplay logic, run `npm run sim -- --plays 2000` and `npm run bot` and check the numbers
   still look like football and that there are no invariant violations. Current targets (CPU vs CPU):
   completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
-  Bot targets: blind quick throws should average well under 15 yds/play, mindless QB scrambles ~2-4 yds,
+  Bot targets: blind quick throws should average well under 15 yds/play, a tapped (lob) throw to the open man
+  ~60-65% / ~7 yds (bullets a bit better), mindless QB scrambles ~2-4 yds,
   a QB who just holds the ball should be sacked in ~4-5 s. Full games (`npm run games -- --games 16`): ~20-24
   pts and ~350 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
   violations. Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.

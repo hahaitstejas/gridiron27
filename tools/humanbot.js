@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Measures how exploitable the CPU defense is against simple scripted "human" strategies.
-//   node tools/humanbot.js [--plays 200]
+//   node tools/humanbot.js [--plays 200] [--difficulty pro] [--league public/local] [--team CHI]
 import { RNG } from '../src/core/rng.js';
 import { STEP } from '../src/core/constants.js';
 import { defaultTeams } from '../src/data/teams.js';
@@ -9,6 +9,8 @@ import { listOffPlays, listDefPlays } from '../src/data/playbook.js';
 import { PlaySim } from '../src/sim/play.js';
 import { emptyFrame } from '../src/input/actions.js';
 import { difficultyConfig } from '../src/ai/difficulty.js';
+import { parseCSV, importTeamsRows, importRosterRows, importDepthRows } from '../src/data/csv.js';
+import fs from 'fs';
 
 const di = process.argv.indexOf('--difficulty');
 const DIFF = difficultyConfig(di > 0 ? process.argv[di + 1] : 'pro', 0);
@@ -16,6 +18,18 @@ const DIFF = difficultyConfig(di > 0 ? process.argv[di + 1] : 'pro', 0);
 const pi = process.argv.indexOf('--plays');
 const N = pi > 0 ? +process.argv[pi + 1] : 200;
 const teams = generateLeagueRosters(defaultTeams(), 2027);
+// Optional: play with a local league's spreadsheets (teams.csv, roster.csv, depth.csv).
+const li = process.argv.indexOf('--league');
+if (li > 0) {
+  const read = (f) => { const p = `${process.argv[li + 1]}/${f}`; return fs.existsSync(p) ? parseCSV(fs.readFileSync(p, 'utf8')) : null; };
+  const t = read('teams.csv'), r = read('roster.csv'), d = read('depth.csv');
+  if (t) importTeamsRows(teams, t);
+  if (r) importRosterRows(teams, r);
+  if (d) importDepthRows(teams, d);
+}
+// Optional: the human's team (default: rotate through the league).
+const ti = process.argv.indexOf('--team');
+const humanTeamIdx = ti > 0 ? teams.findIndex((t) => t.abbr === process.argv[ti + 1].toUpperCase()) : -1;
 
 // Each strategy returns an input frame for time t.
 const strategies = {
@@ -24,6 +38,7 @@ const strategies = {
   quickThrowA: { plays: (p) => p.type === 'pass', input: (t) => ({ press: t > 1.1 && t < 1.12 ? 'A' : null, hold: t > 1.1 && t < 1.4 ? 'A' : null }) },
   quickThrowB: { plays: (p) => p.type === 'pass', input: (t) => ({ press: t > 1.3 && t < 1.32 ? 'B' : null, hold: t > 1.3 && t < 1.6 ? 'B' : null }) },
   smartThrow: { plays: (p) => p.type === 'pass', smart: true, input: () => ({}) },
+  smartTap: { plays: (p) => p.type === 'pass', smart: true, tap: true, input: () => ({}) },
   holdBall: { plays: (p) => p.type === 'pass', input: () => ({}) },
   runUpfield: { plays: (p) => p.type === 'run', input: (t) => ({ ly: t > 0.9 ? -1 : 0, rt: 1 }) },
 };
@@ -34,7 +49,7 @@ for (const [name, st] of Object.entries(strategies)) {
   let yds = 0, n = 0, td = 0, big = 0, cmp = 0, att = 0, yac = 0, air = 0, ints = 0, sep = 0, sepN = 0;
   for (let i = 0; i < N; i++) {
     const rng = new RNG(1000 + i);
-    const sim = new PlaySim({ rng, teams: [teams[i % 32], teams[(i + 7) % 32]], offIdx: 0, dir: 1, losX: -25, ballZ: 0,
+    const sim = new PlaySim({ rng, teams: [teams[humanTeamIdx >= 0 ? humanTeamIdx : i % 32], teams[humanTeamIdx >= 0 && (i + 7) % 32 === humanTeamIdx ? (i + 8) % 32 : (i + 7) % 32]], offIdx: 0, dir: 1, losX: -25, ballZ: 0,
       offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 0, ...DIFF });
     sim.snap();
     const f = emptyFrame();
@@ -50,7 +65,7 @@ for (const [name, st] of Object.entries(strategies)) {
         }
         s.press = bestBtn; st._btn = bestBtn;
       }
-      if (st.smart && sim.t > 1.7 && sim.t < 2.0) s.hold = st._btn;
+      if (st.smart && sim.t > 1.7 && sim.t < (st.tap ? 1.72 : 2.0)) s.hold = st._btn; // tap = lob, hold = bullet
       f.lx = s.lx || 0; f.ly = s.ly || 0; f.rt = s.rt || 0;
       for (const b in f.pressed) { f.pressed[b] = false; f.down[b] = false; }
       if (s.press) f.pressed[s.press] = true;

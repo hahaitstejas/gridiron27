@@ -11,7 +11,7 @@ const WINDUP = 0.2;
 export function flightTime(dist, kind, thp) {
   if (kind === 'bullet') return dist / (15 + thp * 0.12) + 0.05;
   if (kind === 'throwaway') return dist / 26 + 0.1;
-  return dist / (11 + thp * 0.07) + 0.25; // lob / touch
+  return dist / (13.5 + thp * 0.09) + 0.12; // lob / touch: some air under it, but not a floater
 }
 
 export function maxThrowDist(thp) { return 38 + thp * 0.33; }
@@ -86,7 +86,7 @@ function release(sim, qb, rec, kind, lead) {
     const moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
     let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22) * (1 + pressure * 0.9 + moving * 0.6);
     if (kind === 'bullet') sd *= 1.1;
-    if (sim.difficulty && qb.team !== sim.humanTeam) sd *= sim.difficulty.cpuAccuracy ?? 1;
+    if (sim.difficulty) sd *= qb.team !== sim.humanTeam ? sim.difficulty.cpuAccuracy ?? 1 : sim.difficulty.humanAccuracy ?? 1;
     tx += rng.gauss(0, sd);
     tz += rng.gauss(0, sd);
     // Arm strength limit.
@@ -210,7 +210,12 @@ function resolveCatch(sim, reach, late = false) {
     const reacted = d.task?.type === 'ball' || dc.d < 0.6;
     const userSwat = swatBonus(sim, d);
     let pPlay = 0.12 + sim.R(d, 'coverage') * 0.0035 + (recDist - dc.d) * 0.28 + (reacted ? 0.08 : -0.15) + (userSwat ? 0.25 : 0);
-    if (b.kind === 'lob') pPlay += 0.05;
+    if (b.kind === 'lob') {
+      // Touch passes drop in over underneath defenders; a defender over the top can still play it.
+      const qb = sim.players[b.thrower];
+      const under = qb && Math.hypot(d.x - qb.x, d.z - qb.z) < Math.hypot(b.target.x - qb.x, b.target.z - qb.z) - 1;
+      pPlay += under ? -0.1 : 0.03;
+    }
     if (late) pPlay -= 0.1;
     pPlay = clamp(pPlay, 0.03, 0.95);
     if (rng.next() < pPlay) {

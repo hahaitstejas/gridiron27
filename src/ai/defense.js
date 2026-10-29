@@ -117,6 +117,18 @@ export function runDefenseAI(sim, dt) {
       }
       else if (dist < 22 && p.task.type !== 'rush') p.task = { type: 'ball', prev: p.task, rally: true };
     }
+    // Play action: linebackers and safeties step up to the run fake; less aware players bite longer.
+    if (sim.offPlay?.pa && sim.ball.state !== 'air' && (p.task.type === 'zone' || p.task.type === 'man' || p.task.type === 'spy') && !/CB|NB|DB/.test(p.slot)) {
+      // Safeties are taught to read their keys first: they bite less than linebackers.
+      const safety = p.slot === 'FS' || p.slot === 'SS';
+      const bite = safety ? 0.15 + (1 - sim.R(p, 'awareness') / 100) * 0.5 : 0.3 + (1 - sim.R(p, 'awareness') / 100) * 1.0;
+      if (sim.t < bite) {
+        const l = sim.toLocal(p.x, p.z);
+        const w = sim.toWorld(Math.max(1.5, l.down - 3), l.lat * 0.9);
+        seek(p, w.x, w.z, 0.6, 0.3);
+        continue;
+      }
+    }
     switch (p.task.type) {
       case 'rush': rush(sim, p); break;
       case 'man': man(sim, p, dt); break;

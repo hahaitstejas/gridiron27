@@ -5,7 +5,7 @@ import { fgDistance } from '../sim/kicking.js';
 // decisions; two-minute drill; kneel-downs; PAT vs 2-point; defensive calls; timeouts.
 
 const DEEP = new Set(['go', 'fade', 'post', 'corner', 'seam', 'wheel', 'skinny_post', 'out_up', 'deep_out']);
-const QUICK = new Set(['slant', 'quick_out', 'hitch', 'flat', 'swing', 'screen', 'arrow', 'stick', 'sit', 'drag', 'shallow', 'whip']);
+const QUICK = new Set(['slant', 'quick_out', 'hitch', 'flat', 'swing', 'screen', 'rb_screen', 'arrow', 'stick', 'sit', 'drag', 'shallow', 'whip']);
 
 /** Tags derived from a play's routes so the caller can pick by depth. */
 export function playTags(p) {
@@ -84,6 +84,8 @@ function pickPlay(m, rng, want) {
     let w = 1;
     if (want.run !== undefined) w *= want.run === t.run ? 6 : 0.2;
     if (want.deep && t.deep) w *= 3;
+    else if (t.deep) w *= 0.4; // deep shots are a change-up, not the base offense
+    if (t.pass && p.pa && !want.run && m.down >= 3) w *= 0.3; // nobody bites on play action on 3rd and long
     if (want.quick && t.quick) w *= 3;
     if (want.deep && t.quick) w *= 0.4;
     if (want.goalLine) w *= t.goalLine ? 3 : t.deep ? 0.2 : 1;
@@ -155,7 +157,10 @@ function pickDefense(m, rng, all, blitzRate) {
     if (passDown) w *= nickelish ? 4 : 0.6;
     if (shortYds) w *= goal ? 6 : nickelish ? 0.3 : 1.5;
     if (!shortYds && goal) w *= 0.05;
-    const isBlitz = /blitz|fire|zero|cover0/i.test(p.id);
+    // Heavy run fronts on short yardage, the prevent shell only when protecting a lead late or on very long downs.
+    if (f === 'big_44') w *= shortYds ? 3 : passDown ? 0.15 : 0.6;
+    if (f === 'quarter') w *= prevent ? 6 : passDown && toGo >= 15 ? 0.8 : 0.02;
+    const isBlitz = /blitz|fire|zero|cover0|double_a/i.test(p.id);
     w *= blitz ? (isBlitz ? 4 : 0.6) : (isBlitz ? 0.3 : 1);
     if (prevent) w *= /cover4|quarters|prevent|cover3|deep/i.test(p.id) ? 4 : 0.4;
     return w;

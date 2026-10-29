@@ -144,8 +144,9 @@ from the ball. Defense `align: "L1" | "R1" | "slot"` lines a DB up over a receiv
 ```
 Routes come from `src/data/routes.js` (`go, fade, seam, slant, quick_out, out, deep_out, in, dig, drag,
 shallow, cross, curl, hitch, stick, comeback, post, skinny_post, corner, flat, arrow, swing, wheel, angle,
-sit, whip, zig, out_up, screen`); suffix `_l`/`_r` forces a side. Non-routes: `block`, `stalk`.
-Run plays add `"run": { "carrier": "RB", "aim": [1, 1.5], "mesh": [-4.2, 0.6], "scheme": "zone"|"gap",
+sit, whip, zig, out_up, screen, rb_screen`); suffix `_l`/`_r` forces a side. Non-routes: `block`, `stalk`.
+Pass plays may add `"pa": true` (play action: the QB fakes to the back, which then blocks; linebackers and
+safeties bite) and `"boot": 1 | -1` (QB rolls out to that side). Run plays add `"run": { "carrier": "RB", "aim": [1, 1.5], "mesh": [-4.2, 0.6], "scheme": "zone"|"gap",
 "side": 1|-1, "pull": ["RG"] }`. `mirrorOffPlay()` flips any play.
 
 ### Special teams (`special.json`)
@@ -204,7 +205,8 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   (downs, clock + accelerated clock, two-minute warning, halftime, OT, timeouts), kickoffs/punts/FGs/PATs/
   2-pt tries with a 3-press kick meter, returns and fair catches, fumbles, penalties with enforcement,
   play-call screen (formation → play, flip, suggestions), CPU play calling, 4 difficulty tiers, score bug.
-- [ ] Phase 3 — large playbooks, audibles/hot routes, replay, audio, Practice mode, settings
+- [ ] Phase 3 — large playbooks (done: 17 offensive / 8 defensive formations, 131 offensive / 53 defensive
+  plays, play action + bootlegs), audibles/hot routes, replay, audio, Practice mode, settings
 - [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
 - [ ] Phase 5 — Franchise mode
 
@@ -216,9 +218,10 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
   Bot targets: blind quick throws should average well under 15 yds/play, a tapped (lob) throw to the open man
   ~60-65% / ~7 yds (bullets a bit better), mindless QB scrambles ~2-4 yds,
-  a QB who just holds the ball should be sacked in ~4-5 s. Full games (`npm run games -- --games 16`): ~20-24
-  pts and ~350 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
-  violations. Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.
+  a QB who just holds the ball should be sacked in ~4-5 s. Full games (`npm run games -- --games 16`): ~22-26
+  pts and ~350-410 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
+  violations. Every play is exercised by `npm test` against several opponents; `npm run sim -- --plays 600
+  --only "screen|draw"` checks a subset (each play's ypp should look like football). Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.
 - Ball spotting: the dead-ball spot and the goal-line plane use the **ball's** position
   (`PlaySim.carrierBallPos`), which moves forward as a tackled runner falls (matching the animation). A QB
   slide is spotted where the slide began.

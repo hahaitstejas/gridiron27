@@ -3,7 +3,7 @@ import { seek, stop, moveDir } from '../sim/movement.js';
 import { carrierAI } from './carrier.js';
 import { qbDecide } from './qb.js';
 
-const OFF_TASKS = new Set(['qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
+const OFF_TASKS = new Set(['pa_fake', 'qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
 
 export function runOffenseAI(sim, dt) {
   if ((sim._protT = (sim._protT || 0) - dt) <= 0) {
@@ -19,6 +19,9 @@ export function runOffenseAI(sim, dt) {
       case 'qb_handoff': qbHandoff(sim, p, dt); break;
       case 'qb_fake': seek(p, p.task.to.x, p.task.to.z, 0.6); break;
       case 'pass_block': passBlock(sim, p); break;
+      case 'pa_fake':
+        if (seek(p, p.task.to.x, p.task.to.z, 0.7, 0.4) < 0.6 || sim.t > 1.3) p.task = { type: 'pass_block' };
+        break;
       case 'run_block': runBlock(sim, p); break;
       case 'stalk': stalk(sim, p); break;
       case 'route': route(sim, p); break;
@@ -34,14 +37,25 @@ export function runOffenseAI(sim, dt) {
 function qbPass(sim, p, dt) {
   const t = p.task;
   const down = sim.dir; // downfield direction along x
-  if (!t.start) { t.start = { x: p.x, z: p.z }; t.dropTo = { x: p.x - down * t.drop, z: p.z }; }
+  if (!t.start) {
+    const play = sim.offPlay;
+    t.start = { x: p.x, z: p.z };
+    // Bootleg: roll out to one side (offense frame) instead of setting up in the pocket.
+    const roll = play.boot ? sim.toWorld(-(t.drop + 1), play.boot * 7) : null;
+    t.dropTo = roll ? { x: roll.x, z: roll.z } : { x: p.x - down * t.drop, z: p.z };
+    // Play action: show the ball to the back first.
+    if (play.pa) { const f = sim.toWorld(-2.6, play.boot ? -play.boot * 1.2 : 0.8); t.fake = { x: f.x, z: f.z, until: 0.65 }; }
+  }
   p.face = { x: p.x + down * 20, z: p.z * 0.5 };
   if (sim.ball.state === 'snap') { stop(p); return; }
-  if (t.phase === 'drop') {
-    const d = seek(p, t.dropTo.x, t.dropTo.z, 0.7, 0.8);
+  if (t.phase === 'drop' && t.fake && sim.t < t.fake.until) {
+    seek(p, t.fake.x, t.fake.z, 0.55, 0.3);
+    p.face = { x: t.fake.x, z: t.fake.z };
+  } else if (t.phase === 'drop') {
+    const d = seek(p, t.dropTo.x, t.dropTo.z, sim.offPlay.boot ? 0.85 : 0.7, 0.8);
     if (d < 0.35) { t.phase = 'set'; t.setT = sim.t; }
   } else if (t.phase === 'set') {
-    pocketMove(sim, p, t);
+    if (sim.offPlay.boot) stop(p); else pocketMove(sim, p, t);
   } else if (t.phase === 'scramble') {
     const side = t.side;
     moveDir(p, down * 0.6, side, 1);

@@ -42,6 +42,7 @@ export function mirrorOffPlay(play) {
   const routes = {};
   for (const [k, v] of Object.entries(play.routes || {})) routes[k] = swapSide(v);
   const m = { ...play, id: play.id + '__flip', formation: fid, routes, flipped: true };
+  if (play.boot) m.boot = -play.boot;
   if (play.run) {
     m.run = {
       ...play.run,

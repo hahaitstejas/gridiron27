@@ -54,8 +54,14 @@ describe('playbook', () => {
 });
 
 describe('play simulation', () => {
-  it('every offense/defense combination ends with a valid result', () => {
-    for (const op of listOffPlays()) for (const dp of listDefPlays()) {
+  it('every play ends with a valid result against a spread of opponents', () => {
+    // Every offensive play against 6 defenses and every defensive play against 6 offenses
+    // (the full cross product is ~7000 plays, too slow for a unit test).
+    const offs = listOffPlays(), defs = listDefPlays();
+    const pairs = [];
+    offs.forEach((op, i) => { for (let k = 0; k < 6; k++) pairs.push([op, defs[(i * 7 + k * 9) % defs.length]]); });
+    defs.forEach((dp, i) => { for (let k = 0; k < 6; k++) pairs.push([offs[(i * 11 + k * 23) % offs.length], dp]); });
+    for (const [op, dp] of pairs) {
       const sim = runPlay(5, op, dp);
       expect(sim.result, `${op.id} vs ${dp.id}`).toBeTruthy();
       expect(sim.result.reason).not.toBe('timeout');

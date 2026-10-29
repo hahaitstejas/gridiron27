@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Headless CPU-vs-CPU runner. Phase 1: runs many single plays with random play calls and
 // checks invariants (play terminates, no NaN, valid result). Usage:
-//   npm run sim -- --plays 500 --seed 7 [--verbose]
+//   npm run sim -- --plays 500 --seed 7 [--verbose] [--only <regex on offensive play id>]
 import { RNG } from '../src/core/rng.js';
 import { STEP } from '../src/core/constants.js';
 import { defaultTeams } from '../src/data/teams.js';
@@ -13,6 +13,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a, i, arr) => a.start
 const N = parseInt(args.plays || '300', 10);
 const seed = parseInt(args.seed || '1', 10);
 const verbose = !!args.verbose;
+const OFF_POOL = args.only ? listOffPlays().filter((p) => new RegExp(args.only).test(p.id)) : listOffPlays();
 
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 const rng = new RNG(seed);
@@ -25,7 +26,7 @@ const yacList = [];
 const runList = [];
 
 for (let i = 0; i < N; i++) {
-  const op = rng.pick(listOffPlays());
+  const op = rng.pick(OFF_POOL);
   const dp = rng.pick(listDefPlays());
   const offIdx = rng.int(0, 1);
   const dir = rng.chance(0.5) ? 1 : -1;

@@ -223,6 +223,9 @@ export class PlaySim {
           : { type: 'qb_handoff' };
       } else if (OL_SLOTS.has(p.slot)) {
         p.task = play.type === 'run' ? { type: 'run_block', pull: (play.run?.pull || []).includes(p.slot) } : { type: 'pass_block' };
+      } else if (play.pa && play.type === 'pass' && p.slot === (play.pa.carrier || 'RB') && (!a || a === 'block')) {
+        // Play action: carry out the fake through the mesh, then pick up a rusher.
+        p.task = { type: 'pa_fake', to: this.toWorld(-3.2, -this.toLocal(p.x, p.z).lat * 0.3 + (play.boot ? -play.boot * 1.5 : 0)) };
       } else if (play.type === 'run' && play.run && play.run.carrier === p.slot) {
         p.task = { type: 'run_path', phase: 'mesh' };
       } else if (a && ROUTES[a.replace(/_(l|r)$/, '')]) {

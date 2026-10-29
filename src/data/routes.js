@@ -30,7 +30,8 @@ export const ROUTES = {
   whip: { pts: [[5, -2], [5, 5]], end: 'continue' },
   zig: { pts: [[6, -4], [6, 6]], end: 'continue' },
   out_up: { pts: [[6, 0], [6, 4], [40, 5]], end: 'continue' },
-  screen: { pts: [[-1.5, 2], [-1.5, 4]], end: 'settle' },
+  screen: { pts: [[-0.5, 2.5], [-0.6, 5]], end: 'settle' },
+  rb_screen: { pts: [[1.5, 3], [2, 6]], end: 'settle' }, // a back leaking out to the flat behind the line
 };
 
 // Non-route assignments for skill players.

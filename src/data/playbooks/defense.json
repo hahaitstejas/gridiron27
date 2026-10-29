@@ -323,6 +323,690 @@
     "LCB": "man:L1",
     "RCB": "man:R1"
    }
+  },
+  {
+   "id": "43_cover3_sky",
+   "name": "Cover 3 Sky",
+   "formation": "43_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:hook_middle",
+    "ROLB": "zone:hook_r",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m",
+    "SS": "zone:curl_flat_r"
+   }
+  },
+  {
+   "id": "43_cover1_robber",
+   "name": "Cover 1 Robber",
+   "formation": "43_base",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "man:TE",
+    "MLB": "man:RB",
+    "ROLB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "zone:mid_robber",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "43_cover6",
+   "name": "Cover 6",
+   "formation": "43_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:hook_middle",
+    "ROLB": "zone:hook_r",
+    "LCB": "zone:deep_quarter_ll",
+    "FS": "zone:deep_quarter_lm",
+    "RCB": "zone:flat_r",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "43_ss_blitz3",
+   "name": "Strong Safety Fire 3",
+   "formation": "43_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "SS": "blitz",
+    "LOLB": "zone:curl_flat_l",
+    "MLB": "zone:hook_middle",
+    "ROLB": "zone:curl_flat_r",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m"
+   }
+  },
+  {
+   "id": "43_olb_fire",
+   "name": "OLB Fire Zone",
+   "formation": "43_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "zone:curl_flat_r",
+    "LOLB": "blitz",
+    "MLB": "zone:hook_middle",
+    "ROLB": "zone:hook_r",
+    "SS": "zone:curl_flat_l",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m"
+   }
+  },
+  {
+   "id": "43_spy",
+   "name": "Cover 1 Spy",
+   "formation": "43_base",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "man:TE",
+    "MLB": "spy",
+    "ROLB": "man:RB",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:R2",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "43_double_a",
+   "name": "Double A Gap",
+   "formation": "43_base",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "blitz",
+    "MLB": "blitz",
+    "ROLB": "man:RB",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:TE",
+    "FS": "man:R2"
+   }
+  },
+  {
+   "id": "nickel_cover0",
+   "name": "Nickel Cover 0",
+   "formation": "nickel_43",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "blitz",
+    "MLB": "blitz",
+    "NB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:TE",
+    "FS": "man:RB"
+   }
+  },
+  {
+   "id": "nickel_nb_fire3",
+   "name": "Nickel Corner Fire 3",
+   "formation": "nickel_43",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "NB": "blitz",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:hook_r",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m",
+    "SS": "zone:curl_flat_r"
+   }
+  },
+  {
+   "id": "nickel_cover1_robber",
+   "name": "Nickel Cover 1 Robber",
+   "formation": "nickel_43",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "man:TE",
+    "MLB": "man:RB",
+    "NB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "zone:mid_robber",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "nickel_cover6",
+   "name": "Nickel Cover 6",
+   "formation": "nickel_43",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:hook_r",
+    "NB": "zone:flat_r",
+    "LCB": "zone:deep_quarter_ll",
+    "FS": "zone:deep_quarter_lm",
+    "RCB": "zone:curl_flat_r",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "nickel_tampa2",
+   "name": "Nickel Tampa 2",
+   "formation": "nickel_43",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:deep_hole",
+    "NB": "zone:hook_r",
+    "LCB": "zone:flat_l",
+    "RCB": "zone:flat_r",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "nickel_2man",
+   "name": "Nickel 2 Man",
+   "formation": "nickel_43",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "man:TE",
+    "MLB": "man:RB",
+    "NB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "dime_cover1",
+   "name": "Dime Cover 1",
+   "formation": "dime",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "MLB": "man:RB",
+    "NB": "man:R2",
+    "DB": "man:L2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:TE",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "dime_cover4",
+   "name": "Dime Quarters",
+   "formation": "dime",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "MLB": "zone:hook_middle",
+    "NB": "zone:curl_flat_r",
+    "DB": "zone:curl_flat_l",
+    "LCB": "zone:deep_quarter_ll",
+    "RCB": "zone:deep_quarter_rr",
+    "FS": "zone:deep_quarter_lm",
+    "SS": "zone:deep_quarter_rm"
+   }
+  },
+  {
+   "id": "dime_blitz0",
+   "name": "Dime Cover 0 Blitz",
+   "formation": "dime",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "NB": "blitz",
+    "DB": "blitz",
+    "MLB": "man:RB",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:R2",
+    "FS": "man:L2"
+   }
+  },
+  {
+   "id": "dime_tampa2",
+   "name": "Dime Tampa 2",
+   "formation": "dime",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "MLB": "zone:deep_hole",
+    "NB": "zone:hook_r",
+    "DB": "zone:hook_l",
+    "LCB": "zone:flat_l",
+    "RCB": "zone:flat_r",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "34_cover2",
+   "name": "3-4 Cover 2",
+   "formation": "34_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "rush",
+    "ROLB": "zone:flat_r",
+    "MLB": "zone:hook_l",
+    "RILB": "zone:hook_r",
+    "LCB": "zone:flat_l",
+    "RCB": "zone:curl_flat_r",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "34_cover4",
+   "name": "3-4 Quarters",
+   "formation": "34_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "rush",
+    "ROLB": "zone:curl_flat_r",
+    "MLB": "zone:hook_l",
+    "RILB": "zone:hook_r",
+    "LCB": "zone:deep_quarter_ll",
+    "RCB": "zone:deep_quarter_rr",
+    "FS": "zone:deep_quarter_lm",
+    "SS": "zone:deep_quarter_rm"
+   }
+  },
+  {
+   "id": "34_cover1",
+   "name": "3-4 Cover 1",
+   "formation": "34_base",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "rush",
+    "ROLB": "man:RB",
+    "MLB": "man:TE",
+    "RILB": "zone:hook_middle",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:R2",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "34_ilb_fire3",
+   "name": "3-4 ILB Fire 3",
+   "formation": "34_base",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "rush",
+    "MLB": "blitz",
+    "ROLB": "zone:curl_flat_r",
+    "RILB": "zone:hook_middle",
+    "SS": "zone:curl_flat_l",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m"
+   }
+  },
+  {
+   "id": "34_cover0",
+   "name": "3-4 Cover 0 Blitz",
+   "formation": "34_base",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "blitz",
+    "ROLB": "blitz",
+    "MLB": "blitz",
+    "RILB": "man:RB",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:TE",
+    "FS": "man:R2"
+   }
+  },
+  {
+   "id": "34_2man",
+   "name": "3-4 2 Man",
+   "formation": "34_base",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "rush",
+    "ROLB": "man:RB",
+    "MLB": "man:TE",
+    "RILB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "gl_blitz",
+   "name": "Goal Line Blitz",
+   "formation": "goal_line_d",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LT2": "rush",
+    "RT2": "rush",
+    "LOLB": "blitz",
+    "MLB": "man:RB",
+    "ROLB": "man:TE",
+    "LCB": "man:L1",
+    "RCB": "man:R1"
+   }
+  },
+  {
+   "id": "gl_flats",
+   "name": "Goal Line Flats",
+   "formation": "goal_line_d",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LT2": "rush",
+    "RT2": "rush",
+    "LOLB": "zone:flat_l",
+    "MLB": "zone:hook_middle",
+    "ROLB": "zone:flat_r",
+    "LCB": "zone:deep_half_l",
+    "RCB": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "335_cover3",
+   "name": "3-3-5 Cover 3",
+   "formation": "nickel_335",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:curl_flat_l",
+    "MLB": "zone:hook_middle",
+    "ROLB": "rush",
+    "NB": "zone:curl_flat_r",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m",
+    "SS": "zone:hook_r"
+   }
+  },
+  {
+   "id": "335_cover1",
+   "name": "3-3-5 Cover 1",
+   "formation": "nickel_335",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "man:TE",
+    "MLB": "man:RB",
+    "ROLB": "rush",
+    "NB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "zone:hook_middle",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "335_cover4",
+   "name": "3-3-5 Quarters",
+   "formation": "nickel_335",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:hook_middle",
+    "ROLB": "zone:hook_r",
+    "NB": "zone:curl_flat_r",
+    "LCB": "zone:deep_quarter_ll",
+    "RCB": "zone:deep_quarter_rr",
+    "FS": "zone:deep_quarter_lm",
+    "SS": "zone:deep_quarter_rm"
+   }
+  },
+  {
+   "id": "335_mike_fire",
+   "name": "3-3-5 Mike Fire",
+   "formation": "nickel_335",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "MLB": "blitz",
+    "LOLB": "zone:hook_l",
+    "ROLB": "zone:hook_r",
+    "NB": "zone:curl_flat_r",
+    "SS": "zone:curl_flat_l",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m"
+   }
+  },
+  {
+   "id": "335_cover0",
+   "name": "3-3-5 Cover 0",
+   "formation": "nickel_335",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "blitz",
+    "ROLB": "blitz",
+    "MLB": "man:RB",
+    "NB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "SS": "man:TE",
+    "FS": "man:L2"
+   }
+  },
+  {
+   "id": "335_tampa2",
+   "name": "3-3-5 Tampa 2",
+   "formation": "nickel_335",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:hook_l",
+    "MLB": "zone:deep_hole",
+    "ROLB": "zone:hook_r",
+    "NB": "zone:flat_r",
+    "LCB": "zone:flat_l",
+    "RCB": "zone:curl_flat_r",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
+  },
+  {
+   "id": "44_cover3",
+   "name": "4-4 Cover 3",
+   "formation": "big_44",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "zone:curl_flat_l",
+    "MLB": "zone:hook_l",
+    "RILB": "zone:hook_r",
+    "ROLB": "zone:curl_flat_r",
+    "LCB": "zone:deep_third_l",
+    "RCB": "zone:deep_third_r",
+    "FS": "zone:deep_third_m"
+   }
+  },
+  {
+   "id": "44_cover1",
+   "name": "4-4 Cover 1",
+   "formation": "big_44",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "man:TE",
+    "MLB": "man:RB",
+    "RILB": "zone:hook_middle",
+    "ROLB": "man:R2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "FS": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "44_cover0",
+   "name": "4-4 Cover 0 Blitz",
+   "formation": "big_44",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "LDT": "rush",
+    "RDT": "rush",
+    "RE": "rush",
+    "LOLB": "blitz",
+    "ROLB": "blitz",
+    "MLB": "man:RB",
+    "RILB": "man:TE",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "FS": "man:R2"
+   }
+  },
+  {
+   "id": "quarter_prevent",
+   "name": "Prevent",
+   "formation": "quarter",
+   "coverage": "zone",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "MLB": "zone:hook_middle",
+    "NB": "zone:curl_flat_r",
+    "DB": "zone:curl_flat_l",
+    "LCB": "zone:deep_quarter_ll",
+    "RCB": "zone:deep_quarter_rr",
+    "FS": "zone:deep_quarter_lm",
+    "SS": "zone:deep_quarter_rm",
+    "DC": "zone:deep_middle"
+   }
+  },
+  {
+   "id": "quarter_cover2_man",
+   "name": "Quarter 2 Man Under",
+   "formation": "quarter",
+   "coverage": "man",
+   "assign": {
+    "LE": "rush",
+    "NT": "rush",
+    "RE": "rush",
+    "MLB": "man:RB",
+    "NB": "man:R2",
+    "DB": "man:L2",
+    "LCB": "man:L1",
+    "RCB": "man:R1",
+    "DC": "man:TE",
+    "FS": "zone:deep_half_l",
+    "SS": "zone:deep_half_r"
+   }
   }
  ]
 }

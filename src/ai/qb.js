@@ -41,7 +41,7 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
   return { score, pred, T, dist, gain };
 }
 
-const QUICK = new Set(['slant', 'quick_out', 'hitch', 'flat', 'swing', 'screen', 'arrow', 'drag', 'stick', 'sit', 'shallow', 'angle', 'whip']);
+const QUICK = new Set(['slant', 'quick_out', 'hitch', 'flat', 'swing', 'screen', 'rb_screen', 'arrow', 'drag', 'stick', 'sit', 'shallow', 'angle', 'whip']);
 const DEEP = new Set(['go', 'fade', 'post', 'corner', 'seam', 'wheel', 'skinny_post', 'out_up', 'deep_out', 'comeback']);
 
 function routeDeveloped(sim, r) {

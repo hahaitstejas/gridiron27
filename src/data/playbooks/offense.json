@@ -1,5 +1,5 @@
 {
- "_doc": "Offensive plays. routes: slot -> route name (see src/data/routes.js) or block/stalk. Append _l/_r to force a route's side. read = QB progression. run plays add a run object: carrier slot, aim [downfield, lateral] relative to the ball, scheme zone|gap, pull = slots that pull.",
+ "_doc": "Offensive plays. routes: slot -> route name (see src/data/routes.js) or block/stalk. Append _l/_r to force a route's side. read = QB progression. run plays add a run object: carrier slot, aim [downfield, lateral] relative to the ball, scheme zone|gap, pull = slots that pull. pa: true = play action (QB fakes to the back; LBs/safeties bite). boot: 1|-1 = QB rolls out to that side.",
  "plays": [
   {
    "id": "gun_trips_slants",
@@ -782,6 +782,2295 @@
     "X",
     "F"
    ]
+  },
+  {
+   "id": "gtte_verts",
+   "name": "Trips Verticals",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "H": "seam",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Z",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "gtte_curls",
+   "name": "Trips Curls",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "Z": "curl",
+    "H": "flat",
+    "Y": "drag",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "H",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "gtte_mesh",
+   "name": "Trips Mesh",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Mesh",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "Z": "corner",
+    "H": "drag",
+    "Y": "shallow",
+    "RB": "flat_l"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "RB",
+    "Z"
+   ]
+  },
+  {
+   "id": "gtte_bubble",
+   "name": "WR Bubble Screen",
+   "formation": "gun_trips_te",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 1,
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "screen",
+    "Y": "block",
+    "RB": "block"
+   },
+   "read": [
+    "H"
+   ]
+  },
+  {
+   "id": "gtte_iz",
+   "name": "Trips Inside Zone",
+   "formation": "gun_trips_te",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "gtte_power",
+   "name": "Trips Power",
+   "formation": "gun_trips_te",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     3.0
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "gd_slant_flat",
+   "name": "Slant Flat",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "H": "flat",
+    "Y": "flat",
+    "Z": "slant",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "gd_stick",
+   "name": "Doubles Stick",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Stick",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "H": "stick",
+    "Y": "stick",
+    "Z": "go",
+    "RB": "flat_r"
+   },
+   "read": [
+    "H",
+    "Y",
+    "RB",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "gd_smash",
+   "name": "Doubles Smash",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Smash",
+   "dropback": 5,
+   "routes": {
+    "X": "hitch",
+    "H": "corner",
+    "Y": "corner",
+    "Z": "hitch",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "X",
+    "Y",
+    "Z"
+   ]
+  },
+  {
+   "id": "gd_sail",
+   "name": "Sail",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "H": "deep_out",
+    "Y": "flat",
+    "Z": "post",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "gd_hb_screen",
+   "name": "HB Screen",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "H": "slant",
+    "Y": "drag",
+    "Z": "go",
+    "RB": "rb_screen"
+   },
+   "read": [
+    "RB"
+   ]
+  },
+  {
+   "id": "gd_draw",
+   "name": "Doubles Draw",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "Draw",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     0.8
+    ],
+    "mesh": [
+     -5.5,
+     0.6
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "draw"
+   },
+   "routes": {
+    "X": "go",
+    "H": "stalk",
+    "Y": "block",
+    "Z": "go"
+   }
+  },
+  {
+   "id": "gd_oz",
+   "name": "Doubles Outside Zone",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     -5.0
+    ],
+    "mesh": [
+     -4.8,
+     0.8
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Y": "block",
+    "Z": "stalk"
+   }
+  },
+  {
+   "id": "ace_pa_boot",
+   "name": "PA Boot Right",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "cross",
+    "Z": "comeback",
+    "Y": "drag",
+    "H": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z"
+   ],
+   "pa": true,
+   "boot": 1
+  },
+  {
+   "id": "ace_pa_post",
+   "name": "PA Post",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Z": "dig",
+    "Y": "seam",
+    "H": "block",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y"
+   ],
+   "pa": true
+  },
+  {
+   "id": "ace_slants",
+   "name": "Ace Slants",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "slant",
+    "Y": "flat",
+    "H": "stick",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "ace_smash",
+   "name": "Ace Smash",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Smash",
+   "dropback": 5,
+   "routes": {
+    "X": "hitch",
+    "Z": "hitch",
+    "Y": "corner",
+    "H": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "ace_seams",
+   "name": "TE Seams",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "Y": "seam",
+    "H": "seam",
+    "RB": "swing_r"
+   },
+   "read": [
+    "Y",
+    "H",
+    "RB",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "ace_dive",
+   "name": "HB Dive",
+   "formation": "singleback_ace",
+   "type": "run",
+   "concept": "Dive",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -0.8
+    ],
+    "mesh": [
+     -3.6,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "i_pa_boot",
+   "name": "PA Boot Left",
+   "formation": "iform_pro",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "comeback",
+    "Z": "cross",
+    "Y": "drag",
+    "F": "flat_l",
+    "RB": "block"
+   },
+   "read": [
+    "F",
+    "Z",
+    "Y",
+    "X"
+   ],
+   "pa": true,
+   "boot": -1
+  },
+  {
+   "id": "i_pa_cross",
+   "name": "PA Deep Cross",
+   "formation": "iform_pro",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Z": "cross",
+    "Y": "corner",
+    "F": "block",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "Y",
+    "X"
+   ],
+   "pa": true
+  },
+  {
+   "id": "i_slants",
+   "name": "I-Form Slants",
+   "formation": "iform_pro",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "slant",
+    "Y": "flat",
+    "F": "flat_l",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y",
+    "F"
+   ]
+  },
+  {
+   "id": "i_curl_flat",
+   "name": "I-Form Curl Flat",
+   "formation": "iform_pro",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "Z": "curl",
+    "Y": "flat",
+    "F": "flat_l",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y",
+    "F"
+   ]
+  },
+  {
+   "id": "i_counter",
+   "name": "I-Form Counter",
+   "formation": "iform_pro",
+   "type": "run",
+   "concept": "Counter",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -2.6
+    ],
+    "mesh": [
+     -4.6,
+     1.4
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "i_stretch",
+   "name": "I-Form Stretch",
+   "formation": "iform_pro",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     5.0
+    ],
+    "mesh": [
+     -4.5,
+     2
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "i_fb_dive",
+   "name": "FB Dive",
+   "formation": "iform_pro",
+   "type": "run",
+   "concept": "Dive",
+   "run": {
+    "carrier": "F",
+    "aim": [
+     1,
+     0.6
+    ],
+    "mesh": [
+     -2.6,
+     0.3
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "RB": "block"
+   }
+  },
+  {
+   "id": "empty_slants",
+   "name": "Empty Slants",
+   "formation": "gun_empty",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "H": "slant",
+    "Y": "flat",
+    "RB": "slant",
+    "Z": "slant"
+   },
+   "read": [
+    "H",
+    "RB",
+    "Z",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "empty_mesh",
+   "name": "Empty Mesh",
+   "formation": "gun_empty",
+   "type": "pass",
+   "concept": "Mesh",
+   "dropback": 5,
+   "routes": {
+    "X": "corner",
+    "H": "drag",
+    "Y": "sit",
+    "RB": "shallow",
+    "Z": "dig"
+   },
+   "read": [
+    "H",
+    "RB",
+    "Y",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "empty_snag",
+   "name": "Empty Snag",
+   "formation": "gun_empty",
+   "type": "pass",
+   "concept": "Snag",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "H": "sit",
+    "Y": "flat",
+    "RB": "sit",
+    "Z": "corner"
+   },
+   "read": [
+    "RB",
+    "H",
+    "Y",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "pistol_pa_boot",
+   "name": "Pistol PA Boot",
+   "formation": "pistol_ace",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "cross",
+    "Z": "comeback",
+    "Y": "drag",
+    "H": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "X",
+    "Y",
+    "Z"
+   ],
+   "pa": true,
+   "boot": 1
+  },
+  {
+   "id": "pistol_oz",
+   "name": "Pistol Outside Zone",
+   "formation": "pistol_ace",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     -5
+    ],
+    "mesh": [
+     -5.4,
+     -1.6
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "pistol_counter",
+   "name": "Pistol Counter",
+   "formation": "pistol_ace",
+   "type": "run",
+   "concept": "Counter",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     2.6
+    ],
+    "mesh": [
+     -5.4,
+     -1.2
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "pistol_slant_flat",
+   "name": "Pistol Slant Flat",
+   "formation": "pistol_ace",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "slant",
+    "Y": "flat",
+    "H": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y",
+    "H"
+   ]
+  },
+  {
+   "id": "pistol_smash",
+   "name": "Pistol Smash",
+   "formation": "pistol_ace",
+   "type": "pass",
+   "concept": "Smash",
+   "dropback": 5,
+   "routes": {
+    "X": "hitch",
+    "Z": "hitch",
+    "Y": "corner",
+    "H": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "Z",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "bunch_flood",
+   "name": "Bunch Flood",
+   "formation": "gun_bunch",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "Z": "flat",
+    "H": "go",
+    "Y": "deep_out",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "Z",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "bunch_spot",
+   "name": "Bunch Spot",
+   "formation": "gun_bunch",
+   "type": "pass",
+   "concept": "Snag",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "Z": "corner",
+    "H": "sit",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "bunch_iz",
+   "name": "Bunch Inside Zone",
+   "formation": "gun_bunch",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "gl_power",
+   "name": "Goal Line Power",
+   "formation": "goal_line",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     3.0
+    ],
+    "mesh": [
+     -4.0,
+     0.6
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "block",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "gl_pa_flat",
+   "name": "Goal Line PA Flat",
+   "formation": "goal_line",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 3,
+   "routes": {
+    "X": "flat_r",
+    "Y": "drag",
+    "H": "flat_l",
+    "F": "block",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "H",
+    "Y"
+   ],
+   "pa": true
+  },
+  {
+   "id": "gl_toss",
+   "name": "Goal Line Toss",
+   "formation": "goal_line",
+   "type": "run",
+   "concept": "Toss",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0,
+     -10
+    ],
+    "mesh": [
+     -6,
+     -4
+    ],
+    "scheme": "zone",
+    "side": -1,
+    "style": "pitch"
+   },
+   "routes": {
+    "X": "block",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "spread_verts",
+   "name": "Spread Verticals",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "H": "seam",
+    "Y": "seam",
+    "Z": "go",
+    "RB": "swing_l"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z",
+    "RB"
+   ]
+  },
+  {
+   "id": "spread_mesh",
+   "name": "Spread Mesh",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Mesh",
+   "dropback": 5,
+   "routes": {
+    "X": "corner",
+    "H": "drag",
+    "Y": "shallow",
+    "Z": "dig",
+    "RB": "flat_r"
+   },
+   "read": [
+    "H",
+    "Y",
+    "Z",
+    "RB",
+    "X"
+   ]
+  },
+  {
+   "id": "spread_spacing",
+   "name": "Spacing",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Quick Game",
+   "dropback": 3,
+   "routes": {
+    "X": "hitch",
+    "H": "sit",
+    "Y": "sit",
+    "Z": "hitch",
+    "RB": "flat_r"
+   },
+   "read": [
+    "H",
+    "Y",
+    "RB",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "spread_slants",
+   "name": "Spread Slants",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "H": "slant",
+    "Y": "slant",
+    "Z": "slant",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "spread_ycross",
+   "name": "Spread Y-Cross",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Y-Cross",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "H": "flat",
+    "Y": "cross",
+    "Z": "comeback",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "Z",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "spread_dagger",
+   "name": "Spread Dagger",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Dagger",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "H": "seam",
+    "Y": "drag",
+    "Z": "go",
+    "RB": "flat_r"
+   },
+   "read": [
+    "H",
+    "X",
+    "Y",
+    "RB",
+    "Z"
+   ]
+  },
+  {
+   "id": "spread_bubble",
+   "name": "Spread Bubble",
+   "formation": "gun_spread",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 1,
+   "routes": {
+    "X": "stalk",
+    "H": "screen",
+    "Y": "slant",
+    "Z": "slant",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "spread_iz",
+   "name": "Spread Inside Zone",
+   "formation": "gun_spread",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.2
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Y": "stalk",
+    "Z": "stalk"
+   }
+  },
+  {
+   "id": "spread_draw",
+   "name": "Spread Draw",
+   "formation": "gun_spread",
+   "type": "run",
+   "concept": "Draw",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     0.8
+    ],
+    "mesh": [
+     -5.5,
+     0.6
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "draw"
+   },
+   "routes": {
+    "X": "go",
+    "H": "stalk",
+    "Y": "stalk",
+    "Z": "go"
+   }
+  },
+  {
+   "id": "trips_flood",
+   "name": "Trips Flood",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "H": "deep_out",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "trips_stick",
+   "name": "Trips Stick",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Stick",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "go",
+    "H": "stick",
+    "Y": "flat",
+    "RB": "swing_l"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "RB",
+    "Z"
+   ]
+  },
+  {
+   "id": "trips_verts",
+   "name": "Trips Verticals",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "H": "seam",
+    "Y": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "trips_spacing",
+   "name": "Trips Spacing",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Quick Game",
+   "dropback": 3,
+   "routes": {
+    "X": "hitch",
+    "Z": "hitch",
+    "H": "sit",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "trips_drive",
+   "name": "Trips Drive",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Drive",
+   "dropback": 5,
+   "routes": {
+    "X": "post",
+    "Z": "dig",
+    "H": "drag",
+    "Y": "sit",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Z",
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "trips_screen",
+   "name": "Trips WR Screen",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 1,
+   "routes": {
+    "X": "slant",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "screen",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "trips_iz",
+   "name": "Trips Inside Zone",
+   "formation": "gun_trips_wr",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "stalk"
+   }
+  },
+  {
+   "id": "gace_iz",
+   "name": "Gun Ace Inside Zone",
+   "formation": "gun_ace",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.2
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "gace_power",
+   "name": "Gun Ace Power",
+   "formation": "gun_ace",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3.0
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "gace_cross",
+   "name": "TE Crossers",
+   "formation": "gun_ace",
+   "type": "pass",
+   "concept": "Y-Cross",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "dig",
+    "Y": "cross",
+    "H": "drag",
+    "RB": "flat_r"
+   },
+   "read": [
+    "Y",
+    "H",
+    "Z",
+    "RB",
+    "X"
+   ]
+  },
+  {
+   "id": "gace_smash",
+   "name": "Gun Ace Smash",
+   "formation": "gun_ace",
+   "type": "pass",
+   "concept": "Smash",
+   "dropback": 5,
+   "routes": {
+    "X": "hitch",
+    "Z": "hitch",
+    "Y": "corner",
+    "H": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "gace_seams",
+   "name": "Gun Ace Seams",
+   "formation": "gun_ace",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "Y": "seam",
+    "H": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "gace_curl_flat",
+   "name": "Gun Ace Curl Flat",
+   "formation": "gun_ace",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "Z": "curl",
+    "Y": "flat",
+    "H": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "Y",
+    "H"
+   ]
+  },
+  {
+   "id": "gace_oz",
+   "name": "Gun Ace Outside Zone",
+   "formation": "gun_ace",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     -5.0
+    ],
+    "mesh": [
+     -4.8,
+     0.8
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "split_iz",
+   "name": "Split Inside Zone",
+   "formation": "gun_split",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Z": "stalk",
+    "F": "block"
+   }
+  },
+  {
+   "id": "split_draw",
+   "name": "Split Draw",
+   "formation": "gun_split",
+   "type": "run",
+   "concept": "Draw",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -0.8
+    ],
+    "mesh": [
+     -5.5,
+     -0.6
+    ],
+    "scheme": "zone",
+    "side": -1,
+    "style": "draw"
+   },
+   "routes": {
+    "X": "go",
+    "H": "stalk",
+    "Z": "go",
+    "F": "block"
+   }
+  },
+  {
+   "id": "split_swing_smash",
+   "name": "Swing Smash",
+   "formation": "gun_split",
+   "type": "pass",
+   "concept": "Smash",
+   "dropback": 5,
+   "routes": {
+    "X": "hitch",
+    "H": "corner",
+    "Z": "hitch",
+    "RB": "swing_l",
+    "F": "swing_r"
+   },
+   "read": [
+    "H",
+    "F",
+    "RB",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "split_mesh",
+   "name": "Split Mesh",
+   "formation": "gun_split",
+   "type": "pass",
+   "concept": "Mesh",
+   "dropback": 5,
+   "routes": {
+    "X": "drag",
+    "H": "shallow",
+    "Z": "dig",
+    "RB": "flat_l",
+    "F": "block"
+   },
+   "read": [
+    "X",
+    "H",
+    "Z",
+    "RB"
+   ]
+  },
+  {
+   "id": "split_flood",
+   "name": "Split Flood",
+   "formation": "gun_split",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "H": "deep_out",
+    "Z": "go",
+    "RB": "block",
+    "F": "flat_r"
+   },
+   "read": [
+    "H",
+    "F",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "sbd_iz",
+   "name": "Doubles Inside Zone",
+   "formation": "singleback_doubles",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.5
+    ],
+    "mesh": [
+     -4.2,
+     0.6
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Z": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "sbd_stretch",
+   "name": "Doubles Stretch",
+   "formation": "singleback_doubles",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     5.0
+    ],
+    "mesh": [
+     -4.5,
+     2
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Z": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "sbd_counter",
+   "name": "Doubles Counter",
+   "formation": "singleback_doubles",
+   "type": "run",
+   "concept": "Counter",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -2.6
+    ],
+    "mesh": [
+     -4.6,
+     1.4
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Z": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "sbd_pa_post",
+   "name": "Doubles PA Post",
+   "formation": "singleback_doubles",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "H": "seam",
+    "Z": "dig",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "H",
+    "Y"
+   ],
+   "pa": true
+  },
+  {
+   "id": "sbd_slants",
+   "name": "Doubles Slants",
+   "formation": "singleback_doubles",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "H": "slant",
+    "Z": "slant",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Z",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "sbd_levels",
+   "name": "Doubles Levels",
+   "formation": "singleback_doubles",
+   "type": "pass",
+   "concept": "Levels",
+   "dropback": 5,
+   "routes": {
+    "X": "in",
+    "H": "drag",
+    "Z": "hitch",
+    "Y": "in",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "sbd_dagger",
+   "name": "Doubles Dagger",
+   "formation": "singleback_doubles",
+   "type": "pass",
+   "concept": "Dagger",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "H": "seam",
+    "Z": "go",
+    "Y": "drag",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "X",
+    "Y",
+    "Z"
+   ]
+  },
+  {
+   "id": "sbd_curls",
+   "name": "Doubles Curls",
+   "formation": "singleback_doubles",
+   "type": "pass",
+   "concept": "Curls",
+   "dropback": 5,
+   "routes": {
+    "X": "curl",
+    "H": "flat",
+    "Z": "curl",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "sbt_iz",
+   "name": "Trips Inside Zone",
+   "formation": "singleback_trips",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.5
+    ],
+    "mesh": [
+     -4.2,
+     -0.6
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "sbt_power",
+   "name": "Trips Power",
+   "formation": "singleback_trips",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3.0
+    ],
+    "mesh": [
+     -4.4,
+     -0.6
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "block"
+   }
+  },
+  {
+   "id": "sbt_flood",
+   "name": "Singleback Flood",
+   "formation": "singleback_trips",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "deep_out",
+    "H": "flat",
+    "Y": "drag",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "H",
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "sbt_stick",
+   "name": "Singleback Stick",
+   "formation": "singleback_trips",
+   "type": "pass",
+   "concept": "Stick",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "Z": "stick",
+    "H": "flat",
+    "Y": "sit",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "H",
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "sbt_verts",
+   "name": "Singleback Verticals",
+   "formation": "singleback_trips",
+   "type": "pass",
+   "concept": "Four Verticals",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Z": "seam",
+    "H": "seam",
+    "Y": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "H",
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "sbt_pa_boot",
+   "name": "Trips PA Boot",
+   "formation": "singleback_trips",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "comeback",
+    "Z": "cross",
+    "H": "flat",
+    "Y": "drag",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Z",
+    "Y",
+    "X"
+   ],
+   "pa": true,
+   "boot": 1
+  },
+  {
+   "id": "it_power",
+   "name": "Twins Power",
+   "formation": "iform_twins",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3.0
+    ],
+    "mesh": [
+     -4.5,
+     -0.6
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "it_toss",
+   "name": "Twins Toss",
+   "formation": "iform_twins",
+   "type": "run",
+   "concept": "Toss",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0,
+     10
+    ],
+    "mesh": [
+     -6,
+     4
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "pitch"
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "it_dive",
+   "name": "Twins Dive",
+   "formation": "iform_twins",
+   "type": "run",
+   "concept": "Dive",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -0.8
+    ],
+    "mesh": [
+     -3.6,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "it_pa_boot",
+   "name": "Twins PA Boot",
+   "formation": "iform_twins",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "cross",
+    "Z": "comeback",
+    "Y": "drag",
+    "F": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "F",
+    "X",
+    "Y",
+    "Z"
+   ],
+   "pa": true,
+   "boot": 1
+  },
+  {
+   "id": "it_slants",
+   "name": "Twins Slants",
+   "formation": "iform_twins",
+   "type": "pass",
+   "concept": "Slants",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Z": "slant",
+    "Y": "flat",
+    "F": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "F",
+    "Y"
+   ]
+  },
+  {
+   "id": "it_flood",
+   "name": "Twins Flood",
+   "formation": "iform_twins",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "deep_out",
+    "Z": "go",
+    "Y": "drag",
+    "F": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "F",
+    "Y",
+    "Z"
+   ]
+  },
+  {
+   "id": "si_power",
+   "name": "Strong Power",
+   "formation": "strong_i",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     3.0
+    ],
+    "mesh": [
+     -4.5,
+     0.6
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "si_iso",
+   "name": "Strong Iso",
+   "formation": "strong_i",
+   "type": "run",
+   "concept": "Dive",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     0.8
+    ],
+    "mesh": [
+     -3.6,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "si_stretch",
+   "name": "Strong Stretch",
+   "formation": "strong_i",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     5.0
+    ],
+    "mesh": [
+     -4.5,
+     2
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "si_pa_post",
+   "name": "Strong PA Post",
+   "formation": "strong_i",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Z": "dig",
+    "Y": "seam",
+    "F": "block",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "Y"
+   ],
+   "pa": true
+  },
+  {
+   "id": "si_pa_flat",
+   "name": "Strong PA Flat",
+   "formation": "strong_i",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "comeback",
+    "Z": "corner",
+    "Y": "drag",
+    "F": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "F",
+    "Z",
+    "Y",
+    "X"
+   ],
+   "pa": true
+  },
+  {
+   "id": "ps_iz",
+   "name": "Pistol Strong Zone",
+   "formation": "pistol_strong",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.5
+    ],
+    "mesh": [
+     -5.2,
+     0.5
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "ps_power",
+   "name": "Pistol Strong Power",
+   "formation": "pistol_strong",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     3.0
+    ],
+    "mesh": [
+     -5.2,
+     0.5
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "ps_counter",
+   "name": "Pistol Strong Counter",
+   "formation": "pistol_strong",
+   "type": "run",
+   "concept": "Counter",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -2.6
+    ],
+    "mesh": [
+     -5.4,
+     1.2
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "Y": "block",
+    "H": "block"
+   }
+  },
+  {
+   "id": "ps_pa_boot",
+   "name": "Pistol Strong PA Boot",
+   "formation": "pistol_strong",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "cross",
+    "Z": "comeback",
+    "Y": "drag",
+    "H": "flat_r",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z"
+   ],
+   "pa": true,
+   "boot": 1
+  },
+  {
+   "id": "ps_pa_seam",
+   "name": "Pistol PA Seams",
+   "formation": "pistol_strong",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "post",
+    "Z": "dig",
+    "Y": "seam",
+    "H": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "Z",
+    "X"
+   ],
+   "pa": true
   }
  ]
 }

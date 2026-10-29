@@ -10,6 +10,8 @@ import { Nav } from './ui/nav.js';
 import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
+import { depthChartScreen } from './ui/depthEditor.js';
+import { energyOf } from './game/fatigue.js';
 
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
@@ -121,7 +123,9 @@ function pause() {
   app = 'paused';
   screens.pause({
     onResume: () => { screens.clear(); app = 'game'; },
-    onReplay: session?.lastReplay ? startReplay : null,
+    onReplay: session?.lastReplay ? () => startReplay() : null,
+    onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
+      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause }) : null,
     onControls: () => screens.controls({ onBack: pause }),
     onQuit: toMenu,
   });
@@ -184,6 +188,7 @@ function frame(now) {
     if (f.pressed.A || f.pressed.Menu) toMenu();
     consumed = true;
   } else if (app === 'menu' || app === 'paused' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
+    screens.extraButtons?.(f);
     nav.update(f, dt);
     consumed = true;
   } else if (app === 'replay' && replay) {

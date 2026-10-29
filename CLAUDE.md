@@ -79,6 +79,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   the current formation; defense X → A zone / B man / X blitz / Y deep shell) and hot routes (Y → receiver
   button → stick up go / down hitch / in slant / out quick out, A = block). The session swaps the play and
   re-lines up (`rebuildPresnap`) without restarting the CPU's snap count; `play.hot` lists hot routes.
+- Coaching: the pause menu (games and practice) opens the depth chart editor for the human team. It edits
+  `team.depth` in place (`placeInDepth` / `removeFromDepth` / `eligibleForSlot` in `data/depthChart.js`), so the
+  next snap uses it; it shows each player's overall at that spot and his current energy. Not saved to disk yet.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).
@@ -129,7 +132,8 @@ src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadiu
 src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu orbit camera.
 src/ui/                nav.js (controller/keyboard menu focus), screens.js (title, main menu, Play Now setup,
                        controls, settings, pause, game-over box score; prefs in localStorage `g27.settings`),
-                       playcall.js (play-call screen), playart.js (canvas play diagrams), hud.js (score bug,
+                       playcall.js (play-call screen), playart.js (canvas play diagrams), depthEditor.js (pause →
+                       Coaching: Depth Chart; edits team.depth live via data/depthChart.js helpers), hud.js (score bug,
                        banners, flag box, ticker, post-play stat card, name tags, receiver icons, kick meter, help, FPS), style.css
 tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;  tools/humanbot.js  exploit checks;
                        tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test

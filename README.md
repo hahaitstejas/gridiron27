@@ -38,6 +38,7 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 | Audible (pre-snap) | X, then A/B/X/Y/RB | U, then J/K/U/I/O |
 | Hot route (pre-snap) | Y, receiver button, then left stick (A = block) | I, receiver key, then WASD |
 | Instant replay (between plays) | RS click | R |
+| Depth chart (pause menu → Coaching) | A pick up / drop, ▲▼ move, X remove | J, W/S, U |
 | Controls panel | — | H |
 
 Kicks use a three-press meter: press A to start the kicker, A again to set power on the way up, and A a

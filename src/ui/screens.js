@@ -187,8 +187,9 @@ export class Screens {
     this.nav.set([...rows, save], { onBack });
   }
 
-  pause({ onResume, onReplay, onControls, onQuit }) {
+  pause({ onResume, onReplay, onDepth, onControls, onQuit }) {
     const items = [this.menuItem('Resume', '', onResume)];
+    if (onDepth) items.push(this.menuItem('Coaching: Depth Chart', 'Change who starts and who rotates in', onDepth));
     if (onReplay) items.push(this.menuItem('Instant Replay', 'Watch the last play again', onReplay));
     items.push(this.menuItem('Controls', '', onControls), this.menuItem('Quit to Main Menu', 'Abandon this game', onQuit));
     this.frame('pause-screen', el('h1', { text: 'Paused' }), el('div.menu-list', {}, items));

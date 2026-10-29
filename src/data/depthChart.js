@@ -41,3 +41,32 @@ export function buildDepthChart(roster) {
   depth.PR = fast.slice(0, 3).map((p) => p.id);
   return depth;
 }
+
+/** Roster players who can play `slot`, best first by their overall at that spot, excluding ones listed. */
+export function eligibleForSlot(team, slot) {
+  const positions = DEPTH_SLOTS[slot] || [slot];
+  const listed = new Set(team.depth[slot] || []);
+  return team.roster
+    .filter((p) => positions.includes(p.pos) && !listed.has(p.id))
+    .sort((a, b) => slotRating(b, slot) - slotRating(a, slot));
+}
+
+/** A player's overall rating if he plays `slot`. */
+export function slotRating(p, slot) {
+  return overall({ ...p, pos: (DEPTH_SLOTS[slot] || [p.pos])[0] });
+}
+
+/** Move a player to position `to` in a slot's order (adding him if he isn't listed). */
+export function placeInDepth(team, slot, id, to) {
+  const list = (team.depth[slot] || []).filter((x) => x !== id);
+  list.splice(Math.max(0, Math.min(list.length, to)), 0, id);
+  team.depth[slot] = list;
+  return list;
+}
+
+/** Take a player off a slot (a slot always keeps at least one player). */
+export function removeFromDepth(team, slot, id) {
+  const list = team.depth[slot] || [];
+  if (list.length > 1) team.depth[slot] = list.filter((x) => x !== id);
+  return team.depth[slot];
+}

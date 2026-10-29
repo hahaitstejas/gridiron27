@@ -77,3 +77,22 @@ ${t.abbr},LG,-- ${g1.number},${g2.first[0]}. ${g2.last} Jr. / ${g1.first[0]}. ${
     expect(t.depth.LG).toEqual([g2.id, g1.id]);
   });
 });
+
+describe('depth chart editing', () => {
+  it('moves, adds and removes players in a slot', async () => {
+    const { placeInDepth, removeFromDepth, eligibleForSlot } = await import('../src/data/depthChart.js');
+    const t = generateLeagueRosters(defaultTeams(), 8)[3];
+    const [a, b, c] = t.depth.HB;
+    placeInDepth(t, 'HB', c, 0);
+    expect(t.depth.HB.slice(0, 3)).toEqual([c, a, b]);
+    const extra = eligibleForSlot(t, 'HB')[0];
+    expect(t.depth.HB).not.toContain(extra.id);
+    placeInDepth(t, 'HB', extra.id, 1);
+    expect(t.depth.HB[1]).toBe(extra.id);
+    removeFromDepth(t, 'HB', extra.id);
+    expect(t.depth.HB).not.toContain(extra.id);
+    removeFromDepth(t, 'QB', t.depth.QB[0]);
+    while (t.depth.QB.length > 1) removeFromDepth(t, 'QB', t.depth.QB[0]);
+    expect(removeFromDepth(t, 'QB', t.depth.QB[0])).toHaveLength(1); // never empty
+  });
+});

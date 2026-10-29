@@ -35,6 +35,9 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 | Defense: dive tackle · strip · swat/catch | X · Y · A | U · I · J |
 | Kick meter: start · power · accuracy | A · A · A | J · J · J |
 | Returner: fair catch · kneel in end zone | Y · X | I · U |
+| Spike (at the line) | B | K |
+| No-huddle: rerun last play (play-call screen) | Y | I |
+| Timeout (between plays) | View (or Share) | T |
 | Audible (pre-snap) | X, then A/B/X/Y/RB | U, then J/K/U/I/O |
 | Hot route (pre-snap) | Y, receiver button, then left stick (A = block) | I, receiver key, then WASD |
 | Instant replay (between plays) | RS click | R |

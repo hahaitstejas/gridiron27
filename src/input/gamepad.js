@@ -15,6 +15,8 @@ export function readGamepad(index) {
   if (!gp || !gp.connected) return null;
   const buttons = {};
   MAP.forEach((name, i) => { buttons[name] = gp.buttons[i] ? gp.buttons[i].pressed || gp.buttons[i].value > 0.5 : false; });
+  // Xbox Series Share/capture button (reported as button 17 by some browsers) also calls a timeout.
+  if (gp.buttons[17]?.pressed) buttons.View = true;
   // Radial dead zone for the sticks.
   const stick = (x, y) => {
     const m = Math.hypot(x, y);

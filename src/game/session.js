@@ -103,8 +103,29 @@ export class GameSession {
   /** The human picked a play on the play-call screen. */
   humanChoose(play) {
     if (this.state !== 'playcall') return;
-    if (this.humanSide === 'offense') this.choice.off = play;
-    else this.choice.def = play;
+    if (this.humanSide === 'offense') {
+      this.choice.off = play;
+      if (!/^st_/.test(play.id)) this.lastOffPlay = play;
+    } else this.choice.def = play;
+    this.hurry = false;
+  }
+
+  /** No-huddle: rerun the last offensive play straight away (no extra accelerated-clock runoff). */
+  noHuddle() {
+    if (this.state !== 'playcall' || this.humanSide !== 'offense' || !this.lastOffPlay || this.match.phase !== 'scrimmage') return false;
+    this.choice.off = this.lastOffPlay;
+    this.hurry = true;
+    return true;
+  }
+
+  /** Spike the ball: at the line, switch to a spike and snap right away (stops the clock, uses a down). */
+  spike() {
+    if (this.state !== 'presnap' || this.humanSide !== 'offense' || this.match.phase !== 'scrimmage' || this.sim?.isKick) return false;
+    this.choice.off = getOffPlay('st_spike');
+    this.rebuildPresnap();
+    this.hurry = true;
+    this.snap();
+    return true;
   }
 
   callTimeout(team = this.humanTeam) {
@@ -158,7 +179,7 @@ export class GameSession {
       const target = cpuOff ? cpuTempo(m, this.offTeam, this.rng) : this.presnapUsed;
       const extra = Math.max(0, target - this.presnapUsed);
       const accel = m.settings.accelClock > 0 && !(m.inTwoMinutes && m.score[m.possession] <= m.score[1 - m.possession]);
-      const want = cpuOff ? extra : Math.max(0, (accel ? 40 - m.settings.accelClock : 0) - this.presnapUsed);
+      const want = cpuOff ? extra : this.hurry ? 0 : Math.max(0, (accel ? 40 - m.settings.accelClock : 0) - this.presnapUsed);
       m.presnapRunoff(want);
       if (m.clock <= 0) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
       if (!m.clockRunning) { this.flushMessages(); } // two-minute warning stopped it
@@ -277,6 +298,7 @@ export class GameSession {
       }
       if (input && humanInvolved) {
         if (input.pressed.View) this.callTimeout(this.humanTeam);
+        if (humanOff && input.pressed.B && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
         if (humanOff && input.pressed.A) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
         if (!humanOff && input.pressed.B && sim.isKick === false) cyclePresnapDefender(sim);
       }

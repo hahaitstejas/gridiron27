@@ -111,6 +111,7 @@ export class PlayCallScreen {
     const help = el('div.pc-help', { html:
       `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> tabs &nbsp; <b class="btn A">A</b> select &nbsp; <b class="btn B">B</b> back` +
       (this.side === 'offense' ? ` &nbsp; <b class="btn X">X</b> flip${this.flipped ? ' (on)' : ''}` : '') +
+      (this.side === 'offense' && this.session.lastOffPlay && m.phase === 'scrimmage' ? ` &nbsp; <b class="btn Y">Y</b> no huddle (${this.session.lastOffPlay.name})` : '') +
       ` &nbsp; <b class="btn view">View</b> timeout (${m.timeouts[s.humanTeam]})` });
     const grid = el('div.pc-grid');
     const cards = [];
@@ -156,6 +157,7 @@ export class PlayCallScreen {
     if (this.situationKey(this.session) !== this.key) { this.show(this.session, this.onPick); return; }
     if (f.pressed.X && this.side === 'offense') { this.flipped = !this.flipped; this.render(); }
     if (f.pressed.View) { this.session.callTimeout(this.session.humanTeam); this.render(); }
+    if (f.pressed.Y && this.side === 'offense' && this.session.noHuddle()) { this.hide(); return; }
     const c = this.root.querySelector('#pc-clock');
     if (c) {
       const pc = Math.ceil(this.session.match.playClock);

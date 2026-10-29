@@ -85,6 +85,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - `boxscore.js`: full player stats by category (`STAT_TABS`: passing incl. passer rating, rushing, receiving,
   defense, kicking) from `match.stats.players`; `statRows(m, tab, team)`. Shown by `ui/statsScreen.js` from the
   final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter.
+- Tempo: on the play-call screen Y = no-huddle (`session.noHuddle()` reruns `lastOffPlay`, no accelerated-clock
+  runoff); at the line B = spike (`session.spike()` swaps in `st_spike` and snaps). View (or the Share button,
+  gamepad button 17) calls a timeout between plays; the pause menu has Call Timeout too.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).

@@ -108,7 +108,10 @@ export class Hud {
     if (el.textContent !== text) el.textContent = text;
     el.style.borderColor = session.teams[p.team].colors.primary;
     el.style.display = 'block';
-    el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y + 10)}px) translateX(-50%)`;
+    // Never under the score bug at the bottom of the screen.
+    const bugTop = this.$('scorebug').getBoundingClientRect().top || innerHeight;
+    const y = Math.min(s.y + 10, bugTop - 30);
+    el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translateX(-50%)`;
   }
 
   /** Instant replay overlay (null hides it). */
@@ -180,7 +183,7 @@ export class Hud {
     let h = '';
     if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout`
-        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn view">View</b> Timeout`;
+        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; '}<b class="btn view">View</b> Timeout`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.meter && sim.state === 'live' && !sim.kick?.launched) h = sim.meter.phase === 'power' ? '<b class="btn A">A</b> Set power' : sim.meter.phase === 'accuracy' ? '<b class="btn A">A</b> Set accuracy — stop at the line!' : '';
@@ -256,16 +259,26 @@ export class Hud {
     const m = session.match;
     const bug = this.$('scorebug');
     bug.classList.remove('hidden');
-    const team = (i) => {
-      const t = m.teams[i];
-      const dots = [0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : ''}"></i>`).join('');
-      const poss = m.possession === i && m.phase !== 'kickoff' ? '<span class="poss">●</span>' : m.phase === 'kickoff' && m.kicker !== i ? '<span class="poss">●</span>' : '';
-      return `<div class="sb-team" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}"/><span class="ab">${t.abbr}</span>${poss}<span class="sc">${m.score[i]}</span><div class="to">${dots}</div></div>`;
-    };
-    const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? `${downText(m)} <small>· ${yardLineText(m)}</small>` : downText(m);
-    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over].join('|');
+    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
-    bug.innerHTML = `${team(1)}${team(0)}<div class="sb-time"><span>${m.over ? 'FINAL' : Q[Math.min(5, m.quarter)]}</span><b>${clockText(m.clock)}</b></div><div class="sb-dd">${dd}</div><div class="sb-pc ${m.playClock <= 10 ? 'low' : ''}">${Math.ceil(m.playClock)}</div>`;
+    // Broadcast-style bar: away on the left, home on the right, game situation in the middle.
+    const hasBall = (i) => (m.phase === 'kickoff' ? m.kicker !== i : m.possession === i) && !m.over;
+    const team = (i, side) => {
+      const t = m.teams[i];
+      const bars = [0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : ''}"></i>`).join('');
+      return `<div class="sb2-team ${side}${hasBall(i) ? ' ball' : ''}" style="--tc:${t.colors.primary};--tc2:${t.colors.secondary}">
+        <img class="sb2-logo" src="${this.logoFor(t)}" alt="${t.abbr}"/>
+        <div class="sb2-score">${m.score[i]}</div>
+        <div class="sb2-to">${bars}</div>
+        <span class="sb2-poss">▶</span></div>`;
+    };
+    const ord = (q) => (q > 4 ? 'OT' : `${q}<sup>${['', 'ST', 'ND', 'RD', 'TH'][q]}</sup>`);
+    const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? downText(m).toUpperCase().replace(/(\d)(ST|ND|RD|TH)/, '$1<sup>$2</sup>') : downText(m).toUpperCase();
+    const pc = m.over ? '' : `<span class="sb2-pc${m.playClock <= 10 ? ' low' : ''}">${Math.ceil(m.playClock)}</span>`;
+    bug.innerHTML = `<div class="sb2">${team(1, 'away')}<div class="sb2-mid"><div class="sb2-dd">${dd}</div>` +
+      `<div class="sb2-clock"><span class="sb2-q">${m.over ? '' : ord(m.quarter)}</span><b>${m.over ? '' : clockText(m.clock)}</b>${pc}</div>` +
+      `<div class="sb2-spot">${m.phase === 'scrimmage' && !m.over ? yardLineText(m) : ''}</div></div>${team(0, 'home')}</div>`;
   }
+
 }

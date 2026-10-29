@@ -304,3 +304,34 @@ describe('box score', () => {
     expect(passerRating({ passAtt: 20, passCmp: 20, passYds: 400, passTD: 5, int: 0 })).toBeCloseTo(158.3, 1);
   }, 60000);
 });
+
+describe('no-huddle and spike', () => {
+  it('Y reruns the last play; B at the line spikes the ball', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: 0, seed: 12, fast: true });
+    s.match.newPossession(0, 30, 0);
+    s.enterPlaycall();
+    s.humanChoose(getOffPlay('gun_doubles_mesh'));
+    s.choice.def = getDefPlay('43_cover3');
+    s.tick(STEP, null);
+    expect(s.state).toBe('presnap');
+    s.snap();
+    for (let i = 0; i < 4000 && s.state !== 'playcall'; i++) s.tick(STEP, null);
+    expect(s.state).toBe('playcall');
+    expect(s.noHuddle()).toBe(true);
+    expect(s.choice.off.id).toBe('gun_doubles_mesh');
+    s.choice.def = getDefPlay('43_cover3');
+    s.tick(STEP, null);
+    expect(s.state).toBe('presnap');
+    const down = s.match.down;
+    s.match.clockRunning = true;
+    expect(s.spike()).toBe(true);
+    for (let i = 0; i < 4000 && s.state !== 'playcall'; i++) s.tick(STEP, null);
+    if (s.match.phase === 'scrimmage' && s.match.possession === 0 && down < 4) {
+      expect(s.match.down).toBe(down + 1);
+      expect(s.match.clockRunning).toBe(false);
+    }
+  }, 60000);
+});

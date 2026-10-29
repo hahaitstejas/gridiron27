@@ -63,7 +63,8 @@ export class Hud {
   hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard', 'audible']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
-    const key = team.id + team.logo.shape + team.logo.text + team.colors.primary;
+    const l = team.logo;
+    const key = [team.id, l.shape, l.text, l.bg, l.fg, l.border, l._img ? l._img.src.length + l._img.src.slice(-16) : ''].join('|');
     if (!this._logos.has(key)) this._logos.set(key, logoDataURL(team.logo, 64));
     return this._logos.get(key);
   }

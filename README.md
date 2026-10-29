@@ -35,6 +35,7 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 | Defense: dive tackle · strip · swat/catch | X · Y · A | U · I · J |
 | Kick meter: start · power · accuracy | A · A · A | J · J · J |
 | Returner: fair catch · kneel in end zone | Y · X | I · U |
+| Penalty against the CPU: accept / decline | A / X | J / U |
 | Spike (at the line) | B | K |
 | No-huddle: rerun last play (play-call screen) | Y | I |
 | Timeout (between plays) | View (or Share) | T |

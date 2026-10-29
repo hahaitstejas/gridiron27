@@ -85,6 +85,7 @@ export function enforce(m, foul, r) {
     penVal = autoFirst || newYL >= m.firstYL ? expectedPoints(newYL, 1, 10) : expectedPoints(newYL, m.down, m.firstYL - newYL);
     outcome.accepted = penVal > playVal;
   }
+  outcome.acceptText = outcome.text;
   if (!outcome.accepted) outcome.text = `${def.name}, ${sideTxt}${who} — declined`;
   return outcome;
 }
@@ -104,4 +105,40 @@ export function rollPresnapFoul(m, sim, rng, rate = 1) {
     return { type: 'offsides', team: sim.defIdx, player: rng.pick(dl.length ? dl : sim.defense()) };
   }
   return null;
+}
+
+const ORD = ['', '1st', '2nd', '3rd', '4th'];
+
+/**
+ * What accepting or declining a foul would leave, for the accept/decline choice:
+ * { name, yards, accept, decline } as short "1st & 10 on OPP 13" style lines.
+ * `place(yl)` names a yard line (from the offense's goal) for display.
+ */
+export function describeChoice(m, outcome, r, place) {
+  const def = PENALTIES[outcome.type];
+  const off = m.possession;
+  const situation = (down, yl, firstYL) => {
+    const togo = firstYL >= 100 ? 'Goal' : String(Math.max(1, Math.round(firstYL - yl)));
+    return `${ORD[down]} & ${togo} on ${place(yl)}`;
+  };
+  // Accepting: the penalty yardage, then the down that follows.
+  const nyl = outcome.newYL;
+  let accept;
+  const offending = outcome.team === off ? 'off' : 'def';
+  if (outcome.autoFirst || (offending === 'def' && nyl >= m.firstYL)) accept = situation(1, nyl, Math.min(100, nyl + 10));
+  else if (offending === 'off' && outcome.lossOfDown && m.down >= 4) accept = 'Turnover on downs';
+  else accept = situation(offending === 'off' && outcome.lossOfDown ? m.down + 1 : m.down, nyl, m.firstYL);
+  // Declining: the play stands.
+  let decline;
+  if (r.touchdown === off) decline = 'Touchdown stands';
+  else if (r.touchdown !== null && r.touchdown !== undefined) decline = 'Defensive touchdown stands';
+  else if (r.safety) decline = 'Safety stands';
+  else if (r.possTeam !== off) decline = r.interception ? 'Interception stands' : 'Turnover stands';
+  else {
+    const yl = r.incomplete ? m.yardLine : m.ylOf(off, r.spotX);
+    if (yl >= m.firstYL) decline = situation(1, yl, Math.min(100, yl + 10));
+    else if (m.down >= 4) decline = 'Turnover on downs';
+    else decline = situation(m.down + 1, yl, m.firstYL);
+  }
+  return { name: def.name, yards: Math.round(Math.abs(nyl - m.yardLine)), accept, decline };
 }

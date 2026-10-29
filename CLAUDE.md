@@ -61,7 +61,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   player stats (an accepted flag wipes the play's stats; `playStatLines()` feeds the post-play stat card). `applyResult(result)` consumes a `PlaySim.result` and moves the game on. `dirOf(team)` /
   `xOf(team, yl)` / `ylOf(team, x)` map between yard lines and world x (home attacks +x in Q1/Q3).
 - `penalties.js`: foul table, enforcement (half the distance, automatic first downs, loss of down, spot
-  fouls), accept/decline by `expectedPoints()`, pre-snap fouls.
+  fouls), accept/decline by `expectedPoints()`, pre-snap fouls. In-play fouls by the CPU against the human are the
+  human's choice: the session waits in state `penalty` (`pendingPenalty` with `describeChoice()` lines for accept /
+  decline and the recommended pick) until A (accept) or X (decline) → `choosePenalty()` → `completePlay()`. Fouls
+  by the human, CPU-vs-CPU and fast/headless games still decide automatically.
 - `session.js` → `GameSession`: drives one game — states `playcall → presnap → live → post` (→ `over`).
   Gets play calls from the human (`humanChoose`) or `ai/playcaller.js`, builds each `PlaySim`, runs the
   play clock / runoff (accelerated clock option), enforces fouls via `penalties.js`, then `match.applyResult`.

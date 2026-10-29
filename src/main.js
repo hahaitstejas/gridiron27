@@ -324,7 +324,7 @@ function frameBody(now) {
     const live = sim && sim.state !== 'presnap';
     const phase = !live || session.state === 'playcall' ? 'presnap' : sim.ball.state === 'air' || sim.ball.state === 'kick' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
     let focus;
-    if (session.state === 'playcall' || session.state === 'post') focus = { x: m.xOf(m.possession, m.yardLine), z: m.phase === 'scrimmage' ? m.ballZ : 0 };
+    if (session.state === 'playcall' || session.state === 'post' || (session.state === 'penalty' && !sim)) focus = { x: m.xOf(m.possession, m.yardLine), z: m.phase === 'scrimmage' ? m.ballZ : 0 };
     else if (!live) focus = { x: losX, z: sim.ballZ };
     else focus = { x: b.x, z: b.z };
     const camDir = m.dirOf(m.possession);

@@ -335,3 +335,39 @@ describe('no-huddle and spike', () => {
     }
   }, 60000);
 });
+
+describe('penalty choice', () => {
+  async function playWithFoul(foulTeam) {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: 0, seed: 21 });
+    s.match.newPossession(0, 30, 0);
+    s.enterPlaycall();
+    s.humanChoose(getOffPlay('gun_doubles_iz'));
+    s.choice.def = getDefPlay('43_cover3');
+    s.tick(STEP, null);
+    s.snap();
+    s.sim.fouls = [{ type: 'holding_def', team: foulTeam }];
+    for (let i = 0; i < 6000 && s.state === 'live'; i++) s.tick(STEP, null);
+    return s;
+  }
+  it('waits for the human to accept or decline a foul by the CPU', async () => {
+    const s = await playWithFoul(1);
+    expect(s.state).toBe('penalty');
+    const c = s.pendingPenalty.choice;
+    expect(c.name).toBe('Defensive holding');
+    expect(c.accept).toMatch(/^1st & 10 on /);
+    expect(c.decline).toMatch(/& |stands|downs/);
+    const { emptyFrame } = await import('../src/input/actions.js');
+    const f = emptyFrame(); f.pressed.A = true;
+    s.tick(1 / 60, f);
+    expect(s.state).toBe('post');
+    expect(s.match.down).toBe(1);
+    expect(s.match.yardLine).toBe(35);
+  });
+  it('decides automatically when the human committed the foul', async () => {
+    const s = await playWithFoul(0);
+    expect(['post', 'playcall']).toContain(s.state);
+  });
+});

@@ -1,11 +1,11 @@
 import { RNG } from '../core/rng.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
-import { Match, playStatLines } from './match.js';
+import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
-import { enforce, rollPresnapFoul, PENALTIES } from './penalties.js';
+import { enforce, rollPresnapFoul, PENALTIES, describeChoice } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
 import { getOffPlay, getDefPlay } from '../data/playbook.js';
@@ -320,6 +320,13 @@ export class GameSession {
       return;
     }
 
+    if (this.state === 'penalty') {
+      // Waiting for the human: A accepts, X declines.
+      if (input?.pressed.A) this.choosePenalty(true);
+      else if (input?.pressed.X) this.choosePenalty(false);
+      return;
+    }
+
     if (this.state === 'post') {
       this.wait -= dt;
       if (this.wait <= 0) this.enterPlaycall();
@@ -359,11 +366,39 @@ export class GameSession {
         outcome = { accepted: true, text: 'Offsetting penalties, replay the down', newYL: m.yardLine, team: -1, offsetting: true };
       } else {
         // The most damaging foul for the offending team.
-        const f = fouls[0];
-        outcome = enforce(m, f, r);
-        if (outcome.accepted) { m.stats.team[f.team].penalties++; m.stats.team[f.team].penYds += Math.round(Math.abs(outcome.newYL - m.yardLine)); }
+        outcome = enforce(m, fouls[0], r);
+        // A foul against the human's opponent: the human accepts or declines (the play waits).
+        if (this.humanTeam !== null && !this.fast && outcome.team !== this.humanTeam && !outcome.dead) {
+          const choice = describeChoice(m, outcome, r, (yl) => yardLineText(m, m.possession, yl));
+          this.pendingPenalty = { outcome, choice, foul: fouls[0], recommend: outcome.accepted };
+          this.state = 'penalty';
+          this.emit('flag', { foul: fouls[0], outcome, pending: true });
+          return;
+        }
       }
       this.emit('flag', { foul: fouls[0], outcome });
+    }
+    this.completePlay(outcome);
+  }
+
+  /** The human's accept/decline answer for a pending penalty. */
+  choosePenalty(accept) {
+    const p = this.pendingPenalty;
+    if (this.state !== 'penalty' || !p) return;
+    p.outcome.accepted = accept;
+    p.outcome.text = accept ? p.outcome.acceptText || p.outcome.text : `${p.choice.name} — declined`;
+    this.pendingPenalty = null;
+    this.completePlay(p.outcome);
+  }
+
+  /** Apply the play (and any penalty decision) to the game and move on. */
+  completePlay(outcome) {
+    const m = this.match;
+    const sim = this.sim;
+    const r = sim.result;
+    if (outcome && outcome.accepted && !outcome.offsetting) {
+      m.stats.team[outcome.team].penalties++;
+      m.stats.team[outcome.team].penYds += Math.round(Math.abs(outcome.newYL - m.yardLine));
     }
     const scrimmage = m.phase === 'scrimmage';
     const quarter = m.quarter;

@@ -21,6 +21,7 @@ export class Hud {
       <div id="ticker"></div>
       <div id="statcard" class="hidden"></div>
       <div id="audible" class="hidden"></div>
+      <div id="penaltybox" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
@@ -60,7 +61,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard', 'audible']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard', 'audible', 'penaltybox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -211,6 +212,20 @@ export class Hud {
     } else au.dataset.key = '';
     hint.innerHTML = h;
     hint.classList.toggle('hidden', !h || playcallOpen);
+
+    // Accept / decline a penalty against the CPU.
+    const pb = this.$('penaltybox');
+    const pen = session.state === 'penalty' ? session.pendingPenalty : null;
+    pb.classList.toggle('hidden', !pen);
+    if (pen && pb.dataset.key !== pen.choice.name + pen.choice.accept) {
+      pb.dataset.key = pen.choice.name + pen.choice.accept;
+      const c = pen.choice;
+      const me = session.teams[session.humanTeam];
+      pb.innerHTML = `<div class="pb-head"><span>${c.name}</span><b>${c.yards} YDS</b></div>
+        <div class="pb-opt"><b class="btn A">A</b><div><div class="pb-label">Accept${pen.recommend ? ' <small>recommended</small>' : ''}</div><div class="pb-sub">${c.accept}</div></div></div>
+        <div class="pb-opt"><b class="btn X">X</b><div><div class="pb-label">Decline${pen.recommend ? '' : ' <small>recommended</small>'}</div><div class="pb-sub">${c.decline}</div></div></div>
+        <div class="pb-foot"><span>Choose</span><img src="${this.logoFor(me)}" alt=""/></div>`;
+    } else if (!pen) pb.dataset.key = '';
 
     // Name tags under the player you control and, if it's someone else, the ball carrier.
     const [tagMe, tagOther] = this.root.querySelectorAll('.tag');

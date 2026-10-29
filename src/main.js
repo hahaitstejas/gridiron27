@@ -5,6 +5,7 @@ import { loadLocalLeague } from './data/localLeague.js';
 import { deserializeLeague } from './data/league.js';
 import { activeSlot, readSave } from './data/storage.js';
 import { LeagueUI, attachLogos } from './ui/league.js';
+import { rosterScreen } from './ui/rosterEditor.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
@@ -51,6 +52,9 @@ const league = new LeagueUI({
   },
 });
 if (saved) league.name = saved.name;
+const pickTeam = (title, onPick, onBack, focus = prefs.home) => screens.teamPicker(teams, focus, { title, onPick, onBack });
+const rosterCtx = { screens, teams, onBack: () => league.menu(0), onChange: () => league.changed(), pickTeam };
+league.onRosters = () => pickTeam('Rosters: pick a team', (i) => rosterScreen(rosterCtx, i), () => league.menu(0));
 league.onDepth = () => {
   // Pick a team, then edit its depth chart.
   const pick = (i) => depthChartScreen(screens, teams[i], { onDone: () => league.menu(2), onChange: () => league.changed() });

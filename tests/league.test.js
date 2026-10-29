@@ -47,3 +47,34 @@ describe('league saves', () => {
     expect(freeNumber(t, t.roster[0].number)).not.toBe(t.roster[0].number);
   });
 });
+
+describe('roster edits', () => {
+  it('adds, releases, trades and re-positions players with consistent depth charts', async () => {
+    const { addPlayer, releasePlayer, tradePlayer, changePosition } = await import('../src/data/rosterOps.js');
+    const teams = generateLeagueRosters(defaultTeams(), 14);
+    const [a, b] = teams;
+    const allDepthIds = (t) => Object.values(t.depth).flat();
+    const qb1 = a.depth.QB[0];
+    releasePlayer(a, qb1);
+    expect(a.roster.some((p) => p.id === qb1)).toBe(false);
+    expect(allDepthIds(a)).not.toContain(qb1);
+    expect(a.depth.QB.length).toBeGreaterThan(0);
+    const wr = a.depth.WR[0];
+    const num = a.roster.find((p) => p.id === wr).number;
+    b.roster.find((p) => p.number !== num).number = num; // force a number clash on the new team
+    tradePlayer(a, b, wr);
+    expect(allDepthIds(a)).not.toContain(wr);
+    expect(b.depth.WR).toContain(wr);
+    expect(new Set(b.roster.map((p) => p.number)).size).toBe(b.roster.length);
+    const p = generatePlayer('CB', new RNG(3));
+    addPlayer(b, p);
+    expect(b.depth.CB).toContain(p.id);
+    changePosition(b, p, 'FS');
+    expect(b.depth.CB).toContain(p.id); // a safety can still play corner
+    expect(b.depth.FS).toContain(p.id);
+    changePosition(b, p, 'QB');
+    expect(b.depth.CB).not.toContain(p.id);
+    expect(b.depth.QB).toContain(p.id);
+    for (const t of [a, b]) for (const ids of Object.values(t.depth)) for (const id of ids) expect(t.roster.some((q) => q.id === id)).toBe(true);
+  });
+});

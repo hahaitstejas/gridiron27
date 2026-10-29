@@ -200,3 +200,6 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .tp-card-name { font-size: 12px; font-weight: 800; line-height: 1.2; }
 .tp-card-abbr { font-size: 11px; opacity: 0.6; }
 @media (max-width: 900px) { .tp-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.setup-opts.card-opts { max-height: 66vh; overflow-y: auto; padding: 4px; }
+.opt-row.action { justify-content: center; color: var(--gold); font-weight: 800; }
+.pc-ovr { font-weight: 900; color: #fff; }

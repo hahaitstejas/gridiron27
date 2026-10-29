@@ -35,4 +35,18 @@ describe('instant replay', () => {
     pl.seek(1e9);
     expect(pl.t).toBeCloseTo(r.duration, 6);
   });
+
+  it('the replay ghost offers every sim method the render code calls', async () => {
+    const fs = await import('fs');
+    const used = new Set();
+    for (const f of fs.readdirSync('src/render')) {
+      for (const m of fs.readFileSync(`src/render/${f}`, 'utf8').matchAll(/\bsim\.([a-zA-Z]+)\(/g)) used.add(m[1]);
+    }
+    const sim = new PlaySim({ rng: new RNG(1), teams: [teams[0], teams[1]], offIdx: 0, dir: -1, losX: 10, ballZ: 2, offPlay: listOffPlays()[0], defPlay: listDefPlays()[0], humanTeam: null });
+    const rec = new ReplayRecorder();
+    sim.snap(); rec.capture(sim); sim.tick(STEP, null); rec.capture(sim);
+    const g = new ReplayPlayer(rec.take()).ghost;
+    for (const name of used) expect(typeof g[name], `ghost.${name}`).toBe('function');
+    expect(g.toLocal(4, 2)).toEqual(sim.toLocal(4, 2));
+  });
 });

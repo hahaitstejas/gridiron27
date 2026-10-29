@@ -28,7 +28,7 @@ export class ReplayRecorder {
     if (!this.meta) {
       this.meta = {
         players: sim.players.map((p) => ({ id: p.id, rid: p.rid, team: p.team, slot: p.slot, pos: p.pos, number: p.number, name: p.name, skin: p.skin, height: p.height, bulk: p.bulk })),
-        offIdx: sim.offIdx, defIdx: sim.defIdx, dir: sim.dir, losX: sim.losX, play: sim.offPlay?.name,
+        offIdx: sim.offIdx, defIdx: sim.defIdx, dir: sim.dir, losX: sim.losX, ballZ: sim.ballZ, play: sim.offPlay?.name,
       };
     }
     const n = sim.players.length;
@@ -65,7 +65,12 @@ export class ReplayPlayer {
       players: m.players.map((p) => ({ ...p, x: 0, z: 0, px: 0, pz: 0, facing: 0, pfacing: 0, vx: 0, vz: 0, anim: 'stance', animT: 0, state: 'active', move: null, cycle: 0 })),
       ball: { x: 0, y: 0, z: 0, px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0, spin: 0, state: 'held', carrier: -1 },
       humanTeam: null, controlledId: -1, offIdx: m.offIdx, defIdx: m.defIdx, possTeam: m.offIdx, dir: m.dir, losX: m.losX,
-      state: 'live', replay: true,
+      ballZ: m.ballZ ?? 0, state: 'live', replay: true,
+      // The same helpers PlaySim offers, for render code that needs them (e.g. celebration poses).
+      toWorld(down, lat) { return { x: this.losX + this.dir * down, z: this.ballZ + this.dir * lat }; },
+      toLocal(x, z) { return { down: (x - this.losX) * this.dir, lat: (z - this.ballZ) * this.dir }; },
+      teamDir(team) { return team === this.offIdx ? this.dir : -this.dir; },
+      carrier() { return this.ball.state === 'held' && this.ball.carrier >= 0 ? this.players[this.ball.carrier] : null; },
     };
     this.seek(0);
   }

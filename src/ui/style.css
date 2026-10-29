@@ -253,3 +253,4 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .sb2-pc.low { color: #ff6b5f; opacity: 1; }
 .sb2-spot { font: 700 10px Inter, system-ui, sans-serif; letter-spacing: 1px; opacity: 0.6; text-transform: uppercase; }
 @media (max-width: 900px) { .sb2 { height: 54px; } .sb2-team { width: 150px; padding: 0 10px; } .sb2-logo { width: 50px; height: 50px; } .sb2-score { font-size: 30px; } .sb2-mid { min-width: 140px; } .sb2-dd { font-size: 15px; } .sb2-clock b { font-size: 19px; } }
+.st-num.up { color: #5fd17a; } .st-num.down { color: #ff7a6b; }

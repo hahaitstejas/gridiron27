@@ -68,3 +68,43 @@ describe('franchise season', () => {
     expect(leaders(f, 'passYds', 1)[0].value).toBeGreaterThan(700);
   });
 });
+
+describe('offseason', () => {
+  it('ages, re-signs, runs free agency and the draft, and cuts every team to 53', async () => {
+    const O = await import('../src/franchise/offseason.js');
+    const { startNextSeason } = await import('../src/franchise/franchise.js');
+    const lg = generateLeagueRosters(defaultTeams(), 99);
+    const f = createFranchise(lg, { userTeam: 3, weeks: 6, seed: 9 });
+    while (f.phase !== 'offseason') { simOthers(f, lg); const g = userGame(f); if (g && !g.score) simGame(f, lg, g); advance(f, lg); }
+    const qb = lg[3].roster.find((p) => p.pos === 'QB');
+    const age0 = qb.age;
+    O.progressPlayers(f, lg);
+    expect(f.offseason.step).toBe('progression');
+    expect(lg[3].roster.find((p) => p.id === qb.id)?.age ?? age0 + 1).toBe(age0 + 1);
+    f.offseason.step = 'resign';
+    for (const p of O.expiring(lg[3]).slice(0, 2)) O.resign(lg[3], p.id);
+    O.finishResigning(f, lg);
+    expect(O.expiring(lg[3])).toHaveLength(0);
+    expect(f.offseason.pool.length).toBeGreaterThan(20);
+    O.cpuFreeAgency(f, lg);
+    O.makeDraft(f, lg);
+    expect(f.offseason.draft.picks).toHaveLength(224);
+    O.simToUserPick(f, lg);
+    const myPick = f.offseason.draft.picks[f.offseason.draft.at];
+    expect(myPick.team).toBe(3);
+    const choice = f.offseason.draft.cls[0].id;
+    O.makePick(f, lg, choice);
+    expect(lg[3].roster.some((p) => p.id === choice)).toBe(true);
+    O.finishDraft(f, lg);
+    O.cpuCutDowns(f, lg);
+    O.cutDown(lg[3]);
+    for (const t of lg) {
+      expect(t.roster.length).toBeLessThanOrEqual(53);
+      for (const ids of Object.values(t.depth)) for (const id of ids) expect(t.roster.some((p) => p.id === id)).toBe(true);
+      for (const slot of ['QB', 'HB', 'WR', 'LT', 'C', 'LE', 'CB', 'K']) expect(t.depth[slot].length).toBeGreaterThan(0);
+    }
+    startNextSeason(f, lg);
+    expect(f.phase).toBe('regular');
+    expect(f.year).toBe(2028);
+  });
+});

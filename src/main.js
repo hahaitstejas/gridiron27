@@ -9,12 +9,12 @@ import { rosterScreen } from './ui/rosterEditor.js';
 import { teamEditor } from './ui/teamEditor.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
 import { FranchiseUI } from './ui/franchise.js';
-import { startNextSeason } from './franchise/franchise.js';
+import { offseasonScreen } from './ui/offseason.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
-import { Nav, el } from './ui/nav.js';
+import { Nav } from './ui/nav.js';
 import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
@@ -71,16 +71,8 @@ const franchiseUI = new FranchiseUI({
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
-  offseason: (ui) => {
-    // Season summary; the full offseason (progression, contracts, free agency, draft) builds on this.
-    const f = league.franchise, h = f.history[f.history.length - 1];
-    const next = screens.menuItem('Start next season', `${f.year + 1}`, () => { startNextSeason(f, teams); league.changed(); ui.hub(); });
-    const menu = screens.menuItem('Main Menu', 'Your franchise autosaves', toMenu);
-    screens.frame('menu-screen', el('div.logo-small', { html: `${f.year} SEASON` }),
-      el('div.league-status', { text: `Champion: ${h.championName} · You went ${h.record}${h.madePlayoffs ? ' and made the playoffs' : ''}` }),
-      el('div.menu-list', {}, next, menu));
-    screens.nav.set([next, menu], { onBack: toMenu });
-  },
+  offseason: (ui) => offseasonScreen({ screens, teams, league, onExit: () => toMenu() }, ui),
+
 });
 league.onSpreadsheets = () => spreadsheetScreen({ screens, teams, prefs, onBack: () => league.menu(3), onChange: () => { savePrefs(prefs); league.changed(); } });
 league.onRosters = () => pickTeam('Rosters: pick a team', (i) => rosterScreen(rosterCtx, i), () => league.menu(0));

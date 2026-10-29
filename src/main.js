@@ -11,6 +11,7 @@ import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen } from './ui/depthEditor.js';
+import { statsScreen } from './ui/statsScreen.js';
 import { energyOf } from './game/fatigue.js';
 
 // ---- Boot ----
@@ -119,11 +120,17 @@ function updateReplay(f, dt) {
   r.dist = Math.min(60, Math.max(6, r.dist + ((f.lt || 0) - (f.rt || 0)) * dt * 25));
 }
 
+function showFinal() {
+  screens.extraButtons = null;
+  screens.gameOver(session, { onDone: toMenu, onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
+}
+
 function pause() {
   app = 'paused';
   screens.pause({
     onResume: () => { screens.clear(); app = 'game'; },
     onReplay: session?.lastReplay ? () => startReplay() : null,
+    onStats: session ? () => statsScreen(screens, session.match, { onBack: () => { screens.extraButtons = null; pause(); } }) : null,
     onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
       energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause }) : null,
     onControls: () => screens.controls({ onBack: pause }),
@@ -163,7 +170,7 @@ function onSessionEvent(e) {
   else if (e.type === 'gameOver') {
     app = 'over';
     playcall.hide();
-    setTimeout(() => { if (app === 'over' && session) { hud.hideAll(); screens.gameOver(session, { onDone: toMenu }); } }, 2500);
+    setTimeout(() => { if (app === 'over' && session) { hud.hideAll(); showFinal(); } }, 2500);
   } else if (e.type === 'tackle' && e.power > 0.9) renderer.rig.shake = Math.min(1, e.power * 0.5);
   else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
   else if (e.type === 'tackle') input.rumble(0.35, 110);

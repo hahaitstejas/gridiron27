@@ -82,6 +82,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Coaching: the pause menu (games and practice) opens the depth chart editor for the human team. It edits
   `team.depth` in place (`placeInDepth` / `removeFromDepth` / `eligibleForSlot` in `data/depthChart.js`), so the
   next snap uses it; it shows each player's overall at that spot and his current energy. Not saved to disk yet.
+- `boxscore.js`: full player stats by category (`STAT_TABS`: passing incl. passer rating, rushing, receiving,
+  defense, kicking) from `match.stats.players`; `statRows(m, tab, team)`. Shown by `ui/statsScreen.js` from the
+  final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).
@@ -122,7 +125,7 @@ src/ai/                offense.js (QB drop/handoff, protection, run blocking, ro
                        carrier.js (lane finding + moves), defense.js (man matching, zones, rush, pursuit),
                        zones.js (zone landmarks), playcaller.js (CPU play calling), difficulty.js (tiers)
 src/game/              match.js (rules, clock, score, stats), penalties.js (enforcement), session.js (game loop),
-                       fatigue.js (player energy + rotation), audibles.js (audibles + hot routes)
+                       fatigue.js (player energy + rotation), audibles.js (audibles + hot routes), boxscore.js (stat tables)
 src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/), positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)
@@ -133,7 +136,8 @@ src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu 
 src/ui/                nav.js (controller/keyboard menu focus), screens.js (title, main menu, Play Now setup,
                        controls, settings, pause, game-over box score; prefs in localStorage `g27.settings`),
                        playcall.js (play-call screen), playart.js (canvas play diagrams), depthEditor.js (pause →
-                       Coaching: Depth Chart; edits team.depth live via data/depthChart.js helpers), hud.js (score bug,
+                       Coaching: Depth Chart; edits team.depth live via data/depthChart.js helpers), statsScreen.js (full
+                       player stats), hud.js (score bug,
                        banners, flag box, ticker, post-play stat card, name tags, receiver icons, kick meter, help, FPS), style.css
 tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;  tools/humanbot.js  exploit checks;
                        tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test

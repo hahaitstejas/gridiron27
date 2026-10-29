@@ -187,8 +187,9 @@ export class Screens {
     this.nav.set([...rows, save], { onBack });
   }
 
-  pause({ onResume, onReplay, onDepth, onControls, onQuit }) {
+  pause({ onResume, onReplay, onStats, onDepth, onControls, onQuit }) {
     const items = [this.menuItem('Resume', '', onResume)];
+    if (onStats) items.push(this.menuItem('Game Stats', 'Every player: passing, rushing, receiving, defense, kicking', onStats));
     if (onDepth) items.push(this.menuItem('Coaching: Depth Chart', 'Change who starts and who rotates in', onDepth));
     if (onReplay) items.push(this.menuItem('Instant Replay', 'Watch the last play again', onReplay));
     items.push(this.menuItem('Controls', '', onControls), this.menuItem('Quit to Main Menu', 'Abandon this game', onQuit));
@@ -196,7 +197,7 @@ export class Screens {
     this.nav.set(items, { onBack: onResume });
   }
 
-  gameOver(session, { onDone }) {
+  gameOver(session, { onDone, onStats }) {
     const m = session.match;
     const [h, a] = m.teams;
     const S = m.stats.team;
@@ -221,16 +222,18 @@ export class Screens {
       pass && `Passing: ${name(pass.team, pass.rid)} ${pass.passCmp}/${pass.passAtt}, ${Math.round(pass.passYds)} yds, ${pass.passTD} TD, ${pass.int} INT`,
       rush && `Rushing: ${name(rush.team, rush.rid)} ${rush.rushAtt} car, ${Math.round(rush.rushYds)} yds, ${rush.rushTD} TD`,
       rec && `Receiving: ${name(rec.team, rec.rid)} ${rec.rec} rec, ${Math.round(rec.recYds)} yds, ${rec.recTD} TD`,
-      tk && `Defense: ${name(tk.team, tk.rid)} ${tk.tackles} tackles${tk.sacks ? `, ${tk.sacks} sacks` : ''}`,
+      tk && `Defense: ${name(tk.team, tk.rid)} ${tk.tackles} tackles${tk.sacks ? `, ${tk.sacks} sack${tk.sacks > 1 ? 's' : ''}` : ''}`,
     ].filter(Boolean);
     const done = el('div.start-btn', { text: 'Main Menu' });
     done.activate = onDone;
+    const stats = el('div.start-btn.secondary', { text: 'Full Stats' });
+    stats.activate = onStats;
     this.frame('over-screen',
       el('h1', { text: 'Final' }),
       el('div.final-score', {}, logoCanvas(a.logo, 90), el('div.fs', { text: `${a.abbr} ${m.score[1]}  –  ${m.score[0]} ${h.abbr}` }), logoCanvas(h.logo, 90)),
       el('div.final-sub', { text: m.ot ? 'Overtime' : '' }),
       el('div.final-cols', {}, el('div', { html: table }), el('ul.leaders', {}, lead.map((l) => el('li', { text: l })))),
-      done);
-    this.nav.set([done], { onBack: onDone });
+      el('div.over-buttons', {}, stats, done));
+    this.nav.set([stats, done], { columns: 2, onBack: onDone, index: 1 });
   }
 }

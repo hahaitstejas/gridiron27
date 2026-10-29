@@ -281,3 +281,26 @@ describe('practice mode', () => {
     expect(m.over).toBe(false);
   }, 60000);
 });
+
+describe('box score', () => {
+  it('lists every player with stats in each category', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { STAT_TABS, statRows, passerRating } = await import('../src/game/boxscore.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 5 }, humanTeam: null, seed: 4, fast: true });
+    for (let i = 0; i < 2e6 && !s.match.over; i++) s.tick(STEP, null);
+    const m = s.match;
+    for (const tab of STAT_TABS) {
+      const rows = statRows(m, tab.id);
+      expect(rows.length, tab.id).toBeGreaterThan(0);
+      for (const r of rows) expect(r.cells).toHaveLength(tab.cols.length);
+    }
+    // Rushing rows add up to the team totals.
+    for (const t of [0, 1]) {
+      const yds = Object.values(m.stats.players).filter((p) => p.team === t).reduce((a, p) => a + p.rushYds, 0);
+      expect(Math.round(yds)).toBe(Math.round(m.stats.team[t].rushYds));
+      expect(statRows(m, 'defense', t).every((r) => r.team === t)).toBe(true);
+    }
+    expect(passerRating({ passAtt: 20, passCmp: 20, passYds: 400, passTD: 5, int: 0 })).toBeCloseTo(158.3, 1);
+  }, 60000);
+});

@@ -1,4 +1,5 @@
 import { GOAL_X, END_X, HALF_WIDTH, HASH_Z, BALL_CARRY_HEIGHT } from '../core/constants.js';
+import { needsRest, energyOf } from '../game/fatigue.js';
 import { clamp } from '../core/math.js';
 import { makeSimPlayer } from './entities.js';
 import { integrate, resolveCollisions } from './movement.js';
@@ -19,6 +20,8 @@ import { addFoul, foulRate } from './fouls.js';
 export const KICK_PLAYS = new Set(['kickoff', 'punt', 'fg']);
 
 const OL_SLOTS = new Set(['LT', 'LG', 'C', 'RG', 'RT']);
+// Ratings that fade as a player tires (see game/fatigue.js).
+const TIRING = new Set(['speed', 'acceleration', 'agility', 'strength', 'passRush', 'blockShed', 'breakTackle', 'runBlock', 'passBlock']);
 export const MAX_PLAY_TIME = 40;
 
 /**
@@ -40,6 +43,8 @@ export class PlaySim {
     this.humanTeam = cfg.humanTeam ?? null;
     this.camDir = cfg.camDir ?? this.dir;
     this.boost = cfg.boost || [0, 0];
+    this.energy = cfg.energy || null; // [Map, Map] roster id -> 0..1 (game/fatigue.js)
+    this.subRelax = cfg.subRelax || 0; // big moments: starters stay in longer
     this.difficulty = cfg.difficulty || null;
     this.firstDownX = cfg.firstDownX ?? null;
 
@@ -66,7 +71,7 @@ export class PlaySim {
   toWorld(down, lat) { return { x: this.losX + this.dir * down, z: this.ballZ + this.dir * lat }; }
   toLocal(x, z) { return { down: (x - this.losX) * this.dir, lat: (z - this.ballZ) * this.dir }; }
   teamDir(team) { return team === this.offIdx ? this.dir : -this.dir; }
-  R(p, key) { return clamp((p.r[key] ?? 40) + this.boost[p.team], 0, 115); }
+  R(p, key) { return clamp((p.r[key] ?? 40) + this.boost[p.team] - (p.fatigue && TIRING.has(key) ? p.fatigue : 0), 0, 115); }
   emit(type, data = {}) { this.events.push({ type, t: this.t, ...data }); }
   carrier() { return this.ball.state === 'held' ? this.players[this.ball.carrier] : null; }
   offense() { return this.players.filter((p) => p.team === this.offIdx); }
@@ -120,12 +125,27 @@ export class PlaySim {
     for (const fp of formation.players) {
       const list = (team.depth[fp.p] || byPos(fp.p)).filter((id) => fp.p === 'QB' || id !== qb1);
       let rp = null;
-      for (let i = fp.d; i < list.length && !rp; i++) if (!used.has(list[i])) rp = byId.get(list[i]);
+      // Rotation: a tired player at this spot sits if someone fresher further down the depth chart can go.
+      const rotate = this.energy && !KICK_PLAYS.has(this.offPlay.type);
+      const tired = (id) => rotate && needsRest(this.energy, teamIdx, byId.get(id), this.subRelax);
+      for (let i = fp.d; i < list.length && !rp; i++) {
+        if (used.has(list[i])) continue;
+        if (tired(list[i]) && list.slice(i + 1).some((id) => !used.has(id) && !tired(id))) continue;
+        rp = byId.get(list[i]);
+      }
       for (let i = 0; i < list.length && !rp; i++) if (!used.has(list[i])) rp = byId.get(list[i]);
       if (!rp) rp = team.roster.find((p) => !used.has(p.id) && p.id !== qb1 && !['K', 'P'].includes(p.pos));
       if (!rp) rp = team.roster.find((p) => !used.has(p.id));
       used.add(rp.id);
       const sp = makeSimPlayer(this.players.length, rp, teamIdx, side, fp.s);
+      if (this.energy) {
+        // Tired legs: a step slower, and weaker at the point of attack.
+        const e = energyOf(this.energy, teamIdx, rp.id);
+        sp.energy = e;
+        sp.fatigue = (1 - e) * 14;
+        sp.maxSpeed -= (1 - e) * 0.9;
+        sp.accel -= (1 - e) * 1.2;
+      }
       // Backed up near the goal line: nobody lines up behind the end line (shallower punter/QB).
       let down = fp.at[0];
       if (side === 'O') {

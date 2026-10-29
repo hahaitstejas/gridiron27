@@ -69,6 +69,12 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
   plane, returns, fair catches, touchbacks, onside kicks. Special plays/formations are in
   `playbooks/special.json` (ids `st_*`; `listOffPlays()`/`listDefPlays()` hide them unless `all=true`).
+- `fatigue.js`: player energy across a game. Each snap costs energy by position and effort (carriers, routes,
+  rushers); players on the sideline recover (more on timeouts, quarter breaks, full at halftime). The session
+  passes the energy maps to each `PlaySim`, whose `place()` sits a tired HB/WR/TE/DL/LB for the next fresher
+  player on the depth chart (`ROTATE_AT`); tired players lose some speed/strength (`TIRING` ratings). Starters
+  stay in longer late in close games, in the two-minute drill and on the goal line. Snap counts are in the
+  player stats (`snaps`). Typical shares: HB1 ~70%, WR1/2 ~93%, WR3 ~60%, starting DL ~80-90%; QB/OL ~100%.
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
@@ -93,7 +99,8 @@ src/sim/               play.js (PlaySim), entities.js, movement.js (accel/agilit
 src/ai/                offense.js (QB drop/handoff, protection, run blocking, routes, escort), qb.js (reads),
                        carrier.js (lane finding + moves), defense.js (man matching, zones, rush, pursuit),
                        zones.js (zone landmarks), playcaller.js (CPU play calling), difficulty.js (tiers)
-src/game/              match.js (rules, clock, score, stats), penalties.js (enforcement), session.js (game loop)
+src/game/              match.js (rules, clock, score, stats), penalties.js (enforcement), session.js (game loop),
+                       fatigue.js (player energy + rotation)
 src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/), positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)

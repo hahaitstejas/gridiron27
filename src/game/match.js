@@ -424,7 +424,7 @@ function newStats(teams) {
 
 function pstat(m, team, rid) {
   const key = `${team}:${rid}`;
-  return (m.stats.players[key] ||= { team, rid, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 0, rushYds: 0, rushTD: 0, rec: 0, recYds: 0, recTD: 0, tackles: 0, sacks: 0, defInt: 0, ff: 0, fr: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, krYds: 0, prYds: 0 });
+  return (m.stats.players[key] ||= { team, rid, snaps: 0, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 0, rushYds: 0, rushTD: 0, rec: 0, recYds: 0, recTD: 0, tackles: 0, sacks: 0, defInt: 0, ff: 0, fr: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, krYds: 0, prYds: 0 });
 }
 
 function recordStats(m, r, sim) {
@@ -445,6 +445,7 @@ function recordStats(m, r, sim) {
   }
   if (m.phase === 'try') return;
   T[off].plays++;
+  for (const p of sim.players) pstat(m, p.team, p.rid).snaps++;
   if (m.down === 3) { T[off].thirdAtt++; }
   const yds = r.incomplete ? 0 : r.yards;
   if (r.playType === 'pass' && (r.passAttempt || r.sack)) {

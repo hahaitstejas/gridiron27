@@ -193,3 +193,20 @@ describe('post-play stat card', () => {
     expect(playStatLines(s.match, { kickType: 'punt' }, s.sim)).toEqual([]);
   });
 });
+
+describe('fatigue and rotation', () => {
+  it('rotates backs and receivers but keeps the QB and line in', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: null, seed: 3, fast: true });
+    for (let i = 0; i < 2e6 && !s.match.over; i++) s.tick(STEP, null);
+    const snaps = (t, slot, i) => s.match.stats.players[`${t}:${teams[t].depth[slot][i]}`]?.snaps || 0;
+    for (const t of [0, 1]) {
+      const plays = s.match.stats.team[t].plays;
+      expect(snaps(t, 'HB', 1)).toBeGreaterThan(plays * 0.1); // the backup back gets real work
+      expect(snaps(t, 'HB', 0)).toBeGreaterThan(snaps(t, 'HB', 1));
+      expect(snaps(t, 'QB', 0)).toBe(plays);
+      expect(snaps(t, 'LT', 0)).toBe(plays);
+    }
+  }, 60000);
+});

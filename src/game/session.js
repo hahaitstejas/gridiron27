@@ -2,6 +2,7 @@ import { RNG } from '../core/rng.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines } from './match.js';
+import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
 import { enforce, rollPresnapFoul, PENALTIES } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
@@ -22,6 +23,7 @@ export class GameSession {
     this.match = new Match({ teams, settings, rng: this.rng, humanTeam });
     this.settings = this.match.settings;
     this.diff = difficultyConfig(this.settings.difficulty, humanTeam);
+    this.energy = newEnergy(); // player fatigue for substitutions (game/fatigue.js)
     this.smart = humanTeam === null ? 0.9 : (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).smart;
     this.state = 'playcall';
     this.sim = null;
@@ -55,7 +57,7 @@ export class GameSession {
     this.choice = { off: null, def: null };
     this.presnapUsed = 0;
     // CPU timeouts (stopping the clock between plays).
-    for (const t of [0, 1]) if (t !== this.humanTeam && cpuTimeout(m, t)) m.callTimeout(t);
+    for (const t of [0, 1]) if (t !== this.humanTeam && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
     if (off !== this.humanTeam) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
     if (def !== this.humanTeam) this.choice.def = this.cpuDefenseFor(this.choice.off);
@@ -83,6 +85,7 @@ export class GameSession {
   callTimeout(team = this.humanTeam) {
     if (this.state !== 'playcall' && !(this.state === 'presnap' && this.sim?.state === 'presnap')) return false;
     const ok = this.match.callTimeout(team);
+    if (ok) restAll(this.energy, 0.06);
     this.flushMessages();
     return ok;
   }
@@ -109,6 +112,9 @@ export class GameSession {
       humanTeam: human,
       camDir: m.dirOf(m.possession),
       boost: this.diff.boost,
+      energy: this.energy,
+      // Starters stay in for the big moments: late in a close game, two-minute drill, goal line.
+      subRelax: (m.quarter >= 4 && Math.abs(m.score[0] - m.score[1]) <= 8) || m.inTwoMinutes || m.yardLine >= 92 ? 0.15 : 0,
       difficulty: this.diff.difficulty,
       penaltyRate: m.phase === 'scrimmage' ? 1 : 0,
     });
@@ -237,7 +243,10 @@ export class GameSession {
       this.emit('flag', { foul: fouls[0], outcome });
     }
     const scrimmage = m.phase === 'scrimmage';
+    const quarter = m.quarter;
+    applyPlayFatigue(this.energy, sim, r.duration || 5);
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
+    if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break
     if (outcome && !outcome.accepted) m.say(outcome.text, 'penalty');
     this.flushMessages();
     // Who made the play and their game totals (skipped on tries and plays wiped out by a flag).

@@ -170,3 +170,26 @@ describe('Match rules', () => {
     expect(dh.autoFirst).toBe(true);
   });
 });
+
+describe('post-play stat card', () => {
+  it('shows the passer, receiver and tackler with their game totals', async () => {
+    const { playStatLines } = await import('../src/game/match.js');
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: null, seed: 7, fast: true });
+    let found = null;
+    for (let i = 0; i < 400000 && !found && !s.match.over; i++) {
+      s.tick(STEP, null);
+      for (const e of s.events) if (e.type === 'result' && e.result.complete && e.statLines.length >= 2) found = e;
+    }
+    expect(found).not.toBeNull();
+    const [rec, qb] = found.statLines;
+    expect(rec.line).toMatch(/^\d+ REC · -?\d+ YDS/);
+    expect(qb.line).toMatch(/^\d+\/\d+ · -?\d+ YDS/);
+    expect(rec.team).toBe(found.result.offTeam);
+    // Totals include this play.
+    const p = s.sim.players[found.result.receiver];
+    expect(s.match.stats.players[`${p.team}:${p.rid}`].rec).toBeGreaterThan(0);
+    expect(playStatLines(s.match, { kickType: 'punt' }, s.sim)).toEqual([]);
+  });
+});

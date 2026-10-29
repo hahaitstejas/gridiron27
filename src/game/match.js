@@ -181,7 +181,7 @@ export class Match {
     const off = r.offTeam;
     const def = 1 - off;
     const desc = describePlay(this, r, sim);
-    recordStats(this, r, sim);
+    if (!(penalty && penalty.accepted)) recordStats(this, r, sim); // an accepted flag wipes out the play's stats
     if (this.driveStart) this.driveStart.plays++;
     this.lastResult = r;
     let stop = false;
@@ -478,6 +478,45 @@ function recordStats(m, r, sim) {
   if (r.fumble && r.forcedBy !== null && r.forcedBy !== undefined) { const f = rid(r.forcedBy); if (f !== null) pstat(m, 1 - off, f).ff++; }
   const tk = rid(r.tackler);
   if (tk !== null && !r.sack && team(r.tackler) !== undefined) pstat(m, team(r.tackler), tk).tackles++;
+}
+
+/**
+ * Season-to-date (this game) stat lines for the players who made the play, for the post-play card.
+ * Call after applyResult so the play is included. Returns [{ team, name, number, pos, line }].
+ */
+export function playStatLines(m, r, sim) {
+  if (!sim || !r || r.kickType) return [];
+  const out = [];
+  const add = (id, fmt) => {
+    const p = sim.players[id];
+    if (!p || out.some((o) => o.id === id)) return;
+    const s = m.stats.players[`${p.team}:${p.rid}`];
+    if (!s) return;
+    const line = fmt(s).filter(Boolean).join(' · ');
+    if (line) out.push({ id, team: p.team, name: p.name, number: p.number, pos: p.pos, line });
+  };
+  const td = (n) => (n ? `${n} TD` : '');
+  const passLine = (s) => [`${s.passCmp}/${s.passAtt}`, `${Math.round(s.passYds)} YDS`, td(s.passTD), s.int ? `${s.int} INT` : ''];
+  const recLine = (s) => [`${s.rec} REC`, `${Math.round(s.recYds)} YDS`, td(s.recTD)];
+  const rushLine = (s) => [`${s.rushAtt} CAR`, `${Math.round(s.rushYds)} YDS`, s.rushAtt ? `${(Math.round(s.rushYds) / s.rushAtt).toFixed(1)} AVG` : '', td(s.rushTD)];
+  const defLine = (s) => [s.tackles ? `${s.tackles} TKL` : '', s.sacks ? `${s.sacks} SACK${s.sacks > 1 ? 'S' : ''}` : '', s.defInt ? `${s.defInt} INT` : '', s.ff ? `${s.ff} FF` : ''];
+  if (r.sack) {
+    add(r.tackler, defLine);
+    add(r.passer ?? r.carrierId, passLine);
+  } else if (r.interception) {
+    add(r.intBy, defLine);
+    add(r.passer, passLine);
+    add(r.tackler, defLine);
+  } else if (r.passAttempt || r.complete || r.incomplete) {
+    if (r.complete) add(r.receiver, recLine);
+    add(r.passer, passLine);
+    if (r.complete) add(r.tackler, defLine);
+  } else if (r.carrierId !== undefined && r.carrierId !== null && !r.stats?.spike) {
+    add(r.carrierId, rushLine);
+    add(r.tackler, defLine);
+  }
+  if (r.fumble) add(r.forcedBy, defLine);
+  return out;
 }
 
 // ---------- text ----------

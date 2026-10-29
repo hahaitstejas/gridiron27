@@ -1,7 +1,7 @@
 import { RNG } from '../core/rng.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
-import { Match } from './match.js';
+import { Match, playStatLines } from './match.js';
 import { enforce, rollPresnapFoul, PENALTIES } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
@@ -236,10 +236,13 @@ export class GameSession {
       }
       this.emit('flag', { foul: fouls[0], outcome });
     }
+    const scrimmage = m.phase === 'scrimmage';
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (outcome && !outcome.accepted) m.say(outcome.text, 'penalty');
     this.flushMessages();
-    this.emit('result', { result: r, outcome });
+    // Who made the play and their game totals (skipped on tries and plays wiped out by a flag).
+    const statLines = scrimmage && !(outcome && outcome.accepted) ? playStatLines(m, r, sim) : [];
+    this.emit('result', { result: r, outcome, statLines });
     this.state = 'post';
     this.wait = this.fast ? 0 : 0.7;
   }

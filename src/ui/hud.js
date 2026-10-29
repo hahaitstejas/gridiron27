@@ -18,6 +18,7 @@ export class Hud {
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
       <div id="flagbox" class="hidden"><div class="flagtitle">FLAG</div><div class="flagtext"></div></div>
       <div id="ticker"></div>
+      <div id="statcard" class="hidden"></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="fps"></div>
@@ -34,7 +35,7 @@ export class Hud {
     }
     this.buildHelp();
     this.fpsAcc = 0; this.fpsN = 0; this.fpsShow = false;
-    this.bannerT = 0; this.flagT = 0;
+    this.bannerT = 0; this.flagT = 0; this.statT = 0;
     this._logos = new Map();
   }
 
@@ -55,7 +56,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const key = team.id + team.logo.shape + team.logo.text + team.colors.primary;
@@ -94,6 +95,31 @@ export class Hud {
     this.flagT = 3.2;
   }
 
+  /** Post-play card: the players who made the play and their totals this game. */
+  statCard(lines, teams) {
+    const el = this.$('statcard');
+    if (!lines?.length) { el.classList.add('hidden'); return; }
+    el.innerHTML = '';
+    for (const l of lines) {
+      const t = teams[l.team];
+      const row = document.createElement('div');
+      row.className = 'sc-row';
+      row.style.borderLeftColor = t.colors.primary;
+      const who = document.createElement('div');
+      who.className = 'sc-who';
+      who.innerHTML = `<b></b><span></span>`;
+      who.querySelector('b').textContent = `#${l.number} ${l.name}`;
+      who.querySelector('span').textContent = `${t.abbr} ${l.pos}`;
+      const line = document.createElement('div');
+      line.className = 'sc-line';
+      line.textContent = l.line;
+      row.append(who, line);
+      el.appendChild(row);
+    }
+    el.classList.remove('hidden');
+    this.statT = 4;
+  }
+
   ticker(text) {
     const t = this.$('ticker');
     const d = document.createElement('div');
@@ -111,6 +137,8 @@ export class Hud {
     this.renderBug(session);
     if ((this.bannerT -= dt) <= 0) this.$('banner').classList.add('hidden');
     if ((this.flagT -= dt) <= 0) this.$('flagbox').classList.add('hidden');
+    // Hide the stat card once the next play is snapped (or after a few seconds).
+    if ((this.statT -= dt) <= 0 || (sim && sim.state === 'live' && session.state === 'live')) this.$('statcard').classList.add('hidden');
 
     const pre = session.state === 'presnap' && sim && sim.state === 'presnap' && !playcallOpen;
     const pn = this.$('playname');

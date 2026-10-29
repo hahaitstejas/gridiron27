@@ -58,7 +58,7 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - `match.js` → `Match`: pure rules/game state — quarter, clock, score, possession, `phase`
   (`kickoff | scrimmage | try`), down/distance, yard line (`yardLine` = 0–100 from the possessing team's own
   goal), timeouts, two-minute warning, halftime, overtime (both teams possess, then sudden death), team and
-  player stats. `applyResult(result)` consumes a `PlaySim.result` and moves the game on. `dirOf(team)` /
+  player stats (an accepted flag wipes the play's stats; `playStatLines()` feeds the post-play stat card). `applyResult(result)` consumes a `PlaySim.result` and moves the game on. `dirOf(team)` /
   `xOf(team, yl)` / `ylOf(team, x)` map between yard lines and world x (home attacks +x in Q1/Q3).
 - `penalties.js`: foul table, enforcement (half the distance, automatic first downs, loss of down, spot
   fouls), accept/decline by `expectedPoints()`, pre-snap fouls.
@@ -103,7 +103,7 @@ src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu 
 src/ui/                nav.js (controller/keyboard menu focus), screens.js (title, main menu, Play Now setup,
                        controls, settings, pause, game-over box score; prefs in localStorage `g27.settings`),
                        playcall.js (play-call screen), playart.js (canvas play diagrams), hud.js (score bug,
-                       banners, flag box, ticker, receiver icons, kick meter, help, FPS), style.css
+                       banners, flag box, ticker, post-play stat card, receiver icons, kick meter, help, FPS), style.css
 tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;  tools/humanbot.js  exploit checks;
                        tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests

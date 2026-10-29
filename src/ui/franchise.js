@@ -2,7 +2,8 @@ import { el } from './nav.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
-import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf } from '../franchise/franchise.js';
+import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
+import { contractsScreen, tradeScreen, transactionsScreen, capLine } from './franchiseMoney.js';
 import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
@@ -85,6 +86,7 @@ export class FranchiseUI {
     const { screens } = this.ctx;
     const f = this.f, teams = this.teams, me = teams[f.userTeam];
     screens.extraButtons = null;
+    upgradeFranchise(f, teams);
     if (f.phase === 'offseason') { this.ctx.offseason(this); return; }
     const g = userGame(f);
     const rec = recordOf(f, teams, f.userTeam);
@@ -116,6 +118,9 @@ export class FranchiseUI {
     add('League Leaders', 'Season stats', () => this.leadersScreen());
     const hurt = me.roster.filter((p) => p.injury).length;
     add('Injury Report', hurt ? `${hurt} of your players injured` : 'Everyone healthy', () => this.injuryScreen());
+    add('Contracts & Cap', capLine(f, me), () => contractsScreen(this));
+    if (f.phase === 'regular') add('Trade', tradeDeadlinePassed(f) ? 'The trade deadline has passed' : `Deal with CPU teams · deadline after week ${Math.ceil(f.weeks * 0.6)}`, () => tradeScreen(this));
+    add('Transactions', 'Trades and signings around the league', () => transactionsScreen(this));
     add('Roster', `${me.roster.length} players`, () => this.ctx.rosterScreen(f.userTeam, () => this.hub(items.length - 3)));
     add('Depth Chart', 'Starters and rotation', () => this.ctx.depthScreen(f.userTeam, () => this.hub(items.length - 2)));
     add('Main Menu', 'Your franchise autosaves', this.ctx.onExit);

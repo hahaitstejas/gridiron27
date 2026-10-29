@@ -3,8 +3,11 @@ import { POSITIONS } from '../data/positions.js';
 import { startNextSeason } from '../franchise/franchise.js';
 import {
   progressPlayers, expiring, resign, contractYears, finishResigning, signFreeAgent, cpuFreeAgency, makeDraft,
-  makePick, simToUserPick, finishDraft, cutDown, cpuCutDowns, ROSTER_LIMIT,
+  makePick, simToUserPick, finishDraft, cutDown, cpuCutDowns, ROSTER_LIMIT, askingSalary, projectedPayroll, fillRoster,
 } from '../franchise/offseason.js';
+import { payroll, money } from '../franchise/contracts.js';
+import { logTransaction } from '../franchise/franchise.js';
+import { capLine } from './franchiseMoney.js';
 import { releasePlayer } from '../data/rosterOps.js';
 
 /**
@@ -49,25 +52,29 @@ function progression(ctx, ui, f) {
     [button('Contracts', () => { f.offseason.step = 'resign'; save(ctx); offseasonScreen(ctx, ui); })], '▲▼ scroll', { rows });
 }
 
-function resignStep(ctx, ui, f) {
+function resignStep(ctx, ui, f, focus = 0) {
   const team = ctx.teams[f.userTeam];
   const keep = (f.offseason.keep ||= Object.fromEntries(expiring(team).map((p) => [p.id, p.ovr >= 68 && p.age < 32])));
   const list = expiring(team).sort((a, b) => b.ovr - a.ovr);
-  const rows = list.map((p) => {
+  const keepIds = () => new Set(list.filter((p) => keep[p.id]).map((p) => p.id));
+  const proj = projectedPayroll(team, keepIds());
+  const rows = list.map((p, i) => {
     const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
-      el('span.st-num', { text: String(p.ovr) }), el(`span.st-num${keep[p.id] ? '.up' : '.down'}`, { text: keep[p.id] ? `Re-sign ${contractYears(p)} yr` : 'Let go' })]);
-    r.activate = () => { keep[p.id] = !keep[p.id]; resignStep(ctx, ui, f); };
+      el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: `${money(p.salary || 0)} → ${money(askingSalary(p))}` }),
+      el(`span.st-num${keep[p.id] ? '.up' : '.down'}`, { text: keep[p.id] ? `Re-sign ${contractYears(p)} yr` : 'Let go' })]);
+    r.activate = () => { keep[p.id] = !keep[p.id]; resignStep(ctx, ui, f, i); };
     return r;
   });
   const done = button('Done: on to free agency', () => {
+    if (projectedPayroll(team, keepIds()) > f.cap) { window.alert(`That's over the ${money(f.cap)} salary cap: let someone go.`); return; }
     for (const p of list) if (keep[p.id]) resign(team, p.id);
     delete f.offseason.keep;
     finishResigning(f, ctx.teams);
     save(ctx);
     offseasonScreen(ctx, ui);
   });
-  frame(ctx, 'Re-sign Players', list.length ? `${list.length} contracts expired · A toggles re-sign / let go` : 'No contracts expired this year',
-    el('div.st-table', {}, rows), [done], '<b class="btn A">A</b> re-sign / let go', { rows, index: 0 });
+  frame(ctx, 'Re-sign Players', list.length ? `${list.length} contracts expired · next season's payroll ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (over the cap!)' : ''}` : 'No contracts expired this year',
+    el('div.st-table', {}, rows), [done], 'Salary now → asking price. &nbsp; <b class="btn A">A</b> re-sign / let go', { rows, index: focus });
 }
 
 function freeagency(ctx, ui, f, filter = 0) {
@@ -75,10 +82,13 @@ function freeagency(ctx, ui, f, filter = 0) {
   const tabs = ['All', ...POSITIONS];
   const pool = f.offseason.pool.filter((p) => filter === 0 || p.pos === tabs[filter]).slice(0, 60);
   const rows = pool.map((p) => {
-    const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }), el('span.st-num', { text: String(p.ovr) })]);
+    const ask = askingSalary(p);
+    const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }), el('span.st-num', { text: String(p.ovr) }),
+      el(`span.st-num${payroll(team) + ask > f.cap ? '.down' : ''}`, { text: money(ask) })]);
     r.activate = () => {
       if (team.roster.length >= ROSTER_LIMIT + 8) { window.alert('Your roster is full: release someone in the Roster screen first.'); return; }
-      signFreeAgent(f, team, p.id);
+      if (!signFreeAgent(f, team, p.id)) { window.alert(`Not enough cap space: he wants ${money(ask)}.`); return; }
+      if (p.ovr >= 72) logTransaction(f, `${team.abbr} signs free agent ${p.pos} ${who(p)} (${money(ask)})`);
       save(ctx);
       freeagency(ctx, ui, f, filter);
     };
@@ -91,7 +101,7 @@ function freeagency(ctx, ui, f, filter = 0) {
     offseasonScreen(ctx, ui);
   });
   ctx.screens.frame('stats-screen', el('h1', { text: 'Free Agency' }),
-    el('div.league-status', { text: `Your roster: ${team.roster.length} players · A signs a player` }),
+    el('div.league-status', { text: `Your roster: ${team.roster.length} players · ${capLine(f, team)} · A signs a player at his asking price` }),
     el('div.pc-tabs', {}, tabs.map((t, i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: t }))),
     el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'Nobody available at this position.' })),
     el('div.over-buttons', {}, done),
@@ -134,22 +144,25 @@ function draft(ctx, ui, f) {
 function cutdown(ctx, ui, f) {
   const team = ctx.teams[f.userTeam];
   const over = team.roster.length - ROSTER_LIMIT;
+  const overCap = payroll(team) - f.cap;
   const list = [...team.roster].sort((a, b) => a.ovr - b.ovr);
   const rows = list.map((p) => {
-    const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }), el('span.st-num', { text: String(p.ovr) })]);
+    const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: money(p.salary || 0) })]);
     r.activate = () => { if (window.confirm(`Release ${who(p)}?`)) { releasePlayer(team, p.id); save(ctx); cutdown(ctx, ui, f); } };
     return r;
   });
   const next = () => {
-    cutDown(team);
+    cutDown(team, ROSTER_LIMIT, f.cap);
+    fillRoster(f, team, 46); // a short roster gets the best affordable free agents
     cpuCutDowns(f, ctx.teams);
     startNextSeason(f, ctx.teams);
     save(ctx);
     ui.hub();
   };
-  const buttons = over > 0
-    ? [button(`Auto-cut ${over} and start ${f.year + 1}`, next), button('Main Menu', ctx.onExit, '.secondary')]
+  const buttons = over > 0 || overCap > 0
+    ? [button(`Auto-cut${over > 0 ? ' ' + over : ''}${overCap > 0 ? ' (and get under the cap)' : ''} and start ${f.year + 1}`, next), button('Main Menu', ctx.onExit, '.secondary')]
     : [button(`Start the ${f.year + 1} season`, next)];
-  frame(ctx, 'Cut Down to 53', over > 0 ? `${team.roster.length} players: release ${over} more (A), or auto-cut the lowest rated` : `${team.roster.length} players: you're set`,
+  const capNote = overCap > 0 ? ` · over the cap by ${money(overCap)}` : ` · ${capLine(f, team)}`;
+  frame(ctx, 'Cut Down to 53', (over > 0 ? `${team.roster.length} players: release ${over} more (A), or auto-cut the lowest rated` : `${team.roster.length} players: you're set`) + capNote,
     el('div.st-table', {}, rows), buttons, '<b class="btn A">A</b> release player &nbsp; ▲▼ scroll', { rows });
 }

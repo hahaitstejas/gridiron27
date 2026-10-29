@@ -225,6 +225,8 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .fr-bracket { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
 .fr-round { min-width: 220px; }
 @media (max-width: 900px) { .fr-divs { grid-template-columns: 1fr; } .fr-sched { flex-direction: column; } .fr-week { width: auto; } }
+.tr-meter { height: 10px; border-radius: 5px; background: rgba(255,255,255,0.12); overflow: hidden; margin: 6px 0; }
+.tr-meter > div { height: 100%; transition: width 0.2s; }
 
 /* Score bug (broadcast style) */
 #scorebug { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); }

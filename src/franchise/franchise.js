@@ -3,6 +3,8 @@
 // Games the human plays are recorded from their Match; everything else goes through quickSim().
 import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats, STAT_FIELDS } from './season.js';
 import { quickSim } from './quicksim.js';
+import { RNG } from '../core/rng.js';
+import { setupMoney, cpuTrades } from './contracts.js';
 
 export const FRANCHISE_VERSION = 1;
 
@@ -18,7 +20,26 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
     history: [], // past seasons: { year, champion, record, playoffs }
     seed: seed * 104729 + year,
     offseason: null,
+    cap: setupMoney(teams, seed * 13 + year), // salary cap ($M), see contracts.js
+    transactions: [], // newest first: { year, week, text }
   };
+}
+
+/** Older franchise saves: add money (salaries + cap) and the transaction log. */
+export function upgradeFranchise(f, teams) {
+  if (!f.cap) f.cap = setupMoney(teams, f.seed);
+  f.transactions ||= [];
+}
+
+/** Log a transaction (trade, signing, release) for the hub's Transactions screen. */
+export function logTransaction(f, text) {
+  f.transactions.unshift({ year: f.year, week: f.phase === 'regular' ? f.week + 1 : null, text });
+  if (f.transactions.length > 150) f.transactions.length = 150;
+}
+
+/** The regular season's trade deadline: no trades after 60% of the weeks. */
+export function tradeDeadlinePassed(f) {
+  return f.phase !== 'regular' || f.week >= Math.ceil(f.weeks * 0.6);
 }
 
 /** Games of the current week (regular season) or playoff round. */
@@ -94,6 +115,10 @@ export function advance(f, teams) {
   if (currentGames(f).some((g) => !g.score)) return false;
   heal(teams);
   if (f.phase === 'regular') {
+    if (!tradeDeadlinePassed(f)) {
+      upgradeFranchise(f, teams);
+      for (const t of cpuTrades(f, teams, new RNG((f.seed += 3)), f.cap)) logTransaction(f, t);
+    }
     f.week++;
     if (f.week >= f.weeks) startPlayoffs(f, teams);
     return true;

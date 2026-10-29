@@ -131,3 +131,48 @@ describe('franchise injuries', () => {
     else expect(seen.p.injury.weeks).toBe(seen.weeks - 1);
   });
 });
+
+describe('franchise money', () => {
+  it('sets a cap every team fits under, and keeps it through three offseasons', async () => {
+    const O = await import('../src/franchise/offseason.js');
+    const C = await import('../src/franchise/contracts.js');
+    const { startNextSeason } = await import('../src/franchise/franchise.js');
+    const lg = generateLeagueRosters(defaultTeams(), 7);
+    const f = createFranchise(lg, { userTeam: 5, weeks: 6, seed: 4 });
+    expect(f.cap).toBeGreaterThan(100);
+    for (const t of lg) expect(C.payroll(t)).toBeLessThanOrEqual(f.cap);
+    for (let season = 0; season < 3; season++) {
+      while (f.phase !== 'offseason') { simOthers(f, lg); const g = userGame(f); if (g && !g.score) simGame(f, lg, g); advance(f, lg); }
+      O.progressPlayers(f, lg);
+      O.finishResigning(f, lg);
+      O.cpuFreeAgency(f, lg);
+      O.makeDraft(f, lg);
+      O.finishDraft(f, lg);
+      O.cpuCutDowns(f, lg);
+      O.cutDown(lg[5], 53, f.cap);
+      O.fillRoster(f, lg[5], 46);
+      for (const t of lg) {
+        expect(C.payroll(t)).toBeLessThanOrEqual(f.cap + 1e-6);
+        expect(t.roster.length).toBeGreaterThanOrEqual(45);
+        for (const p of t.roster) expect(p.salary).toBeGreaterThanOrEqual(C.MIN_SALARY);
+      }
+      startNextSeason(f, lg);
+    }
+  }, 30000);
+
+  it('values stars over depth, and the CPU wants a fair deal', async () => {
+    const C = await import('../src/franchise/contracts.js');
+    const lg = generateLeagueRosters(defaultTeams(), 7);
+    C.setupMoney(lg, 1);
+    const [a, b] = lg;
+    const star = [...b.roster].sort((x, y) => C.tradeValue(y) - C.tradeValue(x))[0];
+    const scrub = [...a.roster].sort((x, y) => C.tradeValue(x) - C.tradeValue(y))[0];
+    expect(C.tradeValue(star)).toBeGreaterThan(C.tradeValue(scrub) * 5);
+    expect(C.evaluateTrade(b, [scrub], a, [star], 1e9).accept).toBe(false);
+    const best = [...a.roster].sort((x, y) => C.tradeValue(y) - C.tradeValue(x)).slice(0, 3);
+    expect(C.evaluateTrade(b, best, a, [scrub], 1e9).accept).toBe(true);
+    C.executeTrade(a, best, b, [scrub]);
+    expect(b.roster.some((p) => p.id === best[0].id)).toBe(true);
+    expect(a.roster.some((p) => p.id === scrub.id)).toBe(true);
+  });
+});

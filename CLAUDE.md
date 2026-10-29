@@ -155,6 +155,15 @@ rounds}, history[], seed, offseason{step, …} }`.
   (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →
   rounds → offseason), `startNextSeason`.
+- `contracts.js` (money): `p.salary` ($M/season) + `p.years`; `marketValue(p)` by overall, position (QB premium) and age;
+  `setupMoney()` gives everyone a deal and sets `f.cap` from the league's median payroll (×1.12, so any league's
+  ratings fit), squeezing over-cap teams; `payroll`/`fits`; rookie scale by pick; `tradeValue` (stars ≫ depth, youth,
+  bad contracts subtract); `evaluateTrade(cpuTeam, gets, other, gives, cap)` (CPU wants ≥1.08× value, both under the
+  cap); `cpuTrades` (CPU-CPU swaps before the deadline, 60% of the season). Hub: Contracts & Cap, Trade (pick a team,
+  A toggles players, LB/RB switches roster, interest meter), Transactions (`f.transactions`, `logTransaction`).
+  Offseason: re-signing at the asking price within the cap (`projectedPayroll`), free agents cost their asking price,
+  cut-downs also get under the cap (`cutDown(team, 53, cap)`), short rosters refill with affordable FAs (`fillRoster`).
+  Old saves get money on load (`upgradeFranchise`).
 - `offseason.js`: steps summary → progression (`progressPlayers`: age +1, growth/decline by age and hidden `pot`,
   retirements, contract `years`--) → resign (`expiring`, `resign`, `finishResigning` → free-agent pool) →
   freeagency (`signFreeAgent`, `cpuFreeAgency` by `needs`) → draft (`makeDraft`: 224 picks, worst record first,

@@ -64,6 +64,9 @@ Main menu → **Franchise**: pick your team and season length (6, 10 or 17 games
 follow standings, results and league leaders, make the playoffs, then run the offseason: progression and
 retirements, re-sign players, free agency, a 7-round draft and cut-downs to 53. Several franchises can be saved;
 the Franchise menu lists them.
+Money: every player has a salary and contract years under a salary cap (Contracts & Cap in the hub). Trade with CPU
+teams before the deadline (they want fair value and both teams must fit under the cap); CPU teams trade too
+(Transactions). Re-signing, free agents and cut-downs all have to fit under the cap.
 
 ### Your league
 Main menu → **League**: edit rosters (every player and rating, add, trade, release), teams and logos (logo builder

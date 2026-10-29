@@ -74,7 +74,7 @@ export function launchKick(sim, kicker, params) {
     az = clamp(params.aim || 0, -1, 1) * 6;
   } else {
     ax = sx + sim.dir * R;
-    az = sz + clamp(params.aim || 0, -1, 1) * (type === 'punt' ? 14 : 18);
+    az = sz + clamp(params.aim || 0, -1, 1) * (type === 'punt' ? 14 : type === 'onside' ? 8 : 18);
   }
   let yaw = Math.atan2(az - sz, ax - sx);
   // Accuracy: meter error (hook/slice) scaled by the kicker's accuracy, plus a little natural noise.
@@ -280,6 +280,7 @@ function updateKickFlight(sim, dt) {
       // Only the receiving team fields kicks in the air (kicking team must let it land, except onside).
       if (p.team === sim.offIdx && !(k.type === 'kickoff' && b.bounces > 0 && traveled >= 10)) continue;
       if (p.team === sim.defIdx && !isRet && b.bounces === 0) continue;
+      if ((p.team === sim.offIdx || (k.style === 'onside' && !isRet)) && !securesLooseKick(sim, p)) continue;
       catchKick(sim, p);
       return;
     }
@@ -315,6 +316,30 @@ function updateKickFlight(sim, dt) {
       if (k.restT > 2.5) kickDead(sim, 'downed');
     }
   }
+}
+
+/**
+ * Someone gets a hand on a loose kickoff. Onside kicks hop and spin, so even the receiving team's
+ * hands team doesn't always secure it; the kicking team has it much harder, especially in a scrum.
+ * A failed try knocks the ball loose.
+ */
+function securesLooseKick(sim, p) {
+  if ((p.recoverTry || 0) > sim.t) return false;
+  p.recoverTry = sim.t + 0.5;
+  const b = sim.ball;
+  const hands = sim.R(p, 'catching') * 0.002;
+  let chance;
+  if (p.team === sim.defIdx) chance = 0.5 + hands;
+  else {
+    const crowd = sim.players.filter((q) => q.team === sim.defIdx && q.state === 'active' && Math.hypot(q.x - b.x, q.z - b.z) < 2.2).length;
+    chance = (0.6 + hands) * (crowd ? 1 / crowd : 1);
+  }
+  if (sim.rng.next() < chance) return true;
+  // Batted around: squirts off in a random direction.
+  const a = sim.rng.next() * Math.PI * 2, sp = 2 + sim.rng.next() * 3;
+  b.vx = Math.cos(a) * sp; b.vz = Math.sin(a) * sp; b.vy = 1.2;
+  b.y = Math.max(b.y, 0.2);
+  return false;
 }
 
 function catchKick(sim, p) {
@@ -390,8 +415,9 @@ function runSpecialAI(sim, dt) {
         const d = Math.hypot(tgt.x - p.x, tgt.z - p.z);
         const laneZ = tgt.z + sim.dir * lat0 * clamp((d - 8) / 40, 0, 0.6);
         if (b.state === 'kick' && (k.style === 'onside' || b.bounces > 0)) {
-          // Onside or loose kick: attack the ball itself (leading a rolling ball a little).
-          seek(p, b.x + b.vx * 0.25, b.z + b.vz * 0.25, 1, 0.05);
+          // Onside or loose kick: race to where it comes down, then attack the ball itself.
+          if (!b.bounces && b.target) seek(p, b.target.x, b.target.z, 1, 0.05);
+          else seek(p, b.x + b.vx * 0.25, b.z + b.vz * 0.25, 1, 0.05);
         } else if (ret && d < 14) seek(p, ret.x, ret.z, 1, 0.1);
         else seek(p, tgt.x - sim.dir * (d > 15 ? 4 : 0), laneZ, 1, 0.5);
         break;
@@ -425,6 +451,11 @@ function runSpecialAI(sim, dt) {
       case 'kr_block': {
         // Set up a wall in front of the landing spot, then block whoever comes through.
         if (b.state === 'kick' && b.bounces > 0 && Math.hypot(b.x - p.x, b.z - p.z) < 10) { seek(p, b.x, b.z, 1, 0.1); break; } // loose ball: fall on it
+        if (b.state === 'kick' && k.style === 'onside' && b.t > 0.35 && b.target && Math.hypot(b.target.x - p.x, b.target.z - p.z) < 25) {
+          // Onside: the front line attacks the ball instead of setting up blocks.
+          seek(p, b.bounces ? b.x : b.target.x, b.bounces ? b.z : b.target.z, 1, 0.1);
+          break;
+        }
         const tgt = b.state === 'kick' && b.target ? b.target : null;
         if (!tgt) {
           if (k.type === 'punt' && p.task.target !== undefined) {

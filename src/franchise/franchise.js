@@ -6,6 +6,8 @@ import { quickSim } from './quicksim.js';
 import { RNG } from '../core/rng.js';
 import { setupMoney, cpuTrades } from './contracts.js';
 import { makeConditions } from '../game/weather.js';
+import { addNews, gameNews, checkGameRecords, checkSeasonRecords, giveAwards } from './extras.js';
+import { injuryText } from '../sim/injuries.js';
 
 export const FRANCHISE_VERSION = 1;
 
@@ -23,6 +25,10 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
     offseason: null,
     cap: setupMoney(teams, seed * 13 + year), // salary cap ($M), see contracts.js
     transactions: [], // newest first: { year, week, text }
+    news: [], // headlines, newest first (extras.js)
+    records: { game: {}, season: {} },
+    recordsSince: year, // the first season sets the marks; later ones can break them
+    awards: {}, // year -> [{ award, name, pos, team, line }]
   };
 }
 
@@ -30,12 +36,17 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
 export function upgradeFranchise(f, teams) {
   if (!f.cap) f.cap = setupMoney(teams, f.seed);
   f.transactions ||= [];
+  f.news ||= [];
+  f.records ||= { game: {}, season: {} };
+  f.recordsSince ??= f.year;
+  f.awards ||= {};
 }
 
 /** Log a transaction (trade, signing, release) for the hub's Transactions screen. */
 export function logTransaction(f, text) {
   f.transactions.unshift({ year: f.year, week: f.phase === 'regular' ? f.week + 1 : null, text });
   if (f.transactions.length > 150) f.transactions.length = 150;
+  addNews(f, text, 'trade');
 }
 
 /** The regular season's trade deadline: no trades after 60% of the weeks. */
@@ -64,13 +75,20 @@ function playerInfo(teams) {
 /** Store a final score and its player lines. */
 export function recordGame(f, teams, g, score, lines, injuries = []) {
   g.score = score;
-  addStats(f, lines, playerInfo(teams));
+  const info = playerInfo(teams);
+  addStats(f, lines, info);
+  gameNews(f, teams, g);
+  checkGameRecords(f, lines, info);
   // Injuries that cost games stick to the player until he heals (see heal()).
   for (const inj of injuries) {
     if (!(inj.weeks > 0)) continue;
     for (const t of teams) {
       const p = t.roster.find((q) => q.id === inj.rid);
-      if (p) { p.injury = { type: inj.type, weeks: Math.max(inj.weeks, p.injury?.weeks || 0) }; break; }
+      if (p) {
+        p.injury = { type: inj.type, weeks: Math.max(inj.weeks, p.injury?.weeks || 0) };
+        if (inj.weeks >= 2 && (t === teams[f.userTeam] || p.ovr >= 80)) addNews(f, `${t.abbr} ${p.pos} ${p.first} ${p.last} (${inj.type}) is ${injuryText(inj.weeks)}`, 'injury');
+        break;
+      }
     }
   }
 }
@@ -130,7 +148,11 @@ export function advance(f, teams) {
       for (const t of cpuTrades(f, teams, new RNG((f.seed += 3)), f.cap)) logTransaction(f, t);
     }
     f.week++;
-    if (f.week >= f.weeks) startPlayoffs(f, teams);
+    if (f.week >= f.weeks) {
+      checkSeasonRecords(f);
+      giveAwards(f, teams);
+      startPlayoffs(f, teams);
+    }
     return true;
   }
   if (f.phase === 'playoffs') {
@@ -138,6 +160,7 @@ export function advance(f, teams) {
     if (next) { f.playoffs.rounds.push(next); return true; }
     const champ = championOf(f.playoffs);
     const rec = standings(teams, f.schedule).find((r) => r.team === f.userTeam);
+    addNews(f, `${teams[champ].city} ${teams[champ].name} win the ${f.year} Gridiron Championship!`, 'playoff');
     f.history.push({ year: f.year, champion: champ, championName: `${teams[champ].city} ${teams[champ].name}`, record: `${rec.w}-${rec.l}${rec.t ? '-' + rec.t : ''}`, madePlayoffs: f.playoffs.seeds.flat().includes(f.userTeam) });
     f.phase = 'offseason';
     f.offseason = { step: 'summary' };

@@ -276,3 +276,10 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .pb-art canvas { border-radius: 10px; background: #1d4d22; display: block; }
 .pb-test { margin-top: 8px; font-size: 13px; opacity: 0.85; max-width: 460px; }
 .pb-opts { max-height: 60vh; overflow-y: auto; min-width: 380px; }
+
+/* Franchise news tags */
+.nw-tag { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.12); margin-right: 10px; min-width: 64px; text-align: center; }
+.nw-award, .nw-record { background: #e8c547; color: #111; }
+.nw-injury { background: #e05a4f; }
+.nw-trade, .nw-signing, .nw-draft { background: #3d7be0; }
+.nw-playoff { background: #3ccf6e; color: #111; }

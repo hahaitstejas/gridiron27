@@ -8,6 +8,7 @@ import {
 import { payroll, money } from '../franchise/contracts.js';
 import { logTransaction } from '../franchise/franchise.js';
 import { capLine } from './franchiseMoney.js';
+import { scoutView, scoutProspect } from '../franchise/extras.js';
 import { releasePlayer } from '../data/rosterOps.js';
 
 /**
@@ -109,7 +110,7 @@ function freeagency(ctx, ui, f, filter = 0) {
   ctx.screens.nav.set([...rows, done], { columns: 1, onBack: ctx.onExit, onTab: (d) => freeagency(ctx, ui, f, (filter + d + tabs.length) % tabs.length) });
 }
 
-function draft(ctx, ui, f) {
+function draft(ctx, ui, f, focus = 0) {
   const d = f.offseason.draft;
   const teams = ctx.teams;
   if (d.at >= d.picks.length) { finishDraft(f, teams); save(ctx); offseasonScreen(ctx, ui); return; }
@@ -120,9 +121,13 @@ function draft(ctx, ui, f) {
   let rows = [];
   let buttons;
   if (mine) {
-    rows = d.cls.slice(0, 40).map((p) => {
-      const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: p.pot > 0.75 ? 'High' : p.pot > 0.5 ? 'Avg' : 'Low' })]);
+    // You see scouting estimates: a range for overall and no potential until you spend a scouting point (X).
+    const board = d.cls.map((p) => ({ p, v: scoutView(p) })).sort((a, b) => b.v.sort - a.v.sort).slice(0, 40);
+    rows = board.map(({ p, v }) => {
+      const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
+        el(`span.st-num${v.scouted ? '.up' : ''}`, { text: v.ovr }), el('span.st-num', { text: v.pot })]);
       r.activate = () => { makePick(f, teams, p.id); save(ctx); draft(ctx, ui, f); };
+      r.scout = () => { if (scoutProspect(f, p.id)) { save(ctx); draft(ctx, ui, f, rows.indexOf(r)); } };
       return r;
     });
     buttons = [button('Auto-pick', () => { makePick(f, teams); save(ctx); draft(ctx, ui, f); }, '.secondary')];
@@ -133,12 +138,13 @@ function draft(ctx, ui, f) {
     ];
   }
   ctx.screens.frame('stats-screen', el('h1', { text: `Draft · Round ${pick.round}, Pick ${pick.pick}` }),
-    el('div.league-status', { text: mine ? 'You are on the clock: A drafts a player (OVR now, growth potential on the right)' : `${teams[pick.team].city} ${teams[pick.team].name} on the clock` }),
+    el('div.league-status', { text: mine ? `You are on the clock: A drafts a player · X scouts him (${d.scoutLeft ?? 0} scouting points left) to see his real overall and potential` : `${teams[pick.team].city} ${teams[pick.team].name} on the clock` }),
     el('div.fr-sched', {}, el('div.st-table', {}, mine ? rows : myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' })),
       el('div.fr-week', {}, el('div.dc-head', { text: 'Latest picks' }), recent)),
     el('div.over-buttons', {}, buttons),
-    el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
-  ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit });
+    el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; <b class="btn X">X</b> scout &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
+  ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit, index: focus });
+  ctx.screens.extraButtons = mine ? (fr) => { if (fr.pressed.X) ctx.screens.nav.items[ctx.screens.nav.index]?.scout?.(); } : null;
 }
 
 function cutdown(ctx, ui, f) {

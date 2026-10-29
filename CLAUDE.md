@@ -171,6 +171,12 @@ rounds}, history[], seed, offseason{step, …} }`.
   Offseason: re-signing at the asking price within the cap (`projectedPayroll`), free agents cost their asking price,
   cut-downs also get under the cap (`cutDown(team, 53, cap)`), short rosters refill with affordable FAs (`fillRoster`).
   Old saves get money on load (`upgradeFranchise`).
+- `extras.js`: news feed (`addNews`, `f.news`: notable results, your games, injuries to your players / stars, trades,
+  awards, records, draft headlines, the champion), records (`f.records.game/season` for `RECORD_CATS`, announced only
+  after the first season, `recordsSince`), awards at the end of the regular season (`giveAwards`: MVP, OPOY, DPOY,
+  offensive/defensive rookie of the year from `p.rookieYear`; `f.awards[year]`), draft scouting (`setupScouting`: each
+  prospect's shown overall is a range around a hidden error, potential '?', `SCOUT_POINTS` per draft reveal the truth
+  with X; the CPU drafts on true value). Hub: News, Awards & Records (awards, season/game records, champions).
 - `offseason.js`: steps summary → progression (`progressPlayers`: age +1, growth/decline by age and hidden `pot`,
   retirements, contract `years`--) → resign (`expiring`, `resign`, `finishResigning` → free-agent pool) →
   freeagency (`signFreeAgent`, `cpuFreeAgency` by `needs`) → draft (`makeDraft`: 224 picks, worst record first,

@@ -4,6 +4,7 @@ import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
 import { contractsScreen, tradeScreen, transactionsScreen, capLine } from './franchiseMoney.js';
+import { newsScreen, awardsScreen, latestHeadline } from './franchiseExtras.js';
 import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
@@ -118,6 +119,8 @@ export class FranchiseUI {
     add('League Leaders', 'Season stats', () => this.leadersScreen());
     const hurt = me.roster.filter((p) => p.injury).length;
     add('Injury Report', hurt ? `${hurt} of your players injured` : 'Everyone healthy', () => this.injuryScreen());
+    add('News', latestHeadline(f), () => newsScreen(this));
+    add('Awards & Records', 'MVP and other awards, league records, past champions', () => awardsScreen(this));
     add('Contracts & Cap', capLine(f, me), () => contractsScreen(this));
     if (f.phase === 'regular') add('Trade', tradeDeadlinePassed(f) ? 'The trade deadline has passed' : `Deal with CPU teams · deadline after week ${Math.ceil(f.weeks * 0.6)}`, () => tradeScreen(this));
     add('Transactions', 'Trades and signings around the league', () => transactionsScreen(this));

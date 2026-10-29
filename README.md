@@ -77,6 +77,9 @@ the Franchise menu lists them.
 Money: every player has a salary and contract years under a salary cap (Contracts & Cap in the hub). Trade with CPU
 teams before the deadline (they want fair value and both teams must fit under the cap); CPU teams trade too
 (Transactions). Re-signing, free agents and cut-downs all have to fit under the cap.
+News follows the league (big results, injuries, trades, records); awards (MVP, Player and Rookie of the Year) are
+handed out after the regular season; league records and past champions are kept. In the draft you see scouting
+estimates: spend scouting points (X) to reveal a prospect's real overall and potential.
 
 ### Your league
 Main menu → **League**: edit rosters (every player and rating, add, trade, release), teams and logos (logo builder

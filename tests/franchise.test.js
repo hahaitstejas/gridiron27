@@ -176,3 +176,32 @@ describe('franchise money', () => {
     expect(a.roster.some((p) => p.id === scrub.id)).toBe(true);
   });
 });
+
+describe('franchise extras', () => {
+  it('gives awards, keeps records and news, and hides prospects until scouted', async () => {
+    const O = await import('../src/franchise/offseason.js');
+    const X = await import('../src/franchise/extras.js');
+    const { startNextSeason } = await import('../src/franchise/franchise.js');
+    const lg = generateLeagueRosters(defaultTeams(), 11);
+    const f = createFranchise(lg, { userTeam: 2, weeks: 6, seed: 3 });
+    const season = () => { while (f.phase !== 'offseason') { simOthers(f, lg); const g = userGame(f); if (g && !g.score) simGame(f, lg, g); advance(f, lg); } };
+    season();
+    expect(f.awards[2027].map((a) => a.award)).toContain('Most Valuable Player');
+    expect(f.records.season.passYds.value).toBeGreaterThan(0);
+    expect(f.records.game.rushYds.value).toBeGreaterThan(0);
+    expect(f.news.some((n) => /Championship/.test(n.text))).toBe(true);
+    O.progressPlayers(f, lg); O.finishResigning(f, lg); O.cpuFreeAgency(f, lg); O.makeDraft(f, lg);
+    const d = f.offseason.draft;
+    const p = d.cls[0];
+    expect(X.scoutView(p).pot).toBe('?');
+    expect(X.scoutProspect(f, p.id)).toBe(true);
+    expect(X.scoutView(p)).toMatchObject({ ovr: String(p.ovr), scouted: true });
+    expect(d.scoutLeft).toBe(X.SCOUT_POINTS - 1);
+    O.finishDraft(f, lg); O.cpuCutDowns(f, lg); O.cutDown(lg[2], 53, f.cap); O.fillRoster(f, lg[2], 46);
+    startNextSeason(f, lg);
+    season();
+    const names = f.awards[2028].map((a) => a.award);
+    expect(names).toContain('Offensive Rookie of the Year');
+    expect(names).toContain('Defensive Rookie of the Year');
+  }, 30000);
+});

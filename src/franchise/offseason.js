@@ -6,6 +6,7 @@ import { generatePlayer } from '../data/generator.js';
 import { OVERALL_WEIGHTS, ROSTER_COUNTS, overall } from '../data/positions.js';
 import { addPlayer, releasePlayer } from '../data/rosterOps.js';
 import { standings, rank } from './season.js';
+import { setupScouting, addNews } from './extras.js';
 import { SALARY_CAP, MIN_SALARY, marketValue, rookieSalary, payroll, fits, tradeValue } from './contracts.js';
 
 const capOf = (f) => f.cap ?? SALARY_CAP;
@@ -157,6 +158,7 @@ export function makeDraft(f, teams) {
     cls.push(p);
   }
   f.offseason.draft = { picks, at: 0, cls: cls.sort((a, b) => b.ovr - a.ovr) };
+  setupScouting(f, rng);
   f.offseason.step = 'draft';
 }
 
@@ -176,8 +178,12 @@ export function makePick(f, teams, id = null) {
   if (!p) p = [...d.cls].sort((a, b) => draftValue(team, b) - draftValue(team, a))[0];
   d.cls.splice(d.cls.indexOf(p), 1);
   p.salary = rookieSalary(d.at + 1);
+  p.rookieYear = f.year + 1; // the draft happens before next season
+  delete p.scoutErr; delete p.scouted;
   addPlayer(team, p);
   pick.player = { id: p.id, name: `${p.first} ${p.last}`, pos: p.pos, ovr: p.ovr };
+  if (d.at === 0) addNews(f, `${team.city} ${team.name} take ${p.pos} ${p.first} ${p.last} first overall`, 'draft');
+  else if (pick.team === f.userTeam && pick.round <= 2) addNews(f, `${team.abbr} draft ${p.pos} ${p.first} ${p.last} in round ${pick.round} (#${d.at + 1})`, 'draft');
   d.at++;
   return pick;
 }

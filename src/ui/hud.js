@@ -15,6 +15,7 @@ export class Hud {
       <div id="playname" class="hidden"></div>
       <div id="hint" class="hidden"></div>
       <div id="icons"></div>
+      <div id="tags"><div class="tag me"></div><div class="tag other"></div></div>
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
       <div id="flagbox" class="hidden"><div class="flagtitle">FLAG</div><div class="flagtext"></div></div>
       <div id="ticker"></div>
@@ -56,7 +57,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const key = team.id + team.logo.shape + team.logo.text + team.colors.primary;
@@ -93,6 +94,17 @@ export class Hud {
     f.querySelector('.flagtext').textContent = text;
     f.classList.remove('hidden');
     this.flagT = 3.2;
+  }
+
+  placeTag(el, p, renderer, session) {
+    if (!p) { el.style.display = 'none'; return; }
+    const s = renderer.project(p.x, 0, p.z);
+    if (!s.visible) { el.style.display = 'none'; return; }
+    const text = `#${p.number} ${p.name}`;
+    if (el.textContent !== text) el.textContent = text;
+    el.style.borderColor = session.teams[p.team].colors.primary;
+    el.style.display = 'block';
+    el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y + 10)}px) translateX(-50%)`;
   }
 
   /** Post-play card: the players who made the play and their totals this game. */
@@ -157,6 +169,14 @@ export class Hud {
     else if (sim && sim.meter && sim.state === 'live' && !sim.kick?.launched) h = sim.meter.phase === 'power' ? '<b class="btn A">A</b> Set power' : sim.meter.phase === 'accuracy' ? '<b class="btn A">A</b> Set accuracy — stop at the line!' : '';
     hint.innerHTML = h;
     hint.classList.toggle('hidden', !h || playcallOpen);
+
+    // Name tags under the player you control and, if it's someone else, the ball carrier.
+    const [tagMe, tagOther] = this.root.querySelectorAll('.tag');
+    const showTags = sim && session.humanTeam !== null && !playcallOpen && session.state !== 'playcall';
+    const me = showTags ? sim.players[sim.controlledId] : null;
+    const carrier = showTags && sim.state !== 'presnap' ? sim.carrier() : null;
+    this.placeTag(tagMe, me && me.team === session.humanTeam ? me : null, renderer, session);
+    this.placeTag(tagOther, carrier && carrier !== me ? carrier : null, renderer, session);
 
     // Receiver icons while the human QB can still throw.
     const showIcons = sim && !playcallOpen && sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass' && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';

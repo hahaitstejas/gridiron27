@@ -145,3 +145,5 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #statcard .sc-who span { font-size: 11px; letter-spacing: 1.5px; color: var(--gold); }
 #statcard .sc-line { font-size: 14px; color: #dfe5f2; margin-top: 2px; font-variant-numeric: tabular-nums; }
 @media (max-width: 900px) { #statcard { bottom: 96px; left: 12px; } #statcard .sc-row { min-width: 0; } }
+#tags .tag { position: absolute; left: 0; top: 0; display: none; white-space: nowrap; pointer-events: none; background: rgba(8, 12, 26, 0.78); border-bottom: 3px solid var(--gold); border-radius: 4px; padding: 2px 8px; font-size: 13px; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+#tags .tag.me { color: #ffe14d; }

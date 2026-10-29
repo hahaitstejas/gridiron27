@@ -196,6 +196,14 @@ rounds}, history[], seed, offseason{step, …} }`.
 - Passing: hold LB (high) / LT (low) while throwing (`b.place`: harder for defenders to play, -5% catch, no YAC);
   LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
 
+### Menus (look and navigation)
+The main menu is a hub (`Screens.mainMenu(handlers, info)`): a featured Play Now tile with the current matchup, tiles for
+Franchise / Practice / League / Playbook and a small row (Settings, Controls, Saves), your team in the top bar.
+Original line-art icons (`ICONS` in screens.js). Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the
+nearest item in that direction by on-screen rectangles (any layout). Shared style (end of style.css): slanted panels
+(`--skew`), gold focus edge, `--accent` = your team's primary color (set by the hub), stripe background, fixed bottom
+hint bar (`.setup-help`). The design is our own; don't copy other games' menus or trade dress.
+
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays

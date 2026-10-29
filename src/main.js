@@ -120,6 +120,11 @@ function toMenu() {
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
     onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
+    onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
+    onSaves: () => league.saves(0, toMenu),
+  }, {
+    home: teams[prefs.home], away: teams[prefs.away], mine: teams[prefs.home], leagueName: league.slot ? league.name : null,
+    franchise: league.franchise ? { team: teams[league.franchise.userTeam]?.name, year: league.franchise.year } : null,
   });
 }
 

@@ -33,6 +33,19 @@ export function savePrefs(p) {
 }
 
 /** Menu screens rendered into a root element, navigated with Nav. */
+// Simple line icons for the hub tiles (original artwork, 24x24 viewBox).
+const svg = (body) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const ICONS = {
+  ball: svg('<ellipse cx="12" cy="12" rx="10" ry="6" transform="rotate(-35 12 12)"/><path d="M9 15l6-6M10 11.5l2.5 2.5M11.5 10l2.5 2.5M8.5 13l2.5 2.5"/>'),
+  trophy: svg('<path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 13v4M8 21h8M9 17h6"/>'),
+  cone: svg('<path d="M10 3h4l4.5 15h-13z"/><path d="M8.2 10h7.6M6.7 14.5h10.6M3 21h18"/>'),
+  shield: svg('<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>'),
+  board: svg('<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="M14 7l3 3M17 7l-3 3M9 16c2-3 5-3 7-6"/>'),
+  gear: svg('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'),
+  disk: svg('<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>'),
+  pad: svg('<path d="M6 8h12a4 4 0 0 1 3.8 5.2l-1.2 3.6a2.2 2.2 0 0 1-3.9.6L15 15H9l-1.7 2.4a2.2 2.2 0 0 1-3.9-.6l-1.2-3.6A4 4 0 0 1 6 8z"/><path d="M7 11v3M5.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/>'),
+};
+
 export class Screens {
   constructor(root, nav) {
     this.root = root;
@@ -57,17 +70,37 @@ export class Screens {
     this.nav.clear();
   }
 
-  mainMenu({ onPlayNow, onPractice, onFranchise, onLeague, onControls, onSettings }) {
-    const items = [
-      this.menuItem('Play Now', 'Exhibition game against the CPU', onPlayNow),
-      this.menuItem('Controls', 'Xbox controller and keyboard layouts', onControls),
-      this.menuItem('Settings', 'Default difficulty, quarter length, clock', onSettings),
-      this.menuItem('Practice', 'Run any play from any spot, no clock', onPractice),
-      this.menuItem('League', 'Rosters, teams & logos, depth charts, spreadsheets, saves', onLeague),
-      this.menuItem('Franchise', 'Seasons, playoffs, draft and free agency', onFranchise),
+  /**
+   * Main menu hub: a featured Play Now tile with tonight's matchup, then tiles for the other modes.
+   * info = { home, away (teams), mine (your team), franchise: { team, year } | null, leagueName }.
+   */
+  mainMenu({ onPlayNow, onPractice, onFranchise, onLeague, onPlaybook, onControls, onSettings, onSaves }, info = {}) {
+    const tile = (cls, icon, label, sub, action, extra = null) => {
+      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, el('div.ht-icon', { html: ICONS[icon] || '' }), el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })), extra);
+      t.activate = action;
+      return t;
+    };
+    const matchup = info.home && info.away ? el('div.ht-matchup', {},
+      el('div.htm-team', { style: { '--tc': info.away.colors.primary } }, logoCanvas(info.away.logo, 96), el('b', { text: info.away.abbr })),
+      el('div.htm-at', { text: '@' }),
+      el('div.htm-team', { style: { '--tc': info.home.colors.primary } }, logoCanvas(info.home.logo, 96), el('b', { text: info.home.abbr }))) : null;
+    const fr = info.franchise;
+    const tiles = [
+      tile('feature', 'ball', 'Play Now', info.home ? `${info.away.city} ${info.away.name} at ${info.home.city} ${info.home.name}` : 'Exhibition game', onPlayNow, matchup),
+      tile('', 'trophy', 'Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Seasons, playoffs, the draft', onFranchise),
+      tile('', 'cone', 'Practice', 'Any play, any spot, no clock', onPractice),
+      tile('', 'shield', 'League', info.leagueName ? `${info.leagueName}: rosters, teams, saves` : 'Rosters, teams, logos, saves', onLeague),
+      tile('', 'board', 'Playbook', 'Design your own plays', onPlaybook),
+      tile('small', 'gear', 'Settings', 'Camera, sliders, game options', onSettings),
+      tile('small', 'pad', 'Controls', 'Controller and keyboard', onControls),
+      tile('small', 'disk', 'Saves', 'Save slots, files, start over', onSaves),
     ];
-    this.frame('menu-screen', el('div.logo-small', { html: 'GRIDIRON <span>27</span>' }), el('div.menu-list', {}, items));
-    this.nav.set(items.filter((i) => !i.classList.contains('disabled')));
+    const mine = info.mine;
+    const top = el('div.hub-top', {}, el('div.hub-logo', { html: 'GRIDIRON <span>27</span>' }),
+      mine ? el('div.hub-me', { style: { '--tc': mine.colors.primary } }, logoCanvas(mine.logo, 40), el('div', {}, el('small', { text: 'YOUR TEAM' }), el('b', { text: `${mine.city} ${mine.name}` }))) : null);
+    this.frame('hub-screen', top, el('div.hub-grid', {}, tiles), el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <span class="tiny">An original football game · not affiliated with any league or team</span>' }));
+    if (mine) this.root.style.setProperty('--accent', mine.colors.primary);
+    this.nav.set(tiles, { spatial: true });
   }
 
   menuItem(label, sub, action, disabled = false) {

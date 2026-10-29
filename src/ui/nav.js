@@ -12,9 +12,10 @@ export class Nav {
     this.onTab = null;
   }
 
-  set(items, { columns = 1, onBack = null, onTab = null, index = 0 } = {}) {
+  set(items, { columns = 1, onBack = null, onTab = null, index = 0, spatial = false } = {}) {
     this.items = items.filter(Boolean);
     this.columns = columns;
+    this.spatial = spatial; // free layouts (tile grids): move to the nearest item in the stick's direction
     this.onBack = onBack;
     this.onTab = onTab;
     for (const [i, el] of this.items.entries()) {
@@ -43,6 +44,7 @@ export class Nav {
   move(dx, dy) {
     const el = this.current;
     if (dx && el?.spin) { el.spin(dx); return; }
+    if (this.spatial) { this.moveSpatial(dx, dy); return; }
     const c = this.columns;
     let i = this.index;
     if (dx) i += dx;
@@ -54,6 +56,23 @@ export class Nav {
     // Don't wrap across rows when moving horizontally in a grid.
     if (dx && c > 1 && Math.floor(i / c) !== Math.floor(this.index / c)) return;
     this.focus(i);
+  }
+
+  moveSpatial(dx, dy) {
+    const r0 = this.current.getBoundingClientRect();
+    const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+    let best = -1, bestS = Infinity;
+    for (const [i, el] of this.items.entries()) {
+      if (i === this.index) continue;
+      const r = el.getBoundingClientRect();
+      // Distance from my edge to theirs along the direction, plus a penalty for being off-axis.
+      const along = dx ? (dx > 0 ? r.left - r0.right : r0.left - r.right) : (dy > 0 ? r.top - r0.bottom : r0.top - r.bottom);
+      if (along < -4) continue;
+      const off = dx ? Math.max(0, Math.abs(r.top + r.height / 2 - cy) - (r.height + r0.height) / 4) : Math.max(0, Math.abs(r.left + r.width / 2 - cx) - (r.width + r0.width) / 4);
+      const s = along + off * 2.5;
+      if (s < bestS) { bestS = s; best = i; }
+    }
+    if (best >= 0) this.focus(best);
   }
 
   /** Call once per animation frame with the input frame. Returns true if input was consumed. */

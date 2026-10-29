@@ -60,6 +60,7 @@ export class LeagueUI {
   // ---------- screens ----------
   menu(focus = 0) {
     const S = this.screens;
+    this.savesBack = null;
     S.extraButtons = null;
     const item = (label, sub, fn) => S.menuItem(label, sub, fn);
     const items = [
@@ -76,8 +77,9 @@ export class LeagueUI {
     S.nav.set(items, { onBack: this.onExit, index: focus });
   }
 
-  async saves(focus = 0) {
+  async saves(focus = 0, back = null) {
     const S = this.screens;
+    if (back) this.savesBack = back; // opened from the main menu: B goes back there
     const list = await listSaves();
     const rows = [];
     const add = (label, sub, fn) => { const it = S.menuItem(label, sub, fn); rows.push(it); return it; };
@@ -151,7 +153,7 @@ export class LeagueUI {
       el('div.league-status', { text: this.status || (this.slot ? `Autosaving to "${this.name}"` : 'Not saved yet: edits will create a save') }),
       el('div.menu-list', {}, rows),
       el('div.setup-help', { html: '<b class="btn A">A</b> select &nbsp; <b class="btn X">X</b> delete save &nbsp; <b class="btn B">B</b> back' }));
-    S.nav.set(rows, { onBack: () => this.menu(5), index: Math.min(focus, rows.length - 1) });
+    S.nav.set(rows, { onBack: () => (this.savesBack ? this.savesBack() : this.menu(5)), index: Math.min(focus, rows.length - 1) });
     S.extraButtons = (f) => { if (f.pressed.X) S.nav.current?.deleteSave?.(); };
   }
 }

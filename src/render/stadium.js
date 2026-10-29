@@ -15,17 +15,22 @@ const WALL_H = 2.6;
 export function buildStadium(renderer, home, away) {
   const group = new THREE.Group();
 
-  // Sky dome with a night gradient.
+  // Sky dome: a three-stop gradient (colors set by time of day / weather, see GameRenderer.setConditions).
+  const skyUniforms = {
+    uTop: { value: new THREE.Color(0.015, 0.03, 0.08) },
+    uMid: { value: new THREE.Color(0.06, 0.09, 0.2) },
+    uHor: { value: new THREE.Color(0.22, 0.2, 0.3) },
+  };
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(900, 24, 12),
     new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
-      uniforms: {},
+      uniforms: skyUniforms,
       vertexShader: 'varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }',
-      fragmentShader: `varying vec3 vP; void main(){
+      fragmentShader: `uniform vec3 uTop; uniform vec3 uMid; uniform vec3 uHor; varying vec3 vP; void main(){
         float h = normalize(vP).y;
-        vec3 top = vec3(0.015,0.03,0.08), mid = vec3(0.06,0.09,0.2), hor = vec3(0.22,0.2,0.3);
+        vec3 top = uTop, mid = uMid, hor = uHor;
         vec3 c = h > 0.08 ? mix(mid, top, smoothstep(0.08, 0.6, h)) : mix(hor, mid, smoothstep(-0.05, 0.08, h));
         gl_FragColor = vec4(c, 1.0);
       }`,
@@ -228,8 +233,35 @@ export function buildStadium(renderer, home, away) {
   fillCrowdColors(home, away);
 
   let time = 0;
+  // Snow cover: a white, slightly patchy layer over the field (shown in snow games).
+  const snowTex = (() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 900; i++) {
+      g.fillStyle = `rgba(150,170,190,${(Math.random() * 0.25).toFixed(2)})`; // cosmetic only, not sim randomness
+      const r = 2 + Math.random() * 10;
+      g.beginPath(); g.arc(Math.random() * 256, Math.random() * 256, r, 0, Math.PI * 2); g.fill();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = t.wrapT = THREE.RepeatWrapping;
+    t.repeat.set(12, 5);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
+  const snow = new THREE.Mesh(new THREE.PlaneGeometry(FX * 2, FZ * 2), new THREE.MeshLambertMaterial({ map: snowTex, transparent: true, opacity: 0.32, depthWrite: false }));
+  snow.rotation.x = -Math.PI / 2;
+  snow.position.y = 0.006; // under the line-of-scrimmage / first-down lines
+  snow.receiveShadow = true;
+  snow.visible = false;
+  group.add(snow);
+
   return {
     group,
+    sky: skyUniforms,
+    lampMat,
+    snow,
     setTeams: (h, a) => { setTeams(h, a); fillCrowdColors(h, a); },
     setBoardText,
     update(dt, excitement) {

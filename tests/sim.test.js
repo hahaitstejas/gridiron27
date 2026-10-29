@@ -203,3 +203,26 @@ describe('pre-snap motion and coverage calls', () => {
     for (const d of depth('off')) expect(d).toBeGreaterThanOrEqual(7.9);
   });
 });
+
+describe('weather', () => {
+  it('conditions are deterministic; rain makes the ball slick; wind pushes a punt', async () => {
+    const { makeConditions } = await import('../src/game/weather.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const a = makeConditions(new RNG(5), 'rain', 'day'), b = makeConditions(new RNG(5), 'rain', 'day');
+    expect(a).toEqual(b);
+    expect(a.type).toBe('rain');
+    const op = listOffPlays()[0], dp = listDefPlays()[0];
+    const dry = new PlaySim({ rng: new RNG(1), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: dp, humanTeam: null });
+    const wet = new PlaySim({ rng: new RNG(1), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: dp, humanTeam: null, weather: { type: 'rain', wind: { x: 0, z: 0 }, time: 'night' } });
+    const wr = dry.offense().find((p) => p.pos === 'WR');
+    expect(wet.R(wet.players[wr.id], 'catching')).toBeLessThan(dry.R(wr, 'catching'));
+    const punt = (wind) => {
+      const sim = new PlaySim({ rng: new RNG(3), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: getOffPlay('st_punt'), defPlay: getDefPlay('st_punt_return'), humanTeam: null, weather: { type: 'clear', wind, time: 'day' } });
+      sim.snap();
+      let n = 0, z = null;
+      while (!sim.finished && n < 3000) { sim.tick(STEP, null); n++; if (sim.ball.state === 'kick') z = sim.ball.z; else if (z !== null) break; }
+      return z;
+    };
+    expect(punt({ x: 0, z: 8 }) - punt({ x: 0, z: 0 })).toBeGreaterThan(2);
+  });
+});

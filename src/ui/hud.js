@@ -184,7 +184,7 @@ export class Hud {
     const hint = this.$('hint');
     let h = '';
     if (pre && session.humanSide === 'offense') {
-      h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout`
+      h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}<b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
@@ -312,4 +312,15 @@ function coverageTag(adj) {
   if (!adj) return '';
   const parts = [adj.cover === 'press' ? 'Press' : adj.cover === 'off' ? 'Off' : '', adj.shade === 'in' ? 'inside' : adj.shade === 'out' ? 'outside' : ''].filter(Boolean);
   return parts.length ? ` &nbsp; <small>${parts.join(', ')}</small>` : '';
+}
+
+/** Wind for the kicker: speed and an arrow as seen from the camera. */
+function windTag(sim) {
+  const w = sim.wind;
+  const mph = Math.round(Math.hypot(w.x, w.z) * 2.045);
+  if (mph < 3) return '';
+  const right = w.z * sim.camDir, up = w.x * sim.camDir;
+  const arrows = ['→', '↗', '↑', '↖', '←', '↙', '↓', '↘'];
+  const a = arrows[(Math.round(Math.atan2(up, right) / (Math.PI / 4)) + 8) % 8];
+  return ` &nbsp; <b class="key">${a}</b> Wind ${mph} mph`;
 }

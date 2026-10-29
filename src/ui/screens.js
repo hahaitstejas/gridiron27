@@ -5,7 +5,7 @@ import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { KEY_HELP } from '../input/keyboard.js';
 
 const SETTINGS_KEY = 'g27.settings';
-export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true,
+export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
   nameTags: true, statCard: true, autoReplay: true, camera: 'standard', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
 
@@ -110,14 +110,17 @@ export class Screens {
     const qlen = option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'quarterMinutes', (v) => `${v} min`);
     const accel = option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `run to ${v}s` : 'Off'));
     const pens = option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off'));
+    const cap = (v) => v[0].toUpperCase() + v.slice(1);
+    const wx = option('Weather', ['random', 'clear', 'rain', 'snow', 'windy'], 'weather', cap);
+    const tod = option('Time of day', ['random', 'day', 'dusk', 'night'], 'time', cap);
     const start = el('div.start-btn', { text: 'Start Game' });
     start.activate = () => onStart(p);
     this.frame('setup-screen',
       el('h1', { text: 'Play Now' }),
       el('div.setup-teams', {}, away, el('div.vs', { text: 'AT' }), home),
-      el('div.setup-opts', {}, side, diff, qlen, accel, pens, start),
+      el('div.setup-opts', {}, side, diff, qlen, accel, pens, wx, tod, start),
       el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> back' }));
-    this.nav.set([away, home, side, diff, qlen, accel, pens, start], { columns: 1, onBack, index: 7 });
+    this.nav.set([away, home, side, diff, qlen, accel, pens, wx, tod, start], { columns: 1, onBack, index: 9 });
   }
 
   practice(teams, prefs, { onStart, onBack }) {

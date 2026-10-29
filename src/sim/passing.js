@@ -88,8 +88,11 @@ function release(sim, qb, rec, kind, lead) {
     if (kind === 'bullet') sd *= 1.1;
     if (sim.difficulty) sd *= qb.team !== sim.humanTeam ? sim.difficulty.cpuAccuracy ?? 1 : sim.difficulty.humanAccuracy ?? 1;
     sd *= 1 - 0.45 * sim.sl(qb.team, 'qbAccuracy');
-    tx += rng.gauss(0, sd);
-    tz += rng.gauss(0, sd);
+    // Wind: deep balls wander and drift with it.
+    const wv = Math.hypot(sim.wind.x, sim.wind.z);
+    sd *= 1 + wv * 0.025 * Math.min(2, dist / 25);
+    tx += rng.gauss(0, sd) + sim.wind.x * T * 0.1;
+    tz += rng.gauss(0, sd) + sim.wind.z * T * 0.1;
     // Arm strength limit.
     const maxD = maxThrowDist(thp);
     const d2 = Math.hypot(tx - qb.x, tz - qb.z);

@@ -16,6 +16,7 @@ import { setupSpecialSnap, updateSpecial, newMeter } from './kicking.js';
 import { startMove } from './tackling.js';
 import { incomplete } from './passing.js';
 import { addFoul, foulRate } from './fouls.js';
+import { WEATHER_MODS } from '../game/weather.js';
 
 export const KICK_PLAYS = new Set(['kickoff', 'punt', 'fg']);
 
@@ -54,6 +55,9 @@ export class PlaySim {
     this.firstDownX = cfg.firstDownX ?? null;
     this.defAdj = cfg.defAdj || null; // pre-snap coverage call: { cover: 'press'|'off', shade: 'in'|'out' }
     this.motion = null; // a player in pre-snap motion (startMotion)
+    this.weather = cfg.weather || null; // { type, wind: {x, z}, time } (game/weather.js)
+    this.wx = WEATHER_MODS[this.weather?.type] || {};
+    this.wind = this.weather?.wind || { x: 0, z: 0 };
 
     this.t = 0;
     this.state = 'presnap';
@@ -78,7 +82,7 @@ export class PlaySim {
   toWorld(down, lat) { return { x: this.losX + this.dir * down, z: this.ballZ + this.dir * lat }; }
   toLocal(x, z) { return { down: (x - this.losX) * this.dir, lat: (z - this.ballZ) * this.dir }; }
   teamDir(team) { return team === this.offIdx ? this.dir : -this.dir; }
-  R(p, key) { return clamp((p.r[key] ?? 40) + this.boost[p.team] - (p.fatigue && TIRING.has(key) ? p.fatigue : 0), 0, 115); }
+  R(p, key) { return clamp((p.r[key] ?? 40) + this.boost[p.team] - (p.fatigue && TIRING.has(key) ? p.fatigue : 0) - (this.wx[key] || 0), 0, 115); }
   emit(type, data = {}) { this.events.push({ type, t: this.t, ...data }); }
   carrier() { return this.ball.state === 'held' ? this.players[this.ball.carrier] : null; }
   offense() { return this.players.filter((p) => p.team === this.offIdx); }

@@ -182,6 +182,16 @@ sets (`slidersFor(team)`: user set for human teams); `sim.sl(team, key)` maps a 
 coverage (reaction delay), tackling, fumbles, FG/punt/kickoff power and accuracy; penalties scale the foul rate,
 fatigue scales energy costs.
 
+### Weather and time of day (`game/weather.js`, `render/weather.js`)
+Conditions `{ type: 'clear'|'rain'|'snow', wind: {x, z} yd/s (world frame), time: 'day'|'dusk'|'night' }` from
+`makeConditions(rng, weather, time, late)` (Play Now: Weather / Time of day options; franchise: `gameConditions(f, g)`,
+snow only late in the season). The session passes them to each `PlaySim` (`cfg.weather`): `WEATHER_MODS` take points off
+ratings in `R()` (rain: catching, carrying, accuracy; snow: footing, kick power), wind accelerates kicked balls in
+flight (`WIND_PUSH`, landing prediction included) and adds drift + scatter to deep passes. `GameRenderer.setConditions()`
+sets lights, fog, sky gradient (stadium `sky` uniforms), light-tower lamps, the snow layer on the field and
+`Precipitation` (rain streaks / snow points, one draw call each, animated in the vertex shader around the camera).
+The kick hint shows the wind (arrow from the camera's view). `npm run games -- --weather rain` measures the effect.
+
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/
 move, ball) from the snap to the end of the play; the session keeps the last one (`session.lastReplay`, not

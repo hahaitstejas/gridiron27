@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 // Full CPU-vs-CPU games, headless, with rule invariants checked every tick. Usage:
-//   npm run games -- --games 50 [--quarter 15] [--seed 1] [--verbose]
+//   npm run games -- --games 50 [--quarter 15] [--seed 1] [--weather clear|rain|snow|windy|random] [--verbose]
 import { STEP } from '../src/core/constants.js';
 import { defaultTeams } from '../src/data/teams.js';
 import { generateLeagueRosters } from '../src/data/generator.js';
 import { GameSession } from '../src/game/session.js';
+import { makeConditions } from '../src/game/weather.js';
+import { RNG } from '../src/core/rng.js';
 
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const N = +arg('games', 20);
 const quarter = +arg('quarter', 15);
 const seed0 = +arg('seed', 1);
 const verbose = process.argv.includes('--verbose');
+const weather = arg('weather', null);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 
 const errors = [];
@@ -20,7 +23,7 @@ const t0 = Date.now();
 
 for (let g = 0; g < N; g++) {
   const home = teams[(g * 5) % 32], away = teams[(g * 11 + 7) % 32];
-  const s = new GameSession({ teams: [home, away], settings: { quarterMinutes: quarter, accelClock: 20 }, humanTeam: null, seed: seed0 + g * 977, fast: true });
+  const s = new GameSession({ teams: [home, away], settings: { quarterMinutes: quarter, accelClock: 20, weather: weather ? makeConditions(new RNG(seed0 + g), weather, 'night') : null }, humanTeam: null, seed: seed0 + g * 977, fast: true });
   const m = s.match;
   const fail = (msg) => { errors.push(`game ${g} (seed ${seed0 + g * 977}) Q${m.quarter} ${m.clock.toFixed(0)}s: ${msg}`); };
   // Track scoring independently of the match totals.

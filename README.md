@@ -59,6 +59,11 @@ Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6
 Play Now → **You play as: 2 players**. Player 1 (home) uses the first controller (or the keyboard), player 2 (away)
 presses A on a second controller when asked. Each picks their own plays and controls their own team.
 
+### Weather
+Play Now has Weather (clear, rain, snow, windy, random) and Time of day (day, dusk, night, random). Rain makes the ball
+slippery, snow slows footing, and wind pushes kicks and deep passes (the kick hint shows it). Franchise games get
+their own weather, with snow late in the season.
+
 ### Franchise
 Main menu → **Franchise**: pick your team and season length (6, 10 or 17 games). Play your games or sim them,
 follow standings, results and league leaders, make the playoffs, then run the offseason: progression and

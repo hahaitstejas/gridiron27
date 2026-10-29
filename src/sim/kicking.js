@@ -1,4 +1,6 @@
 import { GOAL_X, END_X, HALF_WIDTH, GRAVITY } from '../core/constants.js';
+
+const WIND_PUSH = 0.12; // wind acceleration on a kicked ball, per yd/s of wind
 import { clamp } from '../core/math.js';
 import { seek, stop } from './movement.js';
 
@@ -100,7 +102,7 @@ export function launchKick(sim, kicker, params) {
   // Predicted landing point (ignoring bounces) for returners and coverage.
   const T = (2 * b.vy) / GRAVITY;
   b.T = T;
-  b.target = { x: sx + b.vx * T, z: sz + b.vz * T };
+  b.target = { x: sx + b.vx * T + 0.5 * sim.wind.x * WIND_PUSH * T * T, z: sz + b.vz * T + 0.5 * sim.wind.z * WIND_PUSH * T * T };
   sim.kick.launched = true;
   sim.kick.style = type; // deep / squib / onside / punt / fg (kick.type stays kickoff/punt/fg)
   sim.possTeam = sim.defIdx; // ball belongs to nobody in the air; the receiving team blocks
@@ -248,6 +250,8 @@ function updateKickFlight(sim, dt) {
   b.t += dt;
   const px = b.x;
   b.vy -= GRAVITY * dt;
+  // Wind pushes the ball while it's up.
+  b.vx += sim.wind.x * WIND_PUSH * dt; b.vz += sim.wind.z * WIND_PUSH * dt;
   b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
   b.spin += dt * 12;
 

@@ -3,6 +3,14 @@ import { buildStadium } from './stadium.js';
 import { PlayerRenderer } from './players.js';
 import { CameraRig } from './camera.js';
 import { FieldLines } from './lines.js';
+import { Precipitation } from './weather.js';
+
+// Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
+const TIME_LOOKS = {
+  day: { hemi: [0xdfeaff, 0x3a4a2a, 1.5], key: [0xfff2dc, 3.0], rim: [0xffffff, 0.4], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1 },
+  dusk: { hemi: [0xffc9a8, 0x2a2a20, 1.2], key: [0xffb070, 2.6], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5 },
+  night: { hemi: [0xb8c8ff, 0x203018, 1.1], key: [0xfff4e0, 2.4], rim: [0xaabbff, 0.6], fog: [0x0b1020, 160, 420], sky: [[0.015, 0.03, 0.08], [0.06, 0.09, 0.2], [0.22, 0.2, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.15 },
+};
 
 /** Owns the WebGL renderer, scene, lights and all visual sub-systems. */
 export class GameRenderer {
@@ -25,7 +33,8 @@ export class GameRenderer {
     this.scene = scene;
 
     // Night game lighting: cool sky fill + strong key light from the stadium lights.
-    scene.add(new THREE.HemisphereLight(0xb8c8ff, 0x203018, 1.1));
+    this.hemi = new THREE.HemisphereLight(0xb8c8ff, 0x203018, 1.1);
+    scene.add(this.hemi);
     const key = new THREE.DirectionalLight(0xfff4e0, 2.4);
     key.position.set(-25, 60, 30);
     key.castShadow = true;
@@ -40,11 +49,13 @@ export class GameRenderer {
     const rim = new THREE.DirectionalLight(0xaabbff, 0.6);
     rim.position.set(40, 40, -30);
     scene.add(rim);
+    this.rim = rim;
 
     this.stadium = buildStadium(r, home, away);
     scene.add(this.stadium.group);
     this.players = new PlayerRenderer(scene);
     this.lines = new FieldLines(scene);
+    this.precip = new Precipitation(scene);
 
     const ballGeo = new THREE.SphereGeometry(1, 12, 8);
     ballGeo.scale(0.17, 0.105, 0.105);
@@ -79,6 +90,27 @@ export class GameRenderer {
     this._v = new THREE.Vector3();
     this._q = new THREE.Quaternion();
     this._e = new THREE.Euler();
+  }
+
+  /** Time of day and weather for this game ({ type, wind, time } from game/weather.js). */
+  setConditions(c = {}) {
+    const look = TIME_LOOKS[c.time] || TIME_LOOKS.night;
+    const wet = c.type === 'rain' || c.type === 'snow';
+    const grey = new THREE.Color().setRGB(0.36, 0.38, 0.42).multiplyScalar(look.grey);
+    this.hemi.color.set(look.hemi[0]); this.hemi.groundColor.set(look.hemi[1]); this.hemi.intensity = look.hemi[2] * (wet ? 0.9 : 1);
+    this.key.color.set(look.key[0]); this.key.intensity = look.key[1] * (wet ? 0.55 : 1);
+    this.rim.color.set(look.rim[0]); this.rim.intensity = look.rim[1];
+    const fog = new THREE.Color(look.fog[0]);
+    if (wet) fog.lerp(grey, 0.6);
+    this.scene.fog.color.copy(fog);
+    this.scene.fog.near = wet ? look.fog[1] * 0.45 : look.fog[1];
+    this.scene.fog.far = wet ? look.fog[2] * 0.6 : look.fog[2];
+    const sky = this.stadium.sky;
+    [sky.uTop, sky.uMid, sky.uHor].forEach((u, i) => { u.value.setRGB(...look.sky[i]); if (wet) u.value.lerp(grey, 0.75); });
+    this.stadium.lampMat.color.set(look.lamps);
+    this.stadium.snow.visible = c.type === 'snow';
+    this.renderer.toneMappingExposure = look.exposure;
+    this.precip.set(c.type, c.wind);
   }
 
   resize() {
@@ -174,6 +206,7 @@ export class GameRenderer {
 
   /** Replay camera: orbit (yaw/pitch/dist) around a focus point that it eases toward. */
   renderReplay(dt, focus, yaw, pitch, dist, snap = false) {
+    this.precip.update(dt, this.rig.camera.position);
     this.stadium.update(dt, 0.4);
     const cam = this.rig.camera;
     const f = this._replayFocus || (this._replayFocus = { x: focus.x, y: focus.y, z: focus.z });
@@ -186,6 +219,7 @@ export class GameRenderer {
 
   /** Slow orbit over the empty stadium for menus. */
   renderOrbit(dt, t) {
+    this.precip.update(dt, this.rig.camera.position);
     this.stadium.update(dt, 0.2);
     const cam = this.rig.camera;
     cam.position.set(Math.cos(t) * 70, 28, Math.sin(t) * 45);
@@ -194,6 +228,7 @@ export class GameRenderer {
   }
 
   render(dt, focus, dir, phase, snap, excitement = 0.2) {
+    this.precip.update(dt, this.rig.camera.position);
     if (this.flagT > 0 && (this.flagT -= dt) <= 0) this.flag.visible = false;
     this.stadium.update(dt, excitement);
     this.rig.update(dt, focus, dir, phase, snap);

@@ -216,6 +216,7 @@ export class GameSession {
       injuryRate: this.practice ? 0 : (this.settings.sliders?.injuries ?? 50) / 50,
       unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t).map((i) => i.rid)]),
       defAdj: this.defAdj,
+      weather: this.settings.weather || null,
     });
     this.state = 'presnap';
     this.presnapT = 0;

@@ -10,7 +10,9 @@ import { teamEditor } from './ui/teamEditor.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
-import { unavailableFor } from './franchise/franchise.js';
+import { unavailableFor, gameConditions } from './franchise/franchise.js';
+import { makeConditions, conditionsText } from './game/weather.js';
+import { RNG } from './core/rng.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
@@ -71,7 +73,7 @@ const franchiseUI = new FranchiseUI({
   playGame: (g) => {
     const f = league.franchise;
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
-      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, unavailable: unavailableFor(teams, g) });
+      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g) });
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
@@ -132,15 +134,19 @@ function startGame(p, opts = {}) {
     return;
   }
   const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : cfg.side === 'home' ? 0 : 1;
+  const seed = opts.seed ?? (Date.now() % 1e9);
+  const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
-    seed: opts.seed ?? (Date.now() % 1e9),
+    seed,
   });
   session.franchiseGame = opts.franchise || null;
   renderer.setTeams(home, away);
+  renderer.setConditions(conditions);
+  hud.ticker(conditionsText(conditions));
   screens.clear();
   hud.toggleHelp(false);
   app = 'game';

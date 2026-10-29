@@ -5,6 +5,7 @@ import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats,
 import { quickSim } from './quicksim.js';
 import { RNG } from '../core/rng.js';
 import { setupMoney, cpuTrades } from './contracts.js';
+import { makeConditions } from '../game/weather.js';
 
 export const FRANCHISE_VERSION = 1;
 
@@ -82,6 +83,15 @@ export function heal(teams) {
 /** Roster ids of injured players per side, for a game being played ([home ids, away ids]). */
 export function unavailableFor(teams, g) {
   return [g.home, g.away].map((ti) => teams[ti].roster.filter((p) => p.injury?.weeks > 0).map((p) => p.id));
+}
+
+/** Weather and time for a franchise game (fixed per game; snow only late in the season). */
+export function gameConditions(f, g) {
+  if (!g.conditions) {
+    const late = f.phase === 'regular' ? f.week / Math.max(1, f.weeks - 1) : 1;
+    g.conditions = makeConditions(new RNG(f.seed * 3 + f.week * 101 + g.home * 7 + g.away), 'random', 'random', late);
+  }
+  return g.conditions;
 }
 
 /** Quick-sim one game. */

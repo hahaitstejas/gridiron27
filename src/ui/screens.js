@@ -201,8 +201,9 @@ export class Screens {
     this.nav.set([...rows, save], { onBack });
   }
 
-  pause({ onResume, onReplay, onStats, onDepth, onControls, onQuit }) {
+  pause({ onResume, onTimeout, timeoutsLeft = 0, onReplay, onStats, onDepth, onControls, onQuit }) {
     const items = [this.menuItem('Resume', '', onResume)];
+    if (onTimeout) items.push(this.menuItem(`Call Timeout (${timeoutsLeft} left)`, 'Stops the clock and gives everyone a breather', onTimeout));
     if (onStats) items.push(this.menuItem('Game Stats', 'Every player: passing, rushing, receiving, defense, kicking', onStats));
     if (onDepth) items.push(this.menuItem('Coaching: Depth Chart', 'Change who starts and who rotates in', onDepth));
     if (onReplay) items.push(this.menuItem('Instant Replay', 'Watch the last play again', onReplay));

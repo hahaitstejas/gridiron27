@@ -166,7 +166,11 @@ function pause() {
   app = 'paused';
   screens.pause({
     onResume: () => { screens.clear(); app = 'game'; },
-    onReplay: session?.lastReplay ? () => startReplay() : null,
+    // Timeouts can be called between plays (play call or at the line before the snap), not in practice.
+    onTimeout: session && session.humanTeam !== null && !session.practice && session.match.timeouts[session.humanTeam] > 0
+      && (session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))
+      ? () => { session.callTimeout(session.humanTeam); for (const e of session.events.splice(0)) onSessionEvent(e); screens.clear(); app = 'game'; } : null,
+    timeoutsLeft: session?.match.timeouts[session?.humanTeam] ?? 0,
     onStats: session ? () => statsScreen(screens, session.match, { onBack: () => { screens.extraButtons = null; pause(); } }) : null,
     onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
       energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => league.changed() }) : null,

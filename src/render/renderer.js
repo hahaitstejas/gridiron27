@@ -171,6 +171,18 @@ export class GameRenderer {
     this.flagT = 6;
   }
 
+  /** Replay camera: orbit (yaw/pitch/dist) around a focus point that it eases toward. */
+  renderReplay(dt, focus, yaw, pitch, dist, snap = false) {
+    this.stadium.update(dt, 0.4);
+    const cam = this.rig.camera;
+    const f = this._replayFocus || (this._replayFocus = { x: focus.x, y: focus.y, z: focus.z });
+    const k = snap ? 1 : 1 - Math.exp(-dt * 6);
+    f.x += (focus.x - f.x) * k; f.y += (focus.y - f.y) * k; f.z += (focus.z - f.z) * k;
+    cam.position.set(f.x + Math.cos(yaw) * Math.cos(pitch) * dist, f.y + Math.sin(pitch) * dist, f.z + Math.sin(yaw) * Math.cos(pitch) * dist);
+    cam.lookAt(f.x, f.y, f.z);
+    this.renderer.render(this.scene, cam);
+  }
+
   /** Slow orbit over the empty stadium for menus. */
   renderOrbit(dt, t) {
     this.stadium.update(dt, 0.2);

@@ -21,6 +21,7 @@ export class Hud {
       <div id="ticker"></div>
       <div id="statcard" class="hidden"></div>
       <div id="audible" class="hidden"></div>
+      <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="fps"></div>
@@ -50,6 +51,7 @@ export class Hud {
       ['Defense', 'B switch player · RT sprint · A swat · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
       ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
       ['Returns', 'Y fair catch (punts) · X kneel in the end zone'],
+      ['Instant replay', 'RS click between plays (or pause menu) · A play/pause · X slow-mo · left stick scrub · right stick camera · LT/RT zoom · B exit'],
     ];
     this.$('help').innerHTML = `<h2>Controls</h2>
       <table>${pad.map(([a, b]) => `<tr><th>${a}</th><td>${b}</td></tr>`).join('')}</table>
@@ -106,6 +108,17 @@ export class Hud {
     el.style.borderColor = session.teams[p.team].colors.primary;
     el.style.display = 'block';
     el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y + 10)}px) translateX(-50%)`;
+  }
+
+  /** Instant replay overlay (null hides it). */
+  replayView(r) {
+    const el = this.$('replay');
+    if (!r) { el.classList.add('hidden'); return; }
+    el.classList.remove('hidden');
+    el.querySelector('.rp-fill').style.width = `${(100 * r.t) / Math.max(0.01, r.duration)}%`;
+    const help = `<b class="btn A">A</b> ${r.playing ? 'Pause' : 'Play'} &nbsp; <b class="btn X">X</b> ${r.speed < 1 ? 'Normal speed' : 'Slow-mo'} &nbsp; <b class="btn Y">Y</b> Restart &nbsp; Left stick ◀▶ scrub &nbsp; Right stick camera &nbsp; LT/RT zoom &nbsp; <b class="btn B">B</b> Exit`;
+    const h = el.querySelector('.rp-help');
+    if (h.dataset.v !== help) { h.dataset.v = help; h.innerHTML = help; }
   }
 
   /** Post-play card: the players who made the play and their totals this game. */

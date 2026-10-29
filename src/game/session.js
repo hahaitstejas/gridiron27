@@ -4,6 +4,7 @@ import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES } from './audibles.js';
+import { ReplayRecorder } from '../replay/replay.js';
 import { enforce, rollPresnapFoul, PENALTIES } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
@@ -25,6 +26,8 @@ export class GameSession {
     this.settings = this.match.settings;
     this.diff = difficultyConfig(this.settings.difficulty, humanTeam);
     this.energy = newEnergy(); // player fatigue for substitutions (game/fatigue.js)
+    this.recorder = new ReplayRecorder(); // last play, for instant replay (not in fast/headless mode)
+    this.lastReplay = null;
     this.smart = humanTeam === null ? 0.9 : (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).smart;
     this.state = 'playcall';
     this.sim = null;
@@ -155,6 +158,7 @@ export class GameSession {
     }
     this.audible = null;
     sim.snap();
+    if (!this.fast) { this.recorder.reset(); this.recorder.capture(sim); }
     this.state = 'live';
     this.plays++;
   }
@@ -265,6 +269,7 @@ export class GameSession {
     if (this.state === 'live') {
       const sim = this.sim;
       sim.tick(dt, humanInvolved ? input : null);
+      if (!this.fast) this.recorder.capture(sim);
       for (const e of sim.events) this.events.push(e);
       // Game clock runs during live plays (not during tries, or while a kick is in the air before it's touched).
       const kickInAir = sim.isKick && (sim.ball.state === 'kick' || sim.ball.state === 'tee' || sim.ball.state === 'snap');
@@ -319,6 +324,7 @@ export class GameSession {
     }
     const scrimmage = m.phase === 'scrimmage';
     const quarter = m.quarter;
+    if (!this.fast) this.lastReplay = this.recorder.take();
     applyPlayFatigue(this.energy, sim, r.duration || 5);
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break

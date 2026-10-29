@@ -154,3 +154,8 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #audible .au-foot { margin-top: 6px; font-size: 12px; color: #aab3c5; }
 #audible .key { display: inline-block; min-width: 44px; text-align: center; font-size: 12px; background: rgba(255,255,255,0.12); border-radius: 4px; padding: 2px 4px; }
 #playname em { display: block; font-style: normal; font-size: 12px; color: #ffe14d; }
+#replay { position: absolute; left: 0; right: 0; top: 0; bottom: 0; pointer-events: none; }
+#replay .rp-badge { position: absolute; top: 20px; left: 24px; background: #d81f2a; color: #fff; font: 900 20px "Arial Black", Impact, sans-serif; letter-spacing: 3px; padding: 6px 14px; border-radius: 4px; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
+#replay .rp-bar { position: absolute; left: 24px; right: 24px; bottom: 100px; height: 6px; background: rgba(255,255,255,0.18); border-radius: 3px; overflow: hidden; }
+#replay .rp-fill { height: 100%; background: var(--gold); }
+#replay .rp-help { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); white-space: nowrap; background: rgba(0,0,0,0.55); padding: 6px 14px; border-radius: 20px; font-size: 13px; }

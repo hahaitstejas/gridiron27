@@ -9,6 +9,7 @@ import { Hud } from './ui/hud.js';
 import { Nav } from './ui/nav.js';
 import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
+import { ReplayPlayer } from './replay/replay.js';
 
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
@@ -26,7 +27,8 @@ const nav = new Nav();
 const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
 
-let app = 'title'; // title | menu | game | paused | over
+let app = 'title'; // title | menu | game | paused | over | replay
+let replay = null; // instant replay viewer state
 let session = null;
 let speed = 1;
 let snapCam = true;
@@ -67,10 +69,47 @@ function startGame(p, opts = {}) {
   for (const e of session.events) onSessionEvent(e);
 }
 
+function startReplay() {
+  if (!session?.lastReplay) return;
+  const player = new ReplayPlayer(session.lastReplay);
+  const dir = player.ghost.dir;
+  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true };
+  app = 'replay';
+  screens.clear();
+  playcall.hide();
+  hud.hideAll();
+  renderer.players.setColors(player.ghost, session.teams);
+  lastSim = null;
+}
+
+function endReplay() {
+  replay = null;
+  hud.replayView(null);
+  app = 'game';
+  snapCam = true;
+}
+
+function updateReplay(f, dt) {
+  const r = replay;
+  if (f.pressed.B || f.pressed.Menu) { endReplay(); return; }
+  if (f.pressed.A) r.playing = !r.playing;
+  if (f.pressed.X) r.speed = r.speed < 1 ? 1 : 0.25;
+  if (f.pressed.Y) { r.player.seek(0); r.playing = true; }
+  let t = r.player.t;
+  if (Math.abs(f.lx) > 0.2) { t += f.lx * dt * 3; r.playing = false; }
+  else if (r.playing) t += dt * r.speed;
+  if (t >= r.player.duration) { t = r.player.duration; r.playing = false; }
+  r.alpha = r.player.seek(t);
+  r.yaw += (f.rx || 0) * dt * 2;
+  r.pitch = Math.min(1.35, Math.max(0.08, r.pitch - (f.ry || 0) * dt * 1.5));
+  r.dist = Math.min(60, Math.max(6, r.dist + ((f.lt || 0) - (f.rt || 0)) * dt * 25));
+}
+
 function pause() {
   app = 'paused';
   screens.pause({
     onResume: () => { screens.clear(); app = 'game'; },
+    onReplay: session?.lastReplay ? startReplay : null,
     onControls: () => screens.controls({ onBack: pause }),
     onQuit: toMenu,
   });
@@ -134,8 +173,15 @@ function frame(now) {
   } else if (app === 'menu' || app === 'paused' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
     nav.update(f, dt);
     consumed = true;
+  } else if (app === 'replay' && replay) {
+    updateReplay(f, dt);
+    consumed = true;
   } else if (app === 'game' && session) {
     if (f.pressed.Menu) { pause(); input.consume(); requestAnimationFrame(frame); return; }
+    // RS click between plays: instant replay of the last play.
+    if (f.pressed.RS && session.lastReplay && (playcall.open || session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))) {
+      startReplay(); input.consume(); requestAnimationFrame(frame); return;
+    }
     // Play-call screen.
     if (session.needsHumanCall && !playcall.open) playcall.show(session, (play) => session.humanChoose(play));
     if (playcall.open && !session.needsHumanCall) playcall.hide();
@@ -157,9 +203,16 @@ function frame(now) {
 
   // ---- Render ----
   const sim = session?.sim || null;
-  if (sim !== lastSim) { if (sim) renderer.players.setColors(sim, session.teams); lastSim = sim; }
+  if (app !== 'replay' && sim !== lastSim) { if (sim) renderer.players.setColors(sim, session.teams); lastSim = sim; }
   const alpha = Math.min(1, acc / STEP);
-  if (session && app !== 'menu') {
+  if (app === 'replay' && replay) {
+    renderer.drawSim(replay.player.ghost, replay.alpha ?? 0, time);
+    renderer.lines.set(null, null);
+    renderer.setAim(null);
+    renderer.renderReplay(dt, replay.player.focus(), replay.yaw, replay.pitch, replay.dist, replay.fresh);
+    replay.fresh = false;
+    hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed });
+  } else if (session && app !== 'menu') {
     const m = session.match;
     if (sim) renderer.drawSim(sim, alpha, time); else renderer.hidePlayers();
     const scrim = m.phase === 'scrimmage';

@@ -4,6 +4,8 @@ import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf } from '../franchise/franchise.js';
 import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
+import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
+import { deserializeLeague } from '../data/league.js';
 
 const recText = (r) => `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`;
 
@@ -17,7 +19,29 @@ export class FranchiseUI {
   get teams() { return this.ctx.teams; }
   save() { this.ctx.league.changed(); }
 
-  open() { if (this.f) this.hub(); else this.newFranchise(); }
+  /** Franchise menu: continue the loaded franchise, load another saved one, or start a new one. */
+  async open() {
+    const { screens, league } = this.ctx;
+    const saves = (await listSaves()).filter((s) => s.franchise);
+    if (!saves.length && !this.f) { this.newFranchise(); return; }
+    const items = [];
+    for (const s of saves) {
+      const cur = s.slot === league.slot && this.f;
+      const it = screens.menuItem(`${cur ? 'Continue: ' : ''}${s.franchise.team}`, `${s.franchise.year} · ${s.franchise.when}${cur ? '' : ' · load this franchise'}`, async () => {
+        if (!cur) {
+          const L = deserializeLeague(await readSave(s.slot));
+          league.slot = s.slot; setActiveSlot(s.slot);
+          league.franchise = L.franchise;
+          await league.replaceLeague(L.teams, L.name);
+        }
+        this.hub();
+      });
+      cur ? items.unshift(it) : items.push(it);
+    }
+    items.push(screens.menuItem('New Franchise', 'Start from your current league', () => this.newFranchise()));
+    screens.frame('menu-screen', el('div.logo-small', { html: 'FRANCHISE' }), el('div.menu-list', {}, items));
+    screens.nav.set(items, { onBack: this.ctx.onExit });
+  }
 
   // ---------- new franchise ----------
   newFranchise() {

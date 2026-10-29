@@ -46,7 +46,16 @@ export async function deleteSave(slot) {
   if (activeSlot() === slot) setActiveSlot(null);
 }
 
-/** [{ slot, name, savedAt }] newest first. */
+/** Short description of a save's franchise (or null). */
+function franchiseInfo(v) {
+  const f = v?.franchise;
+  if (!f) return null;
+  const t = v.teams?.[f.userTeam];
+  const when = f.phase === 'regular' ? `Week ${f.week + 1}` : f.phase === 'playoffs' ? 'Playoffs' : 'Offseason';
+  return { team: t ? `${t.city} ${t.name}` : '?', year: f.year, when };
+}
+
+/** [{ slot, name, savedAt, franchise }] newest first. */
 export async function listSaves() {
   const out = new Map();
   try {
@@ -56,7 +65,7 @@ export async function listSaves() {
       req.onsuccess = () => {
         const c = req.result;
         if (!c) { resolve(); return; }
-        out.set(c.key, { slot: c.key, name: c.value?.name || c.key, savedAt: c.value?.savedAt || '' });
+        out.set(c.key, { slot: c.key, name: c.value?.name || c.key, savedAt: c.value?.savedAt || '', franchise: franchiseInfo(c.value) });
         c.continue();
       };
       req.onerror = () => resolve();
@@ -68,7 +77,7 @@ export async function listSaves() {
       if (!k.startsWith('g27.save.')) continue;
       const v = JSON.parse(localStorage.getItem(k) || 'null');
       const slot = k.slice('g27.save.'.length);
-      if (!out.has(slot)) out.set(slot, { slot, name: v?.name || slot, savedAt: v?.savedAt || '' });
+      if (!out.has(slot)) out.set(slot, { slot, name: v?.name || slot, savedAt: v?.savedAt || '', franchise: franchiseInfo(v) });
     }
   } catch { /* no localStorage */ }
   return [...out.values()].sort((a, b) => (b.savedAt > a.savedAt ? 1 : -1));

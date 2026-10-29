@@ -115,6 +115,28 @@ Main menu → League (`ui/league.js` → `LeagueUI`):
   (type detected by its columns, with a summary of problems), or re-apply the files in `public/local/`.
 Text fields use the browser's prompt dialog (needs a keyboard).
 
+### Franchise mode (Phase 5, `src/franchise/` + `ui/franchise.js`, `ui/offseason.js`)
+The franchise state is plain JSON stored in the league save (`league.franchise`, `serializeLeague({ franchise })`),
+so a franchise is a save slot: New Franchise copies the current league into a new slot; the Franchise menu lists
+saves that hold one (`listSaves()` → `franchise` info). State: `{ userTeam, year, weeks, week, phase:
+'regular'|'playoffs'|'offseason', schedule[week][{home, away, score}], stats{rid: season totals}, playoffs{seeds,
+rounds}, history[], seed, offseason{step, …} }`.
+- `season.js`: `makeSchedule` (6/10/17 weeks; one game a week each, division rivals twice in long seasons, home/
+  away balanced), `standings`/`rank` (win %, division, conference, point differential), `seeds` (4 division winners
+  + 3 wild cards per conference), `nextPlayoffRound` (wild card → divisional → conference → championship),
+  `addStats`/`leaders`.
+- `quicksim.js`: `quickSim(home, away, seed)` — scores from `teamRatings()` off/def (+1.5 home field, ~22 pts/team),
+  then team totals split into box-score lines for the depth chart's players (same fields as Match stats). CPU
+  games and "Sim this game" use it; games the human plays record their real Match stats (`matchToResult`). The
+  session gets `franchiseGame`; the final screen's button returns to the hub (`FranchiseUI.recordPlayed`).
+- `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →
+  rounds → offseason), `startNextSeason`.
+- `offseason.js`: steps summary → progression (`progressPlayers`: age +1, growth/decline by age and hidden `pot`,
+  retirements, contract `years`--) → resign (`expiring`, `resign`, `finishResigning` → free-agent pool) →
+  freeagency (`signFreeAgent`, `cpuFreeAgency` by `needs`) → draft (`makeDraft`: 224 picks, worst record first,
+  rookie class; `makePick`, `simToUserPick`, `finishDraft`) → cutdown (`cutDown` to 53 keeping position minimums)
+  → `startNextSeason`.
+
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays
@@ -154,6 +176,8 @@ src/data/              teams.js (32 original teams), names.js, csv.js (teams/ros
                        positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)
+src/franchise/         season.js (schedule, standings, playoffs, stats), quicksim.js (fast results + box scores),
+                       franchise.js (season state machine), offseason.js (progression, contracts, FA, draft, cuts)
 src/replay/replay.js   instant replay recorder + ghost-sim player
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
@@ -163,13 +187,13 @@ src/ui/                nav.js (controller/keyboard menu focus), screens.js (titl
                        playcall.js (play-call screen), playart.js (canvas play diagrams), depthEditor.js (pause →
                        Coaching: Depth Chart; edits team.depth live via data/depthChart.js helpers), statsScreen.js (full
                        player stats), league.js (League menu + saves), rosterEditor.js, teamEditor.js (+ logo builder),
-                       spreadsheets.js (CSV import/export), hud.js (score bug,
+                       spreadsheets.js (CSV import/export), franchise.js (franchise menu, hub, standings, schedule,
+                       bracket, leaders), offseason.js (offseason steps), hud.js (score bug,
                        banners, flag box, ticker, post-play stat card, name tags, receiver icons, kick meter, help, FPS), style.css
 tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;  tools/humanbot.js  exploit checks;
                        tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests
 ```
-Planned (Phase 5): `src/franchise`.
 
 ## Performance notes (target: 60 fps on an M3 MacBook Air, Chrome + Safari)
 - Players are ~15 `InstancedMesh` draw calls total; posing uses a preallocated matrix pool (no per-frame GC).
@@ -274,7 +298,10 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
 - [x] **Phase 4** — League menu: save slots with autosave and .json export/import, roster editor (all fields and
   ratings, add/trade/release), team editor + logo builder (shapes, letters, colors, image upload), depth charts for
   any team, in-game CSV export/import.
-- [ ] Phase 5 — Franchise mode
+- [x] **Phase 5** — Franchise mode: seasons (6/10/17 games), play or quick-sim games, standings, schedule & results,
+  league leaders, 14-team playoffs and a championship, offseason with progression/retirements, contracts, free
+  agency, a 7-round draft and cut-downs, multiple franchises (save slots). Also: broadcast-style score bug,
+  no-huddle (Y) and spike (B), timeouts from the pause menu / View / Share.
 
 ## Conventions
 - Match the existing style: small modules, plain functions, short comments explaining *why*.

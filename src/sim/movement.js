@@ -1,3 +1,4 @@
+import { wrapAngle } from '../core/math.js';
 import { PLAYER_RADIUS } from '../core/constants.js';
 
 /**
@@ -91,9 +92,7 @@ export function faceToward(p, tx, tz, rate, dt) {
 }
 
 export function turnTo(p, target, rate, dt) {
-  let d = target - p.facing;
-  while (d > Math.PI) d -= 2 * Math.PI;
-  while (d < -Math.PI) d += 2 * Math.PI;
+  const d = wrapAngle(target - p.facing);
   const m = rate * dt;
   p.facing += Math.abs(d) <= m ? d : Math.sign(d) * m;
 }

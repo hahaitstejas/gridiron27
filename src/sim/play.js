@@ -127,7 +127,7 @@ export class PlaySim {
       let rp = null;
       // Rotation: a tired player at this spot sits if someone fresher further down the depth chart can go.
       const rotate = this.energy && !KICK_PLAYS.has(this.offPlay.type);
-      const tired = (id) => rotate && needsRest(this.energy, teamIdx, byId.get(id), this.subRelax);
+      const tired = (id) => rotate && byId.has(id) && needsRest(this.energy, teamIdx, byId.get(id), this.subRelax);
       for (let i = fp.d; i < list.length && !rp; i++) {
         if (used.has(list[i])) continue;
         if (tired(list[i]) && list.slice(i + 1).some((id) => !used.has(id) && !tired(id))) continue;

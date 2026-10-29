@@ -175,7 +175,7 @@ let acc = 0;
 let last = performance.now();
 let time = 0;
 let attract = 0;
-function frame(now) {
+function frameBody(now) {
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;
@@ -264,5 +264,36 @@ function frame(now) {
   if (consumed) input.consume();
   renderer.adapt(frameMs);
   requestAnimationFrame(frame);
+}
+
+// A crash inside the loop used to stop the game silently ("frozen"). Keep running and show what broke so it
+// can be reported: the box lists the error and where the game was.
+let crashShown = new Set();
+function reportCrash(err) {
+  console.error(err);
+  const msg = `${err?.message || err}`;
+  if (crashShown.has(msg)) return;
+  crashShown.add(msg);
+  let box = document.getElementById('crashbox');
+  if (!box) {
+    box = document.createElement('pre');
+    box.id = 'crashbox';
+    box.style.cssText = 'position:fixed;left:12px;bottom:12px;max-width:70vw;max-height:40vh;overflow:auto;z-index:99;background:#300;color:#fdd;border:2px solid #f55;border-radius:6px;padding:10px;font:12px/1.4 monospace;white-space:pre-wrap;user-select:text;';
+    document.body.appendChild(box);
+  }
+  const where = session ? `app=${app} state=${session.state} phase=${session.match.phase} q=${session.match.quarter} clock=${Math.round(session.match.clock)} plays=${session.plays} sim=${session.sim?.state}` : `app=${app}`;
+  box.textContent += `Gridiron 27 error (please send a screenshot): ${msg}\n${where}\n${(err?.stack || '').split('\n').slice(0, 6).join('\n')}\n\n`;
+}
+window.addEventListener('error', (e) => reportCrash(e.error || e.message));
+window.addEventListener('unhandledrejection', (e) => reportCrash(e.reason));
+
+function frame(now) {
+  try {
+    frameBody(now);
+  } catch (err) {
+    reportCrash(err);
+    last = now;
+    requestAnimationFrame(frame);
+  }
 }
 requestAnimationFrame(frame);

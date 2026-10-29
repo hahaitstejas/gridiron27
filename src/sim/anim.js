@@ -1,3 +1,4 @@
+import { wrapAngle } from '../core/math.js';
 // Chooses a high-level animation state for each player. The renderer turns these into poses.
 const HOLD = new Set(['throw', 'catch', 'tackle', 'getup', 'juke', 'spin', 'stiffarm', 'truck', 'hurdle', 'dive', 'slide', 'tackle_dive', 'hitstick', 'strip', 'stumble', 'swat', 'celebrate']);
 const HOLD_TIME = { throw: 0.45, catch: 0.35, getup: 0.6, stumble: 0.5, swat: 0.5, tackle: 0.6, celebrate: 99 };
@@ -12,9 +13,7 @@ export function updateAnimations(sim, dt) {
       if (p.face) target = Math.atan2(p.face.z - p.z, p.face.x - p.x);
       else if (speed > 0.6) target = Math.atan2(p.vz, p.vx);
       if (target !== undefined && !(p.move && (p.move.type === 'spin'))) {
-        let d = target - p.facing;
-        while (d > Math.PI) d -= 2 * Math.PI;
-        while (d < -Math.PI) d += 2 * Math.PI;
+        const d = wrapAngle(target - p.facing);
         const rate = 9 * dt;
         p.facing += Math.abs(d) < rate ? d : Math.sign(d) * rate;
       }

@@ -16,9 +16,10 @@ export function norm(v) {
 export function angleOf(v) { return Math.atan2(v.z, v.x); }
 export function fromAngle(a, l = 1) { return { x: Math.cos(a) * l, z: Math.sin(a) * l }; }
 export function wrapAngle(a) {
-  while (a > Math.PI) a -= 2 * Math.PI;
-  while (a < -Math.PI) a += 2 * Math.PI;
-  return a;
+  // Modulo rather than loops: a huge or infinite angle can't hang the game (non-finite -> 0).
+  if (!Number.isFinite(a)) return 0;
+  const t = 2 * Math.PI;
+  return ((((a + Math.PI) % t) + t) % t) - Math.PI;
 }
 export function approachAngle(cur, target, maxStep) {
   const d = wrapAngle(target - cur);

@@ -310,7 +310,7 @@ describe('no-huddle and spike', () => {
     const { GameSession } = await import('../src/game/session.js');
     const { STEP } = await import('../src/core/constants.js');
     const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
-    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: 0, seed: 12, fast: true });
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15, penalties: false }, humanTeam: 0, seed: 12, fast: true });
     s.match.newPossession(0, 30, 0);
     s.enterPlaycall();
     s.humanChoose(getOffPlay('gun_doubles_mesh'));

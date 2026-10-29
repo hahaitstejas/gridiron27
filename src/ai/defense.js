@@ -53,25 +53,81 @@ export function matchMan(sim) {
   return out;
 }
 
-/** Pre-snap: man defenders walk out to line up on their receiver. */
-export function alignMan(sim) {
-  if (sim.defPlay.coverage !== 'man' && !Object.values(sim.defPlay.assign || {}).some((a) => a.startsWith('man:'))) return;
-  const m = matchMan(sim);
+const CB_SLOTS = new Set(['LCB', 'RCB', 'NB', 'DB']);
+
+/** Corner depth for the pre-snap coverage call: press (1 yd), off (8 yds) or the play's default. */
+function cbDepth(sim, def) {
+  const c = sim.defAdj?.cover;
+  return c === 'press' ? 1.1 : c === 'off' ? Math.max(def, 8) : def;
+}
+
+/**
+ * Pre-snap: man defenders walk out to line up on their receiver. With `walk` (seconds) they move
+ * toward that spot at a jog instead of jumping there, and keep their man (following motion).
+ */
+export function alignMan(sim, walk = 0) {
+  const manPlay = sim.defPlay.coverage === 'man' || Object.values(sim.defPlay.assign || {}).some((a) => a.startsWith('man:'));
+  if (!manPlay) { if (!walk) alignCorners(sim); return; }
+  const m = walk && sim.manMatch ? sim.manMatch : matchMan(sim);
   sim.manMatch = m;
   for (const d of sim.defense()) {
-    const r = m.get(d.id);
+    const r = sim.players[m.get(d.id)?.id];
     if (!r) continue;
     const rl = sim.toLocal(r.x, r.z);
     const back = rl.down < -2.5;
-    const isCB = ['LCB', 'RCB', 'NB', 'DB'].includes(d.slot);
+    const isCB = CB_SLOTS.has(d.slot);
     let depth, shade;
     if (back) { depth = Math.max(4, d.at[0]); shade = 0; }
-    else if (isCB) { depth = Math.abs(rl.lat) > 10 ? 6 : 5; shade = Math.abs(rl.lat) > 10 ? 0.8 : -0.8; }
+    else if (isCB) { depth = cbDepth(sim, Math.abs(rl.lat) > 10 ? 6 : 5); shade = Math.abs(rl.lat) > 10 ? 0.8 : -0.8; }
     else { depth = 4.5; shade = -0.8; }
     const latOut = rl.lat + Math.sign(rl.lat || 1) * shade;
     const w = sim.toWorld(depth, back ? rl.lat * 0.5 : latOut);
-    d.x = w.x; d.z = Math.max(-25.5, Math.min(25.5, w.z));
+    const tz = Math.max(-25.5, Math.min(25.5, w.z));
+    if (!walk) { d.x = w.x; d.z = tz; continue; }
+    const dx = w.x - d.x, dz = tz - d.z, dl = Math.hypot(dx, dz);
+    const step = Math.min(dl, 6.5 * walk);
+    if (dl > 1e-3) { d.x += (dx / dl) * step; d.z += (dz / dl) * step; }
   }
+  if (!walk) alignCorners(sim, true);
+}
+
+/** Zone corners (and man corners without a man) move to press or off depth. */
+function alignCorners(sim, manOnly = false) {
+  if (!sim.defAdj?.cover) return;
+  for (const d of sim.defense()) {
+    if (!CB_SLOTS.has(d.slot) || (manOnly && sim.manMatch?.has(d.id))) continue;
+    const l = sim.toLocal(d.x, d.z);
+    if (l.down < 3 && sim.defAdj.cover !== 'press') continue;
+    const w = sim.toWorld(cbDepth(sim, l.down), l.lat);
+    d.x = w.x; d.z = w.z;
+  }
+}
+
+/**
+ * Press coverage at the snap: a corner within reach of a receiver jams him. Win and the receiver's
+ * release is slowed (timing routes get late); lose and the corner is a step behind.
+ */
+function pressJams(sim) {
+  if (sim.defAdj?.cover !== 'press') return;
+  for (const d of sim.defense()) {
+    if (!CB_SLOTS.has(d.slot)) continue;
+    let r = null, best = 2.6;
+    for (const o of sim.offense()) {
+      if (o.task?.type !== 'route') continue;
+      const dd = Math.hypot(o.x - d.x, o.z - d.z);
+      if (dd < best) { best = dd; r = o; }
+    }
+    if (!r) continue;
+    const edge = (sim.R(d, 'strength') + sim.R(d, 'coverage') - sim.R(r, 'strength') - sim.R(r, 'routeRunning')) * 0.006;
+    if (sim.rng.next() < clamp(0.5 + edge + sim.sl(d.team, 'passCoverage') * 0.1, 0.2, 0.8)) { r.speedCap = 0.4; r.recoverAt = 0.55; }
+    else { d.speedCap = 0.45; d.recoverAt = 0.6; }
+  }
+}
+
+/** Leverage from the coverage call: man defenders play this far inside (negative = outside) of their man. */
+export function leverage(sim) {
+  const s = sim.defAdj?.shade;
+  return s === 'in' ? 1.4 : s === 'out' ? -0.9 : 0.5;
 }
 
 /** Resolve the defensive play's assignments against the offense's alignment at the snap. */
@@ -90,6 +146,7 @@ export function assignDefense(sim) {
     else if (a === 'spy') d.task = { type: 'spy' };
     else d.task = { type: 'zone', zone: 'hook_middle' };
   }
+  pressJams(sim);
 }
 
 export function runDefenseAI(sim, dt) {
@@ -195,7 +252,7 @@ function man(sim, p, dt) {
   p.perceived.z += (r.vz - p.perceived.z) * k;
   const cushion = Math.max(0.6, Math.min(5, p.task.cushion) - sim.t * 4);
   const rl = sim.toLocal(r.x, r.z);
-  const inside = rl.lat > 0 ? -0.5 : 0.5;
+  const inside = (rl.lat > 0 ? -1 : 1) * leverage(sim);
   const tgt = sim.toWorld(rl.down + cushion, rl.lat + inside);
   const lead = 0.35;
   tgt.x += p.perceived.x * lead;
@@ -216,7 +273,9 @@ function zone(sim, p) {
   if (sim.ballLiveRun && c) { p.task = { type: 'pursue', at: sim.t + 0.15 }; return; }
   // Landmark in world space, kept on the field.
   const latLimit = (sgn) => sgn * (HALF_WIDTH - 2) * sim.dir - sim.ballZ * sim.dir;
-  let lat = z.lat;
+  // Shade the underneath zones toward the middle or the sidelines.
+  const sh = sim.defAdj?.shade;
+  let lat = z.deep || !sh ? z.lat : z.lat * (sh === 'in' ? 0.8 : 1.2);
   lat = clamp(lat, Math.min(latLimit(-1), latLimit(1)), Math.max(latLimit(-1), latLimit(1)));
   const home = { down: z.down, lat };
   // Threats in my area. Deep defenders stay over the top of all vertical threats and split the

@@ -3,7 +3,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
-import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES } from './audibles.js';
+import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice } from './penalties.js';
@@ -122,12 +122,16 @@ export class GameSession {
     this.state = m.over ? 'over' : 'playcall';
     if (m.over) { this.flushMessages(); this.emit('gameOver', { winner: m.winner }); return; }
     this.choice = { off: null, def: null };
+    this.defAdj = null;
+    this.cpuMotionAt = 0;
     this.presnapUsed = 0;
     // CPU timeouts (stopping the clock between plays).
     for (const t of [0, 1]) if (!this.isHuman(t) && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
     if (!this.isHuman(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
-    if (!this.isHuman(def)) this.choice.def = this.cpuDefenseFor(this.choice.off);
+    if (!this.isHuman(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng); }
+    // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
+    if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
     // The human's special-teams unit comes on automatically (kick return, punt return, FG block).
     else if (m.phase === 'kickoff' || (this.choice.off && defenseForSpecial(this.choice.off))) this.choice.def = this.cpuDefenseFor(this.choice.off);
     this.flushMessages();
@@ -211,6 +215,7 @@ export class GameSession {
       sliders: [0, 1].map((t) => this.slidersFor(t)),
       injuryRate: this.practice ? 0 : (this.settings.sliders?.injuries ?? 50) / 50,
       unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t).map((i) => i.rid)]),
+      defAdj: this.defAdj,
     });
     this.state = 'presnap';
     this.presnapT = 0;
@@ -258,9 +263,11 @@ export class GameSession {
     if (mode === 'menu') {
       const options = humanOff ? offenseAudibles(this.sim.offPlay) : defenseAudibles(this.sim.defPlay);
       if (options.length) this.audible = { mode, options, team };
+    } else if (mode === 'adjust') {
+      this.audible = { mode, options: COVERAGE_CALLS, team };
     } else {
       this.sim.computeIcons(true); // every eligible receiver gets a button
-      this.audible = { mode: 'hot', slot: null, team };
+      this.audible = { mode, slot: null, team };
     }
   }
 
@@ -273,6 +280,31 @@ export class GameSession {
     const a = this.audible;
     const humanOff = this.offTeam === a.team;
     if (input.pressed.LB || input.pressed.View) { this.closeAudible(); return; }
+    if (a.mode === 'adjust') {
+      const opt = a.options.find((o) => input.pressed[o.btn]);
+      if (!opt) return;
+      this.defAdj = opt.key === 'reset' ? null : { ...this.defAdj, ...opt.set };
+      this.audible = null;
+      this.rebuildPresnap();
+      this.emit('audible', { label: opt.label, play: 'Coverage', side: 'defense' });
+      return;
+    }
+    if (a.mode === 'motion') {
+      // Pick a receiver, then the stick: toward the ball = across the formation, away = wider.
+      if (!a.slot) {
+        for (const [btn, id] of Object.entries(this.sim.icons)) {
+          if (input.pressed[btn] && this.sim.motionCandidates().some((p) => p.id === id)) { a.slot = this.sim.players[id].slot; a.id = id; return; }
+        }
+        return;
+      }
+      if (Math.abs(input.lx) < 0.6) return;
+      const rec = this.sim.players[a.id];
+      const side = rec.z - this.sim.ballZ;
+      const across = Math.abs(side) < 1 || Math.sign(input.lx * this.sim.camDir) !== Math.sign(side);
+      this.closeAudible();
+      if (this.sim.startMotion(a.id, across)) this.emit('motion', { slot: a.slot, player: rec.name });
+      return;
+    }
     if (a.mode === 'menu') {
       const opt = a.options.find((o) => input.pressed[o.btn]);
       if (!opt) return;
@@ -343,8 +375,13 @@ export class GameSession {
       }
       for (const [team, f] of [[off, offIn], [def, defIn]]) {
         if (!f || sim.isKick) continue;
-        if (f.pressed.X || (team === off && f.pressed.Y && this.match.phase === 'scrimmage')) {
-          this.openAudible(f.pressed.X ? 'menu' : 'hot', team);
+        const scrim = this.match.phase === 'scrimmage';
+        const mode = f.pressed.X ? 'menu'
+          : team === off && scrim && f.pressed.Y ? 'hot'
+            : team === off && scrim && f.pressed.RB && !sim.motion ? 'motion'
+              : team === def && f.pressed.LB ? 'adjust' : null;
+        if (mode) {
+          this.openAudible(mode, team);
           this.sim.tick(dt, null);
           return;
         }
@@ -354,6 +391,11 @@ export class GameSession {
       if (offIn?.pressed.A) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       if (defIn?.pressed.B && sim.isKick === false) sim.withHuman(def, () => cyclePresnapDefender(sim));
       const humanOff = this.isHuman(off);
+      if (this.cpuMotionAt && this.presnapT >= this.cpuMotionAt && !sim.isKick) {
+        this.cpuMotionAt = 0;
+        const c = sim.motionCandidates().filter((p) => p.task?.type !== 'run_path' && p.pos !== 'HB' && p.pos !== 'FB');
+        if (c.length) sim.startMotion(this.rng.pick(c).id, this.rng.next() < 0.7);
+      }
       // CPU offense snaps after a short beat at the line (instantly in fast mode).
       if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? 1.6 : 0.5)) { this.snap(); return; }
       sim.tick(dt, input);

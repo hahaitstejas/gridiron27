@@ -174,3 +174,32 @@ describe('gameplay sliders', () => {
     expect(hi.yds).toBeGreaterThan(lo.yds);
   }, 60000);
 });
+
+describe('pre-snap motion and coverage calls', () => {
+  const op = listOffPlays().find((p) => p.type === 'pass' && p.formation.startsWith('gun'));
+  const man = listDefPlays().find((p) => p.coverage === 'man' && !/blitz|cover0/.test(p.id));
+
+  it('a receiver in motion crosses the formation and his man follows him', () => {
+    const sim = new PlaySim({ rng: new RNG(4), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: man, humanTeam: null });
+    const rec = sim.motionCandidates().filter((p) => p.pos === 'WR').sort((a, b) => Math.abs(b.z) - Math.abs(a.z))[0];
+    const defender = sim.defense().find((d) => sim.manMatch.get(d.id)?.id === rec.id);
+    const z0 = rec.z;
+    expect(sim.startMotion(rec.id, true)).toBe(true);
+    for (let i = 0; i < 480; i++) sim.tick(STEP, null);
+    expect(Math.sign(rec.z)).toBe(-Math.sign(z0));
+    if (defender) expect(Math.abs(defender.z - rec.z)).toBeLessThan(4);
+    sim.snap();
+    let n = 0;
+    while (!sim.finished && n < 4000) { sim.tick(STEP, null); n++; }
+    expect(sim.result).toBeTruthy();
+  });
+
+  it('press corners line up at the line, off corners deep', () => {
+    const depth = (cover) => {
+      const sim = new PlaySim({ rng: new RNG(4), teams: [teams[0], teams[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: op, defPlay: man, humanTeam: null, defAdj: { cover } });
+      return sim.defense().filter((d) => d.slot === 'LCB' || d.slot === 'RCB').map((d) => sim.toLocal(d.x, d.z).down);
+    };
+    for (const d of depth('press')) expect(d).toBeLessThan(2);
+    for (const d of depth('off')) expect(d).toBeGreaterThanOrEqual(7.9);
+  });
+});

@@ -2,6 +2,7 @@
 // Headless CPU-vs-CPU runner. Phase 1: runs many single plays with random play calls and
 // checks invariants (play terminates, no NaN, valid result). Usage:
 //   npm run sim -- --plays 500 --seed 7 [--verbose] [--only <regex on offensive play id>]
+import { cpuCoverageCall } from '../src/game/audibles.js';
 import { RNG } from '../src/core/rng.js';
 import { STEP } from '../src/core/constants.js';
 import { defaultTeams } from '../src/data/teams.js';
@@ -33,7 +34,7 @@ for (let i = 0; i < N; i++) {
   const losX = rng.range(-40, 40);
   const sim = new PlaySim({
     rng, teams: [teams[i % 32], teams[(i * 7 + 3) % 32]], offIdx, dir, losX, ballZ: rng.range(-3, 3),
-    offPlay: op, defPlay: dp, humanTeam: null,
+    offPlay: op, defPlay: dp, humanTeam: null, defAdj: ((a) => (process.env.NOADJ ? null : process.env.ADJ ? { cover: process.env.ADJ } : a))(cpuCoverageCall(dp, rng)),
   });
   sim.snap();
   let ticks = 0;

@@ -52,6 +52,8 @@ export class PlaySim {
     this.difficulty = cfg.difficulty || null;
     this.sliders = cfg.sliders || null; // [team0, team1] gameplay sliders, 0..100 (50 = default)
     this.firstDownX = cfg.firstDownX ?? null;
+    this.defAdj = cfg.defAdj || null; // pre-snap coverage call: { cover: 'press'|'off', shade: 'in'|'out' }
+    this.motion = null; // a player in pre-snap motion (startMotion)
 
     this.t = 0;
     this.state = 'presnap';
@@ -245,6 +247,47 @@ export class PlaySim {
     return d ? d.id : -1;
   }
 
+  // ---- pre-snap motion ----
+  /** Players who may go in motion: receivers and backs (not the QB or linemen). */
+  motionCandidates() {
+    return this.offense().filter((p) => ['WR', 'TE', 'HB', 'FB'].includes(p.pos) && !OL_SLOTS.has(p.slot) && p.slot !== 'QB');
+  }
+
+  /**
+   * Send a player in motion, parallel to the line: `across` = toward and past the ball to the other
+   * side (jet / across motion), otherwise out wider. He's still moving at the snap (a running start)
+   * and his route starts from wherever he is.
+   */
+  startMotion(id, across = true) {
+    const p = this.players[id];
+    if (!p || this.state !== 'presnap' || this.motion) return false;
+    const l = this.toLocal(p.x, p.z);
+    const side = Math.abs(l.lat) < 1 ? 1 : Math.sign(l.lat);
+    const lim = HALF_WIDTH - 2;
+    let lat = across ? -side * Math.max(3, Math.abs(l.lat) * 0.6) : l.lat + side * 6;
+    const wz = clamp(this.toWorld(0, lat).z, -lim, lim);
+    lat = this.toLocal(this.losX, wz).lat;
+    const to = this.toWorld(Math.min(l.down, -1), lat);
+    this.motion = { id, to, speed: 5.5 + this.R(p, 'speed') * 0.01 };
+    return true;
+  }
+
+  updateMotion(dt) {
+    const mo = this.motion;
+    if (!mo) return;
+    const p = this.players[mo.id];
+    const dx = mo.to.x - p.x, dz = mo.to.z - p.z, d = Math.hypot(dx, dz);
+    if (d < 0.15) { p.vx = p.vz = 0; mo.done = true; p.anim = 'idle'; }
+    else {
+      const v = Math.min(mo.speed, d / dt);
+      p.vx = (dx / d) * v; p.vz = (dz / d) * v;
+      p.x += p.vx * dt; p.z += p.vz * dt;
+      p.facing = Math.atan2(p.vz, p.vx);
+      p.anim = 'run';
+    }
+    alignMan(this, dt);
+  }
+
   // ---- snap ----
   snap() {
     if (this.state !== 'presnap') return;
@@ -347,6 +390,7 @@ export class PlaySim {
     const b = this.ball;
     b.px = b.x; b.py = b.y; b.pz = b.z;
     if (this.state === 'presnap') {
+      this.updateMotion(dt);
       updateAnimations(this, dt);
       return;
     }

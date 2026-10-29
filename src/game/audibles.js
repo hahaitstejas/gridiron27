@@ -55,3 +55,20 @@ export function hotRoute(play, slot, route) {
   const read = route === 'block' ? (play.read || []).filter((s) => s !== slot) : [slot, ...(play.read || []).filter((s) => s !== slot)];
   return { ...play, routes, read, hot: { ...(play.hot || {}), [slot]: route } };
 }
+
+// Defensive coverage adjustments (LB at the line): corners press or play off, leverage inside or outside.
+export const COVERAGE_CALLS = [
+  { btn: 'A', key: 'press', label: 'Press', set: { cover: 'press' } },
+  { btn: 'B', key: 'off', label: 'Play off', set: { cover: 'off' } },
+  { btn: 'X', key: 'in', label: 'Shade inside', set: { shade: 'in' } },
+  { btn: 'Y', key: 'out', label: 'Shade outside', set: { shade: 'out' } },
+  { btn: 'RB', key: 'reset', label: 'Reset', set: null },
+];
+
+/** The CPU defense's coverage call for a play: man coverage presses more often than zone. */
+export function cpuCoverageCall(defPlay, rng) {
+  if (!defPlay || /^st_/.test(defPlay.id)) return null;
+  const r = rng.next();
+  if (defPlay.coverage === 'man') return r < 0.3 ? { cover: 'press' } : r < 0.42 ? { cover: 'off' } : null;
+  return r < 0.12 ? { cover: 'press' } : r < 0.27 ? { cover: 'off' } : null;
+}

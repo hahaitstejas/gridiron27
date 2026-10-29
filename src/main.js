@@ -249,7 +249,8 @@ function onSessionEvent(e) {
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') hud.message(e, session);
   else if (e.type === 'result') hud.statCard(e.statLines, session.teams);
-  else if (e.type === 'audible') hud.ticker(`Audible: ${e.play}`);
+  else if (e.type === 'audible') hud.ticker(e.play === 'Coverage' ? `Coverage: ${e.label}` : `Audible: ${e.play}`);
+  else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);
   else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
   else if (e.type === 'gameOver') {

@@ -45,7 +45,7 @@ export class Hud {
 
   buildHelp() {
     const pad = [
-      ['Pre-snap', 'A snap · X audible · Y hot route (receiver button, then stick) · View timeout · (defense) B switch player, X audible'],
+      ['Pre-snap', 'A snap · X audible · Y hot route (receiver button, then stick) · RB motion (receiver button, then stick) · View timeout · (defense) B switch player, X audible, LB coverage (press / off / shade)'],
       ['Play call', 'LB/RB tabs · A select · B back · X flip play · View timeout'],
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · left stick leads · RS click throw away'],
       ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect'],
@@ -185,8 +185,8 @@ export class Hud {
     let h = '';
     if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout`
-        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn view">View</b> Timeout`;
-    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; '}<b class="btn view">View</b> Timeout`;
+        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}<b class="btn view">View</b> Timeout`;
+    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.meter && sim.state === 'live' && !sim.kick?.launched) h = sim.meter.phase === 'power' ? '<b class="btn A">A</b> Set power' : sim.meter.phase === 'accuracy' ? '<b class="btn A">A</b> Set accuracy — stop at the line!' : '';
     // Audible / hot route menus replace the hint.
@@ -194,13 +194,21 @@ export class Hud {
     const a = pre ? session.audible : null;
     au.classList.toggle('hidden', !a);
     if (a) {
-      const key = a.mode === 'menu' ? 'm' + a.options.map((o) => o.play.id).join() : 'h' + (a.slot || '');
+      const key = a.mode === 'menu' ? 'm' + a.options.map((o) => o.play.id).join() : a.mode + (a.slot || '');
       if (au.dataset.key !== key) {
         au.dataset.key = key;
         if (a.mode === 'menu') {
           au.innerHTML = `<div class="au-title">${session.humanSide === 'offense' ? 'Audible' : 'Defensive audible'}</div>` +
             a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span><small>${o.play.name}</small></div>`).join('') +
             `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        } else if (a.mode === 'adjust') {
+          au.innerHTML = `<div class="au-title">Coverage</div>` +
+            a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span></div>`).join('') +
+            `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        } else if (a.mode === 'motion' && !a.slot) {
+          au.innerHTML = `<div class="au-title">Motion</div><div class="au-row"><span>Press a receiver's button</span></div><div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        } else if (a.mode === 'motion') {
+          au.innerHTML = `<div class="au-title">Motion: ${a.slot}</div><div class="au-row"><b class="key">◀▶</b><span>Toward the ball: across · away: wider</span></div><div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
         } else if (!a.slot) {
           au.innerHTML = `<div class="au-title">Hot route</div><div class="au-row"><span>Press a receiver's button</span></div><div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
         } else {
@@ -297,4 +305,11 @@ export class Hud {
       `<div class="sb2-spot">${m.phase === 'scrimmage' && !m.over ? yardLineText(m) : ''}</div></div>${team(0, 'home')}</div>`;
   }
 
+}
+
+/** Small note of the defense's current coverage call, e.g. " · Press, inside". */
+function coverageTag(adj) {
+  if (!adj) return '';
+  const parts = [adj.cover === 'press' ? 'Press' : adj.cover === 'off' ? 'Off' : '', adj.shade === 'in' ? 'inside' : adj.shade === 'out' ? 'outside' : ''].filter(Boolean);
+  return parts.length ? ` &nbsp; <small>${parts.join(', ')}</small>` : '';
 }

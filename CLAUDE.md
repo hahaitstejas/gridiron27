@@ -82,6 +82,13 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   the current formation; defense X → A zone / B man / X blitz / Y deep shell) and hot routes (Y → receiver
   button → stick up go / down hitch / in slant / out quick out, A = block). The session swaps the play and
   re-lines up (`rebuildPresnap`) without restarting the CPU's snap count; `play.hot` lists hot routes.
+  Motion (offense RB → receiver button → stick: toward the ball = across, away = wider): `PlaySim.startMotion(id, across)`
+  moves him along the line before the snap (`updateMotion`; man defenders follow via `alignMan(sim, dt)`); he keeps
+  his speed at the snap and his route starts where he is. The CPU offense motions ~30% of plays when a human is
+  playing. Coverage (defense LB): `session.defAdj = { cover: 'press'|'off', shade: 'in'|'out' }` → `PlaySim.defAdj`;
+  press corners line up at 1 yd and jam at the snap (`pressJams`: win = receiver slowed, lose = corner a step
+  behind), off = 8 yds; shade sets man leverage (`leverage()`) and pinches/widens underneath zones. The CPU defense
+  calls its own (`cpuCoverageCall` in `audibles.js`).
 - Coaching: the pause menu (games and practice) opens the depth chart editor for the human team. It edits
   `team.depth` in place (`placeInDepth` / `removeFromDepth` / `eligibleForSlot` in `data/depthChart.js`), so the
   next snap uses it; it shows each player's overall at that spot and his current energy. Edits autosave (league save).

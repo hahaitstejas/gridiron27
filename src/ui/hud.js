@@ -20,6 +20,7 @@ export class Hud {
       <div id="flagbox" class="hidden"><div class="flagtitle">FLAG</div><div class="flagtext"></div></div>
       <div id="ticker"></div>
       <div id="statcard" class="hidden"></div>
+      <div id="audible" class="hidden"></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="fps"></div>
@@ -42,7 +43,7 @@ export class Hud {
 
   buildHelp() {
     const pad = [
-      ['Pre-snap', 'A snap · View timeout · (defense) B switch player'],
+      ['Pre-snap', 'A snap · X audible · Y hot route (receiver button, then stick) · View timeout · (defense) B switch player, X audible'],
       ['Play call', 'LB/RB tabs · A select · B back · X flip play · View timeout'],
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · left stick leads · RS click throw away'],
       ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect'],
@@ -57,7 +58,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard', 'audible']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const key = team.id + team.logo.shape + team.logo.text + team.colors.primary;
@@ -158,15 +159,39 @@ export class Hud {
     if (pre && session.humanTeam !== null) {
       const human = session.humanSide;
       const play = human === 'offense' ? sim.offPlay : sim.defPlay;
-      pn.innerHTML = `<small>${human === 'offense' ? play.concept || 'Offense' : 'Defense'}</small><b>${play.name}</b>`;
+      const hot = play.hot ? Object.entries(play.hot).map(([s, r]) => `${s} ${r.replace('_', ' ')}`).join(', ') : '';
+      pn.innerHTML = `<small>${human === 'offense' ? play.concept || 'Offense' : 'Defense'}</small><b>${play.name}</b>${hot ? `<em>Hot: ${hot}</em>` : ''}`;
     }
     const hint = this.$('hint');
     let h = '';
     if (pre && session.humanSide === 'offense') {
-      h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout` : `<b class="btn A">A</b> Snap &nbsp; <b class="btn view">View</b> Timeout`;
-    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; <b class="btn view">View</b> Timeout`;
+      h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout`
+        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn view">View</b> Timeout`;
+    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; '}<b class="btn view">View</b> Timeout`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.meter && sim.state === 'live' && !sim.kick?.launched) h = sim.meter.phase === 'power' ? '<b class="btn A">A</b> Set power' : sim.meter.phase === 'accuracy' ? '<b class="btn A">A</b> Set accuracy — stop at the line!' : '';
+    // Audible / hot route menus replace the hint.
+    const au = this.$('audible');
+    const a = pre ? session.audible : null;
+    au.classList.toggle('hidden', !a);
+    if (a) {
+      const key = a.mode === 'menu' ? 'm' + a.options.map((o) => o.play.id).join() : 'h' + (a.slot || '');
+      if (au.dataset.key !== key) {
+        au.dataset.key = key;
+        if (a.mode === 'menu') {
+          au.innerHTML = `<div class="au-title">${session.humanSide === 'offense' ? 'Audible' : 'Defensive audible'}</div>` +
+            a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span><small>${o.play.name}</small></div>`).join('') +
+            `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        } else if (!a.slot) {
+          au.innerHTML = `<div class="au-title">Hot route</div><div class="au-row"><span>Press a receiver's button</span></div><div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        } else {
+          au.innerHTML = `<div class="au-title">Hot route: ${a.slot}</div>` +
+            [['▲', 'Go'], ['▼', 'Hitch'], ['◀▶ in', 'Slant'], ['◀▶ out', 'Quick out']].map(([k, v]) => `<div class="au-row"><b class="key">${k}</b><span>${v}</span></div>`).join('') +
+            `<div class="au-row"><b class="btn A">A</b><span>Block</span></div><div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        }
+      }
+      h = '';
+    } else au.dataset.key = '';
     hint.innerHTML = h;
     hint.classList.toggle('hidden', !h || playcallOpen);
 

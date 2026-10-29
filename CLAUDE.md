@@ -75,6 +75,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   player on the depth chart (`ROTATE_AT`); tired players lose some speed/strength (`TIRING` ratings). Starters
   stay in longer late in close games, in the two-minute drill and on the goal line. Snap counts are in the
   player stats (`snaps`). Typical shares: HB1 ~70%, WR1/2 ~93%, WR3 ~60%, starting DL ~80-90%; QB/OL ~100%.
+- `audibles.js`: pre-snap audibles (offense X → A quick / B deep / X run left / Y run right / RB flip, all from
+  the current formation; defense X → A zone / B man / X blitz / Y deep shell) and hot routes (Y → receiver
+  button → stick up go / down hitch / in slant / out quick out, A = block). The session swaps the play and
+  re-lines up (`rebuildPresnap`) without restarting the CPU's snap count; `play.hot` lists hot routes.
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
@@ -100,7 +104,7 @@ src/ai/                offense.js (QB drop/handoff, protection, run blocking, ro
                        carrier.js (lane finding + moves), defense.js (man matching, zones, rush, pursuit),
                        zones.js (zone landmarks), playcaller.js (CPU play calling), difficulty.js (tiers)
 src/game/              match.js (rules, clock, score, stats), penalties.js (enforcement), session.js (game loop),
-                       fatigue.js (player energy + rotation)
+                       fatigue.js (player energy + rotation), audibles.js (audibles + hot routes)
 src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/), positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)
@@ -213,7 +217,7 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   2-pt tries with a 3-press kick meter, returns and fair catches, fumbles, penalties with enforcement,
   play-call screen (formation → play, flip, suggestions), CPU play calling, 4 difficulty tiers, score bug.
 - [ ] Phase 3 — large playbooks (done: 17 offensive / 8 defensive formations, 131 offensive / 53 defensive
-  plays, play action + bootlegs), audibles/hot routes, replay, audio, Practice mode, settings
+  plays, play action + bootlegs; audibles + hot routes), replay, audio, Practice mode, settings
 - [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
 - [ ] Phase 5 — Franchise mode
 

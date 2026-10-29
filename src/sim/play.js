@@ -196,11 +196,12 @@ export class PlaySim {
     }
   }
 
-  computeIcons() {
+  /** Receiver buttons. `all` = every eligible receiver, blockers too (for hot routes). */
+  computeIcons(all = false) {
     this.icons = {};
-    if (this.offPlay.type !== 'pass') return;
+    if (this.offPlay.type !== 'pass' && !all) return;
     const routes = this.offPlay.routes || {};
-    const runners = this.offense().filter((p) => routes[p.slot] && ROUTES[routes[p.slot].replace(/_(l|r)$/, '')]);
+    const runners = this.offense().filter((p) => (all ? !OL_SLOTS.has(p.slot) && p.slot !== 'QB' : routes[p.slot] && ROUTES[routes[p.slot].replace(/_(l|r)$/, '')]));
     const loc = (p) => this.toLocal(p.x, p.z);
     const free = new Set(runners);
     const give = (btn, p) => { if (p && free.has(p)) { this.icons[btn] = p.id; free.delete(p); } };

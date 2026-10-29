@@ -101,6 +101,8 @@ else screens.title(padName);
 function onSessionEvent(e) {
   if (e.type === 'message') hud.message(e, session);
   else if (e.type === 'result') hud.statCard(e.statLines, session.teams);
+  else if (e.type === 'audible') hud.ticker(`Audible: ${e.play}`);
+  else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
   else if (e.type === 'gameOver') {
     app = 'over';

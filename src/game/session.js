@@ -3,6 +3,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
+import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES } from './audibles.js';
 import { enforce, rollPresnapFoul, PENALTIES } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
@@ -52,6 +53,7 @@ export class GameSession {
 
   enterPlaycall() {
     const m = this.match;
+    this.audible = null;
     this.state = m.over ? 'over' : 'playcall';
     if (m.over) { this.flushMessages(); this.emit('gameOver', { winner: m.winner }); return; }
     this.choice = { off: null, def: null };
@@ -151,9 +153,71 @@ export class GameSession {
       this.enterPlaycall();
       return;
     }
+    this.audible = null;
     sim.snap();
     this.state = 'live';
     this.plays++;
+  }
+
+  // ---------- audibles & hot routes ----------
+  openAudible(mode) {
+    const humanOff = this.offTeam === this.humanTeam;
+    if (mode === 'menu') {
+      const options = humanOff ? offenseAudibles(this.sim.offPlay) : defenseAudibles(this.sim.defPlay);
+      if (options.length) this.audible = { mode, options };
+    } else {
+      this.sim.computeIcons(true); // every eligible receiver gets a button
+      this.audible = { mode: 'hot', slot: null };
+    }
+  }
+
+  closeAudible() {
+    this.audible = null;
+    this.sim?.computeIcons();
+  }
+
+  audibleInput(input) {
+    const a = this.audible;
+    const humanOff = this.offTeam === this.humanTeam;
+    if (input.pressed.LB || input.pressed.View) { this.closeAudible(); return; }
+    if (a.mode === 'menu') {
+      const opt = a.options.find((o) => input.pressed[o.btn]);
+      if (!opt) return;
+      if (humanOff) this.choice.off = opt.play; else this.choice.def = opt.play;
+      this.audible = null;
+      this.rebuildPresnap();
+      this.emit('audible', { label: opt.label, play: opt.play.name, side: humanOff ? 'offense' : 'defense' });
+      return;
+    }
+    // Hot route: pick a receiver, then a direction (or A to keep him in to block).
+    if (!a.slot) {
+      for (const [btn, id] of Object.entries(this.sim.icons)) {
+        if (input.pressed[btn]) { a.slot = this.sim.players[id].slot; a.id = id; return; }
+      }
+      return;
+    }
+    let route = null;
+    if (input.pressed.A) route = HOT_ROUTES.block;
+    else if (input.ly < -0.6) route = HOT_ROUTES.up;
+    else if (input.ly > 0.6) route = HOT_ROUTES.down;
+    else if (Math.abs(input.lx) > 0.6) {
+      const rec = this.sim.players[a.id];
+      const dz = input.lx * this.sim.camDir; // stick right = screen right = +z * camDir
+      const side = rec.z - this.sim.ballZ;
+      route = Math.abs(side) < 1 || Math.sign(dz) !== Math.sign(side) ? HOT_ROUTES.in : HOT_ROUTES.out;
+    }
+    if (!route) return;
+    this.choice.off = hotRoute(this.sim.offPlay, a.slot, route);
+    this.audible = null;
+    this.rebuildPresnap();
+    this.emit('hotRoute', { slot: a.slot, route, player: this.sim.players.find((p) => p.team === this.offTeam && p.slot === a.slot)?.name });
+  }
+
+  /** Re-line up after an audible without restarting the CPU's snap count. */
+  rebuildPresnap() {
+    const t = this.presnapT;
+    this.startPresnap();
+    this.presnapT = t;
   }
 
   /** Advance the game by dt seconds. `input` is the human's controller frame (or null). */
@@ -176,6 +240,17 @@ export class GameSession {
       if (this.state !== 'presnap') return;
       this.presnapT += dt;
       const humanOff = this.offTeam === this.humanTeam;
+      if (input && humanInvolved && this.audible) {
+        // Audible / hot-route menus are modal: the play waits (the play clock doesn't).
+        this.audibleInput(input);
+        if (this.state === 'presnap') this.sim.tick(dt, null);
+        return;
+      }
+      if (input && humanInvolved && !sim.isKick && (input.pressed.X || (humanOff && input.pressed.Y && this.match.phase === 'scrimmage'))) {
+        this.openAudible(input.pressed.X ? 'menu' : 'hot');
+        this.sim.tick(dt, null);
+        return;
+      }
       if (input && humanInvolved) {
         if (input.pressed.View) this.callTimeout(this.humanTeam);
         if (humanOff && input.pressed.A) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }

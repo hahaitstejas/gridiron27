@@ -210,3 +210,50 @@ describe('fatigue and rotation', () => {
     }
   }, 60000);
 });
+
+describe('audibles and hot routes', () => {
+  async function presnapOffense() {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: 0, seed: 2, fast: false });
+    s.match.newPossession(0, 30, 0);
+    s.choice = { off: getOffPlay('gun_doubles_mesh'), def: getDefPlay('43_cover3') };
+    s.state = 'playcall';
+    s.tick(STEP, null);
+    return { s, STEP };
+  }
+  const press = async (btn, extra = {}) => {
+    const { emptyFrame } = await import('../src/input/actions.js');
+    const f = emptyFrame();
+    if (btn) f.pressed[btn] = true;
+    return Object.assign(f, extra);
+  };
+
+  it('audibles to a play in the same formation', async () => {
+    const { s, STEP } = await presnapOffense();
+    expect(s.state).toBe('presnap');
+    s.tick(STEP, await press('X'));
+    expect(s.audible?.mode).toBe('menu');
+    const opt = s.audible.options.find((o) => o.btn === 'Y'); // run right
+    s.tick(STEP, await press('Y'));
+    expect(s.audible).toBeNull();
+    expect(s.sim.offPlay.id).toBe(opt.play.id);
+    expect(s.sim.offPlay.type).toBe('run');
+    expect(s.sim.offPlay.formation.replace('__flip', '')).toBe('gun_doubles');
+  });
+
+  it('hot routes a receiver and makes him the first read', async () => {
+    const { s, STEP } = await presnapOffense();
+    s.tick(STEP, await press('Y'));
+    expect(s.audible?.mode).toBe('hot');
+    const [btn, id] = Object.entries(s.sim.icons)[0];
+    const slot = s.sim.players[id].slot;
+    s.tick(STEP, await press(btn));
+    s.tick(STEP, await press(null, { ly: -1 })); // stick up = go route
+    expect(s.sim.offPlay.routes[slot]).toBe('go');
+    expect(s.sim.offPlay.read[0]).toBe(slot);
+    s.snap();
+    expect(s.sim.players.find((p) => p.team === 0 && p.slot === slot).task.type).toBe('route');
+  });
+});

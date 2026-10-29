@@ -49,7 +49,12 @@ third time as the needle comes back to set accuracy (closest to the line = strai
 Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6x speed
 (`&q=1` for 1-minute quarters).
 
-### Customize your league (personal use)
+### Your league
+Main menu → **League**: edit rosters (every player and rating, add, trade, release), teams and logos (logo builder
+or your own image), depth charts, and save your league (it autosaves; Saves & Files also backs it up to a file).
+Spreadsheets exports/imports the CSV files below from inside the game.
+
+### Customize your league with spreadsheets (personal use)
 ```bash
 npm run export-league
 ```

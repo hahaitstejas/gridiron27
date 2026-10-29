@@ -81,7 +81,7 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   re-lines up (`rebuildPresnap`) without restarting the CPU's snap count; `play.hot` lists hot routes.
 - Coaching: the pause menu (games and practice) opens the depth chart editor for the human team. It edits
   `team.depth` in place (`placeInDepth` / `removeFromDepth` / `eligibleForSlot` in `data/depthChart.js`), so the
-  next snap uses it; it shows each player's overall at that spot and his current energy. Not saved to disk yet.
+  next snap uses it; it shows each player's overall at that spot and his current energy. Edits autosave (league save).
 - `boxscore.js`: full player stats by category (`STAT_TABS`: passing incl. passer rating, rushing, receiving,
   defense, kicking) from `match.stats.players`; `statRows(m, tab, team)`. Shown by `ui/statsScreen.js` from the
   final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter.
@@ -91,6 +91,26 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
+
+### League management (Phase 4)
+Main menu → League (`ui/league.js` → `LeagueUI`):
+- **Saves** (`data/league.js` + `data/storage.js`): `serializeLeague()` turns the league (teams, colors, logos incl.
+  uploaded images as `logo.dataUrl`, rosters, depth charts, play-as team) into JSON; `deserializeLeague()` rebuilds
+  and repairs it (missing depth slots rebuilt, unknown ids dropped, overall recomputed, `setNextPlayerId` past the
+  highest id). Stored in IndexedDB (`gridiron27`/`saves`, localStorage fallback) under named slots; the active slot
+  (`localStorage g27.activeSave`) loads at startup **instead of** the `public/local/` spreadsheets. Every editor
+  calls `league.changed()` → autosave ~1 s later (the first edit creates "My League"). Saves & Files: save, save
+  as, rename, load, delete (X), export/import a `.g27.json` file, start over with the default league.
+- **Rosters** (`ui/rosterEditor.js`, edits via `data/rosterOps.js`: `addPlayer`, `releasePlayer`, `tradePlayer`,
+  `changePosition` keep depth charts valid): team roster by position (LB/RB team), player card with name,
+  number, position, age, height, weight, college and all 20 ratings (◀▶, hold to repeat; A types a value), live
+  overall, add (X), trade, release.
+- **Teams & Logos** (`ui/teamEditor.js`): city, name, abbreviation, conference/division, colors, your team, logo
+  builder (shape, letters, colors, or an uploaded image downscaled to 256 px) with a live logo + score-bug preview.
+- **Depth Charts**: the depth editor for any team.
+- **Spreadsheets** (`ui/spreadsheets.js`): download teams/roster/depth CSVs (same formats as below), import one
+  (type detected by its columns, with a summary of problems), or re-apply the files in `public/local/`.
+Text fields use the browser's prompt dialog (needs a keyboard).
 
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
@@ -126,7 +146,9 @@ src/ai/                offense.js (QB drop/handoff, protection, run blocking, ro
                        zones.js (zone landmarks), playcaller.js (CPU play calling), difficulty.js (tiers)
 src/game/              match.js (rules, clock, score, stats), penalties.js (enforcement), session.js (game loop),
                        fatigue.js (player energy + rotation), audibles.js (audibles + hot routes), boxscore.js (stat tables)
-src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/), positions.js (ratings, templates, overall),
+src/data/              teams.js (32 original teams), names.js, csv.js (teams/roster/depth CSV), localLeague.js (loads public/local/),
+                       league.js (save format), storage.js (IndexedDB saves, file download/upload), rosterOps.js (roster edits),
+                       positions.js (ratings, templates, overall),
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)
 src/replay/replay.js   instant replay recorder + ghost-sim player
@@ -137,14 +159,14 @@ src/ui/                nav.js (controller/keyboard menu focus), screens.js (titl
                        controls, settings, pause, game-over box score; prefs in localStorage `g27.settings`),
                        playcall.js (play-call screen), playart.js (canvas play diagrams), depthEditor.js (pause →
                        Coaching: Depth Chart; edits team.depth live via data/depthChart.js helpers), statsScreen.js (full
-                       player stats), hud.js (score bug,
+                       player stats), league.js (League menu + saves), rosterEditor.js, teamEditor.js (+ logo builder),
+                       spreadsheets.js (CSV import/export), hud.js (score bug,
                        banners, flag box, ticker, post-play stat card, name tags, receiver icons, kick meter, help, FPS), style.css
 tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;  tools/humanbot.js  exploit checks;
                        tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests
 ```
-Planned (later phases): `src/franchise`, more of `src/ui` (editors),
-`src/data/storage.js`.
+Planned (Phase 5): `src/franchise`.
 
 ## Performance notes (target: 60 fps on an M3 MacBook Air, Chrome + Safari)
 - Players are ~15 `InstancedMesh` draw calls total; posing uses a preallocated matrix pool (no per-frame GC).
@@ -199,7 +221,7 @@ Assignments: `rush`, `blitz`, `spy`, `zone:<id>` (ids in `src/ai/zones.js`), `ma
 (L1 = outermost receiver on the offense's left). Man rules are hints: `matchMan()` resolves them against
 the actual alignment and defenders shift pre-snap to their man.
 
-### Roster CSV (Phase 4 — format fixed now so tools can target it)
+### Roster CSV
 One row per player, UTF-8, comma separated, header row required, quoted fields allowed:
 ```
 team,first,last,pos,number,age,height,weight,college,SPD,ACC,AGI,STR,AWR,CTH,CAR,BTK,THP,THA,RBK,PBK,PRS,BSH,TAK,POW,COV,RTE,KPW,KAC
@@ -215,7 +237,8 @@ CB1, CB2, nickel, CB4). Implemented in `src/data/csv.js` (`parseCSV`, `importRos
 
 ### Local league spreadsheets (git-ignored, personal use)
 `npm run export-league` writes `public/local/teams.csv`, `roster.csv`, `depth.csv` (keeping any edits already
-there and backing up the old files to `public/local/backup-*/`). The game loads whichever exist at startup,
+there and backing up the old files to `public/local/backup-*/`); League → Spreadsheets does the same from inside
+the game (as downloads). Without a league save, the game loads whichever exist at startup,
 in the order teams → roster → depth (`src/data/localLeague.js`). **`public/local/` is git-ignored: personal
 content (e.g. real player names, logo images) must stay there and never be committed — this repo is public;
 see the IP rule at the top.**
@@ -243,7 +266,9 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
 - [x] **Phase 3** — 17 offensive / 8 defensive formations, 131 offensive / 53 defensive plays (play action,
   bootlegs, screens), audibles + hot routes, instant replay (manual + auto on big plays),
   Practice mode, settings (camera, name tags, stat card, auto replay); plus fatigue-based rotation.
-- [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
+- [x] **Phase 4** — League menu: save slots with autosave and .json export/import, roster editor (all fields and
+  ratings, add/trade/release), team editor + logo builder (shapes, letters, colors, image upload), depth charts for
+  any team, in-game CSV export/import.
 - [ ] Phase 5 — Franchise mode
 
 ## Conventions

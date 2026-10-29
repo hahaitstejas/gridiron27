@@ -96,3 +96,15 @@ describe('depth chart editing', () => {
     expect(removeFromDepth(t, 'QB', t.depth.QB[0])).toHaveLength(1); // never empty
   });
 });
+
+describe('in-game spreadsheet import', () => {
+  it('recognizes teams, roster and depth files by their columns', async () => {
+    const { csvKind } = await import('../src/ui/spreadsheets.js');
+    const { exportTeamsCSV, exportDepthCSV } = await import('../src/data/csv.js');
+    const teams = generateLeagueRosters(defaultTeams(), 21);
+    expect(csvKind(parseCSV(exportTeamsCSV(teams, 0)))).toBe('teams');
+    expect(csvKind(parseCSV(exportRosterCSV(teams)))).toBe('roster');
+    expect(csvKind(parseCSV(exportDepthCSV(teams)))).toBe('depth');
+    expect(csvKind(parseCSV('a,b\n1,2'))).toBeNull();
+  });
+});

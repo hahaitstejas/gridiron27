@@ -8,11 +8,13 @@ import { LeagueUI, attachLogos } from './ui/league.js';
 import { rosterScreen } from './ui/rosterEditor.js';
 import { teamEditor } from './ui/teamEditor.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
+import { FranchiseUI } from './ui/franchise.js';
+import { startNextSeason } from './franchise/franchise.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
-import { Nav } from './ui/nav.js';
+import { Nav, el } from './ui/nav.js';
 import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
@@ -53,12 +55,33 @@ const league = new LeagueUI({
     renderer.setTeams(teams[prefs.home], teams[prefs.away]);
   },
 });
-if (saved) league.name = saved.name;
+if (saved) { league.name = saved.name; league.franchise = saved.franchise; }
 const pickTeam = (title, onPick, onBack, focus = prefs.home) => screens.teamPicker(teams, focus, { title, onPick, onBack });
 const rosterCtx = { screens, teams, onBack: () => league.menu(0), onChange: () => league.changed(), pickTeam };
 const teamCtx = { screens, teams, prefs, pickTeam, onChange: () => { savePrefs(prefs); league.changed(); },
   onBack: () => { renderer.setTeams(teams[prefs.home], teams[prefs.away]); league.onTeams(); } };
 league.onTeams = () => pickTeam('Teams & logos: pick a team', (i) => teamEditor(teamCtx, i), () => league.menu(1));
+const franchiseUI = new FranchiseUI({
+  teams, prefs, screens, league, pickTeam,
+  onExit: () => toMenu(),
+  playGame: (g) => {
+    const f = league.franchise;
+    startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
+      quarterMinutes: f.settings.quarterMinutes }, { franchise: g });
+  },
+  rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
+  depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
+  offseason: (ui) => {
+    // Season summary; the full offseason (progression, contracts, free agency, draft) builds on this.
+    const f = league.franchise, h = f.history[f.history.length - 1];
+    const next = screens.menuItem('Start next season', `${f.year + 1}`, () => { startNextSeason(f, teams); league.changed(); ui.hub(); });
+    const menu = screens.menuItem('Main Menu', 'Your franchise autosaves', toMenu);
+    screens.frame('menu-screen', el('div.logo-small', { html: `${f.year} SEASON` }),
+      el('div.league-status', { text: `Champion: ${h.championName} · You went ${h.record}${h.madePlayoffs ? ' and made the playoffs' : ''}` }),
+      el('div.menu-list', {}, next, menu));
+    screens.nav.set([next, menu], { onBack: toMenu });
+  },
+});
 league.onSpreadsheets = () => spreadsheetScreen({ screens, teams, prefs, onBack: () => league.menu(3), onChange: () => { savePrefs(prefs); league.changed(); } });
 league.onRosters = () => pickTeam('Rosters: pick a team', (i) => rosterScreen(rosterCtx, i), () => league.menu(0));
 league.onDepth = () => {
@@ -91,6 +114,7 @@ function toMenu() {
     onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
     onPractice: () => screens.practice(teams, prefs, { onStart: (p, practice) => startGame({ ...p, side: 'home' }, { practice }), onBack: toMenu }),
     onLeague: () => league.menu(),
+    onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
     onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
   });
@@ -98,16 +122,18 @@ function toMenu() {
 
 function startGame(p, opts = {}) {
   autoReplayPending = false;
-  Object.assign(prefs, p);
-  savePrefs(prefs);
-  const home = teams[prefs.home], away = teams[prefs.away];
-  const humanTeam = prefs.side === 'cpu' ? null : prefs.side === 'home' ? 0 : 1;
+  // Franchise games don't touch the Play Now preferences.
+  const cfg = opts.franchise ? { ...prefs, ...p } : Object.assign(prefs, p);
+  if (!opts.franchise) savePrefs(prefs);
+  const home = teams[cfg.home], away = teams[cfg.away];
+  const humanTeam = cfg.side === 'cpu' ? null : cfg.side === 'home' ? 0 : 1;
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: prefs.quarterMinutes, accelClock: prefs.accelClock, difficulty: prefs.difficulty, penalties: opts.practice ? false : prefs.penalties, practice: opts.practice || null },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null },
     humanTeam,
     seed: opts.seed ?? (Date.now() % 1e9),
   });
+  session.franchiseGame = opts.franchise || null;
   renderer.setTeams(home, away);
   screens.clear();
   hud.toggleHelp(false);
@@ -159,7 +185,18 @@ function updateReplay(f, dt) {
 
 function showFinal() {
   screens.extraButtons = null;
-  screens.gameOver(session, { onDone: toMenu, onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
+  const g = session.franchiseGame;
+  const done = g ? () => { const m = session.match; leaveGame(); franchiseUI.recordPlayed(g, m); } : toMenu;
+  screens.gameOver(session, { onDone: done, doneLabel: g ? 'Back to Franchise' : 'Main Menu', onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
+}
+
+/** Back to the menus from a game (no main menu: the caller shows the next screen). */
+function leaveGame() {
+  app = 'menu';
+  session = null;
+  lastSim = null;
+  hud.hideAll();
+  playcall.hide();
 }
 
 function pause() {
@@ -175,7 +212,8 @@ function pause() {
     onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
       energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => league.changed() }) : null,
     onControls: () => screens.controls({ onBack: pause }),
-    onQuit: toMenu,
+    // Quitting a franchise game goes back to the hub (the game isn't recorded: play or sim it again).
+    onQuit: session?.franchiseGame ? () => { leaveGame(); franchiseUI.hub(); } : toMenu,
   });
 }
 
@@ -191,7 +229,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league };
+window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));

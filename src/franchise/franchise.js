@@ -99,6 +99,17 @@ function startPlayoffs(f, teams) {
   f.playoffs.rounds.push(nextPlayoffRound(f.playoffs));
 }
 
+/** Start the next season (after the offseason): new schedule, fresh season stats. */
+export function startNextSeason(f, teams) {
+  f.year++;
+  f.week = 0;
+  f.phase = 'regular';
+  f.schedule = makeSchedule(teams, f.weeks, f.seed * 31 + f.year);
+  f.stats = {};
+  f.playoffs = null;
+  f.offseason = null;
+}
+
 /** Record of a team this season: { w, l, t }. */
 export function recordOf(f, teams, team) {
   const r = standings(teams, f.schedule).find((x) => x.team === team);

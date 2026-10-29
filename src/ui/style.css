@@ -210,3 +210,18 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 @media (max-width: 900px) { .te-layout { flex-direction: column; align-items: center; } }
 .ss-report { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px; width: min(620px, 92vw); font-size: 13px; max-height: 22vh; overflow-y: auto; }
 .ss-report div:first-child { font-weight: 800; color: var(--gold); }
+/* Franchise */
+.fr-head { display: flex; align-items: center; gap: 16px; margin-bottom: 14px; }
+.fr-team { font: 900 26px "Arial Black", Impact, sans-serif; font-style: italic; }
+.fr-sub { color: var(--gold); font-weight: 800; font-size: 14px; }
+.fr-next { font-size: 14px; opacity: 0.85; }
+.fr-divs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 18px; width: min(1100px, 95vw); margin-bottom: 12px; }
+.fr-div .st-row { padding: 4px 10px; }
+.st-row.mine { background: rgba(255, 211, 77, 0.16); }
+.fr-sched { display: flex; gap: 20px; width: min(1100px, 95vw); }
+.fr-sched .st-table { flex: 1; }
+.fr-week { width: 320px; max-height: 66vh; overflow-y: auto; }
+.fr-score { background: var(--panel); border-radius: 6px; padding: 5px 10px; margin: 3px 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.fr-bracket { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-bottom: 12px; }
+.fr-round { min-width: 220px; }
+@media (max-width: 900px) { .fr-divs { grid-template-columns: 1fr; } .fr-sched { flex-direction: column; } .fr-week { width: auto; } }

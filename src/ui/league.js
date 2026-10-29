@@ -27,6 +27,7 @@ export class LeagueUI {
     this.slot = activeSlot();
     this.saveT = null;
     this.status = '';
+    this.franchise = null; // franchise mode state saved with this league (src/franchise)
   }
 
   /** Something in the league changed: save it a moment later (creating a save slot the first time). */
@@ -37,7 +38,7 @@ export class LeagueUI {
 
   async saveNow(slot = this.slot) {
     if (!slot) { slot = await this.newSlotName(); this.slot = slot; setActiveSlot(slot); }
-    await writeSave(slot, serializeLeague(this.teams, { name: this.name, playAs: this.prefs.home }));
+    await writeSave(slot, serializeLeague(this.teams, { name: this.name, playAs: this.prefs.home, franchise: this.franchise }));
     this.status = `Saved "${this.name}" ${new Date().toLocaleTimeString()}`;
   }
 
@@ -106,6 +107,7 @@ export class LeagueUI {
           const L = deserializeLeague(data);
           this.slot = s.slot; setActiveSlot(s.slot);
           if (L.playAs !== null) this.prefs.home = L.playAs;
+          this.franchise = L.franchise;
           await this.replaceLeague(L.teams, L.name);
           this.status = `Loaded "${L.name}"`;
         } catch (e) { window.alert(`Couldn't load that save: ${e.message}`); }
@@ -119,7 +121,7 @@ export class LeagueUI {
       };
     }
     add('Export league file', 'Download the whole league as a .json backup', () => {
-      const data = serializeLeague(this.teams, { name: this.name, playAs: this.prefs.home });
+      const data = serializeLeague(this.teams, { name: this.name, playAs: this.prefs.home, franchise: this.franchise });
       downloadFile(`${this.name.replace(/[^\w-]+/g, '_')}.g27.json`, JSON.stringify(data));
     });
     add('Import league file…', 'Load a .json league backup (becomes a new save)', async () => {
@@ -128,6 +130,7 @@ export class LeagueUI {
       try {
         const L = deserializeLeague(JSON.parse(f.data));
         if (L.playAs !== null) this.prefs.home = L.playAs;
+        this.franchise = L.franchise;
         await this.replaceLeague(L.teams, L.name);
         this.slot = await this.newSlotName(); setActiveSlot(this.slot);
         await this.saveNow();
@@ -138,6 +141,7 @@ export class LeagueUI {
     add('Start over with the default league', 'Fresh generated teams (your saves stay in the list)', async () => {
       if (!window.confirm('Switch to a fresh default league? Your current league stays in its save slot.')) return;
       this.slot = null; setActiveSlot(null);
+      this.franchise = null;
       await this.replaceLeague(generateLeagueRosters(defaultTeams(), 2027), 'My League');
       this.status = 'Default league';
       this.saves(0);

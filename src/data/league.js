@@ -7,10 +7,11 @@ import { buildDepthChart } from './depthChart.js';
 export const SAVE_VERSION = 1;
 
 /** Plain-JSON snapshot of the league. Logo images travel as data URLs (logo.dataUrl). */
-export function serializeLeague(teams, { name = 'My League', playAs = null } = {}) {
+export function serializeLeague(teams, { name = 'My League', playAs = null, franchise = null } = {}) {
   return {
     version: SAVE_VERSION,
     name,
+    franchise: franchise ? JSON.parse(JSON.stringify(franchise)) : null, // franchise mode state (src/franchise)
     savedAt: new Date().toISOString(),
     playAs,
     teams: teams.map((t) => {
@@ -49,7 +50,7 @@ export function deserializeLeague(data) {
     return { ...t, id: t.id ?? i, colors: { ...t.colors }, logo: { ...t.logo }, roster, depth };
   });
   setNextPlayerId(maxId + 1);
-  return { teams, playAs: data.playAs ?? null, name: data.name || 'My League' };
+  return { teams, playAs: data.playAs ?? null, name: data.name || 'My League', franchise: data.franchise || null };
 }
 
 /** Next free jersey number on a team (keeps `prefer` if it's free). */

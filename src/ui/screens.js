@@ -45,14 +45,14 @@ export class Screens {
     this.nav.clear();
   }
 
-  mainMenu({ onPlayNow, onPractice, onLeague, onControls, onSettings }) {
+  mainMenu({ onPlayNow, onPractice, onFranchise, onLeague, onControls, onSettings }) {
     const items = [
       this.menuItem('Play Now', 'Exhibition game against the CPU', onPlayNow),
       this.menuItem('Controls', 'Xbox controller and keyboard layouts', onControls),
       this.menuItem('Settings', 'Default difficulty, quarter length, clock', onSettings),
       this.menuItem('Practice', 'Run any play from any spot, no clock', onPractice),
       this.menuItem('League', 'Rosters, teams & logos, depth charts, spreadsheets, saves', onLeague),
-      this.menuItem('Franchise', 'Coming in Phase 5', null, true),
+      this.menuItem('Franchise', 'Seasons, playoffs, draft and free agency', onFranchise),
     ];
     this.frame('menu-screen', el('div.logo-small', { html: 'GRIDIRON <span>27</span>' }), el('div.menu-list', {}, items));
     this.nav.set(items.filter((i) => !i.classList.contains('disabled')));
@@ -212,7 +212,7 @@ export class Screens {
     this.nav.set(items, { onBack: onResume });
   }
 
-  gameOver(session, { onDone, onStats }) {
+  gameOver(session, { onDone, onStats, doneLabel = 'Main Menu' }) {
     const m = session.match;
     const [h, a] = m.teams;
     const S = m.stats.team;
@@ -239,7 +239,7 @@ export class Screens {
       rec && `Receiving: ${name(rec.team, rec.rid)} ${rec.rec} rec, ${Math.round(rec.recYds)} yds, ${rec.recTD} TD`,
       tk && `Defense: ${name(tk.team, tk.rid)} ${tk.tackles} tackles${tk.sacks ? `, ${tk.sacks} sack${tk.sacks > 1 ? 's' : ''}` : ''}`,
     ].filter(Boolean);
-    const done = el('div.start-btn', { text: 'Main Menu' });
+    const done = el('div.start-btn', { text: doneLabel });
     done.activate = onDone;
     const stats = el('div.start-btn.secondary', { text: 'Full Stats' });
     stats.activate = onStats;

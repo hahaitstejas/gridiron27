@@ -61,7 +61,7 @@ const ROUTE_COLORS = ['#ffd84d', '#ff6b6b', '#5ec8ff', '#9cff6b', '#ff9df5'];
 
 /** Offensive play (or formation when routes are missing) diagram. Returns a canvas. */
 export function offenseArt(play, w = 210, h = 120) {
-  const key = `o:${play.id || play.formation}:${w}x${h}`;
+  const key = `o:${play.id || play.formation}:${play.rev || 0}:${w}x${h}`;
   if (cache.has(key)) return cloneCanvas(cache.get(key));
   const f = getOffFormation(play.formation);
   const { c, g, P } = setup(w, h);

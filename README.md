@@ -59,6 +59,11 @@ Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6
 Play Now → **You play as: 2 players**. Player 1 (home) uses the first controller (or the keyboard), player 2 (away)
 presses A on a second controller when asked. Each picks their own plays and controls their own team.
 
+### Playbook editor
+League → **Playbook**: design your own plays. Pick a formation, give every receiver a route (or a block), the
+primary read, QB drop, play action or a bootleg, or build a run (ball carrier, direction, hole, zone or power
+blocking). Test runs it against CPU defenses. Your plays appear in the **My Plays** tab when you call a play.
+
 ### Weather
 Play Now has Weather (clear, rain, snow, windy, random) and Time of day (day, dusk, night, random). Rain makes the ball
 slippery, snow slows footing, and wind pushes kicks and deep passes (the kick hint shows it). Franchise games get

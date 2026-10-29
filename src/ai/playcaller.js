@@ -78,7 +78,7 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
 }
 
 function pickPlay(m, rng, want) {
-  let pool = listOffPlays();
+  let pool = listOffPlays().filter((p) => !p.custom); // the CPU sticks to the stock playbook
   const score = (p) => {
     const t = playTags(p);
     let w = 1;

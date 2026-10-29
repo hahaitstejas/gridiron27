@@ -9,7 +9,7 @@ const baseFormation = (f) => f.replace(/__flip$/, '');
 /** Offensive audibles from the current formation: A quick, B deep, X run left, Y run right, RB flip. */
 export function offenseAudibles(play) {
   const flipped = /__flip$/.test(play.id);
-  const same = listOffPlays().filter((p) => p.formation === baseFormation(play.formation) && baseId(p.id) !== baseId(play.id));
+  const same = listOffPlays().filter((p) => !p.custom && p.formation === baseFormation(play.formation) && baseId(p.id) !== baseId(play.id));
   const view = (p) => (flipped ? mirrorOffPlay(p) : p);
   const passes = same.filter((p) => p.type === 'pass');
   const runs = same.filter((p) => p.type === 'run').map(view);

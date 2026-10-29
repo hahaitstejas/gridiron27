@@ -137,6 +137,13 @@ Main menu → League (`ui/league.js` → `LeagueUI`):
   (type detected by its columns, with a summary of problems), or re-apply the files in `public/local/`.
 Text fields use the browser's prompt dialog (needs a keyboard).
 
+- **Playbook** (`ui/playbookEditor.js`, logic in `data/customPlays.js`): "My Plays" — a small spec (formation, per-slot
+  routes or block, primary read, drop, play action, bootleg; or a run: carrier incl. QB keeper, side, hole, zone/gap)
+  → `buildPlay()` (same shape as offense.json, `custom: true`, `rev` for the diagram cache). Stored per browser in
+  localStorage `g27.playbook` (not in league saves), registered at boot (`registerCustomPlays` → `setCustomPlays`).
+  The play-call screen shows them in a "My Plays" tab; the CPU play caller and audible menus ignore them.
+  `game/playtest.js` `testPlay()` runs a play headless (editor's Test / save check).
+
 ### Franchise mode (Phase 5, `src/franchise/` + `ui/franchise.js`, `ui/offseason.js`)
 The franchise state is plain JSON stored in the league save (`league.franchise`, `serializeLeague({ franchise })`),
 so a franchise is a save slot: New Franchise copies the current league into a new slot; the Franchise menu lists

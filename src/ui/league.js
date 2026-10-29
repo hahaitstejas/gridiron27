@@ -66,6 +66,7 @@ export class LeagueUI {
       item('Rosters', 'Edit players and ratings, add, release or trade', () => this.onRosters?.()),
       item('Teams & Logos', 'Names, colors, conference, logo builder', () => this.onTeams?.()),
       item('Depth Charts', 'Starters and rotation for any team', () => this.onDepth?.()),
+      item('Playbook', 'Design your own plays (My Plays)', () => this.onPlaybook?.()),
       item('Spreadsheets', 'Export or import teams, rosters and depth charts as CSV', () => this.onSpreadsheets?.()),
       item('Saves & Files', 'Save slots, back up to a file, start over', () => this.saves()),
     ];
@@ -150,7 +151,7 @@ export class LeagueUI {
       el('div.league-status', { text: this.status || (this.slot ? `Autosaving to "${this.name}"` : 'Not saved yet: edits will create a save') }),
       el('div.menu-list', {}, rows),
       el('div.setup-help', { html: '<b class="btn A">A</b> select &nbsp; <b class="btn X">X</b> delete save &nbsp; <b class="btn B">B</b> back' }));
-    S.nav.set(rows, { onBack: () => this.menu(4), index: Math.min(focus, rows.length - 1) });
+    S.nav.set(rows, { onBack: () => this.menu(5), index: Math.min(focus, rows.length - 1) });
     S.extraButtons = (f) => { if (f.pressed.X) S.nav.current?.deleteSave?.(); };
   }
 }

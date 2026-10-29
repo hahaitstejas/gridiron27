@@ -270,3 +270,9 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #penaltybox .pb-foot img { height: 44px; width: 64px; object-fit: contain; background: rgba(255,255,255,0.06); }
 .sl-bar { display: inline-block; width: 90px; height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; vertical-align: middle; margin: 0 6px; overflow: hidden; }
 .sl-bar i { display: block; height: 100%; background: var(--gold); }
+
+/* Playbook editor */
+.pb-edit { display: flex; gap: 24px; align-items: flex-start; justify-content: center; flex-wrap: wrap; }
+.pb-art canvas { border-radius: 10px; background: #1d4d22; display: block; }
+.pb-test { margin-top: 8px; font-size: 13px; opacity: 0.85; max-width: 460px; }
+.pb-opts { max-height: 60vh; overflow-y: auto; min-width: 380px; }

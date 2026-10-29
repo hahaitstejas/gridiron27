@@ -26,6 +26,12 @@ export function registerPlaybook({ formations = {}, offense = [], defense = [] }
   defPlays.push(...defense);
 }
 
+/** Replace the user's custom plays ("My Plays", data/customPlays.js) in the offensive list. */
+export function setCustomPlays(plays) {
+  for (let i = offPlays.length - 1; i >= 0; i--) if (offPlays[i].custom) offPlays.splice(i, 1);
+  offPlays.push(...plays);
+}
+
 const swapSide = (r) => (r.endsWith('_l') ? r.slice(0, -2) + '_r' : r.endsWith('_r') ? r.slice(0, -2) + '_l' : r);
 
 /** Mirror an offensive play left/right ("flip" on the play-call screen). */

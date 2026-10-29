@@ -226,3 +226,30 @@ describe('weather', () => {
     expect(punt({ x: 0, z: 8 }) - punt({ x: 0, z: 0 })).toBeGreaterThan(2);
   });
 });
+
+describe('custom plays (playbook editor)', () => {
+  it('every formation builds working pass and run plays, and they register as My Plays', async () => {
+    const C = await import('../src/data/customPlays.js');
+    const { testPlay } = await import('../src/game/playtest.js');
+    const { listOffPlays: list } = await import('../src/data/playbook.js');
+    const specs = [];
+    for (const f of C.customFormations()) {
+      const pass = C.newSpec(`t_${f}_p`, f);
+      pass.pa = true; pass.boot = 1;
+      const r1 = testPlay(C.buildPlay(pass), [teams[0], teams[1]], 2);
+      expect(r1.ok, `${f} pass: ${r1.error}`).toBe(true);
+      for (const carrier of ['QB', ...C.eligibleSlots(f).filter((e) => e.pos === 'HB' || e.pos === 'FB').map((e) => e.slot)]) {
+        const run = { ...C.newSpec(`t_${f}_r_${carrier}`, f), type: 'run' };
+        run.run = { carrier, side: -1, gap: 'outside', scheme: 'gap' };
+        const r2 = testPlay(C.buildPlay(run), [teams[0], teams[1]], 2);
+        expect(r2.ok, `${f} run ${carrier}: ${r2.error}`).toBe(true);
+        specs.push(run);
+      }
+      specs.push(pass);
+    }
+    C.registerCustomPlays(specs);
+    expect(list().filter((p) => p.custom)).toHaveLength(specs.length);
+    C.registerCustomPlays([]);
+    expect(list().some((p) => p.custom)).toBe(false);
+  }, 60000);
+});

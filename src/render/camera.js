@@ -12,6 +12,7 @@ export class CameraRig {
     this._p = new THREE.Vector3();
     this._l = new THREE.Vector3();
     this.shake = 0;
+    this.zoom = 1; // broadcast distance/height scale (settings: wide / tight)
   }
 
   /**
@@ -38,7 +39,7 @@ export class CameraRig {
         // Broadcast: high behind the offense, pulling back when the ball is in the air.
         const back = phase === 'presnap' ? 15 : phase === 'air' ? 18 : 15;
         const height = phase === 'presnap' ? 7.2 : phase === 'air' ? 9.5 : 7.8;
-        p.set(focus.x - dir * back, height, fz * 0.85);
+        p.set(focus.x - dir * back * this.zoom, height * this.zoom, fz * 0.85);
         l.set(focus.x + dir * (phase === 'presnap' ? 8 : 6), 0.5, fz * 0.95);
       }
     }

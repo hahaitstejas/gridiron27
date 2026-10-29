@@ -6,7 +6,12 @@ import { KEY_HELP } from '../input/keyboard.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true,
-  volMaster: 8, volCrowd: 7, volSfx: 8 };
+  volMaster: 8, volCrowd: 7, volSfx: 8, nameTags: true, statCard: true, autoReplay: true, camera: 'standard',
+  practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
+
+const CAMERAS = { standard: 'Standard', wide: 'Wide', tight: 'Tight', high: 'High (sky cam)' };
+const FIELD_SPOTS = [[20, 'Own 20'], [25, 'Own 25'], [35, 'Own 35'], [50, 'Midfield'], [65, 'Opponent 35'], [80, 'Red zone (opp 20)'], [90, 'Opp 10'], [97, 'Goal line (opp 3)']];
+const SITUATIONS = [['1-10', '1st & 10'], ['2-6', '2nd & 6'], ['3-3', '3rd & 3'], ['3-8', '3rd & 8'], ['3-15', '3rd & 15'], ['4-1', '4th & 1']];
 
 export function loadPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return { ...DEFAULT_PREFS }; }
@@ -43,12 +48,12 @@ export class Screens {
     this.nav.clear();
   }
 
-  mainMenu({ onPlayNow, onControls, onSettings }) {
+  mainMenu({ onPlayNow, onPractice, onControls, onSettings }) {
     const items = [
       this.menuItem('Play Now', 'Exhibition game against the CPU', onPlayNow),
       this.menuItem('Controls', 'Xbox controller and keyboard layouts', onControls),
       this.menuItem('Settings', 'Default difficulty, quarter length, clock', onSettings),
-      this.menuItem('Practice', 'Coming in Phase 3', null, true),
+      this.menuItem('Practice', 'Run any play from any spot, no clock', onPractice),
       this.menuItem('Franchise', 'Coming in Phase 5', null, true),
     ];
     this.frame('menu-screen', el('div.logo-small', { html: 'GRIDIRON <span>27</span>' }), el('div.menu-list', {}, items));
@@ -105,6 +110,38 @@ export class Screens {
     this.nav.set([away, home, side, diff, qlen, accel, pens, start], { columns: 1, onBack, index: 7 });
   }
 
+  practice(teams, prefs, { onStart, onBack }) {
+    const p = { ...prefs };
+    const option = (label, values, key, fmt = (v) => v) => {
+      const row = el('div.opt-row');
+      const draw = () => { row.innerHTML = ''; row.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ ${fmt(p[key])} ▶` })); };
+      row.spin = (dd) => { const i = Math.max(0, values.indexOf(p[key])); p[key] = values[(i + dd + values.length) % values.length]; draw(); };
+      row.activate = () => row.spin(1);
+      draw();
+      return row;
+    };
+    const teamIdx = teams.map((_, i) => i);
+    const tname = (i) => `${teams[i].city} ${teams[i].name}`;
+    const rows = [
+      option('Your team', teamIdx, 'home', tname),
+      option('Opponent', teamIdx, 'away', tname),
+      option('Practice', ['offense', 'defense'], 'practiceSide', (v) => (v === 'offense' ? 'Offense' : 'Defense')),
+      option('Ball on', FIELD_SPOTS.map((f) => f[0]), 'practiceYL', (v) => FIELD_SPOTS.find((f) => f[0] === v)?.[1] || v),
+      option('Situation', SITUATIONS.map((s) => s[0]), 'practiceSit', (v) => SITUATIONS.find((s) => s[0] === v)?.[1] || v),
+      option('After each play', ['reset', 'continue'], 'practiceAfter', (v) => (v === 'reset' ? 'Back to the same spot' : 'Keep the drive going')),
+      option('Opponent difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
+    ];
+    const start = el('div.start-btn', { text: 'Start Practice' });
+    start.activate = () => {
+      if (p.home === p.away) p.away = (p.home + 1) % teams.length;
+      const [down, toGo] = p.practiceSit.split('-').map(Number);
+      onStart(p, { side: p.practiceSide, yardLine: p.practiceYL, down, toGo, after: p.practiceAfter });
+    };
+    this.frame('setup-screen', el('h1', { text: 'Practice' }), el('div.setup-opts', {}, ...rows, start),
+      el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> back' }));
+    this.nav.set([...rows, start], { columns: 1, onBack, index: rows.length });
+  }
+
   controls({ onBack }) {
     const pad = [
       ['Pre-snap (offense)', 'A snap · X audible (Phase 3) · Y hot route (Phase 3) · View timeout'],
@@ -145,6 +182,10 @@ export class Screens {
       option('Master volume', VOL, 'volMaster', volFmt),
       option('Crowd volume', VOL, 'volCrowd', volFmt),
       option('Effects volume', VOL, 'volSfx', volFmt),
+      option('Camera', Object.keys(CAMERAS), 'camera', (k) => CAMERAS[k]),
+      option('Name tags', [true, false], 'nameTags', (v) => (v ? 'On' : 'Off')),
+      option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
+      option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
     ];
     const save = el('div.start-btn', { text: 'Save' });
     save.activate = () => onSave(p);

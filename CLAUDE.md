@@ -79,6 +79,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   the current formation; defense X → A zone / B man / X blitz / Y deep shell) and hot routes (Y → receiver
   button → stick up go / down hitch / in slant / out quick out, A = block). The session swaps the play and
   re-lines up (`rebuildPresnap`) without restarting the CPU's snap count; `play.hot` lists hot routes.
+- Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
+  — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
+  the drive ends). Set up from the main menu (`Screens.practice`).
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
@@ -89,6 +92,9 @@ the render loop's excitement value, crowd roars/groans from the home team's poin
 whistle, hits scaled by tackle power, catches, kicks, a "hut" on the snap, the stadium horn on home scores, and
 menu clicks (`Nav.onSound`). `main.js` maps session/sim events to sounds (`playSounds`). The context starts on the
 first key/pointer press (browser autoplay rules); volumes (master/crowd/effects, 0–10) are in Settings.
+Other settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
+tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays
+(touchdowns, interceptions, big hits, onside recoveries; not in practice).
 
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/
@@ -232,8 +238,9 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   (downs, clock + accelerated clock, two-minute warning, halftime, OT, timeouts), kickoffs/punts/FGs/PATs/
   2-pt tries with a 3-press kick meter, returns and fair catches, fumbles, penalties with enforcement,
   play-call screen (formation → play, flip, suggestions), CPU play calling, 4 difficulty tiers, score bug.
-- [ ] Phase 3 — large playbooks (done: 17 offensive / 8 defensive formations, 131 offensive / 53 defensive
-  plays, play action + bootlegs; audibles + hot routes; instant replay; audio), audio, Practice mode, settings
+- [x] **Phase 3** — 17 offensive / 8 defensive formations, 131 offensive / 53 defensive plays (play action,
+  bootlegs, screens), audibles + hot routes, instant replay (manual + auto on big plays), procedural audio,
+  Practice mode, settings (volumes, camera, name tags, stat card, auto replay); plus fatigue-based rotation.
 - [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
 - [ ] Phase 5 — Franchise mode
 
@@ -245,7 +252,8 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
   Bot targets: blind quick throws should average well under 15 yds/play, a tapped (lob) throw to the open man
   ~60-65% / ~7 yds (bullets a bit better), mindless QB scrambles ~2-4 yds,
-  a QB who just holds the ball should be sacked in ~4-5 s. Full games (`npm run games -- --games 16`): ~22-26
+  a QB who just holds the ball should be sacked in ~4-5 s (currently ~6 s; mindless upfield runs ~6-7 yds are
+  a little high). Full games (`npm run games -- --games 16`): ~22-26
   pts and ~350-410 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
   violations. Every play is exercised by `npm test` against several opponents; `npm run sim -- --plays 600
   --only "screen|draw"` checks a subset (each play's ypp should look like football). Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.

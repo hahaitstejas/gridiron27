@@ -257,3 +257,27 @@ describe('audibles and hot routes', () => {
     expect(s.sim.players.find((p) => p.team === 0 && p.slot === slot).task.type).toBe('route');
   });
 });
+
+describe('practice mode', () => {
+  it('resets to the chosen situation after every rep and never runs the clock', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { listOffPlays } = await import('../src/data/playbook.js');
+    const practice = { side: 'offense', yardLine: 80, down: 3, toGo: 8, after: 'reset' };
+    const s = new GameSession({ teams, settings: { quarterMinutes: 5, practice, penalties: false }, humanTeam: 0, seed: 9, fast: true });
+    const m = s.match;
+    const clock0 = m.clock;
+    let reps = 0;
+    for (let i = 0; i < 200000 && reps < 6; i++) {
+      if (s.needsHumanCall) s.humanChoose(listOffPlays()[(reps * 7) % listOffPlays().length]);
+      if (s.state === 'presnap') { s.snap(); reps++; }
+      s.tick(STEP, null);
+      if (s.state === 'playcall') {
+        expect([m.possession, m.yardLine, m.down, Math.round(m.toGo)]).toEqual([0, 80, 3, 8]);
+        expect(m.clock).toBe(clock0);
+      }
+    }
+    expect(reps).toBe(6);
+    expect(m.over).toBe(false);
+  }, 60000);
+});

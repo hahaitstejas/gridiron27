@@ -31,11 +31,18 @@ const audio = new GameAudio();
 const applyVolumes = () => audio.setLevels({ master: prefs.volMaster / 10, crowd: prefs.volCrowd / 10, sfx: prefs.volSfx / 10 });
 applyVolumes();
 Nav.onSound = (k) => audio.ui(k);
+hud.prefs = prefs;
+const applyCamera = () => {
+  renderer.rig.mode = prefs.camera === 'high' ? 'sky' : 'broadcast';
+  renderer.rig.zoom = { wide: 1.3, tight: 0.8 }[prefs.camera] || 1;
+};
+applyCamera();
 // Browsers only allow sound after a user gesture.
 for (const ev of ['keydown', 'pointerdown']) window.addEventListener(ev, () => { audio.ensure(); applyVolumes(); });
 
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
+let autoReplayPending = false; // a big play just happened: show it once the play is over
 let session = null;
 let speed = 1;
 let snapCam = true;
@@ -50,19 +57,21 @@ function toMenu() {
   playcall.hide();
   screens.mainMenu({
     onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
+    onPractice: () => screens.practice(teams, prefs, { onStart: (p, practice) => startGame({ ...p, side: 'home' }, { practice }), onBack: toMenu }),
     onControls: () => screens.controls({ onBack: toMenu }),
-    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyVolumes(); toMenu(); }, onBack: toMenu }),
+    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyVolumes(); applyCamera(); toMenu(); }, onBack: toMenu }),
   });
 }
 
 function startGame(p, opts = {}) {
+  autoReplayPending = false;
   Object.assign(prefs, p);
   savePrefs(prefs);
   const home = teams[prefs.home], away = teams[prefs.away];
   const humanTeam = prefs.side === 'cpu' ? null : prefs.side === 'home' ? 0 : 1;
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: prefs.quarterMinutes, accelClock: prefs.accelClock, difficulty: prefs.difficulty, penalties: prefs.penalties },
+    settings: { quarterMinutes: prefs.quarterMinutes, accelClock: prefs.accelClock, difficulty: prefs.difficulty, penalties: opts.practice ? false : prefs.penalties, practice: opts.practice || null },
     humanTeam,
     seed: opts.seed ?? (Date.now() % 1e9),
   });
@@ -76,11 +85,11 @@ function startGame(p, opts = {}) {
   for (const e of session.events) onSessionEvent(e);
 }
 
-function startReplay() {
+function startReplay(auto = false) {
   if (!session?.lastReplay) return;
   const player = new ReplayPlayer(session.lastReplay);
   const dir = player.ghost.dir;
-  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true };
+  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true, auto, endT: 0 };
   app = 'replay';
   screens.clear();
   playcall.hide();
@@ -106,6 +115,8 @@ function updateReplay(f, dt) {
   if (Math.abs(f.lx) > 0.2) { t += f.lx * dt * 3; r.playing = false; }
   else if (r.playing) t += dt * r.speed;
   if (t >= r.player.duration) { t = r.player.duration; r.playing = false; }
+  // An automatic replay closes itself shortly after the end.
+  if (r.auto && t >= r.player.duration && (r.endT += dt) > 1) { endReplay(); return; }
   r.alpha = r.player.seek(t);
   r.yaw += (f.rx || 0) * dt * 2;
   r.pitch = Math.min(1.35, Math.max(0.08, r.pitch - (f.ry || 0) * dt * 1.5));
@@ -171,6 +182,7 @@ function playSounds(e) {
 
 function onSessionEvent(e) {
   playSounds(e);
+  if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') hud.message(e, session);
   else if (e.type === 'result') hud.statCard(e.statLines, session.teams);
   else if (e.type === 'audible') hud.ticker(`Audible: ${e.play}`);
@@ -211,6 +223,11 @@ function frame(now) {
     consumed = true;
   } else if (app === 'game' && session) {
     if (f.pressed.Menu) { pause(); input.consume(); requestAnimationFrame(frame); return; }
+    // Automatic replay of a big play once the play-call screen is up.
+    if (autoReplayPending && session.state === 'playcall' && session.lastReplay) {
+      autoReplayPending = false;
+      startReplay(true); input.consume(); requestAnimationFrame(frame); return;
+    }
     // RS click between plays: instant replay of the last play.
     if (f.pressed.RS && session.lastReplay && (playcall.open || session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))) {
       startReplay(); input.consume(); requestAnimationFrame(frame); return;

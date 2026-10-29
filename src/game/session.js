@@ -36,7 +36,27 @@ export class GameSession {
     this.wait = 0;
     this.pendingPenalty = null;
     this.plays = 0;
+    // Practice: { side: 'offense'|'defense', yardLine, down, toGo, after: 'reset'|'continue' }.
+    // No clock, no penalties, no fatigue; the situation resets after each play (or when a drive ends).
+    this.practice = settings.practice || null;
+    if (this.practice) this.practiceReset();
     this.enterPlaycall();
+  }
+
+  practiceReset() {
+    const pr = this.practice;
+    const m = this.match;
+    const off = pr.side === 'offense' ? this.humanTeam : 1 - this.humanTeam;
+    m.over = false;
+    m.quarter = 1;
+    m.clock = m.settings.quarterMinutes * 60;
+    m.newPossession(off, pr.yardLine, 0);
+    m.down = pr.down;
+    m.toGo = Math.min(pr.toGo, 100 - pr.yardLine);
+    m.firstYL = Math.min(100, pr.yardLine + pr.toGo);
+    m.clockRunning = false;
+    m.timeouts = [3, 3];
+    m.takeMessages(); // no coin toss / drive chatter in practice
   }
 
   get offTeam() { return this.match.possession; }
@@ -273,7 +293,7 @@ export class GameSession {
       for (const e of sim.events) this.events.push(e);
       // Game clock runs during live plays (not during tries, or while a kick is in the air before it's touched).
       const kickInAir = sim.isKick && (sim.ball.state === 'kick' || sim.ball.state === 'tee' || sim.ball.state === 'snap');
-      if (m.phase !== 'try' && sim.state === 'live' && !kickInAir) m.tickClock(dt);
+      if (!this.practice && m.phase !== 'try' && sim.state === 'live' && !kickInAir) m.tickClock(dt);
       if (sim.state === 'dead' && (this.fast || sim.finished)) this.finishPlay();
       return;
     }
@@ -286,6 +306,7 @@ export class GameSession {
 
   realtimePresnap(dt) {
     const m = this.match;
+    if (this.practice) { this.presnapUsed += dt; return; } // no clocks in practice
     if (m.clockRunning && m.phase === 'scrimmage') m.presnapRunoff(dt);
     this.presnapUsed += dt;
     m.playClock = Math.max(0, m.playClock - dt);
@@ -328,6 +349,13 @@ export class GameSession {
     applyPlayFatigue(this.energy, sim, r.duration || 5);
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break
+    if (this.practice) {
+      // Fresh legs every rep; back to the chosen spot after each play, or when the drive is over.
+      restAll(this.energy, 1);
+      const off = this.practice.side === 'offense' ? this.humanTeam : 1 - this.humanTeam;
+      if (this.practice.after !== 'continue' || m.over || m.phase !== 'scrimmage' || m.possession !== off) this.practiceReset();
+      m.clockRunning = false;
+    }
     if (outcome && !outcome.accepted) m.say(outcome.text, 'penalty');
     this.flushMessages();
     // Who made the play and their game totals (skipped on tries and plays wiped out by a flag).

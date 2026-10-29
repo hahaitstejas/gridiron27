@@ -124,7 +124,7 @@ export class Hud {
   /** Post-play card: the players who made the play and their totals this game. */
   statCard(lines, teams) {
     const el = this.$('statcard');
-    if (!lines?.length) { el.classList.add('hidden'); return; }
+    if (!lines?.length || this.prefs?.statCard === false) { el.classList.add('hidden'); return; }
     el.innerHTML = '';
     for (const l of lines) {
       const t = teams[l.team];
@@ -210,7 +210,7 @@ export class Hud {
 
     // Name tags under the player you control and, if it's someone else, the ball carrier.
     const [tagMe, tagOther] = this.root.querySelectorAll('.tag');
-    const showTags = sim && session.humanTeam !== null && !playcallOpen && session.state !== 'playcall';
+    const showTags = sim && this.prefs?.nameTags !== false && session.humanTeam !== null && !playcallOpen && session.state !== 'playcall';
     const me = showTags ? sim.players[sim.controlledId] : null;
     const carrier = showTags && sim.state !== 'presnap' ? sim.carrier() : null;
     this.placeTag(tagMe, me && me.team === session.humanTeam ? me : null, renderer, session);

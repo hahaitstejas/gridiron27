@@ -38,7 +38,7 @@ export class Nav {
 
   get current() { return this.items[this.index]; }
 
-  activate() { this.current?.activate?.(); }
+  activate() { Nav.onSound?.('select'); this.current?.activate?.(); }
 
   move(dx, dy) {
     const el = this.current;
@@ -67,12 +67,13 @@ export class Nav {
     if (dir !== this.held) { this.held = dir; this.repeatT = 0.38; if (dir) this.step(dir); }
     else if (dir) { this.repeatT -= dt; if (this.repeatT <= 0) { this.repeatT = 0.11; this.step(dir); } }
     if (f.pressed.A) { this.activate(); return true; }
-    if (f.pressed.B && this.onBack) { this.onBack(); return true; }
-    if (this.onTab && (f.pressed.LB || f.pressed.RB)) { this.onTab(f.pressed.LB ? -1 : 1); return true; }
+    if (f.pressed.B && this.onBack) { Nav.onSound?.('back'); this.onBack(); return true; }
+    if (this.onTab && (f.pressed.LB || f.pressed.RB)) { Nav.onSound?.('move'); this.onTab(f.pressed.LB ? -1 : 1); return true; }
     return !!dir;
   }
 
   step(dir) {
+    Nav.onSound?.('move');
     if (dir === 'up') this.move(0, -1);
     else if (dir === 'down') this.move(0, 1);
     else if (dir === 'left') this.move(-1, 0);

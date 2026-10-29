@@ -5,7 +5,8 @@ import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { KEY_HELP } from '../input/keyboard.js';
 
 const SETTINGS_KEY = 'g27.settings';
-export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true };
+export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true,
+  volMaster: 8, volCrowd: 7, volSfx: 8 };
 
 export function loadPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return { ...DEFAULT_PREFS }; }
@@ -13,6 +14,9 @@ export function loadPrefs() {
 export function savePrefs(p) {
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ }
 }
+
+const VOL = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const volFmt = (v) => (v ? '▮'.repeat(v) + '▯'.repeat(10 - v) : 'Off');
 
 /** Menu screens rendered into a root element, navigated with Nav. */
 export class Screens {
@@ -138,6 +142,9 @@ export class Screens {
       option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'quarterMinutes', (v) => `${v} min`),
       option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `run to ${v}s` : 'Off')),
       option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off')),
+      option('Master volume', VOL, 'volMaster', volFmt),
+      option('Crowd volume', VOL, 'volCrowd', volFmt),
+      option('Effects volume', VOL, 'volSfx', volFmt),
     ];
     const save = el('div.start-btn', { text: 'Save' });
     save.activate = () => onSave(p);

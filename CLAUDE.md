@@ -83,6 +83,13 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
 
+### Audio (`src/audio/audio.js`)
+`GameAudio` synthesizes everything with the Web Audio API (no sample files): a crowd bed whose loudness follows
+the render loop's excitement value, crowd roars/groans from the home team's point of view (`teams[0]` is home),
+whistle, hits scaled by tackle power, catches, kicks, a "hut" on the snap, the stadium horn on home scores, and
+menu clicks (`Nav.onSound`). `main.js` maps session/sim events to sounds (`playSounds`). The context starts on the
+first key/pointer press (browser autoplay rules); volumes (master/crowd/effects, 0–10) are in Settings.
+
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/
 move, ball) from the snap to the end of the play; the session keeps the last one (`session.lastReplay`, not
@@ -116,6 +123,7 @@ src/data/              teams.js (32 original teams), names.js, csv.js (teams/ros
                        generator.js (players/rosters), depthChart.js, routes.js, playbook.js (loader + mirror),
                        playbooks/*.json (formations, offense, defense, special)
 src/replay/replay.js   instant replay recorder + ghost-sim player
+src/audio/audio.js     procedural Web Audio sounds + crowd
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
 src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu orbit camera.
@@ -127,7 +135,7 @@ tools/autosim.js       headless CPU-vs-CPU plays;  tools/gamesim.js  full games;
                        tools/separation.js  receiver openness;  tools/export-league.js;  tools/smoke.mjs  browser smoke test
 tests/                 Vitest unit tests
 ```
-Planned (later phases): `src/audio`, `src/franchise`, more of `src/ui` (editors),
+Planned (later phases): `src/franchise`, more of `src/ui` (editors),
 `src/data/storage.js`.
 
 ## Performance notes (target: 60 fps on an M3 MacBook Air, Chrome + Safari)
@@ -225,7 +233,7 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   2-pt tries with a 3-press kick meter, returns and fair catches, fumbles, penalties with enforcement,
   play-call screen (formation → play, flip, suggestions), CPU play calling, 4 difficulty tiers, score bug.
 - [ ] Phase 3 — large playbooks (done: 17 offensive / 8 defensive formations, 131 offensive / 53 defensive
-  plays, play action + bootlegs; audibles + hot routes; instant replay), audio, Practice mode, settings
+  plays, play action + bootlegs; audibles + hot routes; instant replay; audio), audio, Practice mode, settings
 - [ ] Phase 4 — league data, roster/team editors, CSV import/export, saves
 - [ ] Phase 5 — Franchise mode
 

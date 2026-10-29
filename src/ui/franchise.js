@@ -4,6 +4,7 @@ import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf } from '../franchise/franchise.js';
 import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
+import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
 import { deserializeLeague } from '../data/league.js';
 
@@ -111,6 +112,7 @@ export class FranchiseUI {
     add('Standings', 'Divisions, records, points', () => this.standingsScreen());
     add('Schedule & Results', 'Your games and every week\'s scores', () => this.scheduleScreen(f.phase === 'regular' ? f.week : f.weeks - 1));
     if (f.phase === 'playoffs') add('Playoff Bracket', 'Seeds and results', () => this.bracketScreen());
+    add('Team Stats', 'Your players\' season totals: passing, rushing, receiving, defense, kicking', () => this.teamStatsScreen());
     add('League Leaders', 'Season stats', () => this.leadersScreen());
     add('Roster', `${me.roster.length} players`, () => this.ctx.rosterScreen(f.userTeam, () => this.hub(items.length - 3)));
     add('Depth Chart', 'Starters and rotation', () => this.ctx.depthScreen(f.userTeam, () => this.hub(items.length - 2)));
@@ -195,6 +197,30 @@ export class FranchiseUI {
     back.activate = () => this.hub();
     screens.frame('stats-screen', el('h1', { text: 'Playoffs' }), el('div.fr-bracket', {}, rounds), back);
     screens.nav.set([back], { onBack: () => this.hub() });
+  }
+
+  // ---------- season stats (same tabs as the end-of-game stats) ----------
+  teamStatsScreen(tab = 0, mine = true) {
+    const { screens } = this.ctx;
+    const f = this.f, teams = this.teams, t = STAT_TABS[tab];
+    const list = Object.values(f.stats).filter((s) => (!mine || s.teamIdx === f.userTeam) && t.has(s)).sort((a, b) => t.sort(b) - t.sort(a));
+    const head = el('div.st-row.st-head', {}, el('span.st-team', { text: 'TM' }), el('span.st-name', { text: 'Player' }), el('span.st-num', { text: 'GP' }),
+      t.cols.map(([c]) => el('span.st-num', { text: c })));
+    const rows = list.map((s) => {
+      const tm = teams[s.teamIdx];
+      return el('div.st-row', { style: { borderLeftColor: tm?.colors.primary } }, el('span.st-team', { text: s.team }),
+        el('span.st-name', {}, el('b', { text: s.name }), el('small', { text: ` ${s.pos}` })), el('span.st-num', { text: String(s.gp) }),
+        t.cols.map(([, fn]) => el('span.st-num', { text: String(fn(s)) })));
+    });
+    const empty = el('div.st-empty', { text: 'No stats yet this season.' });
+    const go = (d) => this.teamStatsScreen((tab + d + STAT_TABS.length) % STAT_TABS.length, mine);
+    screens.frame('stats-screen', el('h1', { text: `${f.year} Season Stats` }),
+      el('div.pc-tabs', {}, STAT_TABS.map((x, i) => el(`div.pc-tab${i === tab ? '.on' : ''}`, { text: x.label }))),
+      el('div.st-team-filter', { text: mine ? `${teams[f.userTeam].city} ${teams[f.userTeam].name}` : 'Whole league' }),
+      el('div.st-table', {}, head, rows.length ? rows : empty),
+      el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> category &nbsp; <b class="btn X">X</b> my team / league &nbsp; ▲▼ scroll &nbsp; <b class="btn B">B</b> back' }));
+    screens.nav.set(rows.length ? rows : [empty], { columns: 1, onBack: () => this.hub(), onTab: go });
+    screens.extraButtons = (fr) => { if (fr.pressed.X) this.teamStatsScreen(tab, !mine); };
   }
 
   // ---------- leaders ----------

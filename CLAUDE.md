@@ -132,6 +132,8 @@ rounds}, history[], seed, offseason{step, …} }`.
   then team totals split into box-score lines for the depth chart's players (same fields as Match stats). CPU
   games and "Sim this game" use it; games the human plays record their real Match stats (`matchToResult`). The
   session gets `franchiseGame`; the final screen's button returns to the hub (`FranchiseUI.recordPlayed`).
+- Hub Team Stats (`FranchiseUI.teamStatsScreen`): season totals in `f.stats` shown with the end-of-game `STAT_TABS`
+  (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →
   rounds → offseason), `startNextSeason`.
 - `offseason.js`: steps summary → progression (`progressPlayers`: age +1, growth/decline by age and hidden `pot`,

@@ -389,7 +389,10 @@ function runSpecialAI(sim, dt) {
         const lat0 = sim.toLocal(p.alignX, p.alignZ).lat;
         const d = Math.hypot(tgt.x - p.x, tgt.z - p.z);
         const laneZ = tgt.z + sim.dir * lat0 * clamp((d - 8) / 40, 0, 0.6);
-        if (ret && d < 14) seek(p, ret.x, ret.z, 1, 0.1);
+        if (b.state === 'kick' && (k.style === 'onside' || b.bounces > 0)) {
+          // Onside or loose kick: attack the ball itself (leading a rolling ball a little).
+          seek(p, b.x + b.vx * 0.25, b.z + b.vz * 0.25, 1, 0.05);
+        } else if (ret && d < 14) seek(p, ret.x, ret.z, 1, 0.1);
         else seek(p, tgt.x - sim.dir * (d > 15 ? 4 : 0), laneZ, 1, 0.5);
         break;
       }

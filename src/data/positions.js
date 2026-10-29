@@ -65,8 +65,10 @@ export function overall(player) {
   if (!w) return 50;
   let s = 0, t = 0;
   for (const k in w) { s += (player.ratings[k] ?? 40) * w[k]; t += w[k]; }
-  // Spread the raw weighted average so stars land in the 90s and backups in the 50s-60s.
-  return Math.max(30, Math.min(99, Math.round((s / t - 70) * 1.35 + 74)));
+  // The weighted average of the position's key ratings (no stretching, so real-style ratings give
+  // real-style overalls). ovrAdj (from an OVR column in roster.csv) pins the displayed number to a
+  // source's overall while rating edits still move it.
+  return Math.max(25, Math.min(99, Math.round(s / t + (player.ovrAdj || 0))));
 }
 
 export const JERSEY_RANGES = {

@@ -36,7 +36,7 @@ export function toCSV(objs, header) {
   return [header.join(','), ...objs.map((o) => header.map((h) => esc(o[h])).join(','))].join('\n') + '\n';
 }
 
-const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1])];
+const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR'];
 const POS_ALIAS = { RB: 'HB', LB: 'OLB', ILB: 'MLB', NB: 'CB', S: 'FS', OT: 'T', OG: 'G', EDGE: 'DE', NT: 'DT', PK: 'K',
   // Depth-chart slot names work as positions too.
   LT: 'T', RT: 'T', LG: 'G', RG: 'G', LE: 'DE', RE: 'DE', LOLB: 'OLB', ROLB: 'OLB', SAM: 'OLB', WILL: 'OLB', MIKE: 'MLB' };
@@ -74,6 +74,10 @@ export function importRosterRows(teams, rows, seed = 77) {
     if (row.height) p.height = +row.height;
     if (row.weight) p.weight = +row.weight;
     if (row.college) p.college = row.college;
+    // Optional OVR column: show that overall (kept as an offset from the computed one).
+    const ovr = parseInt(row.OVR ?? row.ovr, 10);
+    delete p.ovrAdj;
+    if (Number.isFinite(ovr)) p.ovrAdj = Math.max(-30, Math.min(30, ovr - overall(p)));
     p.ovr = overall(p);
     const isFull = full.has(team.abbr.toUpperCase());
     if (!isFull) p.pinned = (team._pinCount[pos] = (team._pinCount[pos] || 0) + 1);
@@ -107,6 +111,7 @@ export function exportRosterCSV(teams) {
   for (const t of teams) for (const p of t.roster) {
     const o = { team: t.abbr, first: p.first, last: p.last, pos: p.pos, number: p.number, age: p.age, height: p.height, weight: p.weight, college: p.college };
     for (const [key, code] of RATINGS) o[code] = p.ratings[key];
+    o.OVR = overall(p);
     rows.push(o);
   }
   return toCSV(rows, ROSTER_HEADER);

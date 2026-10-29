@@ -181,7 +181,9 @@ Planned (Phase 5): `src/franchise`.
 0–99. Keys (CSV short code): speed SPD, acceleration ACC, agility AGI, strength STR, awareness AWR,
 catching CTH, carrying CAR, breakTackle BTK, throwPower THP, throwAccuracy THA, runBlock RBK, passBlock PBK,
 passRush PRS, blockShed BSH, tackling TAK, hitPower POW, coverage COV, routeRunning RTE, kickPower KPW,
-kickAccuracy KAC. Overall is derived per position (`data/positions.js: overall()`).
+kickAccuracy KAC. Overall is derived per position (`data/positions.js: overall()`): the weighted average of that
+position's key ratings, plus an optional per-player offset `ovrAdj` set from an `OVR` column in roster.csv. Overall
+is for display and depth-chart ordering only: gameplay reads the individual ratings.
 
 ### Formations (`src/data/playbooks/formations.json`)
 ```json
@@ -230,7 +232,7 @@ BOS,Marcus,Hale,QB,12,27,75,221,Granite U,72,75,70,58,80,40,60,50,90,85,30,30,30
 `team` = team abbreviation; `pos` ∈ QB HB FB WR TE T G C DE DT OLB MLB CB FS SS K P (aliases accepted: RB→HB,
 LB→OLB, ILB→MLB, NB→CB, S→FS, OT→T, OG→G, EDGE→DE, NT→DT, and the depth slot names LT/RT→T,
 LG/RG→G, LE/RE→DE, LOLB/ROLB→OLB); height in inches, weight in lbs. Only `team`,
-`first`, `last`, `pos` are required. Blank/missing ratings use the position template; blank `number` keeps
+`first`, `last`, `pos` are required. An optional `OVR` column sets the displayed overall (exports include it). Blank/missing ratings use the position template; blank `number` keeps
 or auto-assigns a number. A file may list just a few players: each one replaces the best generated player
 at that position and is **pinned** to the top of the depth chart in file order (e.g. list CBs as
 CB1, CB2, nickel, CB4). Implemented in `src/data/csv.js` (`parseCSV`, `importRosterRows`, `exportRosterCSV`).

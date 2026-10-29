@@ -108,3 +108,17 @@ describe('in-game spreadsheet import', () => {
     expect(csvKind(parseCSV('a,b\n1,2'))).toBeNull();
   });
 });
+
+describe('OVR column', () => {
+  it('shows the overall from the file, and rating edits still move it', async () => {
+    const { overall } = await import('../src/data/positions.js');
+    const teams = generateLeagueRosters(defaultTeams(), 31);
+    const csv = 'team,first,last,pos,number,THA,THP,AWR,SPD,AGI,OVR\n' + `${teams[0].abbr},Pinned,Passer,QB,9,88,90,85,70,70,81`;
+    importRosterRows(teams, parseCSV(csv));
+    const p = teams[0].roster.find((q) => q.last === 'Passer');
+    expect(p.ovr).toBe(81);
+    p.ratings.throwAccuracy = 99;
+    expect(overall(p)).toBeGreaterThan(81);
+    expect(parseCSV(exportRosterCSV(teams)).find((r) => r.last === 'Passer').OVR).toBe(String(overall(p)));
+  });
+});

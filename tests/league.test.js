@@ -78,3 +78,27 @@ describe('roster edits', () => {
     for (const t of [a, b]) for (const ids of Object.values(t.depth)) for (const id of ids) expect(t.roster.some((q) => q.id === id)).toBe(true);
   });
 });
+
+describe('league identity', () => {
+  it('league name, conference names and logo survive a save, and reset to defaults', async () => {
+    const { LEAGUE, setLeagueInfo } = await import('../src/data/leagueInfo.js');
+    const { CONFERENCES } = await import('../src/data/teams.js');
+    const { PLAYOFF_ROUND_NAMES } = await import('../src/franchise/season.js');
+    const { serializeLeague: ser, deserializeLeague: de } = await import('../src/data/league.js');
+    const { generateLeagueRosters: gen } = await import('../src/data/generator.js');
+    const { defaultTeams: dt } = await import('../src/data/teams.js');
+    const lg = gen(dt(), 3);
+    LEAGUE.name = 'Coastal League'; LEAGUE.championship = 'Coastal Bowl';
+    LEAGUE.logo.text = 'CL'; CONFERENCES[0] = 'Atlantic'; CONFERENCES[1] = 'Pacific';
+    const json = JSON.parse(JSON.stringify(ser(lg)));
+    setLeagueInfo(null);
+    expect(CONFERENCES[0]).toBe('Liberty');
+    de(json);
+    expect(LEAGUE.name).toBe('Coastal League');
+    expect(LEAGUE.logo.text).toBe('CL');
+    expect(CONFERENCES).toEqual(['Atlantic', 'Pacific']);
+    expect(PLAYOFF_ROUND_NAMES[PLAYOFF_ROUND_NAMES.length - 1]).toBe('Coastal Bowl');
+    setLeagueInfo(null);
+    expect(CONFERENCES).toEqual(['Liberty', 'Frontier']);
+  });
+});

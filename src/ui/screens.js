@@ -5,7 +5,7 @@ import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { KEY_HELP } from '../input/keyboard.js';
 
 const SETTINGS_KEY = 'g27.settings';
-export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
+export const DEFAULT_PREFS = { font: 'broadcast', home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
   nameTags: true, statCard: true, autoReplay: true, camera: 'standard', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
 
@@ -45,6 +45,12 @@ const ICONS = {
   disk: svg('<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>'),
   pad: svg('<path d="M6 8h12a4 4 0 0 1 3.8 5.2l-1.2 3.6a2.2 2.2 0 0 1-3.9.6L15 15H9l-1.7 2.4a2.2 2.2 0 0 1-3.9-.6l-1.2-3.6A4 4 0 0 1 6 8z"/><path d="M7 11v3M5.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/>'),
 };
+
+// Font sets (see the :root[data-font] rules at the top of style.css).
+export const FONTS = { broadcast: 'Broadcast (Oswald)', stadium: 'Stadium (Bebas Neue)', tech: 'Tech (Saira Condensed)', arcade: 'Arcade (Teko)', classic: 'Classic (Arial)' };
+export function applyFont(key) {
+  document.documentElement.dataset.font = FONTS[key] ? key : 'broadcast';
+}
 
 export class Screens {
   constructor(root, nav) {
@@ -217,13 +223,20 @@ export class Screens {
   }
 
   /** Grid of all teams with logos; A picks one. */
-  teamPicker(teams, focus, { title, onPick, onBack }) {
+  /** Team grid. `extra` = { label, sub, logo, onPick } adds a card in front (e.g. League & Conferences). */
+  teamPicker(teams, focus, { title, onPick, onBack, extra = null }) {
     this.extraButtons = null;
     const cards = teams.map((t, i) => {
       const c = el('div.tp-card', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 56), el('div.tp-card-name', { text: `${t.city} ${t.name}` }), el('div.tp-card-abbr', { text: t.abbr }));
       c.activate = () => onPick(i);
       return c;
     });
+    if (extra) {
+      const c = el('div.tp-card.tp-extra', {}, logoCanvas(extra.logo, 56), el('div.tp-card-name', { text: extra.label }), el('div.tp-card-abbr', { text: extra.sub }));
+      c.activate = extra.onPick;
+      cards.unshift(c);
+      focus = focus < 0 ? 0 : focus + 1;
+    }
     this.frame('setup-screen', el('h1', { text: title }), el('div.tp-grid', {}, cards),
       el('div.setup-help', { html: '<b class="btn A">A</b> pick &nbsp; <b class="btn B">B</b> back' }));
     this.nav.set(cards, { columns: 8, onBack, index: Math.max(0, focus) });
@@ -261,11 +274,18 @@ export class Screens {
       draw();
       return row;
     };
+    // Font: previews live as you change it (Cancel / B puts the saved one back).
+    const fontRow = option('Font', Object.keys(FONTS), 'font', (k) => FONTS[k]);
+    const spin = fontRow.spin;
+    fontRow.spin = (dd) => { spin(dd); applyFont(p.font); };
+    const back = onBack;
+    onBack = () => { applyFont(prefs.font); back(); };
     const rows = [
       option('Default difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'quarterMinutes', (v) => `${v} min`),
       option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `run to ${v}s` : 'Off')),
       option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off')),
+      fontRow,
       option('Camera', Object.keys(CAMERAS), 'camera', (k) => CAMERAS[k]),
       option('Name tags', [true, false], 'nameTags', (v) => (v ? 'On' : 'Off')),
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),

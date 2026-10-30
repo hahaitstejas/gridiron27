@@ -3,6 +3,7 @@
 import { setNextPlayerId } from './generator.js';
 import { overall } from './positions.js';
 import { buildDepthChart } from './depthChart.js';
+import { setLeagueInfo, leagueInfoJSON } from './leagueInfo.js';
 
 export const SAVE_VERSION = 1;
 
@@ -14,6 +15,7 @@ export function serializeLeague(teams, { name = 'My League', playAs = null, fran
     franchise: franchise ? JSON.parse(JSON.stringify(franchise)) : null, // franchise mode state (src/franchise)
     savedAt: new Date().toISOString(),
     playAs,
+    info: leagueInfoJSON(), // league name, conference names, league logo
     teams: teams.map((t) => {
       const { _img, ...logo } = t.logo || {};
       return {
@@ -50,6 +52,7 @@ export function deserializeLeague(data) {
     return { ...t, id: t.id ?? i, colors: { ...t.colors }, logo: { ...t.logo }, roster, depth };
   });
   setNextPlayerId(maxId + 1);
+  setLeagueInfo(data.info || null);
   return { teams, playAs: data.playAs ?? null, name: data.name || 'My League', franchise: data.franchise || null };
 }
 

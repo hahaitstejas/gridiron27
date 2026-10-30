@@ -4,6 +4,7 @@
 import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats, STAT_FIELDS } from './season.js';
 import { quickSim } from './quicksim.js';
 import { RNG } from '../core/rng.js';
+import { LEAGUE } from '../data/leagueInfo.js';
 import { setupMoney, cpuTrades } from './contracts.js';
 import { makeConditions } from '../game/weather.js';
 import { addNews, gameNews, checkGameRecords, checkSeasonRecords, giveAwards } from './extras.js';
@@ -160,7 +161,7 @@ export function advance(f, teams) {
     if (next) { f.playoffs.rounds.push(next); return true; }
     const champ = championOf(f.playoffs);
     const rec = standings(teams, f.schedule).find((r) => r.team === f.userTeam);
-    addNews(f, `${teams[champ].city} ${teams[champ].name} win the ${f.year} Gridiron Championship!`, 'playoff');
+    addNews(f, `${teams[champ].city} ${teams[champ].name} win the ${f.year} ${LEAGUE.championship}!`, 'playoff');
     f.history.push({ year: f.year, champion: champ, championName: `${teams[champ].city} ${teams[champ].name}`, record: `${rec.w}-${rec.l}${rec.t ? '-' + rec.t : ''}`, madePlayoffs: f.playoffs.seeds.flat().includes(f.userTeam) });
     f.phase = 'offseason';
     f.offseason = { step: 'summary' };

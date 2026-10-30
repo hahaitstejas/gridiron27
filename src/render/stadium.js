@@ -51,9 +51,9 @@ export function buildStadium(renderer, home, away) {
   field.receiveShadow = true;
   group.add(field);
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
-  const setTeams = (h, a) => {
+  const setTeams = (h, a, opts = {}) => {
     if (fieldMat.map) fieldMat.map.dispose();
-    const tex = new THREE.CanvasTexture(makeFieldCanvas(h, a));
+    const tex = new THREE.CanvasTexture(makeFieldCanvas(h, a, opts));
     tex.anisotropy = maxAniso;
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.generateMipmaps = true;
@@ -262,7 +262,7 @@ export function buildStadium(renderer, home, away) {
     sky: skyUniforms,
     lampMat,
     snow,
-    setTeams: (h, a) => { setTeams(h, a); fillCrowdColors(h, a); },
+    setTeams: (h, a, opts) => { setTeams(h, a, opts); fillCrowdColors(h, a); },
     setBoardText,
     update(dt, excitement) {
       time += dt;

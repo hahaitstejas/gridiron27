@@ -119,7 +119,7 @@ export class GameRenderer {
     this.rig.resize(w / h);
   }
 
-  setTeams(home, away) { this.stadium.setTeams(home, away); }
+  setTeams(home, away, opts) { this.stadium.setTeams(home, away, opts); }
 
   /** Lower the pixel ratio if frames run long (keeps 60fps on integrated GPUs). */
   adapt(frameMs) {

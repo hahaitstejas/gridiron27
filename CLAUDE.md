@@ -214,6 +214,21 @@ nearest item in that direction by on-screen rectangles (any layout). Shared styl
 (`--skew`), gold focus edge, `--accent` = your team's primary color (set by the hub), stripe background, fixed bottom
 hint bar (`.setup-help`). The design is our own; don't copy other games' menus or trade dress.
 
+### Fonts
+Three CSS roles at the top of style.css: `--fd` display (titles, scorebug, big numbers), `--fc` condensed labels, `--fb`
+body. Settings → Font switches sets via `html[data-font]` (`FONTS` / `applyFont()` in screens.js, live preview):
+broadcast (Oswald + Barlow, default), stadium (Bebas Neue), tech (Saira Condensed + Rajdhani), arcade (Teko + Rajdhani),
+classic (Arial). Fonts are bundled from `@fontsource/*` (imported at the top of main.js; OFL, offline). Canvas text
+(field numbers, jerseys, logos) still uses its own fonts. The post-play stat card sits top-left (clear of the scorebug).
+
+### League identity (`data/leagueInfo.js`)
+`LEAGUE = { name, championship, logo }` plus the two conference names (written into `CONFERENCES` in place, so every
+screen picks them up; the last `PLAYOFF_ROUND_NAMES` entry follows `championship`). Saved in the league file (`info`,
+applied by `deserializeLeague` → `setLeagueInfo`). Edited in League → Teams & Logos → "League & Conferences" card
+(`leagueEditor` in teamEditor.js, shares `rowKit` with the team editor; logo builder or uploaded image). The field
+(`makeFieldCanvas(home, away, { championship })`) paints the league logo at both 25-yard lines and, in the
+championship game (`renderer.setTeams(..., { championship })` from startGame), at midfield.
+
 ### Scorebug
 `Hud.renderBug()`: a full-width bar along the bottom (layout from the user's design): GRIDIRON 27 | away logo panel |
 `(rec) AWY [timeout bars] • score × score • HOM (rec)` (dot = possession) | home logo panel | quarter, clock and a boxed

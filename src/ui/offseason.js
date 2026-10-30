@@ -1,4 +1,5 @@
 import { el } from './nav.js';
+import { LEAGUE } from '../data/leagueInfo.js';
 import { POSITIONS } from '../data/positions.js';
 import { startNextSeason } from '../franchise/franchise.js';
 import {
@@ -36,7 +37,7 @@ const row = (cells, cls = '') => el(`div.st-row${cls}`, {}, cells);
 function summary(ctx, ui, f) {
   const h = f.history[f.history.length - 1];
   const past = f.history.slice().reverse().map((x) => row([el('span.st-team', { text: String(x.year) }), el('span.st-name', { text: `Champion: ${x.championName}` }), el('span.st-num', { text: x.record })]));
-  frame(ctx, `${h.year} Season Complete`, `${h.championName} won the Gridiron Championship · you went ${h.record}${h.madePlayoffs ? ' and made the playoffs' : ''}`,
+  frame(ctx, `${h.year} Season Complete`, `${h.championName} won the ${LEAGUE.championship} · you went ${h.record}${h.madePlayoffs ? ' and made the playoffs' : ''}`,
     el('div.st-table', {}, past),
     [button('Start the offseason', () => { progressPlayers(f, ctx.teams); save(ctx); offseasonScreen(ctx, ui); }), button('Main Menu', ctx.onExit, '.secondary')],
     'Players age a year, then contracts, free agency, the draft and cut-downs.');

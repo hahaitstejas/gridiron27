@@ -1,3 +1,18 @@
+// Bundled fonts (offline): the Settings -> Font sets in style.css.
+import '@fontsource/oswald/500.css';
+import '@fontsource/oswald/700.css';
+import '@fontsource/bebas-neue/400.css';
+import '@fontsource/saira-condensed/700.css';
+import '@fontsource/saira-condensed/800.css';
+import '@fontsource/teko/500.css';
+import '@fontsource/teko/600.css';
+import '@fontsource/rajdhani/500.css';
+import '@fontsource/rajdhani/700.css';
+import '@fontsource/barlow/400.css';
+import '@fontsource/barlow/600.css';
+import '@fontsource/barlow/700.css';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
@@ -6,11 +21,13 @@ import { deserializeLeague } from './data/league.js';
 import { activeSlot, readSave } from './data/storage.js';
 import { LeagueUI, attachLogos } from './ui/league.js';
 import { rosterScreen } from './ui/rosterEditor.js';
-import { teamEditor } from './ui/teamEditor.js';
+import { teamEditor, leagueEditor } from './ui/teamEditor.js';
+import { LEAGUE } from './data/leagueInfo.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
 import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.js';
+import { PLAYOFF_ROUND_NAMES } from './franchise/season.js';
 import { makeConditions, conditionsText } from './game/weather.js';
 import { RNG } from './core/rng.js';
 import { InputManager } from './input/input.js';
@@ -18,7 +35,7 @@ import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
-import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
+import { Screens, loadPrefs, savePrefs, applyFont } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen } from './ui/depthEditor.js';
@@ -31,6 +48,7 @@ import { energyOf } from './game/fatigue.js';
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 const prefs = loadPrefs();
+applyFont(prefs.font);
 // A saved league (Phase 4) wins; without one, the optional spreadsheets in public/local/ apply.
 let saved = null;
 try { const slot = activeSlot(); saved = slot ? deserializeLeague(await readSave(slot)) : null; } catch (e) { console.warn('Could not load the saved league', e); }
@@ -70,7 +88,11 @@ const pickTeam = (title, onPick, onBack, focus = prefs.home) => screens.teamPick
 const rosterCtx = { screens, teams, onBack: () => league.menu(0), onChange: () => league.changed(), pickTeam };
 const teamCtx = { screens, teams, prefs, pickTeam, onChange: () => { savePrefs(prefs); league.changed(); },
   onBack: () => { renderer.setTeams(teams[prefs.home], teams[prefs.away]); league.onTeams(); } };
-league.onTeams = () => pickTeam('Teams & logos: pick a team', (i) => teamEditor(teamCtx, i), () => league.menu(1));
+league.onTeams = (focus = prefs.home) => screens.teamPicker(teams, focus, {
+  title: 'Teams & logos: pick a team', onPick: (i) => teamEditor(teamCtx, i), onBack: () => league.menu(1),
+  extra: { label: 'League & Conferences', sub: `${LEAGUE.name} · logo, names`, logo: LEAGUE.logo,
+    onPick: () => leagueEditor({ ...teamCtx, onBack: () => league.onTeams(-1) }) },
+});
 const franchiseUI = new FranchiseUI({
   teams, prefs, screens, league, pickTeam,
   onExit: () => toMenu(),
@@ -119,7 +141,7 @@ function toMenu() {
     onLeague: () => league.menu(),
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
-    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
+    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); applyFont(prefs.font); toMenu(); }, onBack: toMenu }),
     onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
     onSaves: () => league.saves(0, toMenu),
   }, {
@@ -156,7 +178,10 @@ function startGame(p, opts = {}) {
   session.franchiseGame = opts.franchise || null;
   // Season records on the scorebug (franchise games; exhibitions show 0-0).
   if (opts.franchise && league.franchise) session.records = [home, away].map((t) => { const r = recordOf(league.franchise, teams, teams.indexOf(t)); return `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`; });
-  renderer.setTeams(home, away);
+  // The championship game: league logo at midfield.
+  const f = league.franchise;
+  const championship = !!(opts.franchise && f?.phase === 'playoffs' && f.playoffs.rounds.length >= PLAYOFF_ROUND_NAMES.length);
+  renderer.setTeams(home, away, { championship });
   renderer.setConditions(conditions);
   hud.ticker(conditionsText(conditions));
   screens.clear();

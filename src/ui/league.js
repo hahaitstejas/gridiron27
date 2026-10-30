@@ -1,15 +1,16 @@
 import { el } from './nav.js';
 import { serializeLeague, deserializeLeague } from '../data/league.js';
+import { LEAGUE, setLeagueInfo } from '../data/leagueInfo.js';
 import { defaultTeams } from '../data/teams.js';
 import { generateLeagueRosters } from '../data/generator.js';
 import { writeSave, readSave, deleteSave, listSaves, activeSlot, setActiveSlot, downloadFile, pickFile, loadImage } from '../data/storage.js';
 
 /** Attach logo images (uploaded data URLs or files in public/local/logos) to teams. */
 export async function attachLogos(teams) {
-  await Promise.all(teams.map(async (t) => {
+  await Promise.all([...teams.map(async (t) => {
     const src = t.logo?.dataUrl || (t.logo?.image ? `/local/logos/${t.logo.image}` : null);
     t.logo._img = src ? await loadImage(src) : null;
-  }));
+  }), (async () => { LEAGUE.logo._img = LEAGUE.logo.dataUrl ? await loadImage(LEAGUE.logo.dataUrl) : null; })()]);
 }
 
 /**
@@ -145,6 +146,7 @@ export class LeagueUI {
       if (!window.confirm('Switch to a fresh default league? Your current league stays in its save slot.')) return;
       this.slot = null; setActiveSlot(null);
       this.franchise = null;
+      setLeagueInfo(null);
       await this.replaceLeague(generateLeagueRosters(defaultTeams(), 2027), 'My League');
       this.status = 'Default league';
       this.saves(0);

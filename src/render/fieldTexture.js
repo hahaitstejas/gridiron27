@@ -1,5 +1,6 @@
 import { HASH_Z, HALF_WIDTH } from '../core/constants.js';
 import { drawLogo } from './logo.js';
+import { LEAGUE } from '../data/leagueInfo.js';
 
 // The field texture covers x in [-FX, FX] and z in [-FZ, FZ] (yards).
 export const FX = 66;
@@ -7,7 +8,8 @@ export const FZ = 33;
 const S = 30; // pixels per yard
 
 /** Paint the field: turf stripes, lines, hashes, numbers, end zones and midfield logo. */
-export function makeFieldCanvas(home, away) {
+/** opts.championship: the league logo takes midfield (the title game is on a neutral field). */
+export function makeFieldCanvas(home, away, opts = {}) {
   const W = Math.round(FX * 2 * S), H = Math.round(FZ * 2 * S);
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
@@ -103,13 +105,13 @@ export function makeFieldCanvas(home, away) {
       g.restore();
     }
   }
-  // Midfield logo.
-  drawLogo(g, home.logo, px(0), pz(0), 4.2 * S);
-  // Small logos at the 25s.
+  // Midfield: the home team's logo (the league's in the championship game).
+  drawLogo(g, opts.championship ? LEAGUE.logo : home.logo, px(0), pz(0), 4.2 * S);
+  // League logo at both 25-yard lines.
   for (const x of [-25, 25]) {
     g.save();
-    g.globalAlpha = 0.85;
-    drawLogo(g, home.logo, px(x), pz(0), 1.6 * S);
+    g.globalAlpha = 0.9;
+    drawLogo(g, LEAGUE.logo, px(x), pz(0), 1.9 * S);
     g.restore();
   }
   // Team-colored sideline "coaches box" stripes.

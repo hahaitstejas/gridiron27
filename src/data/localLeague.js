@@ -8,6 +8,8 @@ import { parseCSV, importRosterRows, importTeamsRows, importDepthRows } from './
 // Files are applied in that order. Run `npm run export-league` to create editable copies.
 
 async function fetchCSV(path, firstCol) {
+  // The offline single-file build opens from disk, where fetch can't read files: saves/imports cover that case.
+  if (location.protocol === 'file:') return null;
   try {
     const res = await fetch(path, { cache: 'no-store' });
     if (!res.ok) return null;

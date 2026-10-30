@@ -15,6 +15,7 @@ npm run games -- --games 16 --quarter 15  # headless full CPU-vs-CPU games (rule
 npm run export-league  # write editable league spreadsheets to public/local/ (see below)
 npm run bot          # scripted 'human' exploits vs CPU defense  (-- --difficulty rookie|pro|allpro|legend)
 npm run build        # production build to dist/
+npm run build:offline  # ONE self-contained file: dist-offline/Gridiron27.html (double-click, no server, no wifi)
 ```
 
 URL flags (dev server):
@@ -255,6 +256,24 @@ flight (`WIND_PUSH`, landing prediction included) and adds drift + scatter to de
 sets lights, fog, sky gradient (stadium `sky` uniforms), light-tower lamps, the snow layer on the field and
 `Precipitation` (rain streaks / snow points, one draw call each, animated in the vertex shader around the camera).
 The kick hint shows the wind (arrow from the camera's view). `npm run games -- --weather rain` measures the effect.
+
+### Offline single file
+`npm run build:offline` (vite mode `offline`, `vite-plugin-singlefile`, then `tools/offline.mjs` renames it) inlines all JS,
+CSS and the Saira fonts into `dist-offline/Gridiron27.html` (git-ignored, ~1.5 MB). It never copies `public/` and skips the
+`public/local/` spreadsheet fetches on `file:` (`localLeague.js`): a file opened from disk is its own browser origin, so
+bring a league over with League → Saves & Files → export / import `.g27.json`.
+
+### Presentation (Phase 6, render-only: `render/presentation.js`, `render/players.js`)
+- Players: capsule limbs, lathe torso, PBR materials with a `RoomEnvironment` env map (players only), facemask, shoulder
+  caps, numbers on chest/back/shoulders. Poses crossfade (`blend()`: 0.12 s for fast anims, 0.22 s otherwise); falls keep
+  their direction (`FALL`). Catch / pick / huddle / clap poses and officials' signals (`sig_*`).
+- `Presentation.frame(session, sim, dt)` returns `{ display, refs, ballAt }` proxies the renderer draws instead of the sim:
+  between plays the teams get up, jog to huddles (`HUDDLE_DELAY`), break with a clap and run to the formation during
+  the session's line-up window (`LINEUP_T` in session.js: a human can't snap before it ends). Seven officials (`CREW`)
+  follow the ball, signal touchdowns / incompletions / first downs / flags, and the referee faces the camera to announce
+  an enforced penalty (`SIGNAL` per foul type). The sim never sees any of this.
+- `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
+- Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js).
 
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/

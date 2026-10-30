@@ -4,3 +4,4 @@ dist/
 *.log
 test-output/
 public/local/
+dist-offline/

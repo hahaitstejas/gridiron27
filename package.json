@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:offline": "vite build --mode offline && node tools/offline.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "sim": "node tools/autosim.js",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "vite": "^8.3.5",
+    "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.0.5"
   }
 }

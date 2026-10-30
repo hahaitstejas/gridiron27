@@ -18,6 +18,16 @@ Open **http://localhost:5173** in Chrome or Safari. Turn on your Xbox controller
 and press **A** — or press **Enter** to use the keyboard. Pick **Play Now**, choose teams, which side you
 control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalties, then **Start Game**.
 
+**No wifi?** Build one self-contained file once:
+
+```bash
+npm run build:offline
+```
+
+Then double-click `dist-offline/Gridiron27.html` (or drag it onto Chrome / Safari) anytime: no server, no internet.
+Copy it anywhere you like. A file opened from disk keeps its own saves, so to bring your league over use
+League → Saves & Files → Export, then Import in the offline copy.
+
 ### Controls
 | | Xbox | Keyboard |
 |---|---|---|

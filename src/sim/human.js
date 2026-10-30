@@ -21,7 +21,7 @@ export function applyHuman(sim, inp, dt) {
   const onOffense = p.team === sim.possTeam;
 
   if (!onOffense) {
-    if (inp.pressed.B) {
+    if (inp.pressed.B && sim.lockId < 0) {
       // Switch to the defender nearest the ball (or the next nearest if that's me).
       const b = sim.ball;
       const cands = sim.players.filter((q) => q.team === p.team && q.state !== 'down')
@@ -100,7 +100,7 @@ function handlePassing(sim, qb, inp) {
     // Placement: hold LB for a high pass (over underneath defenders), LT for a low one (away from them).
     const place = inp.down.LB ? 'high' : inp.lt > 0.5 ? 'low' : null;
     if (startThrow(sim, qb, rec, kind, lead, place)) {
-      sim.controlledId = rec.id; // follow the receiver once the ball is out
+      if (sim.lockId < 0) sim.controlledId = rec.id; // follow the receiver once the ball is out (not in career mode)
       sim.emit('userThrow', { kind, btn: st.btn });
     }
     st.btn = null;

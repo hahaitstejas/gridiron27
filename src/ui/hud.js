@@ -212,7 +212,11 @@ export class Hud {
     }
     const hint = this.$('hint');
     let h = '';
-    if (pre && session.humanSide === 'offense') {
+    const career = session.lock !== null && session.lock !== undefined && sim && sim.lockId >= 0 && !session.watching;
+    if (pre && career && !session.calls(session.humanSide === 'offense' ? session.offTeam : session.defTeam)) {
+      const me = sim.players[sim.lockId];
+      h = `Career: you're <b>#${me.number} ${me.name || ''}</b> (${me.slot}) &nbsp; the CPU calls and snaps &nbsp; <b class="btn view">View</b> Timeout`;
+    } else if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}<b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;

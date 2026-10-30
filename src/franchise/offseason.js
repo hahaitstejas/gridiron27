@@ -37,15 +37,18 @@ export function progressPlayers(f, teams) {
       // Skill growth by age; young players with high potential grow most.
       const skill = age <= 23 ? rng.gauss(2.5 + p.pot * 3, 1.5) : age <= 26 ? rng.gauss(1 + p.pot * 1.5, 1.3) : age <= 29 ? rng.gauss(0, 1)
         : age <= 32 ? -rng.gauss(1.5, 1) : -rng.gauss(3, 1.4);
-      const phys = age <= 25 ? rng.gauss(0.5, 0.8) : age <= 28 ? rng.gauss(-0.3, 0.6) : age <= 31 ? -rng.gauss(1.5, 0.8) : -rng.gauss(3, 1.2);
+      // The career player grows through the points he earns (franchise/career.js), not by chance: only age fades him.
+      const mine = p.career;
+      const phys = mine && age <= 29 ? 0 : age <= 25 ? rng.gauss(0.5, 0.8) : age <= 28 ? rng.gauss(-0.3, 0.6) : age <= 31 ? -rng.gauss(1.5, 0.8) : -rng.gauss(3, 1.2);
       const keys = new Set([...Object.keys(OVERALL_WEIGHTS[p.pos] || {}), 'awareness']);
-      for (const k of keys) if (!PHYS.includes(k)) p.ratings[k] = clampR(p.ratings[k] + skill + rng.gauss(0, 0.8));
+      if (!mine || age > 30) for (const k of keys) if (!PHYS.includes(k)) p.ratings[k] = clampR(p.ratings[k] + (mine ? Math.min(0, skill) : skill + rng.gauss(0, 0.8)));
       for (const k of PHYS) p.ratings[k] = clampR(p.ratings[k] + phys + rng.gauss(0, 0.6));
       if (p.pos !== 'K' && p.pos !== 'P' && age >= 30) p.ratings.awareness = clampR(p.ratings.awareness + 1); // veterans still learn
       p.ovr = overall(p);
       p.years--;
-      // Retirement: likely past 33, sooner for fading veterans.
-      const retire = age >= 32 && rng.chance(Math.min(0.9, 0.12 + (age - 32) * 0.18 + (p.ovr < 65 ? 0.2 : 0)));
+      if (mine && p.years <= 0) p.years = contractYears(p); // the career player always re-ups
+      // Retirement: likely past 33, sooner for fading veterans (the career player retires when you say so).
+      const retire = !mine && age >= 32 && rng.chance(Math.min(0.9, 0.12 + (age - 32) * 0.18 + (p.ovr < 65 ? 0.2 : 0)));
       if (retire) { releasePlayer(t, p.id); retired.push({ ...p, team: ti }); }
       if (ti === f.userTeam) report.push({ id: p.id, name: `${p.first} ${p.last}`, pos: p.pos, age, before, after: retire ? null : p.ovr, retired: retire });
     }
@@ -209,15 +212,15 @@ export function cutDown(team, limit = ROSTER_LIMIT, cap = Infinity) {
     const have = {};
     for (const p of team.roster) have[p.pos] = (have[p.pos] || 0) + 1;
     const min = (pos) => Math.max(1, ROSTER_COUNTS[pos] - 1);
-    const candidates = team.roster.filter((p) => have[p.pos] > min(p.pos)).sort((a, b) => a.ovr - b.ovr);
-    const p = candidates[0] || [...team.roster].sort((a, b) => a.ovr - b.ovr)[0];
+    const candidates = team.roster.filter((p) => have[p.pos] > min(p.pos) && !p.career).sort((a, b) => a.ovr - b.ovr);
+    const p = candidates[0] || [...team.roster].filter((q) => !q.career).sort((a, b) => a.ovr - b.ovr)[0];
     releasePlayer(team, p.id);
     cut.push(p);
   }
   while (payroll(team) > cap) {
     const have = {};
     for (const p of team.roster) have[p.pos] = (have[p.pos] || 0) + 1;
-    const pricey = team.roster.filter((p) => p.salary > MIN_SALARY * 2 && have[p.pos] > 1).sort((a, b) => tradeValue(a) / a.salary - tradeValue(b) / b.salary);
+    const pricey = team.roster.filter((p) => p.salary > MIN_SALARY * 2 && have[p.pos] > 1 && !p.career).sort((a, b) => tradeValue(a) / a.salary - tradeValue(b) / b.salary);
     if (!pricey.length) break;
     releasePlayer(team, pricey[0].id);
     cut.push(pricey[0]);

@@ -93,7 +93,7 @@ export class Screens {
     const fr = info.franchise;
     const tiles = [
       tile('feature', 'ball', 'Play Now', info.home ? `${info.away.city} ${info.away.name} at ${info.home.city} ${info.home.name}` : 'Exhibition game', onPlayNow, matchup),
-      tile('', 'trophy', 'Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Seasons, playoffs, the draft', onFranchise),
+      tile('', 'trophy', 'Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Seasons, the draft, or a player career', onFranchise),
       tile('', 'cone', 'Practice', 'Any play, any spot, no clock', onPractice),
       tile('', 'shield', 'League', info.leagueName ? `${info.leagueName}: rosters, teams, saves` : 'Rosters, teams, logos, saves', onLeague),
       tile('', 'board', 'Playbook', 'Design your own plays', onPlaybook),

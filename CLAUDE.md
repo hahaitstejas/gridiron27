@@ -190,6 +190,16 @@ rounds}, history[], seed, offseason{step, …} }`.
   rookie class; `makePick`, `simToUserPick`, `finishDraft`) → cutdown (`cutDown` to 53 keeping position minimums)
   → `startNextSeason`.
 
+### Career mode (`franchise/career.js`, `ui/career.js`)
+A franchise with `f.career = { rid, xp, points, spent, games[] }` (Franchise menu → New Career: name, position from
+`CAREER_POSITIONS`, number, team). `createCareerPlayer` adds a 21-year-old starter flagged `p.career` (never retired, cut,
+CPU-traded or offered in your trades; re-signs himself; only age fades him, growth comes from points). Every game he
+plays or sims gives `gameXP(line)` (`awardCareerGame` from `recordGame`), `XP_PER_POINT` = 100; My Player (hub) spends
+points on `careerKeys(pos)` at `upgradeCost(v)`. In games `settings.lockPlayer = rid`: `session.calls(team)` — the human
+calls plays only as QB (offense) / MLB (defense) and the CPU snaps otherwise; `lockOn(sim)` sets `sim.lockId` (no B
+switch, no control change on catches/turnovers) or, when he isn't on the field (kicks: unless he's the kicker/returner),
+runs the snap CPU vs CPU (`session.watching`, main.js fast-forwards 4x). The camera keeps him in the shot.
+
 ### Trick plays and QB controls
 - Run styles (`run.style`): `read` (zone read: at the mesh the QB reads the backside end, `readKeep()` in offense.js; the
   human holds LT to keep), `speed_option` (QB keeps toward the edge with the back in `pitch_trail`; `PlaySim.pitchOption()`

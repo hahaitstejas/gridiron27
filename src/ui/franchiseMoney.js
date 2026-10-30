@@ -50,7 +50,7 @@ function tradeBuilder(ui, ti, st, focus = 0) {
   const { screens } = ui.ctx;
   const f = ui.f, me = ui.teams[f.userTeam], them = ui.teams[ti];
   const team = st.side ? them : me, set = st.side ? st.get : st.give;
-  const list = [...team.roster].sort((a, b) => b.ovr - a.ovr);
+  const list = [...team.roster].filter((p) => !p.career).sort((a, b) => b.ovr - a.ovr); // your career player is not for sale
   const rows = list.map((p) => {
     const on = set.has(p.id);
     const r = el(`div.st-row${on ? '.mine' : ''}`, {}, el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: who(p) }), el('small', { text: p.injury ? ' INJ' : '' })),

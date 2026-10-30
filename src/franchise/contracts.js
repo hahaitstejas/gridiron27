@@ -110,7 +110,7 @@ export function cpuTrades(f, teams, rng, cap = SALARY_CAP) {
     const a = teams[rng.pick(cpu)], b = teams[rng.pick(cpu)];
     if (a === b) continue;
     // Each side offers a decent non-starter-quality player; look for a fair pair.
-    const pool = (t) => [...t.roster].filter((p) => !p.injury && p.ovr >= 62).sort(() => rng.next() - 0.5).slice(0, 12);
+    const pool = (t) => [...t.roster].filter((p) => !p.injury && p.ovr >= 62 && !p.career).sort(() => rng.next() - 0.5).slice(0, 12);
     let best = null;
     for (const pa of pool(a)) for (const pb of pool(b)) {
       if (pa.pos === pb.pos) continue;

@@ -93,7 +93,7 @@ const franchiseUI = new FranchiseUI({
   playGame: (g) => {
     const f = league.franchise;
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
-      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g) });
+      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null });
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
@@ -164,7 +164,7 @@ function startGame(p, opts = {}) {
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
@@ -347,6 +347,7 @@ function onSessionEvent(e) {
   else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
   else if (e.type === 'tackle') input.rumble(0.35, 110);
   else if (e.type === 'flag') renderer.showFlag?.(e);
+  else if (e.type === 'watching') hud.ticker('On the sideline: fast-forwarding to your next snap');
 }
 
 // ---- Main loop: fixed 60 Hz simulation, render every animation frame ----
@@ -397,9 +398,11 @@ function frameBody(now) {
     // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
     if (pcOpen) { playcall.update(two && session.humanTeam === 1 ? input2.frame : f, dt); }
     const gameInput = two ? { perTeam: true, 0: f, 1: input2.frame } : f;
-    acc += dt * speed;
+    // Career: snaps your player sits out run at 4x (the next one he's in comes up quickly).
+    const sp = session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed;
+    acc += dt * sp;
     let steps = 0;
-    while (acc >= STEP && steps < 6 * speed) {
+    while (acc >= STEP && steps < 6 * sp) {
       session.tick(STEP, pcOpen ? null : gameInput);
       for (const e of session.events) onSessionEvent(e);
       if (!pcOpen) { input.consume(); input2.consume(); }
@@ -407,7 +410,7 @@ function frameBody(now) {
       steps++;
       if (app !== 'game') break;
     }
-    if (steps >= 6 * speed) acc = 0;
+    if (steps >= 6 * sp) acc = 0;
     consumed = pcOpen;
   }
 
@@ -443,6 +446,9 @@ function frameBody(now) {
     if (session.state === 'playcall' || session.state === 'post' || (session.state === 'penalty' && !sim)) focus = { x: m.xOf(m.possession, m.yardLine), z: m.phase === 'scrimmage' ? m.ballZ : 0 };
     else if (!live) focus = { x: losX, z: sim.ballZ };
     else focus = { x: b.x, z: b.z };
+    // Career: keep your player in the shot until the ball comes to him (QBs already are).
+    const me = live && sim.lockId >= 0 && !session.watching ? sim.players[sim.lockId] : null;
+    if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
     const camDir = m.dirOf(m.possession);
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15;
     renderer.render(dt, focus, camDir, phase, snapCam, excite);

@@ -42,6 +42,7 @@ export class PlaySim {
     this.offPlay = cfg.offPlay;
     this.defPlay = cfg.defPlay;
     this.humanTeam = cfg.humanTeam ?? null;
+    this.lockId = -1; // career mode: the human's one player (set by the session), no switching
     // Local 2-player: every human team has its own controlled player (controlled[team]); `humanTeam`
     // is the team whose context the human-control code is running in (see withHuman()).
     this.humanTeams = cfg.humanTeams || (this.humanTeam !== null ? [this.humanTeam] : []);
@@ -666,7 +667,7 @@ export class PlaySim {
       this.emit('turnover', { how, player: p.id });
     }
     for (const t of this.humanTeams) this.withHuman(t, () => {
-      if (p.team === t) this.controlledId = p.id;
+      if (p.team === t) this.controlledId = this.lockId >= 0 ? this.lockId : p.id; // career: stay on your player
       else if (!this.players[this.controlledId] || this.players[this.controlledId].team !== t) {
         this.controlledId = this.nearestTo(t, p).id;
       }

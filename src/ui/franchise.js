@@ -9,6 +9,8 @@ import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '.
 import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
 import { deserializeLeague } from '../data/league.js';
+import { newCareer, careerScreen } from './career.js';
+import { careerPlayer } from '../franchise/career.js';
 
 const recText = (r) => `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`;
 
@@ -42,6 +44,7 @@ export class FranchiseUI {
       cur ? items.unshift(it) : items.push(it);
     }
     items.push(screens.menuItem('New Franchise', 'Start from your current league', () => this.newFranchise()));
+    items.push(screens.menuItem('New Career', 'Create a player and play as him, season after season', () => newCareer(this)));
     screens.frame('menu-screen', el('div.logo-small', { html: 'FRANCHISE' }), el('div.menu-list', {}, items));
     screens.nav.set(items, { onBack: this.ctx.onExit });
   }
@@ -112,6 +115,8 @@ export class FranchiseUI {
       while (f.phase === 'regular') { simOthers(f, teams); const ug = userGame(f); if (ug && !ug.score) simGame(f, teams, ug); advance(f, teams); }
       this.save(); this.hub();
     });
+    const cp = careerPlayer(f, teams);
+    if (cp) add('My Player', `${cp.first} ${cp.last} · ${cp.pos} · ${cp.ovr} OVR · ${f.career.points} skill point${f.career.points === 1 ? '' : 's'}`, () => careerScreen(this));
     add('Standings', 'Divisions, records, points', () => this.standingsScreen());
     add('Schedule & Results', 'Your games and every week\'s scores', () => this.scheduleScreen(f.phase === 'regular' ? f.week : f.weeks - 1));
     if (f.phase === 'playoffs') add('Playoff Bracket', 'Seeds and results', () => this.bracketScreen());

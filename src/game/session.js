@@ -52,7 +52,23 @@ export class GameSession {
     // No clock, no penalties, no fatigue; the situation resets after each play (or when a drive ends).
     this.practice = settings.practice || null;
     if (this.practice) this.practiceReset();
+    // Career mode: settings.lockPlayer = roster id. The human plays only as him: he calls plays only as a QB
+    // (offense) or MLB (defense), and snaps he isn't on the field for run CPU vs CPU (`watching`).
+    this.lock = settings.lockPlayer ?? null;
+    this.baseHumans = [...this.humanTeams];
+    this.watching = false;
+    if (this.lock !== null) {
+      const t = teams[this.baseHumans[0]];
+      this.lockPos = t?.roster.find((p) => p.id === this.lock)?.pos || null;
+    }
     this.enterPlaycall();
+  }
+
+  /** Does the human call this team's plays? (Career: only his own side, and only as QB / MLB.) */
+  calls(team) {
+    if (!this.isHuman(team)) return false;
+    if (this.lock === null) return true;
+    return team === this.offTeam ? this.lockPos === 'QB' : this.lockPos === 'MLB';
   }
 
   practiceReset() {
@@ -115,7 +131,7 @@ export class GameSession {
   /** True when the play-call screen should be open for the human. */
   get needsHumanCall() {
     if (this.state !== 'playcall' || !this.humanTeams.length) return false;
-    return (this.isHuman(this.offTeam) && !this.choice.off) || (this.isHuman(this.defTeam) && !this.choice.def);
+    return (this.calls(this.offTeam) && !this.choice.off) || (this.calls(this.defTeam) && !this.choice.def);
   }
 
   emit(type, data = {}) { this.events.push({ type, ...data }); }
@@ -128,12 +144,13 @@ export class GameSession {
     this.choice = { off: null, def: null };
     this.defAdj = null;
     this.cpuMotionAt = 0;
+    if (this.lock !== null) { this.humanTeams = [...this.baseHumans]; this.watching = false; }
     this.presnapUsed = 0;
     // CPU timeouts (stopping the clock between plays).
     for (const t of [0, 1]) if (!this.isHuman(t) && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
-    if (!this.isHuman(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
-    if (!this.isHuman(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng); }
+    if (!this.calls(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
+    if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng); }
     // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
     if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
     // The human's special-teams unit comes on automatically (kick return, punt return, FG block).
@@ -222,10 +239,28 @@ export class GameSession {
       defAdj: this.defAdj,
       weather: this.settings.weather || null,
     });
+    if (this.lock !== null) this.lockOn(this.sim);
     this.state = 'presnap';
     this.presnapT = 0;
     this.jetWait = false;
     this.emit('presnap', { sim: this.sim });
+  }
+
+  /** Career: control locks to the player when he's on the field; otherwise this snap is CPU vs CPU. */
+  lockOn(sim) {
+    const me = sim.players.find((p) => p.rid === this.lock);
+    const team = this.baseHumans[0];
+    // On kicks he's only involved as the kicker / returner the sim gave the human.
+    const onField = me && (!sim.isKick || sim.withHuman(team, () => sim.controlledId) === me.id);
+    if (!onField) {
+      this.watching = true;
+      this.humanTeams = [];
+      sim.humanTeam = null; sim.humanTeams = []; sim.controlled = {};
+      this.emit('watching', {});
+      return;
+    }
+    sim.lockId = me.id;
+    sim.withHuman(team, () => { sim.controlledId = me.id; });
   }
 
   /** Snap (human pressed A, or the CPU's tempo ran out). Applies pre-snap clock runoff and fouls. */
@@ -239,7 +274,7 @@ export class GameSession {
       if (p && !sim.motion) sim.startMotion(p.id, mo.across !== false, { depth: mo.depth ?? null, speed: mo.speed ?? null });
       if (sim.motion) { this.jetWait = true; return; }
     }
-    const cpuOff = !this.isHuman(this.offTeam);
+    const cpuOff = !this.calls(this.offTeam);
     // Clock between plays.
     if (m.clockRunning && m.phase === 'scrimmage') {
       const target = cpuOff ? cpuTempo(m, this.offTeam, this.rng) : this.presnapUsed;
@@ -409,7 +444,7 @@ export class GameSession {
         return;
       }
       for (const [team, f] of [[off, offIn], [def, defIn]]) {
-        if (!f || sim.isKick) continue;
+        if (!f || sim.isKick || !this.calls(team)) continue;
         const scrim = this.match.phase === 'scrimmage';
         const mode = f.pressed.X ? 'menu'
           : team === off && scrim && f.pressed.Y ? 'hot'
@@ -422,11 +457,11 @@ export class GameSession {
         }
       }
       for (const [team, f] of [[off, offIn], [def, defIn]]) if (f?.pressed.View) this.callTimeout(team);
-      if (offIn?.pressed.B && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      if (offIn?.pressed.B && this.calls(off) && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       const lineup = this.fast || sim.isKick ? 0 : LINEUP_T; // players still running to the line: wait for them
-      if (offIn?.pressed.A && this.presnapT >= lineup) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
-      if (defIn?.pressed.B && sim.isKick === false) sim.withHuman(def, () => cyclePresnapDefender(sim));
-      const humanOff = this.isHuman(off);
+      if (offIn?.pressed.A && this.presnapT >= lineup && this.calls(off)) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      if (defIn?.pressed.B && sim.isKick === false && this.lock === null) sim.withHuman(def, () => cyclePresnapDefender(sim));
+      const humanOff = this.calls(off); // career: a non-QB doesn't snap the ball, the CPU keeps the tempo
       if (this.cpuMotionAt && this.presnapT >= this.cpuMotionAt && !sim.isKick) {
         this.cpuMotionAt = 0;
         const c = sim.motionCandidates().filter((p) => p.task?.type !== 'run_path' && p.pos !== 'HB' && p.pos !== 'FB');
@@ -473,7 +508,7 @@ export class GameSession {
     this.flushMessages();
     if (m.clock <= 0 && m.clockRunning) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
     // Delay of game on the human offense.
-    if (m.playClock <= 0 && this.isHuman(this.offTeam) && m.phase === 'scrimmage') {
+    if (m.playClock <= 0 && this.calls(this.offTeam) && m.phase === 'scrimmage') {
       const foul = { type: 'delay_of_game', team: this.offTeam };
       const out = enforce(m, foul, null);
       m.applyPenalty(out, { offTeam: m.possession });

@@ -9,6 +9,7 @@ import { setupMoney, cpuTrades } from './contracts.js';
 import { makeConditions } from '../game/weather.js';
 import { addNews, gameNews, checkGameRecords, checkSeasonRecords, giveAwards } from './extras.js';
 import { injuryText } from '../sim/injuries.js';
+import { awardCareerGame } from './career.js';
 
 export const FRANCHISE_VERSION = 1;
 
@@ -80,6 +81,7 @@ export function recordGame(f, teams, g, score, lines, injuries = []) {
   addStats(f, lines, info);
   gameNews(f, teams, g);
   checkGameRecords(f, lines, info);
+  if (f.career && (g.home === f.userTeam || g.away === f.userTeam)) awardCareerGame(f, teams, g, lines);
   // Injuries that cost games stick to the player until he heals (see heal()).
   for (const inj of injuries) {
     if (!(inj.weeks > 0)) continue;

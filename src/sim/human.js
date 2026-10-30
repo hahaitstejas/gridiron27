@@ -41,6 +41,10 @@ export function applyHuman(sim, inp, dt) {
   }
   // Kickers follow the meter; the left stick aims (handled in kicking.js).
   if (p.task?.type === 'kicker' || p.task?.type === 'kneel' || p.task?.type === 'spike') { p.userActive = false; return; }
+  // Rushing a field goal or punt: A jumps with the hands up, X lays out (both reach higher for the block).
+  if (sim.kick && sim.kick.type !== 'kickoff' && p.team !== sim.offIdx && !p.engagement && (inp.pressed.A || inp.pressed.X) && (!sim.kick.launched || sim.ball.t < 0.4)) {
+    p.blockJump = sim.t; p.anim = 'swat'; p.animT = 0;
+  }
   // Returner while the kick is in the air: Y = fair catch (punts), X = kneel it in the end zone.
   if (sim.kick && p.task?.type === 'returner' && sim.ball.state === 'kick') {
     if (inp.pressed.Y && sim.kick.type === 'punt' && !p.fairCatch) { p.fairCatch = true; sim.emit('fairCatchSignal', { player: p.id }); }

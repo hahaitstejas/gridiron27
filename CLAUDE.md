@@ -74,6 +74,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   Gets play calls from the human (`humanChoose`) or `ai/playcaller.js`, builds each `PlaySim`, runs the
   play clock / runoff (accelerated clock option), enforces fouls via `penalties.js`, then `match.applyResult`.
   Emits `message`, `flag`, `result`, `gameOver` plus the sim's events. The UI only reads it.
+- Blocked kicks (`sim/kicking.js`): `blockCheck` at launch (rusher right at the kicker) plus `flightBlock` (a defender in the
+  ball's path while it's still under his reach; a human's A jump / X lay-out `blockJump` raises it). A human kicker who is slow
+  on the meter is judged from where the CPU rush was when the kick was due (`markDue`/`dueAt`, `LATE_GRACE`).
+  `node tools/fgblock.js`: CPU ~1.5-2%, human kicker ~2% even with a slow meter, a human rusher in front ~1 in 4.
 - Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
   plane, returns, fair catches, touchbacks, onside kicks. Special plays/formations are in
   `playbooks/special.json` (ids `st_*`; `listOffPlays()`/`listDefPlays()` hide them unless `all=true`).

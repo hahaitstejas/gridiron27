@@ -55,6 +55,7 @@ export class Hud {
       ['Catching (ball in the air)', 'Y aggressive catch (wins in traffic, no run after) · X run after catch (turns upfield, riskier) · B possession (sure hands, feet in at the sideline)'],
       ['Defense', 'B switch player · RT sprint · A swat · Y with the ball in the air: go for the pick · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
       ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
+      ['Kick block', 'Beat the protection to a spot just in front of the holder (punter), then A jump / X lay out as the ball comes off the foot'],
       ['Returns', 'Y fair catch (punts) · X kneel in the end zone'],
       ['Instant replay', 'RS click between plays (or pause menu) · A play/pause · X slow-mo · left stick scrub · right stick camera · LT/RT zoom · B exit'],
     ];

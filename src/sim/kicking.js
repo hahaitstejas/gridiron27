@@ -73,19 +73,34 @@ export function protectionWall(sim) {
         if (dd < WALL_R) wall = Math.min(wall, WALL_MIN + (dd / WALL_R) * (1 - WALL_MIN));
       }
     }
+    // A human kicker who is slow on the meter shouldn't hand the CPU rush extra time: once the kick is due
+    // (when a CPU kicker would have launched) the protection holds for up to a second more.
+    if (!k.launched && k.dueT != null && sim.t - k.dueT < LATE_GRACE && !sim.isHumanControlled(p)) wall = Math.min(wall, 0.12);
     p.speedCap = wall;
   }
+}
+const LATE_GRACE = 1.0;
+
+/** The moment a CPU kicker would kick: remember how far each rusher was (see blockCheck). */
+function markDue(sim, kicker) {
+  const k = sim.kick;
+  k.dueT = sim.t;
+  k.dueAt = {};
+  for (const d of sim.players) if (d.team !== sim.offIdx) k.dueAt[d.id] = Math.hypot(d.x - kicker.x, d.z - kicker.z);
 }
 const WALL_R = 1.5, WALL_MIN = 0.5;
 
 function blockCheck(sim, kicker, type, range) {
   const kl = sim.toLocal(kicker.x, kicker.z);
   const low = type === 'fg' ? 0.6 + Math.max(0, range - 38) / 30 : 0.45;
+  const k = sim.kick, lateOK = k.dueAt && sim.t - k.dueT < LATE_GRACE;
   for (const d of sim.players) {
     if (d.team === kicker.team || d.state !== 'active' || d.engagement) continue;
-    const dist = Math.hypot(d.x - kicker.x, d.z - kicker.z);
+    let dist = Math.hypot(d.x - kicker.x, d.z - kicker.z);
+    // A late human kick is judged from where the CPU rush was when the kick was due (momentum carries them in).
+    if (lateOK && !sim.isHumanControlled(d) && k.dueAt[d.id] != null) dist = Math.max(dist, k.dueAt[d.id]);
     if (dist > 2.6 || sim.toLocal(d.x, d.z).down < kl.down + 0.4) continue;
-    const reach = Math.pow((2.6 - dist) / 2.6, 1.5) * 0.45 * low * (sim.isHumanControlled(d) ? 1.15 : 1);
+    const reach = Math.pow((2.6 - dist) / 2.6, 1.5) * 0.38 * low * (sim.isHumanControlled(d) ? 1.15 : 1);
     if (sim.rng.next() < reach) {
       const b = sim.ball;
       // The ball pops up and dies short of the line.
@@ -98,6 +113,35 @@ function blockCheck(sim, kicker, type, range) {
     }
   }
   return false;
+}
+
+/**
+ * A rusher standing in the ball's path just after the kick gets a hand on it if it's still low enough to reach
+ * (about 3 yards in front of the holder for a field goal). This is what a human rusher who beats the protection
+ * earns: jumping (A) or laying out (X) at the kick raises the reach. One chance per defender.
+ */
+function flightBlock(sim) {
+  const b = sim.ball, k = sim.kick;
+  k.flightTried ||= new Set();
+  for (const d of sim.players) {
+    if (d.team === sim.offIdx || d.state !== 'active' || d.engagement || k.flightTried.has(d.id)) continue;
+    const off = Math.hypot(d.x - b.x, d.z - b.z);
+    if (off > 0.9) continue;
+    const human = sim.isHumanControlled(d);
+    const jumped = human && d.blockJump != null && sim.t - d.blockJump < 0.6;
+    const reach = 2.25 + (jumped ? 0.65 : 0) + (d.pos === 'DE' || d.pos === 'DT' ? 0.15 : 0);
+    if (b.y > reach) continue;
+    k.flightTried.add(d.id);
+    const chance = (human ? (jumped ? 0.5 : 0.2) : 0.025) * (1 - off / 1.4);
+    if (sim.rng.next() < chance) {
+      b.vx = b.vx * 0.12 + sim.rng.gauss(0, 1.5); b.vz = b.vz * 0.12 + sim.rng.gauss(0, 2); b.vy = sim.rng.range(2, 5);
+      b.target = { x: b.x + b.vx * 0.8, z: b.z + b.vz * 0.8 };
+      b.T = 0.8;
+      k.blocked = true;
+      sim.emit('kickBlocked', { player: d.id, kind: k.type });
+      return;
+    }
+  }
 }
 
 /** Field-goal distance in yards from a line of scrimmage (yard line = yards from own goal). */
@@ -272,6 +316,7 @@ export function updateSpecial(sim, dt, input) {
         k.heldT = (k.heldT || 0) + dt;
         stop(kicker);
         kicker.face = { x: kicker.x + sim.dir * 10, z: kicker.z };
+        if (k.heldT > 0.85 && k.dueT == null) markDue(sim, kicker);
         if (ready && k.heldT > (humanKicks ? 0.35 : 0.85)) { kicker.anim = 'kick'; kicker.animT = 0; launchKick(sim, kicker, params()); }
       } else stop(kicker);
     } else if (k.type === 'fg') {
@@ -283,6 +328,7 @@ export function updateSpecial(sim, dt, input) {
         if (k.heldT > 0.2) {
           const d = seek(kicker, holder.x + sim.dir * 0.2, holder.z - 0.5, 0.55, ready ? 0.05 : 1.0);
           kicker.face = { x: kicker.x + sim.dir * 10, z: kicker.z };
+          if (d < 0.7 && k.dueT == null) markDue(sim, kicker);
           if (ready && d < 0.7) {
             kicker.anim = 'kick'; kicker.animT = 0;
             b.x = holder.x + sim.dir * 0.5; b.z = holder.z;
@@ -308,6 +354,8 @@ function updateKickFlight(sim, dt) {
   b.vx += sim.wind.x * WIND_PUSH * dt; b.vz += sim.wind.z * WIND_PUSH * dt;
   b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
   b.spin += dt * 12;
+
+  if ((k.type === 'fg' || k.type === 'punt') && !k.blocked && b.t < 0.4) flightBlock(sim);
 
   if (k.type === 'fg') {
     const plane = (GOAL_X + 10) * sim.dir;

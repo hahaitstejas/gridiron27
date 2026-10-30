@@ -3,6 +3,10 @@
 // moving focus (used for team pickers, difficulty, quarter length...).
 export class Nav {
   constructor() {
+    if (typeof window !== 'undefined' && !Nav.tracking) {
+      Nav.tracking = true;
+      window.addEventListener('mousemove', (e) => { Nav.mouse = { x: e.clientX, y: e.clientY }; });
+    }
     this.items = [];
     this.index = 0;
     this.columns = 1;
@@ -20,13 +24,22 @@ export class Nav {
     this.onTab = onTab;
     for (const [i, el] of this.items.entries()) {
       el.classList.add('nav-item');
-      el.onmouseenter = () => this.focus(i);
+      // Only a mouse that actually moved takes focus: when the stick scrolls a list, rows slide under a resting
+      // pointer and the browser fires hover events, which used to yank focus back up the list.
+      el.onmouseenter = null;
+      el.onmousemove = (e) => {
+        if (e.clientX === Nav.mouse.x && e.clientY === Nav.mouse.y) return; // same spot as the last event: content moved, not the mouse
+        if (this.items[this.index] !== el) this.focus(i);
+      };
       el.onclick = (e) => { e.stopPropagation(); this.focus(i); this.activate(); };
     }
     this.focus(Math.min(index, this.items.length - 1));
   }
 
   clear() { this.items = []; this.onBack = null; this.onTab = null; }
+
+  // Pointer position of the previous mousemove anywhere (a window listener updates it after the item handlers run).
+  static mouse = { x: -1, y: -1 };
 
   focus(i) {
     if (!this.items.length) return;

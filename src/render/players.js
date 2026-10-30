@@ -134,6 +134,37 @@ export class PlayerRenderer {
         '#include <uv_vertex>\nvMapUv.x = (aDecal.y > 0.5 ? 1.0 - vMapUv.x : vMapUv.x) * 0.5 + aDecal.x * 0.5;');
     };
 
+    // Names on the back: one atlas row per instance (repainted with the roster each play setup).
+    this.nameCanvas = document.createElement('canvas');
+    this.nameCanvas.width = 512; this.nameCanvas.height = MAX * 32;
+    this.nameTex = new THREE.CanvasTexture(this.nameCanvas);
+    this.nameTex.colorSpace = THREE.SRGBColorSpace; this.nameTex.anisotropy = 4;
+    const nobGeo = new THREE.PlaneGeometry(1, 1);
+    const rowAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
+    nobGeo.setAttribute('aRow', rowAttr);
+    this.rowAttr = rowAttr;
+    const nobMat = new THREE.ShaderMaterial({
+      uniforms: { map: { value: this.nameTex }, rows: { value: MAX } },
+      transparent: true,
+      vertexShader: `attribute float aRow; uniform float rows; varying vec2 vUv; varying vec3 vCol;
+        void main(){
+          vUv = vec2(uv.x, 1.0 - (aRow + 1.0 - uv.y) / rows);
+          #ifdef USE_INSTANCING_COLOR
+          vCol = instanceColor;
+          #else
+          vCol = vec3(1.0);
+          #endif
+          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+        }`,
+      fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying vec3 vCol;
+        void main(){
+          vec4 t = texture2D(map, vUv);
+          if (t.a < 0.45) discard;
+          gl_FragColor = vec4(vCol * 0.92, 1.0);
+          #include <colorspace_fragment>
+        }`,
+    });
+
     const torsoMat = mat(0.8), upperMat = mat(0.8);
     const upperGeo = limbGeo(0.07);
     this.stripeAttrs = [striped(torsoMat, MAX, torsoGeo), striped(upperMat, MAX * 2, upperGeo)];
@@ -158,6 +189,7 @@ export class PlayerRenderer {
       bar: part(barGeo, mat(0.35, 0.6, 1), MAX * 2, false),
       cap: part(capGeo, mat(0.8), MAX * 2),
       num: part(numGeo, numMat, MAX * 4, false),
+      nob: part(nobGeo, nobMat, MAX, false),
     };
     this.pairs = new Set([this.parts.decal, this.parts.thigh, this.parts.shin, this.parts.shoe, this.parts.upper, this.parts.fore, this.parts.hand, this.parts.bar, this.parts.cap]);
     for (const p of Object.values(this.parts)) scene.add(p);
@@ -208,6 +240,19 @@ export class PlayerRenderer {
     lg.clearRect(0, 0, 512, 256);
     teams.forEach((t, k) => drawLogo(lg, t.logo, 128 + k * 256, 128, 118));
     this.logoTex.needsUpdate = true;
+    const ng = this.nameCanvas.getContext('2d');
+    ng.clearRect(0, 0, 512, MAX * 32);
+    ng.font = '700 26px "Saira Condensed", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
+    const paintName = (i, name) => {
+      if (i >= MAX || !name) return;
+      const last = name.replace(/^\S+\.\s*/, '').toUpperCase();
+      // The plane is 6:1 but a row is 16:1, so stretch the text ~2.7x across (less for long names, to fit).
+      const sx = Math.min(16 / 6, 496 / Math.max(1, ng.measureText(last).width));
+      ng.save(); ng.translate(256, i * 32 + 17); ng.scale(sx, 1); ng.fillText(last, 0, 0); ng.restore();
+      this.rowAttr.setX(i, i);
+    };
+    sim.players.forEach((p, i) => paintName(i, p.name));
+    this.nameTex.needsUpdate = true;
     const pick = (team, which) => (which === 'white' ? '#f4f4f4' : which === 'secondary' ? team.colors.secondary : which === 'accent' ? team.colors.accent : team.colors.primary);
     sim.players.forEach((p, i) => {
       const team = teams[p.team];
@@ -245,6 +290,7 @@ export class PlayerRenderer {
         P.num.setColorAt(i * 4 + k, c.set(numColor));
         this.cellAttr.setXY(i * 4 + k, p.number % 10, Math.floor(p.number / 10));
       }
+      P.nob.setColorAt(i, c.set(numColor));
     });
     // Officials after the players: striped shirt, black pants, black cap (the referee wears white).
     const [sT, sU] = this.stripeAttrs;
@@ -293,6 +339,7 @@ export class PlayerRenderer {
     sT.needsUpdate = sU.needsUpdate = true;
     this.cellAttr.needsUpdate = true;
     this.decalAttr.needsUpdate = true;
+    this.rowAttr.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }
 
@@ -393,6 +440,8 @@ export class PlayerRenderer {
     // Numbers front and back.
     P.num.setMatrixAt(i * 4, cl(pel).multiply(trans(0, B.torso * 0.5, -(B.torsoD * wide) / 2 - 0.035)).multiply(rotY(Math.PI)).multiply(scaleM(0.3 * wide, 0.3, 1)));
     P.num.setMatrixAt(i * 4 + 1, cl(pel).multiply(trans(0, B.torso * 0.58, (B.torsoD * wide) / 2 + 0.04)).multiply(rotX(-0.12)).multiply(scaleM(0.2 * wide, 0.2, 1)));
+    // Name across the shoulders on the back (players only; officials and the sideline go without).
+    P.nob.setMatrixAt(i, official || i >= sim.players.length ? ZERO : cl(pel).multiply(trans(0, B.torso * 0.5 + 0.2, -(B.torsoD * wide) / 2 - 0.045)).multiply(rotY(Math.PI)).multiply(scaleM(0.36 * wide, 0.06, 1)));
 
     // Arms.
     for (let s = 0; s < 2; s++) {

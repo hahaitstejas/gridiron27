@@ -614,3 +614,12 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #noise i:nth-of-type(5) { height: 16px; } #noise i:nth-of-type(6) { height: 18px; } #noise i:nth-of-type(7) { height: 20px; } #noise i:nth-of-type(8) { height: 22px; }
 #noise i.on { background: linear-gradient(0deg, #ffd34d, #ff5a3c); }
 @keyframes shake { to { transform: translateY(-2px); } }
+
+.so-banner { display: flex; align-items: center; gap: 28px; max-width: 1280px; width: 100%; margin: 0 auto 20px; padding: 18px 28px; transform: skewX(var(--skew));
+  background: linear-gradient(100deg, color-mix(in srgb, var(--tc) 70%, #000), rgba(8, 12, 26, 0.9) 75%); border-left: 6px solid var(--gold); }
+.so-banner > * { transform: skewX(calc(var(--skew) * -1)); }
+.so-banner canvas { width: 140px; height: 140px; filter: drop-shadow(0 8px 18px rgba(0,0,0,0.6)); }
+.so-banner small { color: var(--gold); font: 800 14px var(--fd); letter-spacing: 3px; }
+.so-banner b { display: block; font: 900 52px/1 var(--fd); font-style: italic; text-transform: uppercase; }
+.so-me { margin-top: 8px; font-size: 18px; }
+.so-awards { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 14px; color: var(--dim); }

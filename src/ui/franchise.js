@@ -1,4 +1,5 @@
 import { el } from './nav.js';
+import { LEAGUE } from '../data/leagueInfo.js';
 import { ICONS } from './screens.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
@@ -41,7 +42,8 @@ export class FranchiseUI {
       const cur = s.slot === league.slot && this.f;
       const t = byAbbr(s.franchise.team);
       const art = t ? el('div.fr-save-logo', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 72)) : el('div.ht-icon', { html: ICONS.trophy });
-      const it = tile(cur ? 'feature' : '', cur ? `Continue` : s.franchise.team, `${cur ? `${s.franchise.team} · ` : ''}${s.franchise.year} · ${s.franchise.when}`, async () => {
+      const kind = s.franchise.mode === 'season' ? 'Season' : 'Franchise';
+      const it = tile(cur ? 'feature' : '', cur ? `Continue` : s.franchise.team, `${cur ? `${s.franchise.team} · ` : ''}${kind} · ${s.franchise.year} · ${s.franchise.when}`, async () => {
         if (!cur) {
           const L = deserializeLeague(await readSave(s.slot));
           league.slot = s.slot; setActiveSlot(s.slot);
@@ -53,6 +55,7 @@ export class FranchiseUI {
       cur ? tiles.unshift(it) : tiles.push(it);
     }
     tiles.push(tile('new', 'New Franchise', 'Run a team: seasons, the draft, free agency', () => this.newFranchise(), el('div.ht-icon', { html: ICONS.trophy })));
+    tiles.push(tile('new', 'New Season', 'One season to a championship, no offseason', () => this.newFranchise('season'), el('div.ht-icon', { html: ICONS.calendar })));
     tiles.push(tile('new', 'New Career', 'Create a player and play as him', () => newCareer(this), el('div.ht-icon', { html: ICONS.user })));
     screens.frame('hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'FRANCHISE <span>MODE</span>' })),
       el('div.fr-saves', {}, tiles),
@@ -61,9 +64,9 @@ export class FranchiseUI {
   }
 
   // ---------- new franchise ----------
-  newFranchise() {
+  newFranchise(mode = 'franchise', preset = null) {
     const { screens, prefs } = this.ctx;
-    const opts = { userTeam: prefs.home, weeks: 17, difficulty: prefs.difficulty, quarterMinutes: prefs.quarterMinutes };
+    const opts = preset || { userTeam: prefs.home, weeks: mode === 'season' ? 10 : 17, difficulty: prefs.difficulty, quarterMinutes: prefs.quarterMinutes };
     const option = (label, values, key, fmt) => {
       const row = el('div.opt-row');
       const draw = () => { row.innerHTML = ''; row.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ ${fmt(opts[key])} ▶` })); };
@@ -79,22 +82,22 @@ export class FranchiseUI {
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length (games you play)', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`),
     ];
-    const start = el('div.start-btn', { text: 'Start Franchise' });
+    const start = el('div.start-btn', { text: mode === 'season' ? 'Start Season' : 'Start Franchise' });
     start.activate = async () => {
       const L = this.ctx.league;
       // A franchise gets its own save slot (a copy of the current league), so the league itself stays as is;
       // remember that league so leaving the franchise goes back to it (LeagueUI.leaveFranchise).
       if (L.slot && !L.franchise) await L.saveNow();
       const baseSlot = L.franchise ? L.franchise.baseSlot ?? null : L.slot ?? null;
-      L.franchise = createFranchise(this.teams, { ...opts, seed: (Date.now() % 100000) + 1 });
+      L.franchise = createFranchise(this.teams, { ...opts, mode, seed: (Date.now() % 100000) + 1 });
       L.franchise.baseSlot = baseSlot;
       L.name = L.franchise.name;
       L.slot = null;
       await L.saveNow();
       this.hub();
     };
-    screens.frame('setup-screen', el('h1', { text: 'New Franchise' }),
-      el('div.league-status', { text: 'Starts from your current league (rosters, teams, logos) in a new save slot.' }),
+    screens.frame('setup-screen', el('h1', { text: mode === 'season' ? 'New Season' : 'New Franchise' }),
+      el('div.league-status', { text: mode === 'season' ? 'One season with your current league: the schedule, the playoffs and a champion. No offseason.' : 'Starts from your current league (rosters, teams, logos) in a new save slot.' }),
       el('div.setup-opts', {}, ...rows, start),
       el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; <b class="btn B">B</b> back' }));
     screens.nav.set([...rows, start], { columns: 1, onBack: this.ctx.onExit, index: rows.length });
@@ -107,6 +110,7 @@ export class FranchiseUI {
     screens.extraButtons = null;
     upgradeFranchise(f, teams);
     if (f.phase === 'offseason') { this.ctx.offseason(this); return; }
+    if (f.phase === 'done') { this.seasonOver(); return; }
     const g = userGame(f);
     const rec = recordOf(f, teams, f.userTeam);
     const stage = f.phase === 'regular' ? `Week ${f.week + 1} of ${f.weeks}` : PLAYOFF_ROUND_NAMES[f.playoffs.rounds.length - 1];
@@ -178,6 +182,38 @@ export class FranchiseUI {
     const items = [...hero, ...season, ...team, ...league];
     const at = typeof focus === 'string' ? items.findIndex((t) => t.key === focus) : focus ?? 0;
     screens.nav.set(items, { spatial: true, onBack: this.ctx.onExit, index: Math.max(0, Math.min(at, items.length - 1)) });
+  }
+
+  /** A single season is over: the champion, your finish and where to go next. */
+  seasonOver() {
+    const { screens } = this.ctx;
+    const f = this.f, teams = this.teams, me = teams[f.userTeam];
+    const h = f.history[f.history.length - 1];
+    const champ = teams[h.champion];
+    const won = h.champion === f.userTeam;
+    const awards = (f.awards?.[f.year] || []).slice(0, 5);
+    const tile = (cls, icon, label, sub, action) => {
+      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, el('div.ht-icon', { html: ICONS[icon] }), el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })));
+      t.activate = action;
+      return t;
+    };
+    const tiles = [
+      tile('', 'calendar', 'Play Another Season', 'Same team and settings, a new schedule', () => this.newFranchise('season', { userTeam: f.userTeam, weeks: f.weeks, difficulty: f.settings.difficulty, quarterMinutes: f.settings.quarterMinutes })),
+      tile('', 'list', 'Final Standings', 'Divisions and records', () => this.standingsScreen()),
+      tile('', 'bracket', 'Playoff Bracket', 'How it played out', () => this.bracketScreen()),
+      tile('', 'trophy', 'Leaders', 'Season stat leaders', () => this.leadersScreen()),
+      tile('', 'star', 'Awards', 'MVP and more', () => awardsScreen(this)),
+      tile('', 'exit', 'Main Menu', 'The season is saved', this.ctx.onExit),
+    ];
+    screens.frame('hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: `${f.year} <span>SEASON</span>` })),
+      el('div.so-banner', { style: { '--tc': champ.colors.primary } }, logoCanvas(champ.logo, 140),
+        el('div', {}, el('small', { text: `${f.year} ${LEAGUE.championship}`.toUpperCase() }), el('b', { text: `${champ.city} ${champ.name}` }),
+          el('div.so-me', { text: won ? 'That\'s you. Champions!' : `${me.city} ${me.name}: ${h.record}${h.madePlayoffs ? ', made the playoffs' : ', missed the playoffs'}` }),
+          awards.length ? el('div.so-awards', {}, awards.map((a) => el('span', { text: `${a.award}: ${a.name} (${a.team})` }))) : null)),
+      el('div.fr-saves', {}, tiles),
+      el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Main menu' }));
+    screens.root.style.setProperty('--accent', me.colors.primary);
+    screens.nav.set(tiles, { spatial: true, onBack: this.ctx.onExit });
   }
 
   /** The human's game is decided (played or simmed): sim the others, move on if everything is done. */

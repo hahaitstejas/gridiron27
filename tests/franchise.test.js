@@ -205,3 +205,21 @@ describe('franchise extras', () => {
     expect(names).toContain('Defensive Rookie of the Year');
   }, 30000);
 });
+
+describe('single season', () => {
+  it('runs the regular season and playoffs, then ends without an offseason', () => {
+    const lg = generateLeagueRosters(defaultTeams(), 77);
+    const f = createFranchise(lg, { userTeam: 4, weeks: 6, seed: 2, mode: 'season' });
+    expect(f.name).toMatch(/season$/);
+    for (let k = 0; k < 40 && f.phase !== 'done'; k++) {
+      simOthers(f, lg);
+      const g = userGame(f);
+      if (g && !g.score) simGame(f, lg, g);
+      advance(f, lg);
+    }
+    expect(f.phase).toBe('done');
+    expect(f.offseason).toBe(null);
+    expect(f.history.length).toBe(1);
+    expect(advance(f, lg)).toBe(false);
+  });
+});

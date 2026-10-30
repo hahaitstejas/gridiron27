@@ -51,8 +51,8 @@ function franchiseInfo(v) {
   const f = v?.franchise;
   if (!f) return null;
   const t = v.teams?.[f.userTeam];
-  const when = f.phase === 'regular' ? `Week ${f.week + 1}` : f.phase === 'playoffs' ? 'Playoffs' : 'Offseason';
-  return { team: t ? `${t.city} ${t.name}` : '?', year: f.year, when };
+  const when = f.phase === 'regular' ? `Week ${f.week + 1}` : f.phase === 'playoffs' ? 'Playoffs' : f.phase === 'done' ? 'Season over' : 'Offseason';
+  return { team: t ? `${t.city} ${t.name}` : '?', year: f.year, when, mode: f.mode || 'franchise' };
 }
 
 /** [{ slot, name, savedAt, franchise }] newest first. */

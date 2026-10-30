@@ -13,10 +13,11 @@ import { awardCareerGame } from './career.js';
 
 export const FRANCHISE_VERSION = 1;
 
-export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro', quarterMinutes = 5, name, year = 2027, seed = 1 }) {
+export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro', quarterMinutes = 5, name, year = 2027, seed = 1, mode = 'franchise' }) {
   return {
     version: FRANCHISE_VERSION,
-    name: name || `${teams[userTeam].city} ${teams[userTeam].name} franchise`,
+    mode, // 'franchise' (seasons go on) | 'season' (one season: ends after the championship)
+    name: name || `${teams[userTeam].city} ${teams[userTeam].name} ${mode === 'season' ? 'season' : 'franchise'}`,
     userTeam, year, weeks, week: 0, phase: 'regular',
     settings: { difficulty, quarterMinutes },
     schedule: makeSchedule(teams, weeks, seed * 7919 + year),
@@ -165,6 +166,8 @@ export function advance(f, teams) {
     const rec = standings(teams, f.schedule).find((r) => r.team === f.userTeam);
     addNews(f, `${teams[champ].city} ${teams[champ].name} win the ${f.year} ${LEAGUE.championship}!`, 'playoff');
     f.history.push({ year: f.year, champion: champ, championName: `${teams[champ].city} ${teams[champ].name}`, record: `${rec.w}-${rec.l}${rec.t ? '-' + rec.t : ''}`, madePlayoffs: f.playoffs.seeds.flat().includes(f.userTeam) });
+    // A single season ends here; a franchise goes on to the offseason.
+    if (f.mode === 'season') { f.phase = 'done'; return true; }
     f.phase = 'offseason';
     f.offseason = { step: 'summary' };
     return true;

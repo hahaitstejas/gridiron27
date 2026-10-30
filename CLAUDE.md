@@ -235,6 +235,9 @@ rounds}, history[], seed, offseason{step, …} }`.
   with your division's top four, schedule, bracket, team stats, leaders), Team (my player, roster, depth chart, injuries,
   contracts, trade) and League (news, awards & records, transactions, main menu) columns; `hub(key)` refocuses a tile by
   label. The Franchise menu (`open()`) is tiles too: Continue (your logo), other saved franchises, New Franchise / Career.
+- Single Season (Franchise menu → New Season): `createFranchise(..., { mode: 'season' })` (default 10 games); after the
+  championship `advance` sets `f.phase = 'done'` instead of the offseason and the hub shows `seasonOver()` (champion
+  banner, your finish, awards; Play Another Season with the same settings, standings, bracket, leaders, awards).
 - Hub Team Stats (`FranchiseUI.teamStatsScreen`): season totals in `f.stats` shown with the end-of-game `STAT_TABS`
   (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →

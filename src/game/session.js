@@ -13,7 +13,7 @@ import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHA
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall, FRONT_CALLS } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
-import { enforce, rollPresnapFoul, PENALTIES, describeChoice , KICK_FOULS } from './penalties.js';
+import { enforce, rollPresnapFoul, PENALTIES, describeChoice, KICK_FOULS, crowdNoise } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout, wantsIce } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
 import { getOffPlay, getDefPlay } from '../data/playbook.js';
@@ -369,7 +369,7 @@ export class GameSession {
       this.forceFoul = { type: 'offsides', team: this.defTeam, player: this.rng.pick(dl.length ? dl : sim.defense()) };
       this.emit('hardCount', { result: 'jump' });
       this.snap();
-    } else if (r < pJump + 0.04 * (this.settings.penalties === false ? 0 : 1)) {
+    } else if (r < pJump + 0.04 * (1 + crowdNoise(this.match)) * (this.settings.penalties === false ? 0 : 1)) {
       const ol = sim.offense().filter((p) => ['LT', 'LG', 'C', 'RG', 'RT'].includes(p.slot));
       this.forceFoul = { type: 'false_start', team: this.offTeam, player: this.rng.pick(ol) };
       this.emit('hardCount', { result: 'flinch' });

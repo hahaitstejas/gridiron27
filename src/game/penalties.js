@@ -103,13 +103,26 @@ export function enforce(m, foul, r) {
   return outcome;
 }
 
+/**
+ * Home crowd noise when the visitors (team 1) have the ball, 0..1: third and fourth downs, a close fourth quarter and
+ * the red zone get loud. Neutral sites (settings.neutral) are quiet. Road offenses false-start more in the noise.
+ */
+export function crowdNoise(m) {
+  if (m.settings?.neutral || m.possession !== 1 || m.phase !== 'scrimmage') return 0;
+  let n = 0.25;
+  if (m.down >= 3) n += 0.3;
+  if (m.quarter >= 4 && Math.abs(m.score[0] - m.score[1]) <= 8) n += 0.25;
+  if (m.yardLine >= 80) n += 0.15;
+  return Math.min(1, n);
+}
+
 /** Random pre-snap fouls (CPU-side mistakes). Returns a foul or null. */
 export function rollPresnapFoul(m, sim, rng, rate = 1) {
   if (m.phase !== 'scrimmage' || sim.isKick) return null;
   const off = sim.offense();
   const ol = off.filter((p) => ['LT', 'LG', 'C', 'RG', 'RT'].includes(p.slot));
   const awr = ol.reduce((a, p) => a + p.r.awareness, 0) / Math.max(1, ol.length);
-  if (rng.chance(0.007 * rate * (1 + (70 - awr) / 40))) {
+  if (rng.chance(0.007 * rate * (1 + (70 - awr) / 40) * (1 + crowdNoise(m) * 1.6))) {
     const p = rng.pick(ol.length ? ol : off);
     return { type: 'false_start', team: sim.offIdx, player: p };
   }

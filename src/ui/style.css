@@ -606,3 +606,11 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .fr-save-logo { flex: none; padding: 6px; border-radius: 8px; background: radial-gradient(circle, color-mix(in srgb, var(--tc) 55%, transparent), transparent 70%); }
 .fr-save-logo canvas { width: 72px; height: 72px; display: block; }
 .fr-saves .hub-tile.feature .fr-save-logo canvas { width: 120px; height: 120px; }
+
+#noise { position: absolute; top: 14px; right: 18px; display: flex; align-items: flex-end; gap: 3px; padding: 8px 12px; background: rgba(10,12,16,0.8); border-left: 4px solid #ff5a3c; }
+#noise small { font: 800 12px var(--fd); letter-spacing: 2px; margin-right: 6px; align-self: center; }
+#noise i { width: 6px; background: rgba(255,255,255,0.15); animation: shake 0.18s infinite alternate; }
+#noise i:nth-of-type(n) { height: 8px; } #noise i:nth-of-type(2) { height: 10px; } #noise i:nth-of-type(3) { height: 12px; } #noise i:nth-of-type(4) { height: 14px; }
+#noise i:nth-of-type(5) { height: 16px; } #noise i:nth-of-type(6) { height: 18px; } #noise i:nth-of-type(7) { height: 20px; } #noise i:nth-of-type(8) { height: 22px; }
+#noise i.on { background: linear-gradient(0deg, #ffd34d, #ff5a3c); }
+@keyframes shake { to { transform: translateY(-2px); } }

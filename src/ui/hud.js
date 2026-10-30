@@ -1,4 +1,5 @@
 import { DRILLS } from '../game/drills.js';
+import { crowdNoise } from '../game/penalties.js';
 import { KEY_HELP } from '../input/keyboard.js';
 import { logoDataURL } from '../render/logo.js';
 import { downText, yardLineText, clockText } from '../game/match.js';
@@ -26,6 +27,7 @@ export class Hud {
       <div id="penaltybox" class="hidden"></div>
       <div id="reviewbox" class="hidden"></div>
       <div id="drillbar" class="hidden"></div>
+      <div id="noise" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
@@ -107,7 +109,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'drillbar']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'drillbar', 'noise']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -319,6 +321,16 @@ export class Hud {
         <div class="pb-opt"><b class="btn X">X</b><div><div class="pb-label">Decline${pen.recommend ? '' : ' <small>recommended</small>'}</div><div class="pb-sub">${c.decline}</div></div></div>
         <div class="pb-foot"><span>Choose</span><img src="${this.logoFor(me)}" alt=""/></div>`;
     } else if (!pen) pb.dataset.key = '';
+
+    // Crowd noise meter (the visitors at the line on a big down).
+    const nz = this.$('noise');
+    const level = pre && !session.practice ? crowdNoise(session.match) : 0;
+    nz.classList.toggle('hidden', level < 0.5 || playcallOpen);
+    if (level >= 0.5) {
+      const bars = Math.round(level * 8);
+      const key = String(bars);
+      if (nz.dataset.key !== key) { nz.dataset.key = key; nz.innerHTML = `<small>CROWD</small>${Array.from({ length: 8 }, (_, i) => `<i class="${i < bars ? 'on' : ''}"></i>`).join('')}`; }
+    }
 
     // Skills drill: name, rep and score.
     const db = this.$('drillbar');

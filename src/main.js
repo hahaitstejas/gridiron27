@@ -39,6 +39,7 @@ import { statsScreen } from './ui/statsScreen.js';
 import { energyOf } from './game/fatigue.js';
 import { playArt } from './game/playArt.js';
 import { scenarioById, scenarioFinal } from './game/scenarios.js';
+import { crowdNoise } from './game/penalties.js';
 const SPECIAL_ART = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike']);
 
 // ---- Boot ----
@@ -572,7 +573,9 @@ function frameBody(now) {
     else if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
     renderer.rig.mode = playerCam ? 'follow' : prefs.camera === 'high' ? 'sky' : 'broadcast';
     const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : m.dirOf(m.possession);
-    const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15;
+    // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
+    const noise = !live && !session.practice ? crowdNoise(m) : 0;
+    const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15 + noise * 0.7;
     boardFrame(m, dt);
     renderer.render(dt, focus, camDir, phase, snapCam, excite);
     snapCam = false;

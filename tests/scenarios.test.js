@@ -51,3 +51,14 @@ describe('CPU clock management', () => {
     expect(cpuTempo(m, 0, new RNG(1))).toBeLessThan(20);
   });
 });
+
+describe('home crowd', () => {
+  it('is loud for the visitors on big downs, quiet for the home offense and at neutral sites', async () => {
+    const { crowdNoise } = await import('../src/game/penalties.js');
+    const m = { possession: 1, phase: 'scrimmage', down: 3, quarter: 4, score: [17, 14], yardLine: 85, settings: {} };
+    expect(crowdNoise(m)).toBeGreaterThan(0.9);
+    expect(crowdNoise({ ...m, down: 1, quarter: 1, yardLine: 30 })).toBeLessThan(0.3);
+    expect(crowdNoise({ ...m, possession: 0 })).toBe(0);
+    expect(crowdNoise({ ...m, settings: { neutral: true } })).toBe(0);
+  });
+});

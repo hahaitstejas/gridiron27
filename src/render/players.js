@@ -841,7 +841,8 @@ function computePose(p, time, sim) {
   }
   return pose;
 }
-const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stumble', 'hurdle', 'backpedal']);
+// Includes going down and getting up: a tackled runner keeps the ball cradled (drawn in his hand), so it never looks loose.
+const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stumble', 'hurdle', 'backpedal', 'falling', 'down', 'getup', 'dive', 'slide']);
 
 /** Per-player gear, stable by number: visors on ~35% (more for skill players), towels on QBs and some skill players. */
 function gearOf(p) {

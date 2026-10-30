@@ -166,8 +166,13 @@ export class GameRenderer {
     if ((b.state === 'held' || b.state === 'presnap') && b.carrier >= 0) {
       const cp = sim.players[b.carrier];
       if (b.state === 'presnap') bm.position.set(b.x, 0.12, b.z);
-      // Going down: draw the ball exactly where the sim spots it.
-      else if (cp.state === 'tackled' || cp.state === 'down') bm.position.set(b.px + (b.x - b.px) * alpha, b.py + (b.y - b.py) * alpha, b.pz + (b.z - b.pz) * alpha);
+      // Going down: the ball stays in his cradling hand (the posed body), not at the sim's spotting point, which
+      // runs ahead of a sideways or backward fall and made every tackle look like a fumble.
+      else if (cp.state === 'tackled' || cp.state === 'down') {
+        const h = players.handPos[b.carrier];
+        if (h) bm.position.copy(h); else bm.position.set(b.px + (b.x - b.px) * alpha, b.py + (b.y - b.py) * alpha, b.pz + (b.z - b.pz) * alpha);
+        bm.position.y = Math.max(0.12, bm.position.y);
+      }
       else players.carryPoint(sim, b.carrier, alpha, bm.position);
       const c = sim.players[b.carrier];
       bm.rotation.set(0, Math.PI / 2 - c.facing + Math.PI / 2, b.state === 'presnap' ? 0 : 0.5);

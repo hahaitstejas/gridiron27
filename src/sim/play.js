@@ -490,7 +490,19 @@ export class PlaySim {
     } else if (b.state === 'loose') {
       b.vy -= 10.72 * dt;
       b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
-      if (b.y < 0.12) { b.y = 0.12; b.vy = Math.abs(b.vy) * 0.35; b.vx *= 0.6; b.vz *= 0.6; }
+      if (b.y < 0.12) {
+        // A football's bounce is a guess: each hard landing kicks it off at a new angle with a random rebound
+        // (sometimes it pops up, sometimes it dies); soft contacts just roll it along.
+        b.y = 0.12;
+        const hard = Math.abs(b.vy) > 1.2;
+        if (hard) {
+          const turnA = this.rng.range(-1.1, 1.1), c = Math.cos(turnA), sn = Math.sin(turnA);
+          const k = this.rng.range(0.45, 0.8);
+          [b.vx, b.vz] = [(b.vx * c - b.vz * sn) * k, (b.vx * sn + b.vz * c) * k];
+          b.vy = Math.abs(b.vy) * this.rng.range(0.2, 0.6);
+        } else { b.vy = 0; b.vx *= 0.92; b.vz *= 0.92; }
+      }
+      b.tumble = (b.tumble || 0) + dt * Math.hypot(b.vx, b.vz) * 2.5;
       if (this.state === 'live') this.updateLooseBall();
     }
   }

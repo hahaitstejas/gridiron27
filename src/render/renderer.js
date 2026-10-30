@@ -172,7 +172,8 @@ export class GameRenderer {
       bm.rotation.set(0, Math.PI / 2 - c.facing + Math.PI / 2, b.state === 'presnap' ? 0 : 0.5);
     } else {
       bm.position.set(b.px + (b.x - b.px) * alpha, b.py + (b.y - b.py) * alpha, b.pz + (b.z - b.pz) * alpha);
-      if (b.state === 'air' || b.state === 'snap') {
+      if (b.state === 'loose') bm.rotation.set(b.tumble || 0, Math.atan2(-b.vz, b.vx), (b.tumble || 0) * 0.6, 'YZX'); // end over end
+      else if (b.state === 'air' || b.state === 'snap') {
         // Point along the velocity with a spiral.
         const yaw = Math.atan2(-(b.vz), b.vx);
         const pitch = Math.atan2(b.vy, Math.hypot(b.vx, b.vz));

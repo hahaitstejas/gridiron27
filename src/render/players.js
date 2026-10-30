@@ -499,13 +499,18 @@ function computePose(p, time, sim) {
   };
   const t = p.animT;
   const runLegs = (amp) => {
-    pose.legs[0].hip = sw * amp; pose.legs[1].hip = -sw * amp;
-    pose.legs[0].knee = 0.25 + Math.max(0, -Math.cos(cyc)) * amp * 1.6;
-    pose.legs[1].knee = 0.25 + Math.max(0, Math.cos(cyc)) * amp * 1.6;
-    pose.arms[0].pitch = -sw * amp * 1.1; pose.arms[1].pitch = sw * amp * 1.1;
-    pose.arms[0].elbow = pose.arms[1].elbow = 1.3;
-    pose.rootY = Math.abs(Math.cos(cyc)) * 0.05 * amp;
+    // Sprint mechanics: the thigh drives further forward than back, the knee folds through the swing,
+    // arms pump opposite the legs with the hands coming up, shoulders counter-rotate, two bounces per cycle.
+    const drive = (x) => (x > 0 ? x * 1.25 : x * 0.75) * amp;
+    pose.legs[0].hip = drive(sw); pose.legs[1].hip = drive(-sw);
+    pose.legs[0].knee = 0.25 + Math.max(0, -Math.cos(cyc)) * amp * 1.75;
+    pose.legs[1].knee = 0.25 + Math.max(0, Math.cos(cyc)) * amp * 1.75;
+    pose.arms[0].pitch = -sw * amp * 1.15 + 0.15 * amp; pose.arms[1].pitch = sw * amp * 1.15 + 0.15 * amp;
+    pose.arms[0].elbow = 1.25 + Math.max(0, -sw) * 0.35 * amp; pose.arms[1].elbow = 1.25 + Math.max(0, sw) * 0.35 * amp;
+    pose.twist = sw * 0.14 * amp;
+    pose.rootY = Math.abs(Math.cos(cyc)) * 0.06 * amp;
     pose.crouch = -0.06 * amp;
+    pose.head = -pose.lean * 0.55; // eyes up the field, not at the turf
   };
   switch (p.anim) {
     case 'stance3':
@@ -765,8 +770,16 @@ function computePose(p, time, sim) {
     default: // run
       runLegs(Math.min(1.05, 0.25 + run * 0.85));
   }
+  // A ball carrier cradles it in the right arm (both arms when protecting it) instead of pumping that arm.
+  const b = sim?.ball;
+  if (b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
+    const a = pose.arms[1];
+    a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;
+    if (p.protect) { const l = pose.arms[0]; l.pitch = 0.75; l.elbow = 1.9; l.out = -0.35; }
+  }
   return pose;
 }
+const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stumble', 'hurdle', 'backpedal']);
 
 /** Per-player gear, stable by number: visors on ~35% (more for skill players), towels on QBs and some skill players. */
 function gearOf(p) {

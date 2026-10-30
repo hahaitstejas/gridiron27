@@ -69,7 +69,8 @@ export function gameXP(line = {}, pos) {
 export function awardCareerGame(f, teams, g, lines) {
   const c = f.career, p = careerPlayer(f, teams);
   if (!c || !p) return 0;
-  const line = lines?.[c.rid] || lines?.[String(c.rid)];
+  // No stat line (a quiet day in a quick-simmed game) still counts if he was healthy enough to suit up.
+  const line = lines?.[c.rid] || lines?.[String(c.rid)] || (p.injury ? null : {});
   if (!line) return 0;
   const xp = gameXP(line, p.pos);
   c.xp += xp;

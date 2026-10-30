@@ -161,3 +161,47 @@ describe('defensive hot routes', () => {
     expect(now.slot).toBe(me.slot);
   });
 });
+
+describe('career over several seasons', () => {
+  it('keeps the career player through three full seasons and offseasons with valid rosters', async () => {
+    const O = await import('../src/franchise/offseason.js');
+    const F = await import('../src/franchise/franchise.js');
+    const { payroll } = await import('../src/franchise/contracts.js');
+    const lg = generateLeagueRosters((await import('../src/data/teams.js')).defaultTeams(), 71);
+    const f = F.createFranchise(lg, { userTeam: 6, weeks: 6, seed: 3 });
+    const p = createCareerPlayer(lg[6], { first: 'Long', last: 'Haul', pos: 'WR', number: 11 }, new RNG(8));
+    startCareer(f, p);
+    for (let season = 0; season < 3; season++) {
+      while (f.phase !== 'offseason') { F.simOthers(f, lg); const g = F.userGame(f); if (g && !g.score) F.simGame(f, lg, g); F.advance(f, lg); }
+      O.progressPlayers(f, lg);
+      O.finishResigning(f, lg);
+      O.cpuFreeAgency(f, lg);
+      O.makeDraft(f, lg);
+      O.simToUserPick(f, lg);
+      while (f.offseason.draft.at < f.offseason.draft.picks.length) {
+        if (f.offseason.draft.picks[f.offseason.draft.at].team === 6) O.makePick(f, lg, f.offseason.draft.cls[0].id);
+        O.simToUserPick(f, lg);
+        if (f.offseason.draft.picks[f.offseason.draft.at]?.team !== 6) break;
+      }
+      O.finishDraft(f, lg);
+      O.cpuCutDowns(f, lg);
+      O.cutDown(lg[6], 53, f.cap);
+      O.fillRoster(f, lg[6], 46); // as the offseason screen does for your team
+      F.startNextSeason(f, lg);
+      expect(lg[6].roster).toContain(p);
+      expect(p.age).toBe(22 + season);
+      // Every regular-season game he was healthy for counts (injuries sit him out).
+      const played = f.career.games.filter((g) => g.year === f.year - 1 && g.week !== null);
+      expect(played.length).toBeGreaterThanOrEqual(2);
+      expect(played.every((g) => g.xp >= 10)).toBe(true);
+      for (const t of lg) {
+        expect(t.roster.length).toBeLessThanOrEqual(53);
+        expect(t.roster.length).toBeGreaterThanOrEqual(45);
+        for (const ids of Object.values(t.depth)) for (const id of ids) expect(t.roster.some((q) => q.id === id)).toBe(true);
+      }
+      expect(payroll(lg[6])).toBeLessThanOrEqual(f.cap + 1e-6);
+    }
+    expect(f.year).toBe(2030);
+    expect(f.career.points * 100 + f.career.xp).toBeGreaterThan(300);
+  }, 120000);
+});

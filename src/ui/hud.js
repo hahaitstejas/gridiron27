@@ -142,7 +142,7 @@ export class Hud {
     if (!r) { el.classList.add('hidden'); return; }
     el.classList.remove('hidden');
     el.querySelector('.rp-fill').style.width = `${(100 * r.t) / Math.max(0.01, r.duration)}%`;
-    const help = r.auto ? `<b class="btn A">A</b> / <b class="btn B">B</b> Skip replay` : `<b class="btn A">A</b> ${r.playing ? 'Pause' : 'Play'} &nbsp; <b class="btn X">X</b> ${r.speed < 1 ? 'Normal speed' : 'Slow-mo'} &nbsp; <b class="btn Y">Y</b> Restart &nbsp; Left stick ◀▶ scrub &nbsp; Right stick camera &nbsp; LT/RT zoom &nbsp; <b class="btn B">B</b> Exit`;
+    const help = r.auto ? `<b class="btn A">A</b> / <b class="btn B">B</b> Skip replay` : `<b class="btn A">A</b> ${r.playing ? 'Pause' : 'Play'} &nbsp; <b class="btn X">X</b> ${r.speed < 1 ? 'Normal speed' : 'Slow-mo'} &nbsp; <b class="btn Y">Y</b> Restart &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> Angle: ${r.angle || 'Broadcast'} &nbsp; Left stick ◀▶ scrub &nbsp; Right stick camera &nbsp; LT/RT zoom &nbsp; <b class="btn B">B</b> Exit`;
     const h = el.querySelector('.rp-help');
     if (h.dataset.v !== help) { h.dataset.v = help; h.innerHTML = help; }
   }

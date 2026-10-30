@@ -211,7 +211,7 @@ function startReplay(auto = false) {
   if (!session?.lastReplay) return;
   const player = new ReplayPlayer(session.lastReplay);
   const dir = player.ghost.dir;
-  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true, auto, endT: 0 };
+  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true, auto, endT: 0, dir, angle: 0 };
   app = 'replay';
   screens.clear();
   playcall.hide();
@@ -227,6 +227,16 @@ function endReplay() {
   snapCam = true;
 }
 
+// Replay camera presets: yaw relative to the view from behind the offense.
+const REPLAY_ANGLES = [
+  { name: 'Broadcast', yaw: -0.55, pitch: 0.42, dist: 24 },
+  { name: 'End zone', yaw: 0, pitch: 0.22, dist: 26 },
+  { name: 'Sideline', yaw: -Math.PI / 2, pitch: 0.3, dist: 26 },
+  { name: 'Reverse', yaw: Math.PI, pitch: 0.28, dist: 24 },
+  { name: 'Sky cam', yaw: -0.2, pitch: 1.25, dist: 30 },
+  { name: 'Tight', yaw: -0.9, pitch: 0.16, dist: 9 },
+];
+
 function updateReplay(f, dt) {
   const r = replay;
   // An automatic replay gets out of the way as soon as you press anything (you're picking a play).
@@ -234,6 +244,12 @@ function updateReplay(f, dt) {
   if (f.pressed.A) r.playing = !r.playing;
   if (f.pressed.X) r.speed = r.speed < 1 ? 1 : 0.25;
   if (f.pressed.Y) { r.player.seek(0); r.playing = true; }
+  // LB / RB: preset camera angles (the right stick still orbits from there).
+  if (f.pressed.LB || f.pressed.RB) {
+    r.angle = (r.angle + (f.pressed.RB ? 1 : -1) + REPLAY_ANGLES.length) % REPLAY_ANGLES.length;
+    const a = REPLAY_ANGLES[r.angle], behind = r.dir > 0 ? Math.PI : 0;
+    r.yaw = behind + a.yaw * (r.dir > 0 ? 1 : -1); r.pitch = a.pitch; r.dist = a.dist;
+  }
   let t = r.player.t;
   if (Math.abs(f.lx) > 0.2) { t += f.lx * dt * 3; r.playing = false; }
   else if (r.playing) t += dt * r.speed;
@@ -432,7 +448,7 @@ function frameBody(now) {
     renderer.setAim(null);
     renderer.renderReplay(dt, replay.player.focus(), replay.yaw, replay.pitch, replay.dist, replay.fresh);
     replay.fresh = false;
-    hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed, auto: replay.auto });
+    hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed, auto: replay.auto, angle: REPLAY_ANGLES[replay.angle].name });
   } else if (session && app !== 'menu') {
     const m = session.match;
     if (sim) renderer.drawSim(sim, alpha, time, session); else renderer.hidePlayers();

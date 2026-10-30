@@ -59,8 +59,8 @@ for (let i = 0; i < 40; i++) {
 }
 console.log('human game:', JSON.stringify(await state(page)));
 // Pause menu (close an automatic replay first: Menu there just ends the replay).
-if ((await state(page)).app === 'replay') { await page.keyboard.press('KeyK'); await page.waitForTimeout(400); }
-await page.keyboard.press('Enter'); await page.waitForTimeout(500);
+// An automatic replay can start at any moment (Menu then only ends it), so press until the pause menu is up.
+for (let i = 0; i < 4 && (await state(page)).app !== 'paused'; i++) { await page.keyboard.press('Enter'); await page.waitForTimeout(500); }
 const paused = await state(page);
 await page.screenshot({ path: `${out}/pause.png` });
 await page.keyboard.press('KeyK');

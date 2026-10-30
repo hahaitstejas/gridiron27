@@ -46,6 +46,45 @@ const POS_ALIAS = { RB: 'HB', LB: 'OLB', ILB: 'MLB', NB: 'CB', S: 'FS', OT: 'T',
  * at the same position (starters first) and are pinned to the top of the depth chart in file order;
  * unlisted roster spots keep their generated players. Returns a summary.
  */
+/** A player from one roster.csv row (pos already normalized). Missing ratings use the position template exactly. */
+function playerFromRow(row, pos, rng) {
+  const p = generatePlayer(pos, rng, 0);
+  for (const [key, code] of RATINGS) {
+    const v = parseInt(row[code], 10);
+    p.ratings[key] = Number.isFinite(v) ? Math.max(0, Math.min(99, v)) : POSITION_TEMPLATES[pos][key] ?? 35;
+  }
+  p.first = row.first || p.first;
+  p.last = row.last || p.last;
+  if (row.age) p.age = +row.age;
+  if (row.height) p.height = +row.height;
+  if (row.weight) p.weight = +row.weight;
+  if (row.college) p.college = row.college;
+  const num = parseInt(row.number, 10);
+  if (Number.isFinite(num) && num >= 0 && num <= 99) p.number = num;
+  // Optional OVR column: show that overall (kept as an offset from the computed one).
+  const ovr = parseInt(row.OVR ?? row.ovr, 10);
+  delete p.ovrAdj;
+  if (Number.isFinite(ovr)) p.ovrAdj = Math.max(-30, Math.min(30, ovr - overall(p)));
+  p.ovr = overall(p);
+  return p;
+}
+
+/**
+ * Free agents from a roster-format CSV (the `team` column is ignored or "FA"; every row is a player without a
+ * team). Returns { players, skipped }.
+ */
+export function freeAgentsFromRows(rows, seed = 91) {
+  const rng = new RNG(seed);
+  const players = [], skipped = [];
+  rows.forEach((row, i) => {
+    let pos = (row.pos || '').toUpperCase();
+    pos = POS_ALIAS[pos] || pos;
+    if (!ROSTER_COUNTS[pos] || !(row.first || row.last)) { skipped.push(`row ${i + 2}: needs a name and a position ("${row.pos || ''}")`); return; }
+    players.push(playerFromRow(row, pos, rng));
+  });
+  return { players, skipped };
+}
+
 export function importRosterRows(teams, rows, seed = 77) {
   const rng = new RNG(seed);
   const byAbbr = new Map(teams.map((t) => [t.abbr.toUpperCase(), t]));
@@ -62,23 +101,7 @@ export function importRosterRows(teams, rows, seed = 77) {
     pos = POS_ALIAS[pos] || pos;
     if (!team || !ROSTER_COUNTS[pos]) { summary.skipped.push(`row ${i + 2}: unknown team "${row.team}" or position "${row.pos}"`); return; }
     if (!touched.has(team)) { touched.add(team); team._pinCount = {}; }
-    const p = generatePlayer(pos, rng, 0);
-    // Missing ratings use the position template exactly (no random noise).
-    for (const [key, code] of RATINGS) {
-      const v = parseInt(row[code], 10);
-      p.ratings[key] = Number.isFinite(v) ? Math.max(0, Math.min(99, v)) : POSITION_TEMPLATES[pos][key] ?? 35;
-    }
-    p.first = row.first || p.first;
-    p.last = row.last || p.last;
-    if (row.age) p.age = +row.age;
-    if (row.height) p.height = +row.height;
-    if (row.weight) p.weight = +row.weight;
-    if (row.college) p.college = row.college;
-    // Optional OVR column: show that overall (kept as an offset from the computed one).
-    const ovr = parseInt(row.OVR ?? row.ovr, 10);
-    delete p.ovrAdj;
-    if (Number.isFinite(ovr)) p.ovrAdj = Math.max(-30, Math.min(30, ovr - overall(p)));
-    p.ovr = overall(p);
+    const p = playerFromRow(row, pos, rng);
     const isFull = full.has(team.abbr.toUpperCase());
     if (!isFull) p.pinned = (team._pinCount[pos] = (team._pinCount[pos] || 0) + 1);
     // Partial file: replace a generated player at this position (best first, so imports start).

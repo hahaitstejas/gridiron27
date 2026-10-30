@@ -7,14 +7,29 @@ import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
 import { contractsScreen, tradeScreen, transactionsScreen, capLine } from './franchiseMoney.js';
 import { newsScreen, awardsScreen, latestHeadline, hallScreen } from './franchiseExtras.js';
-import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
+import { standings, rank, seeds, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
 import { deserializeLeague } from '../data/league.js';
 import { newCareer, careerScreen } from './career.js';
 import { fantasyDraftScreen } from './fantasyDraft.js';
+import { freeAgentsScreen } from './freeAgents.js';
+import { setFreeAgents } from '../franchise/freeAgents.js';
+import { parseCSV, freeAgentsFromRows } from '../data/csv.js';
 import { startFantasyDraft } from '../franchise/fantasy.js';
 import { careerPlayer } from '../franchise/career.js';
+
+async function loadLocalFreeAgents(f) {
+  if (location.protocol === 'file:') return;
+  try {
+    const res = await fetch('local/free_agents.csv', { cache: 'no-store' });
+    if (!res.ok || !/text|csv|octet/.test(res.headers.get('content-type') || 'text')) return;
+    const text = await res.text();
+    if (/<html/i.test(text)) return; // the dev server's fallback page, not a CSV
+    const { players } = freeAgentsFromRows(parseCSV(text));
+    if (players.length) setFreeAgents(f, players);
+  } catch { /* no file */ }
+}
 
 const recText = (r) => `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`;
 
@@ -98,6 +113,8 @@ export class FranchiseUI {
       L.franchise.baseSlot = baseSlot;
       // Fantasy draft: the franchise (its own save slot) empties every roster into one pool; the hub runs the draft.
       if (opts.rosters === 'fantasy') startFantasyDraft(L.franchise, this.teams, seed);
+      // Your own list of current free agents (public/local/free_agents.csv, roster format) replaces the generated pool.
+      await loadLocalFreeAgents(L.franchise);
       L.name = L.franchise.name;
       L.slot = null;
       await L.saveNow();
@@ -171,6 +188,7 @@ export class FranchiseUI {
       tile('', 'clipboard', 'Depth Chart', 'Starters, rotation', () => this.ctx.depthScreen(f.userTeam, back('Depth Chart'))),
       tile('', 'medkit', 'Injuries', hurt ? `${hurt} hurt` : 'All healthy', () => this.injuryScreen()),
       tile('', 'money', 'Contracts', capLine(f, me), () => contractsScreen(this)),
+      tile('', 'user', 'Free Agents', `${(f.freeAgents || []).length} available · sign one now`, () => freeAgentsScreen(this)),
       f.phase === 'regular' ? tile('', 'swap', 'Trade', tradeDeadlinePassed(f) ? 'Deadline passed' : `Deadline: week ${Math.ceil(f.weeks * 0.6)}`, () => tradeScreen(this)) : null,
     ].filter(Boolean);
     const league = [
@@ -242,25 +260,47 @@ export class FranchiseUI {
   }
 
   // ---------- standings ----------
-  standingsScreen(conf = this.teams[this.f.userTeam].conference) {
+  /** Tabs: each conference's divisions, then the playoff picture (seeds 1–7 per conference, NFL style). */
+  standingsScreen(tab = this.teams[this.f.userTeam].conference) {
     const { screens } = this.ctx;
     const teams = this.teams, rows = standings(teams, this.f.schedule);
-    const divs = DIVISIONS.map((d, di) => {
-      const r = rank(rows.filter((x) => teams[x.team].conference === conf && teams[x.team].division === di));
-      return el('div.fr-div', {}, el('div.dc-head', { text: `${CONFERENCES[conf]} ${d}` }),
+    let body;
+    if (tab === 2) body = this.playoffPicture(rows, this.f.playoffs?.seeds || [0, 1].map((c) => seeds(teams, rows, c)), !this.f.playoffs);
+    else body = el('div.fr-divs', {}, DIVISIONS.map((d, di) => {
+      const r = rank(rows.filter((x) => teams[x.team].conference === tab && teams[x.team].division === di));
+      return el('div.fr-div', {}, el('div.dc-head', { text: `${CONFERENCES[tab]} ${d}` }),
         el('div.st-row.st-head', {}, el('span.st-name', { text: 'Team' }), ...['W-L', 'PF', 'PA', 'DIV'].map((c) => el('span.st-num', { text: c }))),
         r.map((x) => el(`div.st-row${x.team === this.f.userTeam ? '.mine' : ''}`, { style: { borderLeftColor: teams[x.team].colors.primary } },
           el('span.st-name', {}, el('b', { text: `${teams[x.team].city} ${teams[x.team].name}` })),
           el('span.st-num', { text: recText(x) }), el('span.st-num', { text: String(x.pf) }), el('span.st-num', { text: String(x.pa) }),
           el('span.st-num', { text: `${x.divW}-${x.divL}` }))));
-    });
+    }));
     const back = el('div.start-btn', { text: 'Back' });
     back.activate = () => this.hub();
+    const tabs = [...CONFERENCES, 'Playoff Picture'];
     screens.frame('stats-screen', el('h1', { text: 'Standings' }),
-      el('div.pc-tabs', {}, CONFERENCES.map((c, i) => el(`div.pc-tab${i === conf ? '.on' : ''}`, { text: c }))),
-      el('div.fr-divs', {}, divs), back,
-      el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> conference &nbsp; <b class="btn B">B</b> back' }));
-    screens.nav.set([back], { onBack: () => this.hub(), onTab: () => this.standingsScreen(1 - conf) });
+      el('div.pc-tabs', {}, tabs.map((c, i) => el(`div.pc-tab${i === tab ? '.on' : ''}`, { text: c }))),
+      body, back,
+      el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> switch &nbsp; <b class="btn B">B</b> back' }));
+    screens.nav.set([back], { onBack: () => this.hub(), onTab: (d) => this.standingsScreen((tab + d + 3) % 3) });
+  }
+
+  /** Seeds 1–7 per conference: 1–4 division winners (1 = the bye), 5–7 wild cards; "if the season ended today". */
+  playoffPicture(rows, seedLists, live) {
+    const teams = this.teams;
+    const byTeam = new Map(rows.map((r) => [r.team, r]));
+    return el('div.fr-divs', {}, [0, 1].map((c) => {
+      const list = seedLists[c];
+      const hunt = live ? rank(rows.filter((r) => teams[r.team].conference === c && !list.includes(r.team))).slice(0, 3) : [];
+      const line = (team, label, cls = '') => {
+        const r = byTeam.get(team);
+        return el(`div.st-row${cls}${team === this.f.userTeam ? '.mine' : ''}`, { style: { borderLeftColor: teams[team].colors.primary } },
+          el('span.st-num', { text: label }), el('span.st-name', {}, el('b', { text: `${teams[team].city} ${teams[team].name}` })),
+          el('span.st-num', { text: r ? recText(r) : '' }), el('span.st-name.pp-tag', { text: label === '1' ? 'Division winner · bye' : +label <= 4 ? 'Division winner' : label === '–' ? 'In the hunt' : 'Wild card' }));
+      };
+      return el('div.fr-div', {}, el('div.dc-head', { text: `${CONFERENCES[c]}${live ? ' · if the season ended today' : ''}` }),
+        list.map((team, i) => line(team, String(i + 1))), hunt.map((r) => line(r.team, '–', '.pp-out')));
+    }));
   }
 
   // ---------- schedule ----------
@@ -295,7 +335,7 @@ export class FranchiseUI {
         : `(${g.seedA}) ${teams[g.away].abbr} @ ${teams[g.home].abbr} (${g.seedH})` }))));
     const back = el('div.start-btn', { text: 'Back' });
     back.activate = () => this.hub();
-    screens.frame('stats-screen', el('h1', { text: 'Playoffs' }), el('div.fr-bracket', {}, rounds), back);
+    screens.frame('stats-screen', el('h1', { text: 'Playoffs' }), this.playoffPicture(standings(teams, f.schedule), f.playoffs.seeds, false), el('div.fr-bracket', {}, rounds), back);
     screens.nav.set([back], { onBack: () => this.hub() });
   }
 

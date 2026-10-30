@@ -17,6 +17,7 @@ import { teamEditor, leagueEditor } from './ui/teamEditor.js';
 import { LEAGUE } from './data/leagueInfo.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
 import { TournamentUI } from './ui/tournament.js';
+import { addFreeAgent } from './franchise/freeAgents.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
 import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.js';
@@ -122,7 +123,7 @@ const franchiseUI = new FranchiseUI({
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
       quarterMinutes: f.settings.quarterMinutes }, { franchise: g, noTies: f.phase === 'playoffs', unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null });
   },
-  rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
+  rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back, onRelease: (p) => league.franchise && addFreeAgent(league.franchise, p) }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
   offseason: (ui) => offseasonScreen({ screens, teams, league, onExit: () => toMenu() }, ui),
 

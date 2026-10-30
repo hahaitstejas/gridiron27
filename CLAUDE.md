@@ -223,8 +223,10 @@ saves that hold one (`listSaves()` → `franchise` info). State: `{ userTeam, ye
 'regular'|'playoffs'|'offseason', schedule[week][{home, away, score}], stats{rid: season totals}, playoffs{seeds,
 rounds}, history[], seed, offseason{step, …} }`.
 - `season.js`: `makeSchedule` (6/10/17 weeks; one game a week each, division rivals twice in long seasons, home/
-  away balanced), `standings`/`rank` (win %, division, conference, point differential), `seeds` (4 division winners
-  + 3 wild cards per conference), `nextPlayoffRound` (wild card → divisional → conference → championship),
+  away balanced), `standings`/`rank` (NFL tiebreak order: win %, head-to-head `row.vs`, division record for division
+  rivals only, conference record, point differential), `seeds` (NFL: the 4 division winners are seeds 1–4 by record —
+  1 gets the bye — and the 3 best other teams are wild cards 5–7, even with a better record than a division winner;
+  Standings → Playoff Picture tab and the bracket screen show them), `nextPlayoffRound` (wild card → divisional → conference → championship),
   `addStats`/`leaders`.
 - `quicksim.js`: `quickSim(home, away, seed)` — scores from `teamRatings()` off/def (+1.5 home field, ~22 pts/team),
   then team totals split into box-score lines for the depth chart's players (same fields as Match stats). CPU
@@ -244,6 +246,13 @@ rounds}, history[], seed, offseason{step, …} }`.
   adding sudden-death periods — franchise playoff games use it too). Play / Sim Game / Finish the Round; state in
   localStorage `g27.tournament` (team indexes of the current league); the final screen's button returns to the bracket
   (`session.tournamentGame` → `recordPlayed`).
+- In-season free agents (`franchise/freeAgents.js`, hub → Free Agents, `ui/freeAgents.js`): `f.freeAgents` from day one
+  (`seedFreeAgents`: ~55 depth veterans, every position), or the user's list — X on the screen imports a roster-format CSV
+  (`freeAgentsFromRows` in csv.js, team column ignored), and `public/local/free_agents.csv` is loaded automatically when a
+  franchise starts; either replaces the pool. `signInSeason`: one-year deal at `inSeasonAsk` (60% of market), must fit
+  the cap; a full roster (53) picks someone to release first (he joins the pool, as does anyone released from the roster
+  editor via `ctx.onRelease`). The pool joins the offseason free agents (`poolForOffseason`) and the unsigned come back
+  next season (`poolAfterOffseason`).
 - Fantasy draft (New Franchise / New Season → Rosters: Fantasy draft; `franchise/fantasy.js`, `ui/fantasyDraft.js`): after
   the franchise slot is created, `startFantasyDraft` empties every roster into `f.fantasy.pool` (saved with the franchise,
   so a reload resumes the draft) and sets a random snake order; the hub shows the draft until done. CPU picks by

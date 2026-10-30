@@ -2,6 +2,7 @@
 // cut-downs. Steps run in order; f.offseason.step says where the user is:
 //   summary -> progression -> resign -> freeagency -> draft -> cutdown -> (next season)
 import { retireCareers } from './legacy.js';
+import { poolForOffseason } from './freeAgents.js';
 import { RNG } from '../core/rng.js';
 import { generatePlayer } from '../data/generator.js';
 import { OVERALL_WEIGHTS, ROSTER_COUNTS, overall } from '../data/positions.js';
@@ -84,7 +85,7 @@ export function resign(team, id) {
 /** Close re-signing: CPU teams keep good players; everyone left without a contract becomes a free agent. */
 export function finishResigning(f, teams) {
   const rng = rngOf(f);
-  const pool = f.offseason.pool || [];
+  const pool = [...(f.offseason.pool || []), ...poolForOffseason(f)]; // this season's free agents are still out there
   teams.forEach((t, ti) => {
     // CPU teams keep their best expiring players while the money fits.
     let pay = payroll(t) - expiring(t).reduce((s, p) => s + (p.salary || 0), 0);

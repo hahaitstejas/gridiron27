@@ -91,5 +91,6 @@ export function finishFantasyDraft(f, teams) {
   while (!draftDone(d)) makeFantasyPick(f, teams);
   for (const t of teams) t.depth = buildDepthChart(t.roster);
   f.cap = setupMoney(teams, f.seed);
+  for (const p of d.pool) (f.freeAgents ||= []).push(p); // anyone undrafted is a free agent
   f.fantasy = { done: true, undrafted: d.pool.length };
 }

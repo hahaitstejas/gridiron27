@@ -124,6 +124,11 @@ the Franchise menu lists them. Start a franchise with a **fantasy draft** (every
 53 rounds; auto-pick or auto-draft any time). The Franchise menu also has **New Season** (one season to a championship,
 no offseason) and **Tournament** (4, 8 or 16 teams, single elimination at neutral sites). The **Hall of Fame** keeps every
 player's career (stats, awards, championship rings) and inducts the great ones when they retire.
+Playoffs use the NFL format: 7 teams per conference, the 4 division winners are seeds 1–4 (the 1 seed gets a bye),
+the 3 best other teams are wild cards 5–7 (Standings → Playoff Picture shows it during the season).
+**Free agents** are available all season (hub → Free Agents): sign one on a one-year deal if it fits the cap, releasing
+someone if your roster is full. Press X there to import your own list of current free agents from a CSV (same columns as
+roster.csv; the team column is ignored), or put it in `public/local/free_agents.csv` to load it when a franchise starts.
 Money: every player has a salary and contract years under a salary cap (Contracts & Cap in the hub). Trade with CPU
 teams before the deadline (they want fair value and both teams must fit under the cap); CPU teams trade too
 (Transactions). Re-signing, free agents and cut-downs all have to fit under the cap.

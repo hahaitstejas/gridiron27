@@ -132,6 +132,7 @@ export function playerCard(ctx, ti, id, focus = 0) {
   release.activate = () => {
     if (!window.confirm(`Release ${p.first} ${p.last}?`)) return;
     releasePlayer(team, id);
+    ctx.onRelease?.(p); // franchise: he becomes a free agent
     ctx.onChange();
     rosterScreen(ctx, ti);
   };

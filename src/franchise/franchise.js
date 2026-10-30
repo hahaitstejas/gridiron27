@@ -2,6 +2,7 @@
 //   phase: 'regular' -> 'playoffs' -> 'offseason' (see offseason.js) -> next season's 'regular'.
 // Games the human plays are recorded from their Match; everything else goes through quickSim().
 import { archiveSeason } from './legacy.js';
+import { seedFreeAgents, poolAfterOffseason } from './freeAgents.js';
 import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats, STAT_FIELDS } from './season.js';
 import { quickSim } from './quicksim.js';
 import { RNG } from '../core/rng.js';
@@ -15,7 +16,7 @@ import { awardCareerGame } from './career.js';
 export const FRANCHISE_VERSION = 1;
 
 export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro', quarterMinutes = 5, name, year = 2027, seed = 1, mode = 'franchise' }) {
-  return {
+  const f = {
     version: FRANCHISE_VERSION,
     mode, // 'franchise' (seasons go on) | 'season' (one season: ends after the championship)
     name: name || `${teams[userTeam].city} ${teams[userTeam].name} ${mode === 'season' ? 'season' : 'franchise'}`,
@@ -34,6 +35,8 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
     recordsSince: year, // the first season sets the marks; later ones can break them
     awards: {}, // year -> [{ award, name, pos, team, line }]
   };
+  seedFreeAgents(f, seed * 17 + year); // in-season free agents (freeAgents.js)
+  return f;
 }
 
 /** Older franchise saves: add money (salaries + cap) and the transaction log. */
@@ -44,6 +47,7 @@ export function upgradeFranchise(f, teams) {
   f.records ||= { game: {}, season: {} };
   f.recordsSince ??= f.year;
   f.awards ||= {};
+  if (!f.freeAgents) seedFreeAgents(f, f.seed);
 }
 
 /** Log a transaction (trade, signing, release) for the hub's Transactions screen. */
@@ -192,6 +196,7 @@ export function startNextSeason(f, teams) {
   f.schedule = makeSchedule(teams, f.weeks, f.seed * 31 + f.year);
   f.stats = {};
   f.playoffs = null;
+  poolAfterOffseason(f, f.offseason?.pool); // the unsigned are next season's free agents
   f.offseason = null;
 }
 

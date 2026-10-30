@@ -304,3 +304,79 @@ describe('hall of fame', async () => {
     expect(L.topActive(f, 3).length).toBe(3);
   });
 });
+
+describe('NFL playoff seeding', async () => {
+  const S = await import('../src/franchise/season.js');
+  it('seeds division winners 1-4 by record, then the best three others 5-7; head-to-head breaks ties', () => {
+    const teams = defaultTeams();
+    const row = (team, w, l, o = {}) => ({ team, conf: teams[team].conference, div: teams[team].division, w, l, t: 0, pct: w / (w + l), pf: 300, pa: 300, divW: 3, divL: 3, confW: 6, confL: 6, vs: {}, ...o });
+    const conf0 = teams.map((t, i) => i).filter((i) => teams[i].conference === 0);
+    const byDiv = [0, 1, 2, 3].map((d) => conf0.filter((i) => teams[i].division === d));
+    const rows = [];
+    // Division 0 is strong: its winner 14-3, runner-up 13-4 (better than every other division winner).
+    rows.push(row(byDiv[0][0], 14, 3), row(byDiv[0][1], 13, 4), row(byDiv[0][2], 6, 11), row(byDiv[0][3], 5, 12));
+    for (let d = 1; d < 4; d++) rows.push(row(byDiv[d][0], 9 + d, 8 - d), row(byDiv[d][1], 8, 9), row(byDiv[d][2], 7, 10), row(byDiv[d][3], 4, 13));
+    const seeds = S.seeds(teams, rows, 0);
+    expect(seeds.length).toBe(7);
+    expect(seeds[0]).toBe(byDiv[0][0]); // best division winner: the bye
+    expect(seeds.slice(0, 4)).toEqual(expect.arrayContaining([byDiv[1][0], byDiv[2][0], byDiv[3][0]]));
+    expect(seeds[4]).toBe(byDiv[0][1]); // 13-4 but not a division winner: the 5 seed
+    // Head-to-head: two 8-9 teams, the one that won their game ranks ahead.
+    const a = row(byDiv[1][1], 8, 9, { vs: { [byDiv[2][1]]: 0.5 } }), b = row(byDiv[2][1], 8, 9, { vs: { [byDiv[1][1]]: -0.5 }, confW: 9, confL: 3 });
+    expect(S.rank([b, a])[0].team).toBe(a.team);
+    // The wild card round: 2v7, 3v6, 4v5 with the higher seed at home; 1 has a bye.
+    const r1 = S.nextPlayoffRound({ seeds: [seeds, seeds], rounds: [] }).filter((g) => g.conf === 0);
+    expect(r1.map((g) => [g.seedH, g.seedA])).toEqual([[2, 7], [3, 6], [4, 5]]);
+  });
+});
+
+describe('in-season free agents', async () => {
+  const FA = await import('../src/franchise/freeAgents.js');
+  const { freeAgentsFromRows, parseCSV } = await import('../src/data/csv.js');
+  const { payroll } = await import('../src/franchise/contracts.js');
+  it('has a pool from day one, signs with cap and roster rules, releases into the pool, imports a CSV', () => {
+    const lg = generateLeagueRosters(defaultTeams(), 41);
+    const f = createFranchise(lg, { userTeam: 1, weeks: 6, seed: 2 });
+    expect(f.freeAgents.length).toBeGreaterThan(40);
+    const me = lg[1];
+    while (me.roster.length < FA.ROSTER_MAX) me.roster.push({ ...me.roster[0], id: 900000 + me.roster.length, salary: 0.75 });
+    const fa = f.freeAgents.find((p) => p.pos === 'WR');
+    expect(FA.signInSeason(f, me, fa.id).reason).toBe('roster-full');
+    const out = me.roster.filter((p) => p.pos === 'WR').sort((a, b) => a.ovr - b.ovr)[0];
+    f.cap = payroll(me) + 50;
+    const r = FA.signInSeason(f, me, fa.id, out.id);
+    expect(r.ok).toBe(true);
+    expect(me.roster.length).toBe(FA.ROSTER_MAX);
+    expect(me.roster).toContain(fa);
+    expect(fa.years).toBe(1);
+    expect(f.freeAgents).toContain(out); // released: now a free agent
+    expect(f.freeAgents).not.toContain(fa);
+    // No cap room: no deal.
+    f.cap = payroll(me) - 1;
+    const other = f.freeAgents.find((p) => p !== out);
+    expect(FA.signInSeason(f, me, other.id, me.roster.find((p) => p.salary <= 0.75).id).ok).toBe(false);
+    // CSV of current free agents replaces the pool.
+    const csv = 'team,first,last,pos,age,SPD,CTH\nFA,Kai,Rivers,WR,27,90,85\n,Bo,Stone,lb,31,,\nFA,No,Position,XX,30,,';
+    const { players, skipped } = freeAgentsFromRows(parseCSV(csv));
+    expect(players.map((p) => `${p.first} ${p.pos}`)).toEqual(['Kai WR', 'Bo OLB']);
+    expect(skipped.length).toBe(1);
+    FA.setFreeAgents(f, players);
+    expect(f.freeAgents.length).toBe(2);
+    expect(players[0].ratings.speed).toBe(90);
+  });
+  it('carries free agents into the offseason pool and the leftovers into next season', async () => {
+    const O = await import('../src/franchise/offseason.js');
+    const lg = generateLeagueRosters(defaultTeams(), 43);
+    const f = createFranchise(lg, { userTeam: 0, weeks: 6, seed: 4 });
+    const marker = f.freeAgents[0];
+    while (f.phase !== 'offseason') { simOthers(f, lg); const g = userGame(f); if (g && !g.score) simGame(f, lg, g); advance(f, lg); }
+    O.progressPlayers(f, lg);
+    O.finishResigning(f, lg);
+    expect(f.offseason.pool).toContain(marker);
+    expect(f.freeAgents.length).toBe(0);
+    O.cpuFreeAgency(f, lg); O.makeDraft(f, lg); O.finishDraft(f, lg); O.cpuCutDowns(f, lg); O.cutDown(lg[0], 53, f.cap);
+    const { startNextSeason } = await import('../src/franchise/franchise.js');
+    startNextSeason(f, lg);
+    expect(f.freeAgents.length).toBeGreaterThan(10);
+  }, 60000);
+});

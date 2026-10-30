@@ -59,7 +59,7 @@ function matchWeek(n, rng, score) {
 
 /** Standings rows for every team: { team, w, l, t, pf, pa, pct, divW, divL, confW, confL }. */
 export function standings(teams, schedule, upToWeek = schedule.length) {
-  const rows = teams.map((_, i) => ({ team: i, w: 0, l: 0, t: 0, pf: 0, pa: 0, divW: 0, divL: 0, confW: 0, confL: 0 }));
+  const rows = teams.map((t, i) => ({ team: i, conf: t.conference, div: t.division, w: 0, l: 0, t: 0, pf: 0, pa: 0, divW: 0, divL: 0, confW: 0, confL: 0, vs: {} }));
   const sameDiv = (a, b) => teams[a].conference === teams[b].conference && teams[a].division === teams[b].division;
   for (let w = 0; w < upToWeek; w++) {
     for (const g of schedule[w] || []) {
@@ -70,6 +70,7 @@ export function standings(teams, schedule, upToWeek = schedule.length) {
       const res = hs > as ? [1, 0] : hs < as ? [0, 1] : [0.5, 0.5];
       for (const [r, won, opp] of [[H, res[0], g.away], [A, res[1], g.home]]) {
         if (won === 1) r.w++; else if (won === 0) r.l++; else r.t++;
+        r.vs[opp] = (r.vs[opp] || 0) + (won - 0.5); // head-to-head margin in wins (+ = won the series)
         const conf = teams[r.team].conference === teams[opp].conference;
         if (sameDiv(r.team, opp)) { if (won === 1) r.divW++; else if (won === 0) r.divL++; }
         if (conf) { if (won === 1) r.confW++; else if (won === 0) r.confL++; }
@@ -80,13 +81,25 @@ export function standings(teams, schedule, upToWeek = schedule.length) {
   return rows;
 }
 
-/** Sort standings rows best first: win %, division record, conference record, point differential. */
+/**
+ * Sort standings rows best first, with the NFL's tiebreaker order for two tied teams: win %, head-to-head, division
+ * record (division rivals only), conference record, then point differential (standing in for strength of victory /
+ * points rankings).
+ */
 export function rank(rows) {
-  return [...rows].sort((a, b) => b.pct - a.pct || (b.divW - b.divL) - (a.divW - a.divL) || (b.confW - b.confL) - (a.confW - a.confL)
+  const pct = (w, l) => (w + l ? w / (w + l) : 0.5);
+  return [...rows].sort((a, b) => b.pct - a.pct
+    || (b.vs?.[a.team] || 0) - (a.vs?.[b.team] || 0)
+    || (a.conf === b.conf && a.div === b.div ? pct(b.divW, b.divL) - pct(a.divW, a.divL) : 0)
+    || pct(b.confW, b.confL) - pct(a.confW, a.confL)
     || (b.pf - b.pa) - (a.pf - a.pa) || a.team - b.team);
 }
 
-/** Playoff seeds for a conference: 4 division winners (1–4) then 3 wild cards (5–7). */
+/**
+ * Playoff seeds for a conference, NFL style: the 4 division winners are seeds 1–4 (ordered by record, so the best
+ * winner gets the bye), then the 3 best non-winners are the wild cards, 5–7 — even when a wild card has a better
+ * record than a division winner.
+ */
 export function seeds(teams, rows, conference) {
   const conf = rows.filter((r) => teams[r.team].conference === conference);
   const winners = [];

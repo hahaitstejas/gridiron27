@@ -125,8 +125,10 @@ function handleCarrier(sim, p, inp, cam) {
 function handleDefense(sim, p, inp) {
   const b = sim.ball;
   if (p.engagement && p.engagement.d === p) {
-    if (inp.flick.left || inp.flick.right) passRushMove(sim, p, inp.flick.left ? 'swim' : 'spin');
-    else if (inp.flick.up) passRushMove(sim, p, 'bull');
+    if (inp.pressed.A || inp.flick.up) passRushMove(sim, p, 'bull');
+    else if (inp.pressed.X || inp.flick.left) passRushMove(sim, p, 'swim');
+    else if (inp.pressed.Y || inp.flick.right) passRushMove(sim, p, 'spin');
+    else if (inp.flick.down) passRushMove(sim, p, 'rip');
     return;
   }
   if (inp.pressed.A && b.state === 'air') {

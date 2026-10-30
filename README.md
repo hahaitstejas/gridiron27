@@ -31,6 +31,7 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 | Throw away | RS click | R |
 | High / low pass | hold LB / LT while throwing | Q / E |
 | Pump fake | LS click | F |
+| Pass-rush moves (defense, engaged with a blocker) | A bull rush · X swim · Y spin · RS ↓ rip (rating contest vs the blocker) | J · U · I · ↓ |
 | Option: pitch / keep | LB pitches (speed option); hold LT through the mesh to keep (zone read) | Q / E |
 | Juke / truck / hit stick | Right stick ← → / ↑ | Arrow keys |
 | Stiff arm · Spin · Dive (QB: slide) · Hurdle | A · B · X · Y | J · K · U · I |

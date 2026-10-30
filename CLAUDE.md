@@ -193,6 +193,10 @@ rounds}, history[], seed, offseason{step, …} }`.
 - Fakes (`special.json`, `fake: 'punt'|'fg'`, formations `punt_fake` / `fg_fake`): scrimmage plays the defense reads as a
   kick (`defenseForSpecial`); unassigned special-teams defenders rush up front / zone behind (`fakeKickAssign`). Hidden
   from the normal lists (`isScrimmagePlay`), offered in the 4th-down Special Teams tab; the CPU fakes ~3% on 4th & short.
+- Pass rush (user DL/edge engaged with a blocker): `RUSH_MOVES` in blocking.js — A / RS↑ bull rush (strength; drives
+  the blocker back, may shed), X swim, Y spin, RS↓ rip (pass rush / agility); odds from the rating contest, get-off
+  bonus, double teams hurt; fail = lost ground and a longer cooldown. Holding the stick gives a little leverage.
+  `npm run bot` userEdgeMoves vs userEdgeStick measures it (~16% vs ~7% sacks).
 - Passing: hold LB (high) / LT (low) while throwing (`b.place`: harder for defenders to play, -5% catch, no YAC);
   LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
 

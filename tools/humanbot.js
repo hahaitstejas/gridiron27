@@ -116,3 +116,32 @@ for (const [name, st] of Object.entries(strategies)) {
   }
   console.log(`userLBBlitz      avg ${(yds / n).toFixed(1)} yds allowed  pressure ${(100 * pres / n).toFixed(0)}%  sacks ${(100 * sacks / n).toFixed(0)}%`);
 }
+
+// User-controlled edge rusher: stick at the QB only, vs. also using pass-rush moves when engaged.
+for (const moves of [false, true]) {
+  let sacks = 0, pres = 0, n = 0, wins = 0;
+  for (let i = 0; i < N; i++) {
+    const ops = listOffPlays().filter((p) => p.type === 'pass');
+    const sim = new PlaySim({ rng: new RNG(4000 + i), teams: [teams[i % 32], teams[(i + 7) % 32]], offIdx: 0, dir: 1, losX: -25, ballZ: 0,
+      offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 1, camDir: 1, ...DIFF });
+    const edge = sim.defense().find((p) => p.pos === 'DE') || sim.defense().find((p) => p.pos === 'OLB');
+    sim.controlledId = edge.id;
+    sim.snap();
+    const f = emptyFrame();
+    let k = 0, pressured = false;
+    const btns = ['A', 'X', 'Y'];
+    while (!sim.finished && k < 3000) {
+      const me = sim.players[sim.controlledId];
+      const qb = sim.bySlot(0, 'QB');
+      const dx = qb.x - me.x, dz = qb.z - me.z, l = Math.hypot(dx, dz) || 1;
+      f.ly = -dx / l; f.lx = dz / l; f.rt = 1;
+      for (const b in f.pressed) f.pressed[b] = false;
+      if (moves && me.engagement && k % 20 === 0) f.pressed[btns[(k / 20) % 3]] = true;
+      sim.tick(STEP, f); k++;
+      for (const e of sim.events) if (e.type === 'rushWin') wins++;
+      if (!sim.passThrown && l < 2.5) pressured = true;
+    }
+    n++; if (sim.result.sack) sacks++; if (pressured) pres++;
+  }
+  console.log(`userEdge${moves ? 'Moves' : 'Stick'}`.padEnd(17) + `pressure ${(100 * pres / n).toFixed(0)}%  sacks ${(100 * sacks / n).toFixed(0)}%  move wins ${wins}`);
+}

@@ -65,7 +65,8 @@ function updateEngagement(sim, e, dt) {
   const dPow = (pass ? sim.R(d, 'passRush') : sim.R(d, 'blockShed')) * 0.6 + sim.R(d, 'strength') * 0.4 + d.bulk * 6;
   let bPow = (pass ? sim.R(b, 'passBlock') : sim.R(b, 'runBlock')) * 0.6 + sim.R(b, 'strength') * 0.4 + b.bulk * 6;
   for (const h of e.helpers) bPow += ((pass ? sim.R(h, 'passBlock') : sim.R(h, 'runBlock')) * 0.6 + sim.R(h, 'strength') * 0.4) * 0.55;
-  const diff = dPow - bPow + rng.gauss(0, 4);
+  // A user who keeps working (stick held) gets a little extra leverage.
+  const diff = dPow - bPow + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 3 : 0);
   e.bal = e.bal * 0.95 + diff * 0.05;
 
   // Where the defender wants to go.
@@ -146,21 +147,41 @@ export function shed(sim, e, gx, gz) {
   sim.emit('shed', { d: d.id, b: b.id });
 }
 
-/** User pass rush move while engaged. type: 'swim' | 'spin' | 'bull'. */
+/**
+ * User pass-rush moves while engaged (A / RS up: bull rush, X / RS left: swim, Y / RS right: spin, RS down: rip).
+ * Each is a rating contest against the blocker: power moves use strength, finesse moves use pass rush and
+ * agility. A good edge beats an average tackle more often than not; double teams are hard to beat.
+ */
+export const RUSH_MOVES = {
+  bull: { atk: (s, d) => s.R(d, 'strength') * 0.6 + s.R(d, 'passRush') * 0.4, def: (s, b) => s.R(b, 'strength') * 0.55 + s.R(b, 'passBlock') * 0.45 },
+  swim: { atk: (s, d) => s.R(d, 'passRush') * 0.65 + s.R(d, 'agility') * 0.35, def: (s, b) => s.R(b, 'passBlock') * 0.7 + s.R(b, 'agility') * 0.3 },
+  spin: { atk: (s, d) => s.R(d, 'passRush') * 0.55 + s.R(d, 'agility') * 0.25 + s.R(d, 'acceleration') * 0.2, def: (s, b) => s.R(b, 'passBlock') * 0.75 + s.R(b, 'awareness') * 0.25 },
+  rip: { atk: (s, d) => s.R(d, 'passRush') * 0.5 + s.R(d, 'strength') * 0.5, def: (s, b) => s.R(b, 'passBlock') * 0.6 + s.R(b, 'strength') * 0.4 },
+};
+
 export function passRushMove(sim, d, type) {
   const e = d.engagement;
   if (!e || e.d !== d || (d.rushMoveCd || 0) > sim.t) return;
-  d.rushMoveCd = sim.t + 1.2;
-  const pr = sim.R(d, 'passRush'), st = sim.R(d, 'strength');
-  const pb = sim.R(e.b, 'passBlock'), bs = sim.R(e.b, 'strength');
-  const atk = type === 'bull' ? st * 0.7 + pr * 0.3 : pr * 0.7 + sim.R(d, 'agility') * 0.3;
-  const def = type === 'bull' ? bs * 0.6 + pb * 0.4 : pb * 0.8 + sim.R(e.b, 'awareness') * 0.2;
-  const p = Math.max(0.1, Math.min(0.8, 0.35 + (atk - def) * 0.012 - e.helpers.length * 0.15));
+  const mv = RUSH_MOVES[type] || RUSH_MOVES.swim;
+  const edge = mv.atk(sim, d) - mv.def(sim, e.b);
+  // Quick get-off (a move early in the rep) helps; each extra blocker hurts.
+  const p = Math.max(0.12, Math.min(0.85, 0.2 + edge * 0.013 + (e.t < 1 ? 0.06 : 0) - e.helpers.length * 0.18));
   sim.emit('rushMove', { player: d.id, kind: type });
+  const qb = sim.bySlot(sim.offIdx, 'QB');
   if (sim.rng.next() < p) {
-    const qb = sim.bySlot(sim.offIdx, 'QB');
-    shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z);
+    d.rushMoveCd = sim.t + 0.9;
+    if (type === 'bull') {
+      // Walk the blocker back into the pocket; often that's enough to shed him too.
+      e.bal += 18;
+      if (sim.rng.next() < 0.3) shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z);
+    } else {
+      shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z);
+      if (type === 'spin') { d.speedCap = 1; d.recoverAt = 0; }
+    }
+    sim.emit('rushWin', { player: d.id, kind: type });
   } else {
-    e.bal -= 6;
+    // A missed move costs ground (a failed spin most of all).
+    d.rushMoveCd = sim.t + 1.8;
+    e.bal -= type === 'spin' ? 10 : 6;
   }
 }

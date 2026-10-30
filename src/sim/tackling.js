@@ -26,7 +26,7 @@ export function startMove(sim, p, type, dir = 0) {
   if (type === 'slide' && sim.ball.state === 'held' && sim.ball.carrier === p.id) p.slideSpot = sim.carrierBallPos(p);
   p.anim = type;
   p.animT = 0;
-  sim.emit('move', { player: p.id, type });
+  sim.emit('move', { player: p.id, kind: type });
   return true;
 }
 

@@ -27,19 +27,20 @@ export function updateBlocking(sim, dt) {
   for (const b of sim.players) {
     if (!canBlock(sim, b)) continue;
     const tgtId = b.task.target;
-    let best = null, bd = ENGAGE_DIST;
+    // Kick protection: everyone holds a gap, so they pick up rushers a little wider.
+    let best = null, bd = sim.kick && !sim.kick.launched ? 1.45 : ENGAGE_DIST;
     for (const d of sim.players) {
       if (!canBeBlocked(sim, d)) continue;
       const dist = Math.hypot(d.x - b.x, d.z - b.z);
       if (dist < bd && (tgtId === undefined || tgtId === d.id || dist < 0.9)) { bd = dist; best = d; }
     }
     if (best) {
-      const mode = sim.offPlay.type === 'pass' && !sim.ballLiveRun ? 'pass' : 'run';
+      const mode = (sim.offPlay.type === 'pass' || (sim.kick && !sim.kick.launched)) && !sim.ballLiveRun ? 'pass' : 'run';
       engage(sim, b, best, mode);
     }
   }
-  // Double teams: a free pass blocker adjacent to an engaged rusher helps.
-  for (const b of sim.players) {
+  // Double teams: a free pass blocker adjacent to an engaged rusher helps (not on kicks: everyone has a gap).
+  for (const b of sim.kick ? [] : sim.players) {
     if (!canBlock(sim, b) || b.task.type !== 'pass_block' || b.task.target !== undefined) continue;
     for (const e of sim.engagements) {
       if (e.helpers.length || Math.hypot(e.d.x - b.x, e.d.z - b.z) > ENGAGE_DIST) continue;
@@ -124,6 +125,8 @@ function updateEngagement(sim, e, dt) {
   if (pass && sim.passThrown) rate *= 0.5;
   // Sliders: blockers hold longer, rushers/defenders shed faster.
   rate *= (1 - 0.45 * sim.sl(b.team, pass ? 'passBlocking' : 'runBlocking')) * (1 + 0.45 * sim.sl(d.team, pass ? 'passRush' : 'runDefense'));
+  // Field goal / punt protection is a wall of big bodies for ~1.3 s: rushers rarely get clean through.
+  if (sim.kick && b.team === sim.offIdx && b.task?.type === 'pass_block' && !sim.kick.launched) rate *= 0.22;
   if (b.task?.type === 'escort') rate *= sim.kick ? 10 : 3; // open-field blocks don't hold long
   if (b.task?.type === 'kr_block') rate *= 6; // gunners and coverage fight through return blocks
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);
@@ -153,7 +156,7 @@ export function passRushMove(sim, d, type) {
   const atk = type === 'bull' ? st * 0.7 + pr * 0.3 : pr * 0.7 + sim.R(d, 'agility') * 0.3;
   const def = type === 'bull' ? bs * 0.6 + pb * 0.4 : pb * 0.8 + sim.R(e.b, 'awareness') * 0.2;
   const p = Math.max(0.1, Math.min(0.8, 0.35 + (atk - def) * 0.012 - e.helpers.length * 0.15));
-  sim.emit('rushMove', { player: d.id, type });
+  sim.emit('rushMove', { player: d.id, kind: type });
   if (sim.rng.next() < p) {
     const qb = sim.bySlot(sim.offIdx, 'QB');
     shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z);

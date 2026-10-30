@@ -269,6 +269,7 @@ function onSessionEvent(e) {
   else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);
   else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
+  else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');
   else if (e.type === 'gameOver') {
     app = 'over';
     playcall.hide();

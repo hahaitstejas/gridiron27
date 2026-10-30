@@ -50,6 +50,55 @@ export function kickRange(type, kpw, power = 1) {
   return KICKS[type].range(kpw) * power;
 }
 
+/**
+ * Blocked kicks: a rusher right in front of the kicker as the ball comes off his foot may get a hand on it.
+ * Long field goals fly lower and are easier to block; punts are harder (the punter is deeper). Real rates
+ * are ~1-2% of field goals (more from 50+) and well under 1% of punts.
+ */
+/**
+ * Field goal / punt protection: a free rusher wading through the wall of linemen barely moves (the human's
+ * rusher too), so getting a hand on the kick takes a well-timed rush through a gap. Applied as a speed cap.
+ */
+export function protectionWall(sim) {
+  const k = sim.kick;
+  if (!k || (k.type !== 'fg' && k.type !== 'punt')) return;
+  for (const p of sim.players) {
+    if (p.team === sim.offIdx || p.engagement || p.state !== 'active') continue;
+    let wall = 1;
+    if (!k.launched) {
+      for (const o of sim.players) {
+        if (o.team !== sim.offIdx || o.task?.type !== 'pass_block') continue;
+        const dd = Math.hypot(o.x - p.x, o.z - p.z);
+        if (dd < WALL_R) wall = Math.min(wall, WALL_MIN + (dd / WALL_R) * (1 - WALL_MIN));
+      }
+    }
+    p.speedCap = wall;
+  }
+}
+const WALL_R = 1.5, WALL_MIN = 0.5;
+
+function blockCheck(sim, kicker, type, range) {
+  const kl = sim.toLocal(kicker.x, kicker.z);
+  const low = type === 'fg' ? 0.6 + Math.max(0, range - 38) / 30 : 0.45;
+  for (const d of sim.players) {
+    if (d.team === kicker.team || d.state !== 'active' || d.engagement) continue;
+    const dist = Math.hypot(d.x - kicker.x, d.z - kicker.z);
+    if (dist > 2.6 || sim.toLocal(d.x, d.z).down < kl.down + 0.4) continue;
+    const reach = Math.pow((2.6 - dist) / 2.6, 1.5) * 0.45 * low * (sim.isHumanControlled(d) ? 1.15 : 1);
+    if (sim.rng.next() < reach) {
+      const b = sim.ball;
+      // The ball pops up and dies short of the line.
+      b.vx = b.vx * 0.12 + sim.rng.gauss(0, 1.5); b.vz = b.vz * 0.12 + sim.rng.gauss(0, 2); b.vy = sim.rng.range(2, 5);
+      b.target = { x: b.x + b.vx * 0.8, z: b.z + b.vz * 0.8 };
+      b.T = 0.8;
+      sim.kick.blocked = true;
+      sim.emit('kickBlocked', { player: d.id, kind: type });
+      return true;
+    }
+  }
+  return false;
+}
+
 /** Field-goal distance in yards from a line of scrimmage (yard line = yards from own goal). */
 export const fgDistance = (yardLine) => 100 - yardLine + 17;
 
@@ -106,7 +155,8 @@ export function launchKick(sim, kicker, params) {
   sim.kick.launched = true;
   sim.kick.style = type; // deep / squib / onside / punt / fg (kick.type stays kickoff/punt/fg)
   sim.possTeam = sim.defIdx; // ball belongs to nobody in the air; the receiving team blocks
-  sim.emit('kick', { type, power, kicker: kicker.id });
+  sim.emit('kick', { kind: type, power, kicker: kicker.id });
+  if (type === 'fg' || type === 'punt') blockCheck(sim, kicker, type, R);
   for (const p of sim.players) {
     if (p.team === sim.offIdx && p.task && ['pass_block', 'hold_kick', 'cover_wait'].includes(p.task.type)) p.task = { type: 'cover', safety: !!p.task.safety };
     if (p.engagement) sim.breakEngagement(p.engagement);
@@ -193,6 +243,7 @@ export function updateSpecial(sim, dt, input) {
   const b = sim.ball;
   const kicker = sim.players[k.kickerId];
   const humanKicks = sim.humanTeam === sim.offIdx;
+  protectionWall(sim);
   // Human meter.
   if (humanKicks && sim.meter && !k.launched) {
     if (input?.pressed.A && sim.meter.phase !== 'done' && sim.meter.phase !== 'idle') meterPress(sim.meter);

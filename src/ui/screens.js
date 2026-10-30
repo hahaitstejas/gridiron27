@@ -3,6 +3,7 @@ import { logoCanvas } from '../render/logo.js';
 import { teamRatings } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { KEY_HELP } from '../input/keyboard.js';
+import { gameXP, lineText } from '../franchise/career.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
@@ -349,6 +350,12 @@ export class Screens {
       rec && `Receiving: ${name(rec.team, rec.rid)} ${rec.rec} rec, ${Math.round(rec.recYds)} yds, ${rec.recTD} TD`,
       tk && `Defense: ${name(tk.team, tk.rid)} ${tk.tackles} tackles${tk.sacks ? `, ${tk.sacks} sack${tk.sacks > 1 ? 's' : ''}` : ''}`,
     ].filter(Boolean);
+    // Player of the game: the biggest stat line (same production score as career XP), a winner's player on ties.
+    const potg = ps.map((x) => ({ x, v: gameXP(x) + (x.team === m.winner ? 15 : 0) })).sort((p1, p2) => p2.v - p1.v)[0]?.x;
+    const potgP = potg && m.teams[potg.team].roster.find((x) => x.id === potg.rid);
+    const potgCard = potgP ? el('div.potg', { style: { '--tc': m.teams[potg.team].colors.primary } },
+      el('small', { text: 'PLAYER OF THE GAME' }), el('b', { text: `#${potgP.number} ${potgP.first} ${potgP.last}` }),
+      el('span', { text: `${m.teams[potg.team].abbr} ${potgP.pos} · ${lineText(potg)}` })) : null;
     const done = el('div.start-btn', { text: doneLabel });
     done.activate = onDone;
     const stats = el('div.start-btn.secondary', { text: 'Full Stats' });
@@ -357,6 +364,7 @@ export class Screens {
       el('h1', { text: 'Final' }),
       el('div.final-score', {}, logoCanvas(a.logo, 90), el('div.fs', { text: `${a.abbr} ${m.score[1]}  –  ${m.score[0]} ${h.abbr}` }), logoCanvas(h.logo, 90)),
       el('div.final-sub', { text: m.ot ? 'Overtime' : '' }),
+      potgCard,
       el('div.final-cols', {}, el('div', { html: table }), el('ul.leaders', {}, lead.map((l) => el('li', { text: l })))),
       el('div.over-buttons', {}, stats, done));
     this.nav.set([stats, done], { columns: 2, onBack: onDone, index: 1 });

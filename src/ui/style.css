@@ -530,3 +530,11 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #halfcard .hc-row b { font: 800 17px var(--fd); }
 #halfcard .hc-row b:last-child { text-align: right; }
 #halfcard .hc-row span { text-align: center; color: rgba(255,255,255,0.7); text-transform: uppercase; font-size: 12px; letter-spacing: 2px; align-self: center; }
+
+/* Final screen: player of the game */
+.potg { display: flex; flex-direction: column; align-items: center; padding: 8px 30px 10px; margin: 6px auto 12px; transform: skewX(var(--skew, -9deg));
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tc) 70%, #000) 20%, color-mix(in srgb, var(--tc) 70%, #000) 80%, transparent); border-bottom: 2px solid var(--gold, #ffd34d); }
+.potg > * { transform: skewX(calc(var(--skew, -9deg) * -1)); }
+.potg small { font: 800 11px var(--fd); letter-spacing: 3px; color: var(--gold, #ffd34d); }
+.potg b { font: 900 26px/1.1 var(--fd); font-style: italic; text-transform: uppercase; }
+.potg span { font-size: 14px; color: rgba(255,255,255,0.85); }

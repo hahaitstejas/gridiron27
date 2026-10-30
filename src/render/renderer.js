@@ -5,6 +5,7 @@ import { PlayerRenderer } from './players.js';
 import { CameraRig } from './camera.js';
 import { FieldLines } from './lines.js';
 import { Precipitation } from './weather.js';
+import { Presentation } from './presentation.js';
 
 // Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
 const TIME_LOOKS = {
@@ -58,7 +59,8 @@ export class GameRenderer {
 
     this.stadium = buildStadium(r, home, away);
     scene.add(this.stadium.group);
-    this.players = new PlayerRenderer(scene, envMap); // only the players use it (scene.environment would light the whole stadium)
+    this.players = new PlayerRenderer(scene, envMap);
+    this.presentation = new Presentation(); // only the players use it (scene.environment would light the whole stadium)
     this.lines = new FieldLines(scene);
     this.precip = new Precipitation(scene);
 
@@ -145,11 +147,16 @@ export class GameRenderer {
   }
 
   /** Draw a frame of a play simulation. */
-  drawSim(sim, alpha, time) {
+  /** Draw a play. With `session` (live games, not replays) the between-play presentation and officials run too. */
+  drawSim(sim, alpha, time, session = null) {
     const players = this.players;
     this._lastSim = sim;
     this.ball.visible = true;
-    players.update(sim, alpha, time, sim.humanTeams?.length ? sim.humanTeams.map((t) => sim.controlled[t] ?? -1) : sim.humanTeam !== null ? sim.controlledId : -1);
+    const dt = Math.min(0.1, Math.max(0, time - (this._presT ?? time)));
+    this._presT = time;
+    const pr = session ? this.presentation.frame(session, sim, dt) : null;
+    players.display = pr?.display || null;
+    players.update(sim, alpha, time, sim.humanTeams?.length ? sim.humanTeams.map((t) => sim.controlled[t] ?? -1) : sim.humanTeam !== null ? sim.controlledId : -1, pr?.refs || null);
     // Ball
     const b = sim.ball;
     const bm = this.ball;
@@ -170,6 +177,7 @@ export class GameRenderer {
         bm.rotation.set(b.spin || 0, yaw, pitch, 'YZX');
       }
     }
+    if (pr?.ballAt) bm.position.set(pr.ballAt.x, 0.12, pr.ballAt.z); // spotted for the next play
     this.ballShadow.position.x = bm.position.x;
     this.ballShadow.position.z = bm.position.z;
     this.ballShadow.visible = bm.position.y > 0.3;

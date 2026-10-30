@@ -298,6 +298,7 @@ function passCallout(e) {
 const isDarkHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 90; };
 
 function onSessionEvent(e) {
+  renderer.presentation.onEvent(e, session);
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') hud.message(e, session);
   else if (e.type === 'result') hud.statCard(e.statLines, session.teams);
@@ -389,7 +390,7 @@ function frameBody(now) {
     hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed, auto: replay.auto });
   } else if (session && app !== 'menu') {
     const m = session.match;
-    if (sim) renderer.drawSim(sim, alpha, time); else renderer.hidePlayers();
+    if (sim) renderer.drawSim(sim, alpha, time, session); else renderer.hidePlayers();
     const scrim = m.phase === 'scrimmage';
     const losX = sim ? sim.losX : m.xOf(m.possession, m.yardLine);
     renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null);

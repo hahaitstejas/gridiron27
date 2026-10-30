@@ -4,7 +4,7 @@ import * as THREE from 'three';
 // players). Poses are computed procedurally from the sim's animation state every frame.
 
 const SKIN = ['#f1c9a5', '#e0ac85', '#c68a62', '#a0663f', '#7a4a2c', '#53321e'];
-const MAX = 24;
+const MAX = 32; // 22 players + 7 officials (+ spare)
 
 // Base proportions for a 6'2" player, in yards.
 const B = {
@@ -12,6 +12,18 @@ const B = {
   torso: 0.66, torsoW: 0.44, torsoD: 0.27, padW: 0.64, padD: 0.36,
   shX: 0.27, upper: 0.34, fore: 0.32,
 };
+
+/** Officials' black-and-white vertical stripes, per instance (aStripe = 1), drawn around the body in object space. */
+function striped(mat, count, geo) {
+  const attr = new THREE.InstancedBufferAttribute(new Float32Array(count), 1);
+  geo.setAttribute('aStripe', attr);
+  mat.onBeforeCompile = (sh) => {
+    sh.vertexShader = 'attribute float aStripe;\nvarying float vStripe;\nvarying vec3 vObjPos;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\nvStripe = aStripe; vObjPos = position;');
+    sh.fragmentShader = 'varying float vStripe;\nvarying vec3 vObjPos;\n' + sh.fragmentShader.replace('#include <color_fragment>',
+      '#include <color_fragment>\nif (vStripe > 0.5) { float a = atan(vObjPos.x, vObjPos.z); diffuseColor.rgb *= fract(a * 1.909) < 0.5 ? 1.0 : 0.05; }');
+  };
+  return attr;
+}
 
 function part(geo, mat, count, shadow = true) {
   const m = new THREE.InstancedMesh(geo, mat, count);
@@ -95,14 +107,17 @@ export class PlayerRenderer {
         }`,
     });
 
+    const torsoMat = mat(0.8), upperMat = mat(0.8);
+    const upperGeo = limbGeo(0.07);
+    this.stripeAttrs = [striped(torsoMat, MAX, torsoGeo), striped(upperMat, MAX * 2, upperGeo)];
     this.parts = {
-      torso: part(torsoGeo, mat(0.8), MAX),
+      torso: part(torsoGeo, torsoMat, MAX),
       pads: part(padGeo, mat(0.8), MAX),
       pelvis: part(new THREE.CapsuleGeometry(0.15, 0.12, 2, 8).rotateZ(Math.PI / 2).scale(1.05, 1, 0.95), mat(0.7), MAX),
       thigh: part(limbGeo(0.095), mat(0.7), MAX * 2),
       shin: part(limbGeo(0.07), mat(0.8), MAX * 2),
       shoe: part(new THREE.CapsuleGeometry(0.065, 0.17, 2, 6).rotateX(Math.PI / 2).scale(1, 0.75, 1), mat(0.45, 0, 0.8), MAX * 2),
-      upper: part(limbGeo(0.07), mat(0.8), MAX * 2),
+      upper: part(upperGeo, upperMat, MAX * 2),
       fore: part(limbGeo(0.055), mat(0.6, 0, 0.4), MAX * 2),
       hand: part(new THREE.SphereGeometry(0.06, 7, 5).scale(1, 1.1, 0.85), mat(0.6), MAX * 2),
       neck: part(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 6), mat(0.6, 0, 0.4), MAX),
@@ -192,20 +207,39 @@ export class PlayerRenderer {
         this.cellAttr.setXY(i * 4 + k, p.number % 10, Math.floor(p.number / 10));
       }
     });
+    // Officials after the players: striped shirt, black pants, black cap (the referee wears white).
+    const [sT, sU] = this.stripeAttrs;
+    for (let i = 0; i < MAX; i++) { const ref = i >= sim.players.length && i < sim.players.length + 7; sT.setX(i, ref ? 1 : 0); sU.setX(i * 2, ref ? 1 : 0); sU.setX(i * 2 + 1, ref ? 1 : 0); }
+    sT.needsUpdate = sU.needsUpdate = true;
+    for (let r = 0; r < 7; r++) {
+      const i = sim.players.length + r;
+      const cap = r === 0 ? '#f4f4f4' : '#141414';
+      P.torso.setColorAt(i, c.set('#f2f2f2')); P.pads.setColorAt(i, c.set('#f2f2f2')); P.pelvis.setColorAt(i, c.set('#1a1a1a'));
+      P.neck.setColorAt(i, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.helmet.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
+      for (let k = 0; k < 2; k++) {
+        const j = i * 2 + k;
+        P.thigh.setColorAt(j, c.set('#1a1a1a')); P.shin.setColorAt(j, c.set('#1a1a1a')); P.shoe.setColorAt(j, c.set('#0e0e0e'));
+        P.upper.setColorAt(j, c.set('#f2f2f2')); P.fore.setColorAt(j, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.hand.setColorAt(j, c.set(SKIN[(r * 2 + 1) % SKIN.length]));
+        P.bar.setColorAt(j, c.set(cap)); P.cap.setColorAt(j, c.set('#f2f2f2'));
+        P.num.setColorAt(i * 4 + k, c.set('#111111')); this.cellAttr.setXY(i * 4 + k, (r * 13 + 7) % 10, ((r * 13 + 7) / 10 | 0) % 10);
+        P.num.setColorAt(i * 4 + 2 + k, c.set('#f2f2f2'));
+      }
+    }
     this.cellAttr.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }
 
   /** Update all instance matrices. alpha interpolates between the previous and current sim tick. */
-  update(sim, alpha, time, controlledId) {
+  update(sim, alpha, time, controlledId, refs = null) {
     const P = this.parts;
-    const n = sim.players.length;
+    const n = sim.players.length + (refs ? refs.length : 0);
     for (const m of Object.values(P)) m.count = m === P.num ? n * 4 : this.pairs.has(m) ? n * 2 : n;
     // A new play: poses start fresh (no crossfade from the last play's players).
     if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; this.fallAnim.length = 0; }
     const dt = Math.min(0.1, Math.max(0, time - (this.lastTime ?? time)));
     this.lastTime = time;
-    for (let i = 0; i < n; i++) this.drawPlayer(sim, this.display?.[i] || sim.players[i], i, alpha, time, dt);
+    for (let i = 0; i < sim.players.length; i++) this.drawPlayer(sim, this.display?.[i] || sim.players[i], i, alpha, time, dt);
+    if (refs) for (let r = 0; r < refs.length; r++) this.drawPlayer(sim, refs[r], sim.players.length + r, alpha, time, dt, true);
     // Catch / interception pulse under the player with the ball.
     if (this.pulseT > 0) {
       this.pulseT -= dt;
@@ -218,7 +252,7 @@ export class PlayerRenderer {
     for (const m of Object.values(P)) m.instanceMatrix.needsUpdate = true;
     const ids = Array.isArray(controlledId) ? controlledId : [controlledId];
     [this.ring, this.ring2].forEach((ring, i) => {
-      const cp = sim.players[ids[i]];
+      const cp = (ids[i] >= 0 && this.display?.[ids[i]]) || sim.players[ids[i]];
       ring.visible = !!cp;
       if (!cp) return;
       ring.position.x = cp.px + (cp.x - cp.px) * alpha;
@@ -230,7 +264,7 @@ export class PlayerRenderer {
   /** Flash a team-colored ring under player `id` (catch = offense color, interception = defense color). */
   flash(id, color) { this.pulseId = id; this.pulseT = 1.1; this.pulse.material.color.set(color); }
 
-  drawPlayer(sim, p, i, alpha, time, dt = 1 / 60) {
+  drawPlayer(sim, p, i, alpha, time, dt = 1 / 60, official = false) {
     const P = this.parts;
     const x = p.px + (p.x - p.px) * alpha;
     const z = p.pz + (p.z - p.pz) * alpha;
@@ -264,14 +298,21 @@ export class PlayerRenderer {
     const pel = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0)).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
     P.pelvis.setMatrixAt(i, cl(pel).multiply(scaleM(wide, 1, wide)));
     P.torso.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso * 0.45, p.bulk * 0.02)).multiply(scaleM(B.torsoW * wide, B.torso * 0.85, B.torsoD * wide * (1 + p.bulk * 0.25))));
-    P.pads.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso * 0.86, 0)).multiply(scaleM(B.padW * wide, 0.2, B.padD * wide)));
+    P.pads.setMatrixAt(i, official ? ZERO : cl(pel).multiply(trans(0, B.torso * 0.86, 0)).multiply(scaleM(B.padW * wide, 0.2, B.padD * wide)));
     P.neck.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso + 0.04, 0.01)));
     const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotX(pose.head));
-    P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
-    P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.165, -0.01)));
-    P.mask.setMatrixAt(i, cl(head).multiply(trans(0, -0.03, 0.16)).multiply(scaleM(0.32, 0.28, 0.3)));
-    P.bar.setMatrixAt(i * 2, cl(head).multiply(trans(0, -0.035, 0.205)).multiply(scaleM(0.2, 1, 1)));
-    P.bar.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, -0.085, 0.195)).multiply(scaleM(0.16, 1, 1)));
+    if (official) {
+      // Officials: a flat cap with a bill instead of a helmet and facemask.
+      P.helmet.setMatrixAt(i, cl(head).multiply(trans(0, 0.06, 0)).multiply(scaleM(0.27, 0.16, 0.27)));
+      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.05, 0.13)).multiply(scaleM(2.6, 0.6, 0.45)));
+      P.mask.setMatrixAt(i, ZERO); P.bar.setMatrixAt(i * 2, ZERO); P.bar.setMatrixAt(i * 2 + 1, ZERO);
+    } else {
+      P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.165, -0.01)));
+      P.mask.setMatrixAt(i, cl(head).multiply(trans(0, -0.03, 0.16)).multiply(scaleM(0.32, 0.28, 0.3)));
+      P.bar.setMatrixAt(i * 2, cl(head).multiply(trans(0, -0.035, 0.205)).multiply(scaleM(0.2, 1, 1)));
+      P.bar.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, -0.085, 0.195)).multiply(scaleM(0.16, 1, 1)));
+    }
     // Numbers front and back.
     P.num.setMatrixAt(i * 4, cl(pel).multiply(trans(0, B.torso * 0.5, -(B.torsoD * wide) / 2 - 0.035)).multiply(rotY(Math.PI)).multiply(scaleM(0.3 * wide, 0.3, 1)));
     P.num.setMatrixAt(i * 4 + 1, cl(pel).multiply(trans(0, B.torso * 0.58, (B.torsoD * wide) / 2 + 0.04)).multiply(rotX(-0.12)).multiply(scaleM(0.2 * wide, 0.2, 1)));
@@ -282,8 +323,8 @@ export class PlayerRenderer {
       const a = pose.arms[s];
       // Shoulder-pad cap with a small number on top (like a real jersey's sleeve numbers).
       const capM = cl(pel).multiply(trans(side * B.shX * wide * 1.02, B.torso * 0.9, 0)).multiply(rotZ(-side * 0.35));
-      P.cap.setMatrixAt(i * 2 + s, cl(capM).multiply(scaleM(0.2 * wide, 0.16, 0.24 * wide)));
-      P.num.setMatrixAt(i * 4 + 2 + s, cl(capM).multiply(trans(side * 0.005, 0.03, 0)).multiply(rotZ(side * 0.25)).multiply(rotY(side * Math.PI / 2)).multiply(scaleM(0.12, 0.12, 1)));
+      P.cap.setMatrixAt(i * 2 + s, official ? ZERO : cl(capM).multiply(scaleM(0.2 * wide, 0.16, 0.24 * wide)));
+      if (official) P.num.setMatrixAt(i * 4 + 2 + s, ZERO); else P.num.setMatrixAt(i * 4 + 2 + s, cl(capM).multiply(trans(side * 0.005, 0.03, 0)).multiply(rotZ(side * 0.25)).multiply(rotY(side * Math.PI / 2)).multiply(scaleM(0.12, 0.12, 1)));
       const sh = cl(pel).multiply(trans(side * B.shX * wide, B.torso * 0.84, 0)).multiply(rotX(-a.pitch)).multiply(rotZ(side * a.out)).multiply(rotY(side * (a.twist || 0)));
       P.upper.setMatrixAt(i * 2 + s, cl(sh).multiply(trans(0, -B.upper / 2, 0)).multiply(scaleM(limb, B.upper, limb)));
       const el = cl(sh).multiply(trans(0, -B.upper, 0)).multiply(rotX(-a.elbow));
@@ -566,6 +607,58 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 2.9 + Math.sin(time * 8) * 0.2; pose.arms[0].elbow = pose.arms[1].elbow = 0.2;
       pose.rootY = Math.abs(Math.sin(time * 6)) * 0.2;
       break;
+    case 'huddle':
+      // Hands on knees in the huddle, listening for the call.
+      pose.crouch = -0.12; pose.lean = 0.55; pose.head = -0.1;
+      pose.legs[0].hip = pose.legs[1].hip = 0.45; pose.legs[0].knee = pose.legs[1].knee = 0.55; pose.legs[0].out = pose.legs[1].out = 0.12;
+      pose.arms[0].pitch = pose.arms[1].pitch = 0.75; pose.arms[0].elbow = pose.arms[1].elbow = 0.25; pose.arms[0].out = pose.arms[1].out = 0.18;
+      break;
+    case 'clap':
+      // Breaking the huddle.
+      pose.lean = 0.25; pose.arms[0].pitch = pose.arms[1].pitch = 1.4 + Math.sin(t * 14) * 0.15; pose.arms[0].elbow = pose.arms[1].elbow = 0.6;
+      pose.arms[0].out = pose.arms[1].out = -0.25 + Math.max(0, Math.sin(t * 14)) * 0.2;
+      break;
+    // ---- officials' signals ----
+    case 'sig_td':
+      pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 3.1; pose.arms[0].elbow = pose.arms[1].elbow = 0; pose.arms[0].out = pose.arms[1].out = 0.08;
+      break;
+    case 'sig_incomplete': {
+      // Arms crossing back and forth at waist height.
+      const w = Math.sin(t * 9);
+      pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 0.9; pose.arms[0].elbow = pose.arms[1].elbow = 0;
+      pose.arms[0].out = pose.arms[1].out = -0.25 + w * 0.7;
+      break;
+    }
+    case 'sig_first':
+      // Point downfield with the right arm.
+      pose.lean = 0; pose.arms[1].pitch = 1.55; pose.arms[1].elbow = 0; pose.arms[1].out = 0.05;
+      break;
+    case 'sig_flag':
+      // Throwing the flag.
+      runLegs(Math.min(0.6, run)); pose.arms[1].pitch = 2.6 - Math.min(1, t / 0.3) * 1.2; pose.arms[1].elbow = 0.3;
+      break;
+    case 'sig_holding':
+      pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 1.3; pose.arms[0].elbow = 0.9; pose.arms[1].elbow = 0.5;
+      pose.arms[0].out = -0.45; pose.arms[1].out = -0.2; // one hand grips the other wrist
+      break;
+    case 'sig_offside':
+      pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 0.25; pose.arms[0].elbow = pose.arms[1].elbow = 1.7; pose.arms[0].out = pose.arms[1].out = 0.75; // hands on hips
+      break;
+    case 'sig_pi':
+      pose.lean = 0.05; pose.arms[0].pitch = pose.arms[1].pitch = 1.55 + Math.sin(t * 6) * 0.1; pose.arms[0].elbow = pose.arms[1].elbow = 0.1; pose.arms[0].out = pose.arms[1].out = -0.05; // push
+      break;
+    case 'sig_false_start': {
+      const w = Math.sin(t * 10);
+      pose.lean = 0; pose.arms[0].pitch = 1.3 + w * 0.3; pose.arms[1].pitch = 1.3 - w * 0.3; pose.arms[0].elbow = pose.arms[1].elbow = 1.6; pose.arms[0].out = pose.arms[1].out = -0.2; // rolling forearms
+      break;
+    }
+    case 'sig_personal':
+      pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6; pose.arms[1].pitch = 2.9; pose.arms[1].elbow = 1.4; pose.arms[1].out = 0.3; // chop at the wrist overhead
+      break;
+    case 'sig_spot':
+      // Spotting the ball / waving the play dead.
+      pose.lean = 0.1; pose.arms[1].pitch = 2.8; pose.arms[1].elbow = 0.2; pose.arms[1].out = 0.4 + Math.sin(t * 8) * 0.25;
+      break;
     default: // run
       runLegs(Math.min(1.05, 0.25 + run * 0.85));
   }
@@ -573,6 +666,7 @@ function computePose(p, time, sim) {
 }
 
 // ---------- matrix helpers ----------
+const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 // Preallocated pool so per-frame posing allocates nothing (no GC hitches).
 const POOL = Array.from({ length: 200 }, () => new THREE.Matrix4());
 let poolI = 0;

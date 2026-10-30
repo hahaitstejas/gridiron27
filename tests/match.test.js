@@ -397,6 +397,8 @@ describe('local 2-player', () => {
     const p2 = emptyFrame(); p2.pressed.A = true;
     s.tick(STEP, { perTeam: true, 0: emptyFrame(), 1: p2 });
     expect(s.state).toBe('presnap');
+    // Players break the huddle and line up first (LINEUP_T), then the snap goes.
+    for (let i = 0; i < 90; i++) s.tick(STEP, { perTeam: true, 0: emptyFrame(), 1: emptyFrame() });
     const p1 = emptyFrame(); p1.pressed.A = true;
     s.tick(STEP, { perTeam: true, 0: p1, 1: emptyFrame() });
     expect(s.state).toBe('live');

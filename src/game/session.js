@@ -1,4 +1,7 @@
 import { RNG } from '../core/rng.js';
+
+/** Seconds after a play is set for the players to break the huddle and line up (the renderer animates it). */
+export const LINEUP_T = 1.3;
 import { addFoul } from '../sim/fouls.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
@@ -420,7 +423,8 @@ export class GameSession {
       }
       for (const [team, f] of [[off, offIn], [def, defIn]]) if (f?.pressed.View) this.callTimeout(team);
       if (offIn?.pressed.B && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
-      if (offIn?.pressed.A) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      const lineup = this.fast || sim.isKick ? 0 : LINEUP_T; // players still running to the line: wait for them
+      if (offIn?.pressed.A && this.presnapT >= lineup) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       if (defIn?.pressed.B && sim.isKick === false) sim.withHuman(def, () => cyclePresnapDefender(sim));
       const humanOff = this.isHuman(off);
       if (this.cpuMotionAt && this.presnapT >= this.cpuMotionAt && !sim.isKick) {
@@ -429,7 +433,7 @@ export class GameSession {
         if (c.length) sim.startMotion(this.rng.pick(c).id, this.rng.next() < 0.7);
       }
       // CPU offense snaps after a short beat at the line (instantly in fast mode).
-      if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? 1.6 : 0.5)) { this.snap(); return; }
+      if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? 1.6 : LINEUP_T + 0.2)) { this.snap(); return; }
       sim.tick(dt, input);
       return;
     }

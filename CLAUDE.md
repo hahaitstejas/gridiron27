@@ -448,7 +448,7 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   a little high). Full games (`npm run games -- --games 16`): ~22-26
   pts and ~350-410 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
   violations. Every play is exercised by `npm test` against several opponents; `npm run sim -- --plays 600
-  --only "screen|draw"` checks a subset (each play's ypp should look like football). Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.
+  --only "screen|draw"` checks a subset (each play's ypp should look like football). Known high: kickoff-return TDs ~2% of kickoffs. (Oct 2026 retune: catch base 0.57, INT base 0.045, catch-secure step → 66% cmp, 2.0% INT, 24.7 pts.)
 - Forward progress (`PlaySim.forwardProgress`): while a free defender is within 0.9 yd of the runner, the furthest
   point the ball reached is kept (`c.fp`); a tackle behind it is spotted there (`result.forwardProgress`), and being
   driven back 2+ yards in contact blows the whistle (not for a QB in the pocket). 0.35 s free resets it.

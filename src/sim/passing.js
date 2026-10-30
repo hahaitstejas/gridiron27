@@ -238,7 +238,7 @@ function resolveCatch(sim, reach, late = false) {
       const irDist = ir ? Math.hypot(ir.x - b.x, ir.z - b.z) : 9;
       const away = Math.min(recDist, irDist);
       const crowd = defC.filter((c) => c.d < 1.6).length;
-      let pInt = (0.03 + sim.R(d, 'catching') * 0.0026) * (dc.d < 0.7 ? 1 : 0.5);
+      let pInt = (0.045 + sim.R(d, 'catching') * 0.0028) * (dc.d < 0.7 ? 1 : 0.5);
       pInt += clamp(away - dc.d - 0.2, 0, 1.5) * 0.12 + Math.max(0, crowd - 1) * 0.14;
       const clean = dc.d < 0.9 && away > 2 ? clamp(0.5 + (away - 2) / 1.5, 0, 1) : 0;
       pInt += (0.5 + sim.R(d, 'catching') * 0.004 - pInt) * clean;
@@ -276,7 +276,7 @@ function resolveCatch(sim, reach, late = false) {
     const dd = Math.hypot(d.x - r.x, d.z - r.z);
     if (dd < 2) contest += (2 - dd) * 0.13 * (sim.R(d, 'coverage') / 80);
   }
-  let pCatch = 0.6 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
+  let pCatch = 0.57 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
   if (b.tipped) pCatch -= 0.2;
@@ -296,8 +296,8 @@ function resolveCatch(sim, reach, late = false) {
     r.anim = 'catch'; r.animT = 0;
     sim.emit('catch', { player: r.id, contested: contest > 0.15 });
     // Securing the catch costs a step, more so in traffic: gives defenders a chance to close.
-    r.speedCap = contest > 0.15 ? 0.55 : 0.75;
-    r.recoverAt = sim.t + 0.35;
+    r.speedCap = contest > 0.15 ? 0.5 : 0.66;
+    r.recoverAt = sim.t + 0.42;
     // Going up or down for the ball costs the run after the catch.
     if (b.place) { r.speedCap = Math.min(r.speedCap, b.place === 'low' ? 0.35 : 0.45); r.recoverAt = sim.t + 0.6; }
     sim.setRunner(r, 'catch');

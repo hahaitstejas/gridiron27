@@ -67,6 +67,14 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   human's choice: the session waits in state `penalty` (`pendingPenalty` with `describeChoice()` lines for accept /
   decline and the recommended pick) until A (accept) or X (decline) → `choosePenalty()` → `completePlay()`. Fouls
   by the human, CPU-vs-CPU and fast/headless games still decide automatically.
+  More fouls: illegal formation / illegal motion (flagged at the snap in `session.snap()`, a live foul), offensive pass
+  interference (`opi`, a strong receiver pushing off at the catch), illegal contact (man defender within a yard of his
+  receiver past 5 yds before the throw), unnecessary roughness (a second defender piling on, likelier at the sideline),
+  running into / roughing the kicker (`kickerContact` in kicking.js; `KICK_FOULS` are the only fouls enforced on kicks;
+  `valueOfPlay` counts a made FG as 3). Contact distance is `CONTACT` = 1 yd in passing.js (bodies can't get closer than
+  0.84; DPI used to need 0.75 and never fired). Each foul has a referee signal (`SIGNAL` in presentation.js; new poses
+  sig_formation / sig_motion / sig_contact / sig_grounding / sig_kicker). Per game (both teams): holding ~3, facemask ~0.7,
+  offsides ~0.7, DPI ~0.5, roughing / grounding ~0.4, the rest 0.05-0.25; ~3.6-4 accepted penalties.
   Defensive offsides is a live foul (`offsides_live`): `rollPresnapFoul` → the session snaps anyway, puts the jumper across
   the line and flags it (`jumpOffsides`) = a free play for the offense. The scorebug shows FLAG while any foul is on the
   field (`sim.fouls`) and during the accept/decline choice. False start / delay of game still kill the play.

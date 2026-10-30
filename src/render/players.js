@@ -825,6 +825,27 @@ function computePose(p, time, sim) {
     case 'sig_personal':
       pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6; pose.arms[1].pitch = 2.9; pose.arms[1].elbow = 1.4; pose.arms[1].out = 0.3; // chop at the wrist overhead
       break;
+    case 'sig_formation':
+      // Forearms folded across the chest.
+      pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 1.2; pose.arms[0].elbow = pose.arms[1].elbow = 1.9; pose.arms[0].out = pose.arms[1].out = -0.55;
+      break;
+    case 'sig_motion':
+      // One flat hand sweeping sideways at shoulder height.
+      pose.lean = 0; pose.arms[1].pitch = 1.5; pose.arms[1].elbow = 0.1; pose.arms[1].out = 0.2 + Math.sin(t * 5) * 0.6;
+      break;
+    case 'sig_contact':
+      // One open hand pushed forward, the other at the side.
+      pose.lean = 0.05; pose.arms[1].pitch = 1.5 + Math.sin(t * 7) * 0.08; pose.arms[1].elbow = 0.2 + Math.max(0, Math.sin(t * 7)) * 0.4; pose.arms[1].out = 0;
+      break;
+    case 'sig_grounding':
+      // Both palms pushed down and out, toward the ground.
+      pose.lean = 0.1; pose.arms[0].pitch = pose.arms[1].pitch = 0.7 + Math.sin(t * 6) * 0.15; pose.arms[0].elbow = pose.arms[1].elbow = 0.2; pose.arms[0].out = pose.arms[1].out = 0.35;
+      break;
+    case 'sig_kicker':
+      // Personal-foul chop, then a kicking swing of the arm.
+      pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6;
+      pose.arms[1].pitch = (t % 2) < 1 ? 2.9 : 0.4 + Math.sin(t * 7) * 0.9; pose.arms[1].elbow = (t % 2) < 1 ? 1.4 : 0.1; pose.arms[1].out = 0.25;
+      break;
     case 'sig_spot':
       // Spotting the ball / waving the play dead.
       pose.lean = 0.1; pose.arms[1].pitch = 2.8; pose.arms[1].elbow = 0.2; pose.arms[1].out = 0.4 + Math.sin(t * 8) * 0.25;

@@ -131,7 +131,8 @@ function release(sim, qb, rec, kind, lead, place = null) {
   // Intentional grounding: throwing it away from inside the tackle box.
   if (kind === 'throwaway') {
     const l = sim.toLocal(qb.x, qb.z);
-    if (Math.abs(l.lat) < 4.5 && l.down < 0) addFoul(sim, 'grounding', qb.team, qb, { spotX: qb.x });
+    // Flagged only when there's no receiver in the area (about a third of in-pocket throwaways).
+    if (Math.abs(l.lat) < 4.5 && l.down < 0 && sim.rng.next() < 0.35) addFoul(sim, 'grounding', qb.team, qb, { spotX: qb.x });
   }
   sim.releaseT = sim.t;
   sim.stats.target = b.intended >= 0 ? b.intended : null;
@@ -190,6 +191,9 @@ export function updateBallFlight(sim, dt) {
   }
   if (b.y <= 0.12) incomplete(sim, 'ground');
 }
+
+// Bodies can't overlap (2 × PLAYER_RADIUS = 0.84 yd apart), so "in contact" at the catch is within a yard.
+const CONTACT = 1.0;
 
 function swatBonus(sim, d) {
   const t = sim.ball.swatT?.get(d.id);
@@ -273,14 +277,25 @@ function resolveCatch(sim, reach, late = false) {
       return;
     }
   }
-  // Pass interference: a defender who didn't play the ball and is on top of the receiver.
+  // Pass interference: a defender who didn't play the ball and is on top of the receiver (or the receiver
+  // pushing off a tight defender: offensive pass interference, rarer, likelier for strong receivers).
   const ir = sim.players[b.intended];
+  let opi = false;
   if (ir && !late) {
+    for (const d of sim.players) {
+      if (d.team === sim.possTeam || d.state !== 'active' || Math.hypot(d.x - ir.x, d.z - ir.z) > CONTACT) continue;
+      if (rng.next() < (0.018 + (sim.R(ir, 'strength') - 60) * 0.0003) * foulRate(sim)) { addFoul(sim, 'opi', ir.team, ir, { spotX: sim.losX }); opi = true; }
+      break;
+    }
+  }
+  if (ir && !late && !opi) {
     for (const d of sim.players) {
       if (d.team === sim.possTeam || d.state !== 'active') continue;
       const dd = Math.hypot(d.x - ir.x, d.z - ir.z);
-      const playingBall = d.task?.type === 'ball' && Math.hypot(d.x - b.x, d.z - b.z) < 1.2;
-      if (dd < 0.75 && !playingBall && rng.next() < 0.22 * foulRate(sim)) {
+      const toBall = Math.hypot(d.x - b.x, d.z - b.z);
+      // Playing the ball is legal; a defender still behind the receiver (trailing, through his back) is not.
+      const playingBall = d.task?.type === 'ball' && toBall < 1.2 && toBall < Math.hypot(ir.x - b.x, ir.z - b.z) + 0.3;
+      if (dd < CONTACT && !playingBall && rng.next() < 0.09 * foulRate(sim)) {
         addFoul(sim, 'dpi', d.team, d, { spotX: b.x });
         break;
       }

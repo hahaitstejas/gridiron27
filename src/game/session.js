@@ -13,7 +13,7 @@ import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHA
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
-import { enforce, rollPresnapFoul, PENALTIES, describeChoice } from './penalties.js';
+import { enforce, rollPresnapFoul, PENALTIES, describeChoice , KICK_FOULS } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
 import { getOffPlay, getDefPlay } from '../data/playbook.js';
@@ -328,7 +328,14 @@ export class GameSession {
       return;
     }
     this.audible = null;
+    const motion = !!sim.motion;
     sim.snap();
+    // Illegal formation / illegal motion: flagged at the snap, the play goes on (a live-ball foul).
+    if (m.phase === 'scrimmage' && !sim.isKick && this.rng.next() < 0.002 * this.penaltyRate()) {
+      const skill = sim.offense().filter((p) => ['WR', 'TE', 'HB', 'FB'].includes(p.pos));
+      const who = motion && sim.motion ? sim.players[sim.motion.id] : this.rng.pick(skill.length ? skill : sim.offense());
+      addFoul(sim, motion ? 'illegal_motion' : 'illegal_formation', sim.offIdx, who, { spotX: sim.losX });
+    }
     if (!this.fast) { this.recorder.reset(); this.recorder.capture(sim); }
     this.state = 'live';
     this.plays++;
@@ -601,7 +608,7 @@ export class GameSession {
     const sim = this.sim;
     const r = sim.result;
     let outcome = null;
-    const fouls = (sim.fouls || []).filter(() => !sim.isKick && m.phase === 'scrimmage');
+    const fouls = (sim.fouls || []).filter((f) => (!sim.isKick || KICK_FOULS.has(f.type)) && m.phase === 'scrimmage');
     if (fouls.length) {
       const offF = fouls.filter((f) => f.team === r.offTeam);
       const defF = fouls.filter((f) => f.team !== r.offTeam);

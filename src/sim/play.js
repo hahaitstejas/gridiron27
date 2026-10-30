@@ -564,7 +564,7 @@ export class PlaySim {
     if (qb && this.releaseT !== undefined && this.t - this.releaseT > 0.25 && this.t - this.releaseT < 0.6) {
       for (const d of this.players) {
         if (d.team === qb.team || d.engagement || d.state !== 'active') continue;
-        if (Math.hypot(d.x - qb.x, d.z - qb.z) < 0.9 && this.rng.next() < 0.06 * foulRate(this) * dt * 60 / 10) {
+        if (Math.hypot(d.x - qb.x, d.z - qb.z) < 0.9 && this.rng.next() < 0.03 * foulRate(this) * dt * 60 / 10) {
           addFoul(this, 'roughing', d.team, d, { spotX: qb.x });
           break;
         }
@@ -578,6 +578,10 @@ export class PlaySim {
         // Beaten at the break and grabbing to recover.
         if (sep < 1 && Math.hypot(r.vx, r.vz) - Math.hypot(d.vx, d.vz) > 2.5 && this.rng.next() < 0.01 * foulRate(this) * dt * 60) {
           addFoul(this, 'holding_def', d.team, d, { spotX: d.x });
+        }
+        // Contact past five yards before the ball is thrown: illegal contact.
+        else if (sep < 1.0 && this.toLocal(r.x, r.z).down > 5.5 && this.rng.next() < 0.0012 * foulRate(this) * dt * 60) {
+          addFoul(this, 'illegal_contact', d.team, d, { spotX: d.x });
         }
       }
     }

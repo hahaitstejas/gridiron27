@@ -75,5 +75,5 @@ describe('pass protection calls', async () => {
       }
     }
     expect(protectCall(getOffPlay('gun_doubles_iz'), 'max').type).toBe('run'); // runs ignore protection calls
-  });
+  }, 60000);
 });

@@ -1,3 +1,4 @@
+import { addFoul, foulRate } from './fouls.js';
 import { has } from '../data/traits.js';
 import { GOAL_X, END_X, HALF_WIDTH, GRAVITY } from '../core/constants.js';
 
@@ -141,6 +142,25 @@ function flightBlock(sim) {
       sim.emit('kickBlocked', { player: d.id, kind: k.type });
       return;
     }
+  }
+}
+
+/**
+ * A rusher who misses the ball and keeps going into the kicker: running into the kicker (5) or, at full speed,
+ * roughing the kicker (15, automatic first down). Not when the kick was blocked. One flag per kick.
+ */
+function kickerContact(sim) {
+  const k = sim.kick, kicker = sim.players[k.kickerId];
+  if (!kicker) return;
+  for (const d of sim.players) {
+    if (d.team === sim.offIdx || d.state !== 'active' || Math.hypot(d.x - kicker.x, d.z - kicker.z) > 0.75) continue;
+    k.kickerHit = true;
+    const speed = Math.hypot(d.vx, d.vz);
+    if (sim.rng.next() < 0.6 * foulRate(sim)) {
+      addFoul(sim, speed > 4.5 && sim.rng.next() < 0.5 ? 'roughing_kicker' : 'running_into_kicker', d.team, d, { spotX: sim.losX });
+      kicker.anim = 'falling'; kicker.animT = 0;
+    }
+    return;
   }
 }
 
@@ -356,6 +376,7 @@ function updateKickFlight(sim, dt) {
   b.spin += dt * 12;
 
   if ((k.type === 'fg' || k.type === 'punt') && !k.blocked && b.t < 0.4) flightBlock(sim);
+  if ((k.type === 'fg' || k.type === 'punt') && !k.blocked && !k.kickerHit && b.t < 0.7) kickerContact(sim);
 
   if (k.type === 'fg') {
     const plane = (GOAL_X + 10) * sim.dir;

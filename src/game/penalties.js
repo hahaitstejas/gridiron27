@@ -13,7 +13,18 @@ export const PENALTIES = {
   facemask_def: { name: 'Face mask', side: 'def', yards: 15, autoFirst: true },
   facemask_off: { name: 'Face mask', side: 'off', yards: 15 },
   grounding: { name: 'Intentional grounding', side: 'off', yards: 10, lossOfDown: true },
+  illegal_formation: { name: 'Illegal formation', side: 'off', yards: 5 },
+  illegal_motion: { name: 'Illegal motion', side: 'off', yards: 5 },
+  opi: { name: 'Offensive pass interference', side: 'off', yards: 10 },
+  illegal_contact: { name: 'Illegal contact', side: 'def', yards: 5, autoFirst: true },
+  unr_def: { name: 'Unnecessary roughness', side: 'def', yards: 15, autoFirst: true },
+  unr_off: { name: 'Unnecessary roughness', side: 'off', yards: 15 },
+  running_into_kicker: { name: 'Running into the kicker', side: 'def', yards: 5 },
+  roughing_kicker: { name: 'Roughing the kicker', side: 'def', yards: 15, autoFirst: true },
 };
+
+/** Fouls enforced on punts and field goals (the rest are ignored on kicks). */
+export const KICK_FOULS = new Set(['running_into_kicker', 'roughing_kicker']);
 
 /** Rough expected points for the team with the ball. */
 export function expectedPoints(yl, down = 1, toGo = 10) {
@@ -26,6 +37,7 @@ export function expectedPoints(yl, down = 1, toGo = 10) {
  */
 export function valueOfPlay(m, r) {
   const off = r.offTeam;
+  if (r.kickType === 'fg' && r.possTeam === off && !r.touchdown) return r.fgGood ? 3 : -expectedPoints(Math.max(20, 100 - m.yardLine - 7));
   if (r.touchdown === off) return 7;
   if (r.touchdown !== null && r.touchdown !== undefined) return -7;
   if (r.safety) return -2 - 1;

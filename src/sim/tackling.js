@@ -187,6 +187,11 @@ export function attemptTackle(sim, d, c, air) {
     if (sim.difficulty) pf *= c.team === sim.humanTeam ? (sim.difficulty.humanFumble ?? 1) : (sim.difficulty.cpuFumble ?? 1);
     const fumbled = sim.rng.next() < Math.max(0.002, pf);
     if (sim.rng.next() < 0.006 * foulRate(sim)) addFoul(sim, 'facemask_def', d.team, d, { spotX: c.x });
+    // A second defender piling on late (unnecessary roughness), now and then near the sideline.
+    else if (sim.rng.next() < (Math.abs(c.z) > 23 ? 0.012 : 0.004) * foulRate(sim)) {
+      const late = sim.players.find((q) => q.team === d.team && q !== d && q.state === 'active' && Math.hypot(q.x - c.x, q.z - c.z) < 2.2);
+      if (late) addFoul(sim, 'unr_def', late.team, late, { spotX: c.x });
+    }
     sim.tackleCarrier(c, d, power);
     // Injuries (off unless the session sets an injury rate).
     const rate = sim.cfg.injuryRate || 0;

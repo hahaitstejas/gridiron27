@@ -26,7 +26,9 @@ const CREW = [
 const SIGNAL = {
   holding_off: 'sig_holding', holding_def: 'sig_holding', dpi: 'sig_pi', offsides: 'sig_offside', offsides_live: 'sig_offside',
   false_start: 'sig_false_start', delay_of_game: 'sig_false_start', roughing: 'sig_personal', facemask_def: 'sig_personal',
-  facemask_off: 'sig_personal', grounding: 'sig_pi',
+  facemask_off: 'sig_personal', grounding: 'sig_grounding', illegal_formation: 'sig_formation', illegal_motion: 'sig_motion',
+  opi: 'sig_pi', illegal_contact: 'sig_contact', unr_def: 'sig_personal', unr_off: 'sig_personal',
+  running_into_kicker: 'sig_kicker', roughing_kicker: 'sig_kicker',
 };
 
 function proxyOf(p) {

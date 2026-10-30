@@ -61,3 +61,23 @@ describe('close calls and reviews', () => {
     expect(done).toBeLessThanOrEqual(reviews);
   }, 120000);
 });
+
+describe('new penalties', async () => {
+  const { enforce, valueOfPlay, PENALTIES, KICK_FOULS } = await import('../src/game/penalties.js');
+  const { Match } = await import('../src/game/match.js');
+  it('enforce the new fouls with the right yardage and first downs', () => {
+    const teams = generateLeagueRosters(defaultTeams(), 3);
+    const m = new Match({ teams: [teams[0], teams[1]], settings: { quarterMinutes: 15 }, rng: new RNG(1) });
+    m.newPossession(0, 40, 0);
+    const out = (type, team) => enforce(m, { type, team }, null);
+    expect(out('illegal_contact', 1)).toMatchObject({ newYL: 45, autoFirst: true });
+    expect(out('opi', 0).newYL).toBe(30);
+    expect(out('illegal_formation', 0).newYL).toBe(35);
+    expect(out('unr_def', 1)).toMatchObject({ newYL: 55, autoFirst: true });
+    expect(out('roughing_kicker', 1)).toMatchObject({ newYL: 55, autoFirst: true });
+    expect(KICK_FOULS.has('running_into_kicker')).toBe(true);
+    expect(Object.keys(PENALTIES).length).toBeGreaterThanOrEqual(19);
+    // A made field goal is worth 3 when deciding whether to take a kicker foul.
+    expect(valueOfPlay(m, { offTeam: 0, kickType: 'fg', possTeam: 0, fgGood: true, touchdown: null })).toBe(3);
+  });
+});

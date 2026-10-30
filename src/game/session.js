@@ -262,6 +262,8 @@ export class GameSession {
     }
     sim.lockId = me.id;
     sim.withHuman(team, () => { sim.controlledId = me.id; });
+    // The behind-the-player camera looks the other way for a defender: the stick follows the camera.
+    if (this.settings.playerCam && me.team !== sim.offIdx) sim.camDir = -sim.dir;
   }
 
   /** Snap (human pressed A, or the CPU's tempo ran out). Applies pre-snap clock runoff and fouls. */

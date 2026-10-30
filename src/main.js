@@ -165,7 +165,7 @@ function startGame(p, opts = {}) {
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
@@ -481,8 +481,16 @@ function frameBody(now) {
     else focus = { x: b.x, z: b.z };
     // Career: keep your player in the shot until the ball comes to him (QBs already are).
     const me = live && sim.lockId >= 0 && !session.watching ? sim.players[sim.lockId] : null;
-    if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
-    const camDir = m.dirOf(m.possession);
+    // Career camera: behind your player during live snaps (Settings → Career camera), or the broadcast view kept
+    // between him and the ball. QBs always get the broadcast view.
+    // A defender's stick is flipped for this camera (session.lockOn), so he gets it before the snap too.
+    const lockedD = sim && !session.watching && sim.lockId >= 0 && sim.state === 'presnap' && sim.players[sim.lockId]?.team !== sim.offIdx ? sim.players[sim.lockId] : null;
+    const pc = me || lockedD;
+    const playerCam = pc && pc.slot !== 'QB' && (sim.state === 'live' || lockedD) && prefs.careerCam !== 'broadcast';
+    if (playerCam) focus = { x: pc.x, z: pc.z };
+    else if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
+    renderer.rig.mode = playerCam ? 'follow' : prefs.camera === 'high' ? 'sky' : 'broadcast';
+    const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : m.dirOf(m.possession);
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15;
     boardFrame(m, dt);
     renderer.render(dt, focus, camDir, phase, snapCam, excite);

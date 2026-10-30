@@ -7,7 +7,7 @@ import { gameXP, lineText } from '../franchise/career.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
-  nameTags: true, statCard: true, autoReplay: true, intro: true, camera: 'standard', sliders: null,
+  nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
 
 // Gameplay sliders (0..100, 50 = default); `user` applies to human teams, `cpu` to the CPU's.
@@ -285,6 +285,7 @@ export class Screens {
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
       option('Pregame intro', [true, false], 'intro', (v) => (v ? 'On' : 'Off')),
+      option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
     ];
     const sliders = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Gameplay sliders…' }));
     sliders.activate = () => this.sliders(p, { onSave: (sl) => { p.sliders = sl; this.settings(p, { onSave, onBack }); }, onBack: () => this.settings(p, { onSave, onBack }) });

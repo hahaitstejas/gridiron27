@@ -206,7 +206,9 @@ plays or sims gives `gameXP(line)` (`awardCareerGame` from `recordGame`), `XP_PE
 points on `careerKeys(pos)` at `upgradeCost(v)`. In games `settings.lockPlayer = rid`: `session.calls(team)` — the human
 calls plays only as QB (offense) / MLB (defense) and the CPU snaps otherwise; `lockOn(sim)` sets `sim.lockId` (no B
 switch, no control change on catches/turnovers) or, when he isn't on the field (kicks: unless he's the kicker/returner),
-runs the snap CPU vs CPU (`session.watching`, main.js fast-forwards 4x). The camera keeps him in the shot.
+runs the snap CPU vs CPU (`session.watching`, main.js fast-forwards 4x). Camera: Settings → Career camera (`prefs.careerCam`,
+default behind your player = rig mode `follow` for non-QBs; a defender's stick is flipped to match via `settings.playerCam`
+→ `sim.camDir` in `lockOn`), or Broadcast (kept between him and the ball).
 
 ### Trick plays and QB controls
 - Run styles (`run.style`): `read` (zone read: at the mesh the QB reads the backside end, `readKeep()` in offense.js; the

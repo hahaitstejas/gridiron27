@@ -61,7 +61,12 @@ League → Saves & Files → Export, then Import in the offline copy.
 | Hot route (pre-snap) | Y, receiver button, then left stick (A = block) | I, receiver key, then WASD |
 | Motion (pre-snap, offense) | RB, receiver button, then left stick (toward the ball = across) | O, receiver key, then A/D |
 | Defensive hot route (pre-snap, the defender you control) | Y, then A blitz / X QB spy / Y hook zone / B deep zone / RB flat zone | I, then J / U / I / K / O |
-| Coverage (pre-snap, defense) | LB, then A press / B off / X shade inside / Y shade outside / RB reset | Q, then the same keys |
+| Coverage (pre-snap, defense) | LB, then A press / B off / X shade inside / Y shade outside / RB disguise the shell / LT reset | Q, then the same keys |
+| Front (pre-snap, defense) | RB, then A pinch / B spread / X show blitz / Y crowd the line / LT reset | O, then the same keys |
+| Pass protection (pre-snap, offense, pass plays) | LB, then A slide left / B slide right / X max protect / Y everyone out / LT reset | Q, then the same keys |
+| Play art (pre-snap, one player) | hold RT | hold Shift |
+| Block a field goal / punt | get in front of the holder, A jump / X lay out at the kick | J / U |
+| Coach's challenge (close call against you) | Y challenge / A play on | I / J |
 | Instant replay (between plays) | RS click; LB/RB switch camera angle | R; Q/O |
 | Depth chart (pause menu → Coaching) | A pick up / drop, ▲▼ move, X remove | J, W/S, U |
 | Controls panel | — | H |
@@ -80,7 +85,10 @@ Ballhawk, Bruiser, Pocket Poise, Cannon, Route Technician, Big Leg). A ★ callo
 celebrations, a play-by-play line after every play, drive summaries, a halftime stats card, the chain crew, sidelines with
 reserves and coaches, and a Player of the Game on the final screen.
 
-**Practice** (main menu) runs any play from any spot and situation with no clock. **Settings** has the camera (standard / wide / tight / high), name tags, the post-play stat card and automatic replays of big plays.
+**Practice** (main menu) runs any play from any spot and situation with no clock. It also has **Skills Drills** (passing
+targets, rushing gauntlet, kicking challenge, pass rush, lockdown coverage: scored reps, bronze/silver/gold medals, best
+scores kept) and **Scenarios** (seven late-game challenges: a two-minute drill, a last-gasp touchdown, a goal-line stand,
+protecting a lead, fourth and long, a 17-point comeback and a tied finish). **Settings** has the camera (standard / wide / tight / high), name tags, the post-play stat card and automatic replays of big plays.
 
 Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6x speed
 (`&q=1` for 1-minute quarters).
@@ -112,7 +120,10 @@ their own weather, with snow late in the season.
 Main menu → **Franchise**: pick your team and season length (6, 10 or 17 games). Play your games or sim them,
 follow standings, results and league leaders, make the playoffs, then run the offseason: progression and
 retirements, re-sign players, free agency, a 7-round draft and cut-downs to 53. Several franchises can be saved;
-the Franchise menu lists them.
+the Franchise menu lists them. Start a franchise with a **fantasy draft** (every team drafts a new roster from one pool,
+53 rounds; auto-pick or auto-draft any time). The Franchise menu also has **New Season** (one season to a championship,
+no offseason) and **Tournament** (4, 8 or 16 teams, single elimination at neutral sites). The **Hall of Fame** keeps every
+player's career (stats, awards, championship rings) and inducts the great ones when they retire.
 Money: every player has a salary and contract years under a salary cap (Contracts & Cap in the hub). Trade with CPU
 teams before the deadline (they want fair value and both teams must fit under the cap); CPU teams trade too
 (Transactions). Re-signing, free agents and cut-downs all have to fit under the cap.

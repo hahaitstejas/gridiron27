@@ -204,6 +204,9 @@ rounds}, history[], seed, offseason{step, …} }`.
   the blocker back, may shed), X swim, Y spin, RS↓ rip (pass rush / agility); odds from the rating contest, get-off
   bonus, double teams hurt; fail = lost ground and a longer cooldown. Holding the stick gives a little leverage.
   `npm run bot` userEdgeMoves vs userEdgeStick measures it (~16% vs ~7% sacks).
+- Catch types (ball in the air to the user's receiver, `b.catchType`): Y aggressive (traffic ×0.55, no run after), X run after
+  catch (traffic ×1.35, full speed after), B possession (+6% clean, feet in at the sideline). Defense: Y = go for the pick
+  (`b.pickT`: big INT bonus, fewer swats). `npm run bot` smartTapAggressive / RAC / Possession.
 - Passing: hold LB (high) / LT (low) while throwing (`b.place`: harder for defenders to play, -5% catch, no YAC);
   LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
 

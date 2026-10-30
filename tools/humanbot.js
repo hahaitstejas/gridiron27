@@ -41,6 +41,9 @@ const strategies = {
   smartTap: { plays: (p) => p.type === 'pass', smart: true, tap: true, input: () => ({}) },
   smartTapHigh: { plays: (p) => p.type === 'pass', smart: true, tap: true, place: 'high', input: () => ({}) },
   smartTapLow: { plays: (p) => p.type === 'pass', smart: true, tap: true, place: 'low', input: () => ({}) },
+  smartTapAggressive: { plays: (p) => p.type === 'pass', smart: true, tap: true, catchBtn: 'Y', input: () => ({}) },
+  smartTapRAC: { plays: (p) => p.type === 'pass', smart: true, tap: true, catchBtn: 'X', input: () => ({}) },
+  smartTapPossession: { plays: (p) => p.type === 'pass', smart: true, tap: true, catchBtn: 'B', input: () => ({}) },
   holdBall: { plays: (p) => p.type === 'pass', input: () => ({}) },
   runUpfield: { plays: (p) => p.type === 'run', input: (t) => ({ ly: t > 0.9 ? -1 : 0, rt: 1 }) },
 };
@@ -55,9 +58,10 @@ for (const [name, st] of Object.entries(strategies)) {
       offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 0, ...DIFF });
     sim.snap();
     const f = emptyFrame();
-    let k = 0;
+    let k = 0, catchSent = false;
     while (!sim.finished && k < 3000) {
       const s = st.input(sim.t);
+      if (st.catchBtn && sim.ball.state === 'air' && sim.ball.intended === sim.controlledId && !catchSent) { s.press = st.catchBtn; catchSent = true; }
       if (st.smart && sim.t > 1.7 && sim.t < 1.72) {
         let bestBtn = null, bestSep = -1;
         for (const [btn, id] of Object.entries(sim.icons)) {

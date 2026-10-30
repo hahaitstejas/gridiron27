@@ -121,6 +121,8 @@ function release(sim, qb, rec, kind, lead, place = null) {
   b.resolved = false;
   b.tried = new Set();
   b.swatT = new Map();
+  b.pickT = new Map(); // user defenders going for the interception (Y)
+  b.catchType = null; // user receiver's catch type: 'aggressive' | 'rac' | 'possession'
   b.tipped = false;
   sim.passThrown = true;
   sim.stats.passer = qb.id;
@@ -215,7 +217,8 @@ function resolveCatch(sim, reach, late = false) {
   for (const dc of defC) {
     const d = dc.p;
     const reacted = d.task?.type === 'ball' || dc.d < 0.6;
-    const userSwat = swatBonus(sim, d);
+    const userPick = pickBonus(sim, d);
+    const userSwat = swatBonus(sim, d) || userPick;
     let pPlay = 0.12 + sim.R(d, 'coverage') * 0.0035 + (recDist - dc.d) * 0.28 + (reacted ? 0.08 : -0.15) + (userSwat ? 0.25 : 0);
     if (b.kind === 'lob') {
       // Touch passes drop in over underneath defenders; a defender over the top can still play it.
@@ -230,6 +233,10 @@ function resolveCatch(sim, reach, late = false) {
       const under = qb && Math.hypot(d.x - qb.x, d.z - qb.z) < Math.hypot(b.target.x - qb.x, b.target.z - qb.z) - 1;
       pPlay -= b.place === 'low' ? 0.08 : under ? 0.16 : 0.04;
     }
+    // An aggressive catch fights through the defender (he plays it less); a run-after-catch try lets him in.
+    if (b.catchType === 'aggressive') pPlay -= 0.08;
+    else if (b.catchType === 'rac') pPlay += 0.05;
+    if (userPick) pPlay -= 0.06; // going for the pick, not the swat: miss it and the receiver has it
     pPlay = clamp(pPlay, 0.03, 0.95);
     if (rng.next() < pPlay) {
       // Base hands, then much better odds when the defender beat the receiver to the ball, when the
@@ -246,6 +253,7 @@ function resolveCatch(sim, reach, late = false) {
       if (b.tipped) pInt *= 0.4;
       if (b.place) pInt *= 0.6;
       if (recDist < 0.8) pInt *= 0.6;
+      if (userPick) pInt = Math.min(0.92, pInt + 0.22 + sim.R(d, 'catching') * 0.002);
       if (rng.next() < pInt && Math.abs(b.z) < HALF_WIDTH - 0.2) {
         interception(sim, d);
       } else {
@@ -276,6 +284,10 @@ function resolveCatch(sim, reach, late = false) {
     const dd = Math.hypot(d.x - r.x, d.z - r.z);
     if (dd < 2) contest += (2 - dd) * 0.13 * (sim.R(d, 'coverage') / 80);
   }
+  // Catch types: aggressive halves the effect of traffic, run-after-catch makes it worse, possession is surer when clean.
+  const ct = b.catchType && r.id === b.intended ? b.catchType : null;
+  if (ct === 'aggressive') contest *= 0.55;
+  else if (ct === 'rac') contest *= 1.35;
   let pCatch = 0.57 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
@@ -283,8 +295,11 @@ function resolveCatch(sim, reach, late = false) {
   if (b.place) pCatch -= 0.05; // harder to catch away from the body
   pCatch -= Math.max(0, b.T - 1.3) * 0.12; // long balls: more time for the defense to get a hand in
   pCatch += 0.12 * sim.sl(r.team, 'catching');
+  if (ct === 'possession') pCatch += contest < 0.1 ? 0.06 : 0.02;
+  else if (ct === 'aggressive' && contest > 0.15) pCatch += 0.03;
   pCatch = clamp(pCatch, 0.1, 0.97);
-  if (Math.abs(r.z) > HALF_WIDTH - 0.15) {
+  // A possession catch gets the feet down along the sideline.
+  if (Math.abs(r.z) > HALF_WIDTH - (ct === 'possession' ? -0.3 : 0.15)) {
     // Caught out of bounds.
     sim.emit('oobCatch', { player: r.id });
     incomplete(sim, 'oob');
@@ -300,6 +315,8 @@ function resolveCatch(sim, reach, late = false) {
     r.recoverAt = sim.t + 0.42;
     // Going up or down for the ball costs the run after the catch.
     if (b.place) { r.speedCap = Math.min(r.speedCap, b.place === 'low' ? 0.35 : 0.45); r.recoverAt = sim.t + 0.6; }
+    if (ct === 'aggressive' || ct === 'possession') { r.speedCap = Math.min(r.speedCap, ct === 'aggressive' ? 0.3 : 0.4); r.recoverAt = sim.t + 0.65; }
+    else if (ct === 'rac') { r.speedCap = 0.95; r.recoverAt = sim.t + 0.1; }
     sim.setRunner(r, 'catch');
     // A defender closing on the catch gets a shot at him as the ball arrives.
     let hitter = null, hd = 2.2;
@@ -314,6 +331,11 @@ function resolveCatch(sim, reach, late = false) {
     sim.emit('drop', { player: r.id });
     deflect(sim, r, 0.6);
   }
+}
+
+function pickBonus(sim, d) {
+  const t = sim.ball.pickT?.get(d.id);
+  return t !== undefined && sim.t - t < 0.6;
 }
 
 function interception(sim, d) {

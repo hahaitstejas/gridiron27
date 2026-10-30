@@ -51,7 +51,8 @@ export class Hud {
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · hold LB high / LT low · left stick leads · LS click pump fake · RS click throw away'],
       ['Pass rush (engaged with a blocker)', 'A bull rush (strength) · X swim · Y spin · RS↓ rip (finesse: pass rush, agility) · hold the stick toward the ball for leverage'],
       ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect · LB pitch (speed option) · hold LT at the mesh to keep (zone read)'],
-      ['Defense', 'B switch player · RT sprint · A swat · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
+      ['Catching (ball in the air)', 'Y aggressive catch (wins in traffic, no run after) · X run after catch (turns upfield, riskier) · B possession (sure hands, feet in at the sideline)'],
+      ['Defense', 'B switch player · RT sprint · A swat · Y with the ball in the air: go for the pick · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
       ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
       ['Returns', 'Y fair catch (punts) · X kneel in the end zone'],
       ['Instant replay', 'RS click between plays (or pause menu) · A play/pause · X slow-mo · left stick scrub · right stick camera · LT/RT zoom · B exit'],
@@ -217,6 +218,11 @@ export class Hud {
     } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.state === 'live' && session.humanSide === 'defense' && sim.players[sim.controlledId]?.engagement?.d === sim.players[sim.controlledId]) h = '<b class="btn A">A</b> Bull rush &nbsp; <b class="btn X">X</b> Swim &nbsp; <b class="btn Y">Y</b> Spin &nbsp; RS ↓ Rip';
+    else if (sim && sim.state === 'live' && sim.ball.state === 'air' && !sim.kick && session.humanSide === 'offense' && sim.ball.intended === sim.controlledId) {
+      const ct = sim.ball.catchType;
+      const o = (btn, k, label) => `<b class="btn ${btn}">${btn}</b> ${ct === k ? `<u>${label}</u>` : label}`;
+      h = `${o('Y', 'aggressive', 'Aggressive catch')} &nbsp; ${o('X', 'rac', 'Run after catch')} &nbsp; ${o('B', 'possession', 'Possession')}`;
+    } else if (sim && sim.state === 'live' && sim.ball.state === 'air' && !sim.kick && session.humanSide === 'defense') h = '<b class="btn Y">Y</b> Go for the pick &nbsp; <b class="btn A">A</b> Swat';
     else if (sim && sim.meter && sim.state === 'live' && !sim.kick?.launched) h = sim.meter.phase === 'power' ? '<b class="btn A">A</b> Set power' : sim.meter.phase === 'accuracy' ? '<b class="btn A">A</b> Set accuracy — stop at the line!' : '';
     // Audible / hot route menus replace the hint.
     const au = this.$('audible');

@@ -476,3 +476,4 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #intro .in-at { align-self: center; font: 900 22px var(--fd); color: rgba(255,255,255,0.55); padding: 0 10px; }
 #intro .in-sub { margin: 8px 0 0 30px; font: 700 15px var(--fd); letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.85); text-shadow: 0 2px 8px #000; }
 #intro .in-skip { position: absolute; right: 8px; bottom: -2px; font-size: 13px; opacity: 0.8; }
+#hint u { color: var(--gold, #ffd34d); text-decoration: none; font-weight: 800; }

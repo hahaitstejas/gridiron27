@@ -72,7 +72,11 @@ export function applyHuman(sim, inp, dt) {
     return;
   }
   if (onOffense) {
-    // Ball in the air to my receiver: optional user catch control is just movement.
+    // Ball in the air to my receiver: pick a catch type (Y aggressive, X run after catch, B possession).
+    if (b.state === 'air' && b.intended === p.id) {
+      const type = inp.pressed.Y ? 'aggressive' : inp.pressed.X ? 'rac' : inp.pressed.B ? 'possession' : null;
+      if (type && b.catchType !== type) { b.catchType = type; sim.emit('catchType', { player: p.id, kind: type }); }
+    }
     return;
   }
   handleDefense(sim, p, inp);
@@ -134,6 +138,12 @@ function handleDefense(sim, p, inp) {
   if (inp.pressed.A && b.state === 'air') {
     b.swatT?.set(p.id, sim.t);
     p.anim = 'swat'; p.animT = 0;
+  }
+  // Y with the ball in the air: go up for the interception (more picks when close, but a miss leaves the catch open).
+  if (inp.pressed.Y && b.state === 'air') {
+    b.pickT?.set(p.id, sim.t);
+    p.anim = 'swat'; p.animT = 0;
+    return;
   }
   const c = sim.carrier();
   const faceCarrier = () => { if (c && Math.hypot(c.x - p.x, c.z - p.z) < 5) p.facing = Math.atan2(c.z - p.z, c.x - p.x); };

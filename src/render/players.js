@@ -572,14 +572,27 @@ function computePose(p, time, sim) {
       pose.crouch = -0.2; pose.lean = 0.5; pose.head = -0.35;
       pose.legs[0].hip = 0.6; pose.legs[0].knee = 0.9; pose.legs[1].hip = 0.15; pose.legs[1].knee = 0.6;
       pose.arms[0].pitch = 0.5; pose.arms[1].pitch = 0.5; pose.arms[0].elbow = pose.arms[1].elbow = 1.0;
+      // Linebackers and safeties waiting on the snap: on their toes, and now and then pointing out a receiver.
+      if (sim?.state === 'presnap' && p.side === 'D') {
+        const ph = time * 1.7 + p.id * 1.3;
+        pose.rootY = Math.abs(Math.sin(ph * 2.2)) * 0.03;
+        if ((ph % 6) < 0.9 && ['MLB', 'OLB', 'FS', 'SS'].includes(p.pos)) { pose.arms[1].pitch = 1.6; pose.arms[1].elbow = 0.1; pose.arms[1].out = Math.sin(p.id) * 0.5; pose.lean = 0.25; pose.head = 0; }
+      }
       break;
     case 'stance_qb': {
       const gun = sim && sim.toLocal(p.x, p.z).down < -2;
+      // Reading the defense before the snap: his shoulders scan side to side; in the gun he points out the
+      // middle linebacker now and then.
+      const scan = sim?.state === 'presnap' ? time * 0.9 + p.id : 0;
       pose.crouch = gun ? -0.12 : -0.2; pose.lean = gun ? 0.35 : 0.55;
       pose.legs[0].hip = 0.35; pose.legs[0].knee = 0.6; pose.legs[1].hip = 0.35; pose.legs[1].knee = 0.6;
       pose.legs[0].out = pose.legs[1].out = 0.15;
       pose.arms[0].pitch = pose.arms[1].pitch = gun ? 0.6 : 1.1; pose.arms[0].elbow = pose.arms[1].elbow = gun ? 1.2 : 0.5;
       pose.arms[0].out = pose.arms[1].out = -0.1;
+      if (scan) {
+        pose.twist = Math.sin(scan) * (gun ? 0.3 : 0.1); // hands stay under center
+        if (gun && (scan % 7) < 0.8) { pose.arms[1].pitch = 1.7; pose.arms[1].elbow = 0.05; pose.arms[1].out = 0.1; }
+      }
       break;
     }
     case 'idle':

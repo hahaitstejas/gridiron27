@@ -34,7 +34,7 @@ export function updateMeter(m, dt) {
     if (m.value >= 1) { m.power = 1; m.phase = 'accuracy'; m.t = 0; m.needle = 1; }
   } else if (m.phase === 'accuracy') {
     m.t += dt;
-    m.needle = m.power - m.t * METER.fallSpeed;
+    m.needle = m.power - m.t * METER.fallSpeed * (m.fall || 1); // an iced kicker's needle runs a little faster
     if (m.needle <= METER.floor) { m.accuracy = METER.floor - METER.accLine; m.phase = 'done'; }
   }
 }
@@ -198,7 +198,7 @@ export function launchKick(sim, kicker, params) {
   // Real kickers miss: ~2.4 deg spread for an 85-accuracy CPU kicker (NFL: ~82% from 40-49, ~65-70% from 50+). A human's meter press replaces
   // most of that randomness with skill.
   const human = sim.humanTeam === sim.offIdx;
-  const noise = (human ? 0.5 + (100 - kac) * 0.04 : 0.6 + (100 - kac) * 0.1) * (type === 'fg' ? 0.7 + 0.5 * power : 1) * (1 - 0.5 * sim.sl(kicker.team, kickKey + 'Accuracy'));
+  const noise = (human ? 0.5 + (100 - kac) * 0.04 : 0.6 + (100 - kac) * 0.1) * (type === 'fg' ? 0.7 + 0.5 * power : 1) * (sim.cfg.iced && !human ? 1.15 : 1) * (1 - 0.5 * sim.sl(kicker.team, kickKey + 'Accuracy'));
   const errDeg = (params.accuracy || 0) * 26 * (1.3 - kac / 100) + sim.rng.gauss(0, noise);
   yaw += (errDeg * Math.PI) / 180 * (sim.dir > 0 ? 1 : -1);
   const vh = v * Math.cos(theta);

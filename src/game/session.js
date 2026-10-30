@@ -14,7 +14,7 @@ import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS,
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice , KICK_FOULS } from './penalties.js';
-import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout } from '../ai/playcaller.js';
+import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout, wantsIce } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
 import { getOffPlay, getDefPlay } from '../data/playbook.js';
 
@@ -252,6 +252,7 @@ export class GameSession {
       unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t).map((i) => i.rid)]),
       defAdj: this.defAdj,
       weather: this.settings.weather || null,
+      iced: !!this.iced,
     });
     if (this.lock !== null) this.lockOn(this.sim);
     if (this.drill) drillControl(this.sim, this.drill);
@@ -302,6 +303,17 @@ export class GameSession {
       m.presnapRunoff(want);
       if (m.clock <= 0) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
       if (!m.clockRunning) { this.flushMessages(); } // two-minute warning stopped it
+    }
+    // Icing the kicker: a CPU defense calls timeout as the kick is about to go (once per kick).
+    if (sim.offPlay.type === 'fg' && !this.iced && !this.isHuman(this.defTeam) && wantsIce(m, this.defTeam, this.offTeam)) {
+      this.iced = true;
+      if (m.callTimeout(this.defTeam)) {
+        m.say(`${this.teams[this.defTeam].name} call timeout to ice the kicker`, 'info');
+        this.emit('iced', { team: this.defTeam });
+        this.flushMessages();
+        this.startPresnap();
+        return;
+      }
     }
     // Pre-snap fouls: a false start kills the play; a defender jumping offsides gets flagged and the
     // offense has a free play (enforced after it, take the better of the play or the 5 yards).
@@ -697,6 +709,7 @@ export class GameSession {
   /** Apply the play (and any penalty decision) to the game and move on. */
   completePlay(outcome) {
     const m = this.match;
+    this.iced = false;
     const sim = this.sim;
     const r = sim.result;
     for (const inj of sim.injuries) {

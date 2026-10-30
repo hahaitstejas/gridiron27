@@ -211,8 +211,20 @@ export function defenseForSpecial(offPlay) {
 export function cpuTempo(m, team, rng) {
   const lead = m.score[team] - m.score[1 - team];
   if (m.inTwoMinutes && lead <= 0) return 8 + rng.next() * 6; // hurry-up
+  if (m.quarter >= 4 && m.clock < 330 && lead < -8) return 12 + rng.next() * 6; // down two scores: hurry before the two-minute warning
   if (m.quarter >= 4 && lead > 0 && m.clock < 360) return 37 + rng.next() * 2; // milk the clock
   return 31 + rng.next() * 7; // pro offenses snap with a few seconds left on the 40-second clock
+}
+
+/**
+ * Icing the kicker: the defense calls timeout just before a field goal that would tie or win it late (or end
+ * the half), if it has one to spare.
+ */
+export function wantsIce(m, defTeam, kickTeam) {
+  if (m.timeouts[defTeam] <= 0 || m.phase !== 'scrimmage' || m.over) return false;
+  const margin = m.score[defTeam] - m.score[kickTeam]; // what the kick has to make up
+  const clutch = (m.quarter >= 4 && m.clock <= 40 && margin >= 0 && margin <= 3) || (m.quarter >= 5 && margin >= 0 && margin <= 3);
+  return clutch;
 }
 
 /** Should this team call a timeout right now (between plays)? */

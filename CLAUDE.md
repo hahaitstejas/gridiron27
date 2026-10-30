@@ -177,7 +177,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   comfort zone; the long-shot band only on 4th & 6+; end of a half: anything inside max (+2 at halftime). Isolated make
   rates (CPU noise 0.6 + (100-KAC)*0.1 deg): 33 yd ~93%, 45 ~83%, 52 ~76%, 57 ~63%.
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
-  clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
+  clock management, timeouts). `cpuTempo`: hurry-up inside two minutes when not ahead and in Q4 under 5:30 when down 9+,
+  milking with a lead. Icing (`wantsIce`): a CPU defense with a timeout calls it right before a field goal that would tie
+  or win inside 0:40 of Q4 / in OT (`session.snap()`, once per kick, `iced` event); the iced kick has a faster meter needle
+  (human, `meter.fall` 1.12) or +15% aim noise (CPU, `cfg.iced`). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
 
 ### League management (Phase 4)

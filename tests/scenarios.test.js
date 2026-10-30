@@ -27,3 +27,27 @@ describe('scenarios', () => {
     }
   }, 60000);
 });
+
+describe('CPU clock management', () => {
+  it('ices the kicker before a late tying field goal, once, and the kick still happens', async () => {
+    const { wantsIce, cpuTempo } = await import('../src/ai/playcaller.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const s = new GameSession({ teams: [teams[5], teams[6]], settings: { quarterMinutes: 15 }, seed: 3, fast: true });
+    const m = s.match;
+    m.quarter = 4; m.clock = 20; m.score = [20, 22]; m.timeouts = [0, 2];
+    m.newPossession(0, 75, 0); m.down = 4; m.toGo = 8; m.firstYL = 83;
+    expect(wantsIce(m, 1, 0)).toBe(true);
+    s.enterPlaycall();
+    let iced = 0, kicked = false;
+    for (let k = 0; k < 20000 && s.state !== 'over' && !kicked; k++) {
+      s.tick(STEP, null);
+      for (const e of s.events) { if (e.type === 'iced') iced++; if (e.type === 'kick') kicked = true; }
+    }
+    expect(iced).toBe(1);
+    expect(m.timeouts[1]).toBe(1);
+    expect(kicked).toBe(true);
+    // Down two scores late: hurry-up tempo even before the two-minute warning.
+    m.quarter = 4; m.clock = 280; m.score = [3, 20];
+    expect(cpuTempo(m, 0, new RNG(1))).toBeLessThan(20);
+  });
+});

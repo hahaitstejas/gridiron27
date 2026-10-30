@@ -443,6 +443,7 @@ function onSessionEvent(e) {
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
   else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
   else if (e.type === 'scenarioDone') hud.banner(e.success ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED', e.text, 2.4, e.success ? 'score' : 'miss');
+  else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');
   else if (e.type === 'drillRep') hud.banner(`${e.pts > 0 ? '+' : ''}${e.pts}`, e.text, 1.6, e.pts > 0 ? 'score' : 'miss');
   else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');
   else if (e.type === 'gameOver') {

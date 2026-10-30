@@ -141,6 +141,7 @@ export class PlaySim {
     if (this.isKick) {
       if (this.humanTeam === this.offIdx) {
         this.meter = newMeter();
+        if (this.cfg.iced) this.meter.fall = 1.12;
         this.kickAim = 0;
         this.controlledId = this.bySlot(this.offIdx, this.offPlay.type === 'punt' ? 'P' : 'K')?.id ?? -1;
       } else if (this.humanTeam === this.defIdx) {

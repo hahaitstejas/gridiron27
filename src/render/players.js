@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { drawLogo } from './logo.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
 // players). Poses are computed procedurally from the sim's animation state every frame.
@@ -107,6 +108,32 @@ export class PlayerRenderer {
         }`,
     });
 
+    // Helmet decals: a patch bent onto the helmet shell (same local space as helmetGeo), the team's logo from a
+    // two-cell atlas (home | away) picked per instance; aDecal = (cell, flip) so both sides read the right way.
+    const decalGeo = new THREE.PlaneGeometry(0.46, 0.46, 6, 6);
+    {
+      const pos = decalGeo.attributes.position, R = 0.505;
+      for (let k = 0; k < pos.count; k++) {
+        const u = pos.getX(k), v = pos.getY(k);
+        pos.setXYZ(k, Math.sqrt(Math.max(0.0001, R * R - u * u - v * v)) * 0.95, v * 0.95, u * 1.08);
+      }
+      decalGeo.computeVertexNormals();
+    }
+    const decalAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 2 * 2), 2);
+    decalGeo.setAttribute('aDecal', decalAttr);
+    this.decalAttr = decalAttr;
+    this.logoCanvas = document.createElement('canvas');
+    this.logoCanvas.width = 512; this.logoCanvas.height = 256;
+    this.logoTex = new THREE.CanvasTexture(this.logoCanvas);
+    this.logoTex.colorSpace = THREE.SRGBColorSpace;
+    this.logoTex.anisotropy = 4;
+    const decalMat = new THREE.MeshStandardMaterial({ map: this.logoTex, transparent: true, alphaTest: 0.35, roughness: 0.3, metalness: 0.1, envMap, envMapIntensity: 0.6,
+      side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+    decalMat.onBeforeCompile = (sh) => {
+      sh.vertexShader = 'attribute vec2 aDecal;\n' + sh.vertexShader.replace('#include <uv_vertex>',
+        '#include <uv_vertex>\nvMapUv.x = (aDecal.y > 0.5 ? 1.0 - vMapUv.x : vMapUv.x) * 0.5 + aDecal.x * 0.5;');
+    };
+
     const torsoMat = mat(0.8), upperMat = mat(0.8);
     const upperGeo = limbGeo(0.07);
     this.stripeAttrs = [striped(torsoMat, MAX, torsoGeo), striped(upperMat, MAX * 2, upperGeo)];
@@ -124,11 +151,12 @@ export class PlayerRenderer {
       helmet: part(helmetGeo, mat(0.25, 0.2, 0.7), MAX),
       stripe: part(box(0.06, 0.03, 0.36), lam(), MAX, false),
       mask: part(maskGeo, mat(0.35, 0.6, 1), MAX, false),
+      decal: part(decalGeo, decalMat, MAX * 2, false),
       bar: part(barGeo, mat(0.35, 0.6, 1), MAX * 2, false),
       cap: part(capGeo, mat(0.8), MAX * 2),
       num: part(numGeo, numMat, MAX * 4, false),
     };
-    this.pairs = new Set([this.parts.thigh, this.parts.shin, this.parts.shoe, this.parts.upper, this.parts.fore, this.parts.hand, this.parts.bar, this.parts.cap]);
+    this.pairs = new Set([this.parts.decal, this.parts.thigh, this.parts.shin, this.parts.shoe, this.parts.upper, this.parts.fore, this.parts.hand, this.parts.bar, this.parts.cap]);
     for (const p of Object.values(this.parts)) scene.add(p);
 
     // Ring under the user-controlled player.
@@ -172,6 +200,11 @@ export class PlayerRenderer {
     this.colorsKey = key;
     const P = this.parts;
     const c = this._col;
+    // Logo atlas: home in the left half, away in the right.
+    const lg = this.logoCanvas.getContext('2d');
+    lg.clearRect(0, 0, 512, 256);
+    teams.forEach((t, k) => drawLogo(lg, t.logo, 128 + k * 256, 128, 118));
+    this.logoTex.needsUpdate = true;
     const pick = (team, which) => (which === 'white' ? '#f4f4f4' : which === 'secondary' ? team.colors.secondary : which === 'accent' ? team.colors.accent : team.colors.primary);
     sim.players.forEach((p, i) => {
       const team = teams[p.team];
@@ -190,6 +223,7 @@ export class PlayerRenderer {
       P.stripe.setColorAt(i, c.set(u.helmetStripe ? team.colors.secondary : helmet));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
       for (let k = 0; k < 2; k++) {
+        this.decalAttr.setXY(i * 2 + k, p.team, k);
         P.bar.setColorAt(i * 2 + k, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
         P.cap.setColorAt(i * 2 + k, c.set(jersey).offsetHSL(0, 0, -0.04));
         P.num.setColorAt(i * 4 + 2 + k, c.set(numColor));
@@ -226,6 +260,7 @@ export class PlayerRenderer {
       }
     }
     this.cellAttr.needsUpdate = true;
+    this.decalAttr.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }
 
@@ -306,8 +341,12 @@ export class PlayerRenderer {
       P.helmet.setMatrixAt(i, cl(head).multiply(trans(0, 0.06, 0)).multiply(scaleM(0.27, 0.16, 0.27)));
       P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.05, 0.13)).multiply(scaleM(2.6, 0.6, 0.45)));
       P.mask.setMatrixAt(i, ZERO); P.bar.setMatrixAt(i * 2, ZERO); P.bar.setMatrixAt(i * 2 + 1, ZERO);
+      P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
     } else {
       P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
+      // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
+      P.decal.setMatrixAt(i * 2, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.decal.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
       P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.165, -0.01)));
       P.mask.setMatrixAt(i, cl(head).multiply(trans(0, -0.03, 0.16)).multiply(scaleM(0.32, 0.28, 0.3)));
       P.bar.setMatrixAt(i * 2, cl(head).multiply(trans(0, -0.035, 0.205)).multiply(scaleM(0.2, 1, 1)));

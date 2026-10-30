@@ -31,6 +31,17 @@ export function makeFieldCanvas(home, away, opts = {}) {
     g.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.035)';
     g.fillRect(x, y, 2, 2);
   }
+  // Wear: the middle of the field between the hashes gets trampled (most between the 30s), with scuffed
+  // patches where the lines set up. Drawn under the paint, so the lines stay crisp.
+  for (let i = 0; i < 1400; i++) {
+    const x = (rnd() + rnd() + rnd() - 1.5) * 62; // bell-shaped around midfield
+    if (Math.abs(x) > 49) continue;
+    const z = (rnd() + rnd() - 1) * HASH_Z * 2.2;
+    const r = (0.3 + rnd() * 1.1) * S;
+    const a = 0.018 + rnd() * 0.03 * (1 - Math.abs(x) / 60);
+    g.fillStyle = rnd() < 0.75 ? `rgba(150,150,85,${a.toFixed(3)})` : `rgba(20,40,15,${a.toFixed(3)})`; // dry, lighter grass; a few dark scuffs
+    g.beginPath(); g.ellipse(px(x), pz(z), r * 1.6, r, rnd() * Math.PI, 0, Math.PI * 2); g.fill();
+  }
 
   // End zones.
   const ez = (x0, team, rot) => {

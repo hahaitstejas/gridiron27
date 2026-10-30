@@ -228,6 +228,20 @@ export function buildStadium(renderer, home, away) {
   }
   group.add(new THREE.Mesh(mergeGeometries(towerGeos), towerMat));
   group.add(new THREE.Mesh(mergeGeometries(lampGeos), lampMat));
+  // Glow around each lamp bank at dusk and night: one additive points draw, faded by setConditions.
+  const glowTex = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d'), grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    grd.addColorStop(0, 'rgba(255,250,235,1)'); grd.addColorStop(0.15, 'rgba(255,240,210,0.55)'); grd.addColorStop(1, 'rgba(255,230,200,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const glowPos = [];
+  for (const sx of [-1, -0.33, 0.33, 1]) for (const sz of [-1, 1]) glowPos.push(sx * tx, topY + 31, sz * (tz - 0.6));
+  const glowGeo = new THREE.BufferGeometry();
+  glowGeo.setAttribute('position', new THREE.Float32BufferAttribute(glowPos, 3));
+  const glow = new THREE.Points(glowGeo, new THREE.PointsMaterial({ map: glowTex, size: 34, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+  group.add(glow);
 
   // Goalposts (gooseneck) at both end lines.
   const postMat = new THREE.MeshLambertMaterial({ color: 0xf5d000, emissive: 0x332a00 });
@@ -355,6 +369,7 @@ export function buildStadium(renderer, home, away) {
     group,
     sky: skyUniforms,
     lampMat,
+    glow,
     snow,
     setTeams: (h, a, opts) => { setTeams(h, a, opts); fillCrowdColors(h, a); standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85); },
     setBoardText,

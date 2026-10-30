@@ -115,6 +115,7 @@ export class GameRenderer {
     const sky = this.stadium.sky;
     [sky.uTop, sky.uMid, sky.uHor].forEach((u, i) => { u.value.setRGB(...look.sky[i]); if (wet) u.value.lerp(grey, 0.75); });
     this.stadium.lampMat.color.set(look.lamps);
+    this.stadium.glow.material.opacity = c.time === 'night' ? 0.9 : c.time === 'dusk' ? 0.55 : 0;
     this.stadium.snow.visible = c.type === 'snow';
     this.renderer.toneMappingExposure = look.exposure;
     this.precip.set(c.type, c.wind);

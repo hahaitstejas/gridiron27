@@ -74,3 +74,25 @@ describe('career mode', () => {
     expect(teams[1].roster).toContain(p);
   });
 });
+
+describe('hard count', () => {
+  it('sometimes draws the defense offside (free play), sometimes flinches, once per play', async () => {
+    const { defaultTeams: dt } = await import('../src/data/teams.js');
+    const teams = generateLeagueRosters(dt(), 21);
+    let jump = 0, flinch = 0, none = 0;
+    for (let i = 0; i < 200; i++) {
+      const s = new GameSession({ teams: [teams[0], teams[1]], settings: { quarterMinutes: 5 }, humanTeam: 0, seed: 100 + i, fast: true });
+      s.match.newPossession(0, 30, 0); s.enterPlaycall();
+      s.humanChoose((await import('../src/data/playbook.js')).listOffPlays()[i % 20]);
+      for (let k = 0; k < 5 && s.state === 'playcall'; k++) s.tick(STEP, null);
+      s.events.length = 0;
+      expect(s.hardCount()).toBe(true);
+      expect(s.hardCount()).toBe(false); // once per play
+      const r = s.events.find((e) => e.type === 'hardCount').result;
+      if (r === 'jump') { jump++; expect(s.state).toBe('live'); expect(s.sim.fouls.some((f) => f.type === 'offsides_live')).toBe(true); }
+      else if (r === 'flinch') flinch++; else none++;
+    }
+    expect(jump).toBeGreaterThan(2); expect(jump).toBeLessThan(30);
+    expect(flinch).toBeGreaterThan(0); expect(none).toBeGreaterThan(140);
+  });
+});

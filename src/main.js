@@ -347,6 +347,7 @@ function onSessionEvent(e) {
   else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
   else if (e.type === 'tackle') input.rumble(0.35, 110);
   else if (e.type === 'flag') renderer.showFlag?.(e);
+  else if (e.type === 'hardCount') hud.ticker(e.result === 'jump' ? 'Hard count: the defense jumped! Free play' : e.result === 'flinch' ? 'Hard count: your line flinched' : 'Hard count: nobody bit');
   else if (e.type === 'watching') hud.ticker('On the sideline: fast-forwarding to your next snap');
 }
 

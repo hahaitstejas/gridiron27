@@ -243,6 +243,7 @@ export class GameSession {
     this.state = 'presnap';
     this.presnapT = 0;
     this.jetWait = false;
+    this.hardCounted = false;
     this.emit('presnap', { sim: this.sim });
   }
 
@@ -287,7 +288,8 @@ export class GameSession {
     }
     // Pre-snap fouls: a false start kills the play; a defender jumping offsides gets flagged and the
     // offense has a free play (enforced after it, take the better of the play or the 5 yards).
-    const foul = rollPresnapFoul(m, sim, this.rng, this.penaltyRate());
+    const forced = this.forceFoul; this.forceFoul = null;
+    const foul = forced || rollPresnapFoul(m, sim, this.rng, this.penaltyRate());
     if (foul?.type === 'offsides') {
       this.audible = null;
       sim.snap();
@@ -313,6 +315,31 @@ export class GameSession {
     if (!this.fast) { this.recorder.reset(); this.recorder.capture(sim); }
     this.state = 'live';
     this.plays++;
+  }
+
+  /**
+   * Hard count (LT at the line, once per play): an eager defender may jump (offsides, a free play), rarely one
+   * of your own linemen flinches (false start). Disciplined (high awareness) defensive lines bite less.
+   */
+  hardCount() {
+    const sim = this.sim, m = this.match;
+    if (this.state !== 'presnap' || sim.isKick || m.phase !== 'scrimmage' || this.hardCounted || this.isHuman(this.defTeam)) return false;
+    this.hardCounted = true;
+    const dl = sim.defense().filter((p) => /E$|DT/.test(p.slot));
+    const awr = dl.reduce((a, p) => a + p.r.awareness, 0) / Math.max(1, dl.length);
+    const pJump = Math.max(0.02, Math.min(0.12, 0.05 + (70 - awr) / 300)) * (this.settings.penalties === false ? 0 : 1);
+    const r = this.rng.next();
+    if (r < pJump) {
+      this.forceFoul = { type: 'offsides', team: this.defTeam, player: this.rng.pick(dl.length ? dl : sim.defense()) };
+      this.emit('hardCount', { result: 'jump' });
+      this.snap();
+    } else if (r < pJump + 0.04 * (this.settings.penalties === false ? 0 : 1)) {
+      const ol = sim.offense().filter((p) => ['LT', 'LG', 'C', 'RG', 'RT'].includes(p.slot));
+      this.forceFoul = { type: 'false_start', team: this.offTeam, player: this.rng.pick(ol) };
+      this.emit('hardCount', { result: 'flinch' });
+      this.snap();
+    } else this.emit('hardCount', { result: 'none' });
+    return true;
   }
 
   // ---------- audibles & hot routes ----------
@@ -459,6 +486,7 @@ export class GameSession {
       for (const [team, f] of [[off, offIn], [def, defIn]]) if (f?.pressed.View) this.callTimeout(team);
       if (offIn?.pressed.B && this.calls(off) && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       const lineup = this.fast || sim.isKick ? 0 : LINEUP_T; // players still running to the line: wait for them
+      if (offIn?.pressed.LT && this.presnapT >= lineup && this.calls(off) && !this.audible) { this.hardCount(); if (this.state !== 'presnap') { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; } }
       if (offIn?.pressed.A && this.presnapT >= lineup && this.calls(off)) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       if (defIn?.pressed.B && sim.isKick === false && this.lock === null) sim.withHuman(def, () => cyclePresnapDefender(sim));
       const humanOff = this.calls(off); // career: a non-QB doesn't snap the ball, the CPU keeps the tempo

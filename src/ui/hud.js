@@ -51,6 +51,7 @@ export class Hud {
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · hold LB high / LT low · left stick leads · LS click pump fake · RS click throw away'],
       ['Pass rush (engaged with a blocker)', 'A bull rush (strength) · X swim · Y spin · RS↓ rip (finesse: pass rush, agility) · hold the stick toward the ball for leverage'],
       ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect · LB pitch (speed option) · hold LT at the mesh to keep (zone read)'],
+      ['At the line (offense)', 'A snap · X audible · Y hot route · RB motion · LT hard count (may draw the defense offside: a free play) · B spike'],
       ['Catching (ball in the air)', 'Y aggressive catch (wins in traffic, no run after) · X run after catch (turns upfield, riskier) · B possession (sure hands, feet in at the sideline)'],
       ['Defense', 'B switch player · RT sprint · A swat · Y with the ball in the air: go for the pick · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
       ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
@@ -218,7 +219,7 @@ export class Hud {
       h = `Career: you're <b>#${me.number} ${me.name || ''}</b> (${me.slot}) &nbsp; the CPU calls and snaps &nbsp; <b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
-        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}<b class="btn view">View</b> Timeout`;
+        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}<b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.state === 'live' && session.humanSide === 'defense' && sim.players[sim.controlledId]?.engagement?.d === sim.players[sim.controlledId]) h = '<b class="btn A">A</b> Bull rush &nbsp; <b class="btn X">X</b> Swim &nbsp; <b class="btn Y">Y</b> Spin &nbsp; RS ↓ Rip';

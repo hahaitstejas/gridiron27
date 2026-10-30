@@ -341,7 +341,7 @@ describe('penalty choice', () => {
     const { GameSession } = await import('../src/game/session.js');
     const { STEP } = await import('../src/core/constants.js');
     const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
-    const s = new GameSession({ teams, settings: { quarterMinutes: 15, penalties: false } // only the planted foul, humanTeam: 0, seed: 21 });
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15, penalties: false }, humanTeam: 0, seed: 21 }); // only the planted foul
     s.match.newPossession(0, 30, 0);
     s.enterPlaycall();
     s.humanChoose(getOffPlay('gun_doubles_iz'));

@@ -1,4 +1,5 @@
 // Bundled font (offline): Saira Condensed for every menu, HUD and canvas text.
+import { downText, yardLineText, clockText } from './game/match.js';
 import '@fontsource/saira-condensed/400.css';
 import '@fontsource/saira-condensed/500.css';
 import '@fontsource/saira-condensed/600.css';
@@ -255,7 +256,16 @@ function pause() {
     onControls: () => screens.controls({ onBack: pause }),
     // Quitting a franchise game goes back to the hub (the game isn't recorded: play or sim it again).
     onQuit: session?.franchiseGame ? () => { leaveGame(); franchiseUI.hub(); } : toMenu,
+    game: session ? pauseInfo(session) : null,
   });
+}
+
+function pauseInfo(s) {
+  const m = s.match, [home, away] = m.teams;
+  const ord = (q) => q > 4 ? 'OT' : ['1st', '2nd', '3rd', '4th'][q - 1];
+  const down = m.phase === 'scrimmage' ? `${downText(m)} · ${m.teams[m.possession].abbr} ball on the ${yardLineText(m)}` : m.phase === 'try' ? 'Extra point try' : 'Kickoff';
+  const mine = s.humanTeam !== null ? m.teams[s.humanTeam] : home;
+  return { home, away, score: m.score, quarter: ord(m.quarter), clock: clockText(m.clock), down, practice: !!s.practice, accent: mine.colors.primary };
 }
 
 input.onConnect = (id) => {

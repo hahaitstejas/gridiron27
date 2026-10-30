@@ -43,6 +43,12 @@ const ICONS = {
   board: svg('<rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="M14 7l3 3M17 7l-3 3M9 16c2-3 5-3 7-6"/>'),
   gear: svg('<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'),
   disk: svg('<path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/>'),
+  play: svg('<path d="M7 4l13 8-13 8z"/>'),
+  clock: svg('<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 2h6"/>'),
+  chart: svg('<path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/>'),
+  people: svg('<circle cx="8" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M2 20c0-4 3-6 6-6s6 2 6 6M14 15c1-1 2-1.5 3-1.5 2.5 0 5 1.5 5 5"/>'),
+  replay: svg('<path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 3v4h4"/><path d="M10 9l5 3-5 3z"/>'),
+  exit: svg('<path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>'),
   pad: svg('<path d="M6 8h12a4 4 0 0 1 3.8 5.2l-1.2 3.6a2.2 2.2 0 0 1-3.9.6L15 15H9l-1.7 2.4a2.2 2.2 0 0 1-3.9-.6l-1.2-3.6A4 4 0 0 1 6 8z"/><path d="M7 11v3M5.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/>'),
 };
 
@@ -286,15 +292,33 @@ export class Screens {
     this.nav.set([...rows, sliders, save], { onBack });
   }
 
-  pause({ onResume, onTimeout, timeoutsLeft = 0, onReplay, onStats, onDepth, onControls, onQuit }) {
-    const items = [this.menuItem('Resume', '', onResume)];
-    if (onTimeout) items.push(this.menuItem(`Call Timeout (${timeoutsLeft} left)`, 'Stops the clock and gives everyone a breather', onTimeout));
-    if (onStats) items.push(this.menuItem('Game Stats', 'Every player: passing, rushing, receiving, defense, kicking', onStats));
-    if (onDepth) items.push(this.menuItem('Coaching: Depth Chart', 'Change who starts and who rotates in', onDepth));
-    if (onReplay) items.push(this.menuItem('Instant Replay', 'Watch the last play again', onReplay));
-    items.push(this.menuItem('Controls', '', onControls), this.menuItem('Quit to Main Menu', 'Abandon this game', onQuit));
-    this.frame('pause-screen', el('h1', { text: 'Paused' }), el('div.menu-list', {}, items));
-    this.nav.set(items, { onBack: onResume });
+  /**
+   * Pause menu in the hub style: a situation banner (score, clock, down) over icon tiles.
+   * game = { home, away, score: [h, a], quarter, clock, down, spot, practice } (optional).
+   */
+  pause({ onResume, onTimeout, timeoutsLeft = 0, onReplay, onStats, onDepth, onControls, onQuit, game = null }) {
+    const tile = (cls, icon, label, sub, action) => {
+      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, el('div.ht-icon', { html: ICONS[icon] || '' }), el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })));
+      t.activate = action;
+      return t;
+    };
+    const tiles = [tile('feature', 'play', 'Resume', game?.practice ? 'Back to practice' : 'Back to the game', onResume)];
+    if (onTimeout) tiles.push(tile('', 'clock', 'Timeout', `${timeoutsLeft} left · stops the clock`, onTimeout));
+    if (onStats) tiles.push(tile('', 'chart', 'Game Stats', 'Passing, rushing, receiving, defense', onStats));
+    if (onDepth) tiles.push(tile('', 'people', 'Depth Chart', 'Starters, rotation, energy', onDepth));
+    if (onReplay) tiles.push(tile('', 'replay', 'Instant Replay', 'Watch the last play again', onReplay));
+    tiles.push(tile('small', 'pad', 'Controls', 'Controller and keyboard', onControls), tile('small', 'exit', 'Quit', game?.practice ? 'Leave practice' : 'Abandon this game', onQuit));
+    let banner = null;
+    if (game?.home && game?.away) {
+      const side = (t, sc) => el('div.ps-team', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 64), el('div', {}, el('small', { text: t.city }), el('b', { text: t.abbr })), el('div.ps-score', { text: game.practice ? '' : String(sc) }));
+      banner = el('div.ps-banner', {}, side(game.away, game.score[1]), el('div.ps-mid', {},
+        el('div.ps-clock', { text: game.practice ? 'PRACTICE' : `${game.quarter} · ${game.clock}` }), el('div.ps-down', { text: game.down || '' })), side(game.home, game.score[0]));
+    }
+    this.frame('pause-screen hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'PAUSED' }), el('div.ps-brand', { html: 'GRIDIRON <span>27</span>' })),
+      banner, el('div.hub-grid.pause-grid', {}, tiles),
+      el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Resume' }));
+    if (game?.accent) this.root.style.setProperty('--accent', game.accent);
+    this.nav.set(tiles, { spatial: true, onBack: onResume });
   }
 
   gameOver(session, { onDone, onStats, doneLabel = 'Main Menu' }) {

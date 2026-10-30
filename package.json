@@ -13,6 +13,7 @@
     "sim": "node tools/autosim.js",
     "games": "node tools/gamesim.js",
     "bot": "node tools/humanbot.js",
+    "fuzz": "node tools/fuzz.js",
     "export-league": "node tools/export-league.js"
   },
   "engines": {

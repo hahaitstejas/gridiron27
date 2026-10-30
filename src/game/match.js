@@ -341,6 +341,8 @@ export class Match {
     // p: { team (offending), yards (+ = against offense means toward offense goal), spotYL, replayDown,
     //      autoFirst, lossOfDown, text, newYL }
     const off = r.offTeam;
+    // Any enforced foul resets the play clock (otherwise a delay of game would repeat forever at 0:00).
+    this.playClock = 25;
     if (this.phase === 'try' && p.replay) { this.yardLine = clamp(p.newYL, 1, 99); this.say(p.text, 'penalty'); return; }
     if (p.kickoffRekick) { this.say(p.text, 'penalty'); this.setupKickoff(this.kicker, p.newYL); return; }
     this.yardLine = clamp(p.newYL, 1, 99);

@@ -14,6 +14,7 @@ npm run sim -- --plays 1000 --seed 3   # headless CPU-vs-CPU play runner with in
 npm run games -- --games 16 --quarter 15  # headless full CPU-vs-CPU games (rules/clock invariants, box-score averages)
 npm run export-league  # write editable league spreadsheets to public/local/ (see below)
 npm run bot          # scripted 'human' exploits vs CPU defense  (-- --difficulty rookie|pro|allpro|legend)
+npm run fuzz         # random-input (button masher) human / career / 2-player games: no crashes, every game ends
 npm run build        # production build to dist/
 npm run build:offline  # ONE self-contained file: dist-offline/Gridiron27.html (double-click, no server, no wifi)
 ```

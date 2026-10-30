@@ -426,3 +426,23 @@ describe('injuries', () => {
     expect(s.injuries[0].type).toBeTruthy();
   }, 60000);
 });
+
+describe('delay of game', () => {
+  it('resets the play clock instead of repeating forever', async () => {
+    const { GameSession, STEP } = await import('../src/game/session.js');
+    const { defaultTeams } = await import('../src/data/teams.js');
+    const { generateLeagueRosters } = await import('../src/data/generator.js');
+    const { listOffPlays } = await import('../src/data/playbook.js');
+    const t = generateLeagueRosters(defaultTeams(), 5);
+    const s = new GameSession({ teams: [t[0], t[1]], settings: { quarterMinutes: 5 }, humanTeam: 0, seed: 2 });
+    s.match.newPossession(0, 30, 0); s.enterPlaycall();
+    let flags = 0;
+    for (let k = 0; k < 60 * 40; k++) { // 40 s without snapping
+      if (s.needsHumanCall) s.humanChoose(listOffPlays()[0]);
+      s.tick(STEP, null);
+      for (const e of s.events) if (e.type === 'flag' && e.foul?.type === 'delay_of_game') flags++;
+    }
+    expect(flags).toBe(1);
+    expect(s.match.playClock).toBeGreaterThan(5);
+  });
+});

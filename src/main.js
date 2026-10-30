@@ -281,6 +281,16 @@ function updateReplay(f, dt) {
   r.dist = Math.min(60, Math.max(6, r.dist + ((f.lt || 0) - (f.rt || 0)) * dt * 25));
 }
 
+/** Halftime: the game stops on a full-screen report until the player starts the second half. */
+function showHalftime() {
+  app = 'halftime';
+  hud.hideAll();
+  playcall.hide();
+  screens.gameOver(session, { halftime: true, doneLabel: 'Start 2nd Half',
+    onDone: () => { screens.clear(); app = 'game'; snapCam = true; },
+    onStats: () => statsScreen(screens, session.match, { onBack: showHalftime }) });
+}
+
 function showFinal() {
   screens.extraButtons = null;
   const g = session.franchiseGame;
@@ -378,6 +388,7 @@ function onSessionEvent(e) {
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') {
     hud.message(e, session);
+    if (e.kind === 'half' && /half/i.test(e.text) && session.humanTeam !== null && !session.practice && speed <= 1) showHalftime();
     if (e.kind === 'score') { const w = session.match.lastScore?.what || ''; flashBoard(/touchdown|pick six/i.test(w) ? 'TOUCHDOWN!' : /field goal/i.test(w) ? 'FIELD GOAL' : /safety/i.test(w) ? 'SAFETY' : '', session.match.lastScore?.team ?? 0); if (!boardFlash.text) boardFlash = null; }
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
@@ -420,7 +431,7 @@ function frameBody(now) {
   if (app === 'title') {
     if (f.pressed.A || f.pressed.Menu) toMenu();
     consumed = true;
-  } else if (app === 'menu' || app === 'paused' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
+  } else if (app === 'menu' || app === 'paused' || app === 'halftime' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
     screens.extraButtons?.(f);
     nav.update(f, dt);
     consumed = true;

@@ -543,3 +543,6 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .pc-traits i, .cr-traits i { display: inline-block; font-style: normal; font: 800 12px var(--fd); letter-spacing: 1px; color: #111; background: var(--gold, #ffd34d); padding: 2px 8px; margin: 0 4px; text-transform: uppercase; }
 .cr-traits { width: min(1100px, 94vw); margin: -6px 0 10px; }
 .cr-traits small { display: block; margin-top: 4px; font-size: 12px; color: rgba(255,255,255,0.65); }
+
+/* Halftime report: a full screen (the game stays hidden until the second half starts) */
+.screen.halftime-screen { background: radial-gradient(ellipse at 50% 0%, #1b2547, #070b18 70%); }

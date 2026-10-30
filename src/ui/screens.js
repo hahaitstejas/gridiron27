@@ -65,7 +65,7 @@ export class Screens {
     this.root.innerHTML = '';
     this.root.classList.remove('hidden');
     this.root.className = 'screen ' + cls;
-    this.root.append(...kids);
+    this.root.append(...kids.filter((k) => k !== null && k !== undefined && k !== false)); // optional pieces may be absent
   }
 
   title(padName) {
@@ -324,7 +324,8 @@ export class Screens {
     this.nav.set(tiles, { spatial: true, onBack: onResume });
   }
 
-  gameOver(session, { onDone, onStats, doneLabel = 'Main Menu' }) {
+  /** Final box score; `halftime: true` makes it the halftime report (no player of the game, Start 2nd Half). */
+  gameOver(session, { onDone, onStats, doneLabel = 'Main Menu', halftime = false }) {
     const m = session.match;
     const [h, a] = m.teams;
     const S = m.stats.team;
@@ -354,20 +355,20 @@ export class Screens {
     // Player of the game: the biggest stat line (same production score as career XP), a winner's player on ties.
     const potg = ps.map((x) => ({ x, v: gameXP(x) + (x.team === m.winner ? 15 : 0) })).sort((p1, p2) => p2.v - p1.v)[0]?.x;
     const potgP = potg && m.teams[potg.team].roster.find((x) => x.id === potg.rid);
-    const potgCard = potgP ? el('div.potg', { style: { '--tc': m.teams[potg.team].colors.primary } },
+    const potgCard = potgP && !halftime ? el('div.potg', { style: { '--tc': m.teams[potg.team].colors.primary } },
       el('small', { text: 'PLAYER OF THE GAME' }), el('b', { text: `#${potgP.number} ${potgP.first} ${potgP.last}` }),
       el('span', { text: `${m.teams[potg.team].abbr} ${potgP.pos} · ${lineText(potg)}` })) : null;
     const done = el('div.start-btn', { text: doneLabel });
     done.activate = onDone;
     const stats = el('div.start-btn.secondary', { text: 'Full Stats' });
     stats.activate = onStats;
-    this.frame('over-screen',
-      el('h1', { text: 'Final' }),
+    this.frame(halftime ? 'over-screen halftime-screen' : 'over-screen',
+      el('h1', { text: halftime ? 'Halftime' : 'Final' }),
       el('div.final-score', {}, logoCanvas(a.logo, 90), el('div.fs', { text: `${a.abbr} ${m.score[1]}  –  ${m.score[0]} ${h.abbr}` }), logoCanvas(h.logo, 90)),
-      el('div.final-sub', { text: m.ot ? 'Overtime' : '' }),
+      el('div.final-sub', { text: halftime ? 'First half leaders and team stats' : m.ot ? 'Overtime' : '' }),
       potgCard,
       el('div.final-cols', {}, el('div', { html: table }), el('ul.leaders', {}, lead.map((l) => el('li', { text: l })))),
       el('div.over-buttons', {}, stats, done));
-    this.nav.set([stats, done], { columns: 2, onBack: onDone, index: 1 });
+    this.nav.set([stats, done], { columns: 2, onBack: halftime ? () => {} : onDone, index: 1 }); // halftime: only the button starts the 2nd half
   }
 }

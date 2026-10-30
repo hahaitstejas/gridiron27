@@ -316,7 +316,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
 - Play-by-play: `Match.applyResult` → `afterResult()` sets `match.lastPlayText` ("3rd & 4 at CHI 35: … · FIRST DOWN", rich
   `describePlay(..., true)`) and, when a drive ends (snapshot `before.drive`, since a punt/turnover already starts the next
   one), pushes `match.drives[]` `{ team, plays, yards, secs, result, start }` and says a `drive` message. HUD: `pbp()` strip
-  above the scorebug (PLAY / DRIVE), `halfCard()` team stats at halftime (replaces the banner).
+  above the scorebug (PLAY / DRIVE). Halftime in a human game: app state `halftime` (`showHalftime()` in main.js →
+  `Screens.gameOver(session, { halftime: true })`, an opaque full screen; only Start 2nd Half resumes, B does nothing);
+  CPU-only games get the quick `halfCard()` overlay.
 - Chain crew (`render/lines.js` `makeChains`): poles at the line and the line to gain, chain, down marker (`lines.set(los,
   first, down)`), on the home sideline between the officials and the bench. Sidelines: `Presentation.bench` (10 reserves +
   a coach per team, colored by `PlayerRenderer.extra`). Replay angles: `REPLAY_ANGLES` in main.js (LB/RB).

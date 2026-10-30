@@ -125,7 +125,8 @@ export class Hud {
     else if (k === 'injury') this.banner('INJURY', msg.text.replace(/^Injury: /, ''), 2.6, 'miss');
     else if (k === 'final') this.banner('FINAL', msg.text, 99, 'final');
     else if (k === 'half' || k === 'twoMinute') {
-      if (k === 'half' && /half/i.test(msg.text) && !session.practice) { this.halfCard(session); return; } // the card has its own header
+      // Halftime: a human game gets the full halftime report screen (main.js); CPU-only games get the quick card.
+      if (k === 'half' && /half/i.test(msg.text) && !session.practice) { if (session.humanTeam === null) this.halfCard(session); return; }
       this.banner(k === 'half' ? msg.text.split('!')[0].toUpperCase() : 'TWO-MINUTE WARNING', k === 'half' ? msg.text : '', 2.4, 'info');
     } else this.ticker(msg.text);
   }

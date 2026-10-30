@@ -1,7 +1,7 @@
 import { wrapAngle } from '../core/math.js';
 // Chooses a high-level animation state for each player. The renderer turns these into poses.
-const HOLD = new Set(['throw', 'catch', 'tackle', 'getup', 'juke', 'spin', 'stiffarm', 'truck', 'hurdle', 'dive', 'slide', 'tackle_dive', 'hitstick', 'strip', 'stumble', 'swat', 'celebrate']);
-const HOLD_TIME = { throw: 0.45, catch: 0.35, getup: 0.6, stumble: 0.5, swat: 0.5, tackle: 0.6, celebrate: 99 };
+const HOLD = new Set(['throw', 'catch', 'tackle', 'getup', 'juke', 'spin', 'stiffarm', 'truck', 'hurdle', 'dive', 'slide', 'tackle_dive', 'hitstick', 'strip', 'stumble', 'swat', 'celebrate', 'pick']);
+const HOLD_TIME = { throw: 0.45, catch: 0.35, pick: 0.5, getup: 0.6, stumble: 0.5, swat: 0.5, tackle: 0.6, celebrate: 99 };
 
 export function updateAnimations(sim, dt) {
   for (const p of sim.players) {

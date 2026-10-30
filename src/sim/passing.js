@@ -319,7 +319,7 @@ function resolveCatch(sim, reach, late = false) {
 function interception(sim, d) {
   const b = sim.ball;
   sim.stats.intBy = d.id;
-  d.anim = 'catch'; d.animT = 0;
+  d.anim = 'pick'; d.animT = 0;
   const td = sim.teamDir(d.team);
   d.caughtInEZ = d.x * td <= -50;
   sim.emit('interception', { player: d.id });

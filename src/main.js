@@ -280,6 +280,23 @@ if (params.has('auto')) startGame({ ...prefs, side: 'cpu', quarterMinutes: +(par
 else if (params.has('play')) startGame({ ...prefs, side: params.get('side') || 'home' }, { seed: +(params.get('seed') || Date.now() % 1e9) });
 else screens.title(padName);
 
+/** Make it obvious who ended up with a pass: a call-out with the player and a ring flash in his team's color. */
+function passCallout(e) {
+  const sim = session?.sim;
+  if (!sim || sim.isKick) return;
+  const p = sim.players[e.player];
+  const who = p ? `#${p.number} ${p.name || ''}`.trim() : '';
+  const col = (pl) => { const c = session.teams[pl.team].colors; return pl.team === 1 && isDarkHex(c.primary) ? '#ffffff' : c.primary; };
+  const recent = hud.calloutAt && performance.now() - hud.calloutAt < 900;
+  if (e.type === 'catch') { hud.callout('CAUGHT', who, '#3ddc84'); renderer.players.flash(e.player, col(p)); }
+  else if (e.type === 'interception') { hud.callout('INTERCEPTED', who, '#ff4d4d', 2200); renderer.players.flash(e.player, '#ff4d4d'); }
+  else if (e.type === 'drop') hud.callout('DROPPED', who, '#ffb84d');
+  else if (e.type === 'oobCatch') hud.callout('OUT OF BOUNDS', who, '#ffb84d');
+  else if (e.type === 'deflection' && p && p.team !== sim.possTeam && !recent) hud.callout('BROKEN UP', who, '#7fc4ff');
+  else if (e.type === 'incomplete' && e.why !== 'spike' && !recent) hud.callout('INCOMPLETE', '', '#d0d6e0');
+}
+const isDarkHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 90; };
+
 function onSessionEvent(e) {
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') hud.message(e, session);
@@ -288,6 +305,7 @@ function onSessionEvent(e) {
   else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);
   else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
+  else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
   else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');
   else if (e.type === 'gameOver') {
     app = 'over';

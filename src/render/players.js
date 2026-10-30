@@ -44,19 +44,28 @@ function numberAtlas() {
 }
 
 export class PlayerRenderer {
-  constructor(scene) {
+  constructor(scene, envMap = null) {
     this.scene = scene;
-    const lam = () => new THREE.MeshLambertMaterial({ color: 0xffffff });
+    // Physically based materials (lit by the scene's environment map): matte jerseys, glossy helmets.
+    const mat = (roughness = 0.75, metalness = 0, env = 0.3) => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness, metalness, envMap, envMapIntensity: env });
+    const lam = () => mat();
     const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-    const torsoGeo = new THREE.CylinderGeometry(0.5, 0.4, 1, 8);
+    // Limbs are capsules (unit length along y, scaled per bone) so arms and legs read as round, not blocky.
+    const limbGeo = (r) => { const g = new THREE.CapsuleGeometry(r, 1 - 2 * r, 2, 7); return g; };
+    // Torso: a tapered lathe (wide chest, narrower waist) instead of a plain cylinder.
+    const torsoGeo = new THREE.LatheGeometry([[0.36, -0.5], [0.4, -0.3], [0.47, 0.05], [0.52, 0.35], [0.5, 0.5]].map(([x, y]) => new THREE.Vector2(x, y)), 10);
     const padGeo = new THREE.CylinderGeometry(0.5, 0.42, 1, 8);
     padGeo.scale(1, 1, 1);
     const helmetGeo = new THREE.SphereGeometry(0.5, 10, 8);
     helmetGeo.scale(0.95, 0.95, 1.08);
     const maskGeo = new THREE.TorusGeometry(0.42, 0.07, 4, 10, Math.PI);
     maskGeo.rotateZ(Math.PI);
+    // Facemask bars across the front of the helmet, and rounded shoulder-pad caps.
+    const barGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, 5);
+    barGeo.rotateZ(Math.PI / 2);
+    const capGeo = new THREE.SphereGeometry(0.5, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2);
     const numGeo = new THREE.PlaneGeometry(1, 1);
-    const cellAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 2 * 2), 2);
+    const cellAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 4 * 2), 2);
     cellAttr.setUsage(THREE.DynamicDrawUsage);
     numGeo.setAttribute('aCell', cellAttr);
     this.cellAttr = cellAttr;
@@ -87,21 +96,24 @@ export class PlayerRenderer {
     });
 
     this.parts = {
-      torso: part(torsoGeo, lam(), MAX),
-      pads: part(padGeo, lam(), MAX),
-      pelvis: part(box(0.4, 0.22, 0.26), lam(), MAX),
-      thigh: part(box(0.17, 1, 0.19), lam(), MAX * 2),
-      shin: part(box(0.13, 1, 0.14), lam(), MAX * 2),
-      shoe: part(box(0.13, 0.08, 0.3), lam(), MAX * 2),
-      upper: part(box(0.13, 1, 0.13), lam(), MAX * 2),
-      fore: part(box(0.1, 1, 0.1), lam(), MAX * 2),
-      hand: part(box(0.1, 0.11, 0.08), lam(), MAX * 2),
-      neck: part(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 6), lam(), MAX),
-      helmet: part(helmetGeo, new THREE.MeshPhongMaterial({ color: 0xffffff, shininess: 90, specular: 0x666666 }), MAX),
+      torso: part(torsoGeo, mat(0.8), MAX),
+      pads: part(padGeo, mat(0.8), MAX),
+      pelvis: part(new THREE.CapsuleGeometry(0.15, 0.12, 2, 8).rotateZ(Math.PI / 2).scale(1.05, 1, 0.95), mat(0.7), MAX),
+      thigh: part(limbGeo(0.095), mat(0.7), MAX * 2),
+      shin: part(limbGeo(0.07), mat(0.8), MAX * 2),
+      shoe: part(new THREE.CapsuleGeometry(0.065, 0.17, 2, 6).rotateX(Math.PI / 2).scale(1, 0.75, 1), mat(0.45, 0, 0.8), MAX * 2),
+      upper: part(limbGeo(0.07), mat(0.8), MAX * 2),
+      fore: part(limbGeo(0.055), mat(0.6, 0, 0.4), MAX * 2),
+      hand: part(new THREE.SphereGeometry(0.06, 7, 5).scale(1, 1.1, 0.85), mat(0.6), MAX * 2),
+      neck: part(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 6), mat(0.6, 0, 0.4), MAX),
+      helmet: part(helmetGeo, mat(0.25, 0.2, 0.7), MAX),
       stripe: part(box(0.06, 0.03, 0.36), lam(), MAX, false),
-      mask: part(maskGeo, lam(), MAX, false),
-      num: part(numGeo, numMat, MAX * 2, false),
+      mask: part(maskGeo, mat(0.35, 0.6, 1), MAX, false),
+      bar: part(barGeo, mat(0.35, 0.6, 1), MAX * 2, false),
+      cap: part(capGeo, mat(0.8), MAX * 2),
+      num: part(numGeo, numMat, MAX * 4, false),
     };
+    this.pairs = new Set([this.parts.thigh, this.parts.shin, this.parts.shoe, this.parts.upper, this.parts.fore, this.parts.hand, this.parts.bar, this.parts.cap]);
     for (const p of Object.values(this.parts)) scene.add(p);
 
     // Ring under the user-controlled player.
@@ -118,6 +130,16 @@ export class PlayerRenderer {
     this.ring2 = this.ring.clone();
     this.ring2.material = this.ring.material.clone();
     scene.add(this.ring2);
+    // Pulse ring: flashes under whoever ends up with the ball on a pass (team-colored), so it's clear who caught it.
+    this.pulse = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+    this.pulse.rotation.x = -Math.PI / 2;
+    this.pulse.position.y = 0.035;
+    this.pulse.renderOrder = 3;
+    scene.add(this.pulse);
+    this.pulseT = 0;
+    this.pulseId = -1;
+    // Pose crossfades (per player index): the pose an animation change starts from, and the last drawn pose.
+    this.fromPose = []; this.lastPose = []; this.lastAnim = []; this.fadeT = []; this.poseSim = null;
 
     this._m = new THREE.Matrix4();
     this._t = new THREE.Matrix4();
@@ -152,6 +174,12 @@ export class PlayerRenderer {
       P.stripe.setColorAt(i, c.set(u.helmetStripe ? team.colors.secondary : helmet));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
       for (let k = 0; k < 2; k++) {
+        P.bar.setColorAt(i * 2 + k, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
+        P.cap.setColorAt(i * 2 + k, c.set(jersey).offsetHSL(0, 0, -0.04));
+        P.num.setColorAt(i * 4 + 2 + k, c.set(numColor));
+        this.cellAttr.setXY(i * 4 + 2 + k, p.number % 10, Math.floor(p.number / 10));
+      }
+      for (let k = 0; k < 2; k++) {
         const j = i * 2 + k;
         P.thigh.setColorAt(j, c.set(pants));
         P.shin.setColorAt(j, c.set(u.pants === 'white' ? team.colors.primary : '#f2f2f2'));
@@ -159,8 +187,8 @@ export class PlayerRenderer {
         P.upper.setColorAt(j, c.set(jersey));
         P.fore.setColorAt(j, c.set(skin));
         P.hand.setColorAt(j, c.set(team.colors.secondary).lerp(new THREE.Color('#ffffff'), 0.2));
-        P.num.setColorAt(j, c.set(numColor));
-        this.cellAttr.setXY(j, p.number % 10, Math.floor(p.number / 10));
+        P.num.setColorAt(i * 4 + k, c.set(numColor));
+        this.cellAttr.setXY(i * 4 + k, p.number % 10, Math.floor(p.number / 10));
       }
     });
     this.cellAttr.needsUpdate = true;
@@ -171,8 +199,21 @@ export class PlayerRenderer {
   update(sim, alpha, time, controlledId) {
     const P = this.parts;
     const n = sim.players.length;
-    for (const m of Object.values(P)) m.count = m === P.thigh || m === P.shin || m === P.shoe || m === P.upper || m === P.fore || m === P.hand || m === P.num ? n * 2 : n;
-    for (let i = 0; i < n; i++) this.drawPlayer(sim, sim.players[i], i, alpha, time);
+    for (const m of Object.values(P)) m.count = m === P.num ? n * 4 : this.pairs.has(m) ? n * 2 : n;
+    // A new play: poses start fresh (no crossfade from the last play's players).
+    if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; }
+    const dt = Math.min(0.1, Math.max(0, time - (this.lastTime ?? time)));
+    this.lastTime = time;
+    for (let i = 0; i < n; i++) this.drawPlayer(sim, this.display?.[i] || sim.players[i], i, alpha, time, dt);
+    // Catch / interception pulse under the player with the ball.
+    if (this.pulseT > 0) {
+      this.pulseT -= dt;
+      const cp = sim.players[this.pulseId];
+      const k = 1 - Math.max(0, this.pulseT) / 1.1;
+      if (cp) { this.pulse.position.x = cp.px + (cp.x - cp.px) * alpha; this.pulse.position.z = cp.pz + (cp.z - cp.pz) * alpha; }
+      this.pulse.scale.setScalar(0.8 + k * 1.8);
+      this.pulse.material.opacity = Math.max(0, 0.95 * (1 - k));
+    } else this.pulse.material.opacity = 0;
     for (const m of Object.values(P)) m.instanceMatrix.needsUpdate = true;
     const ids = Array.isArray(controlledId) ? controlledId : [controlledId];
     [this.ring, this.ring2].forEach((ring, i) => {
@@ -185,14 +226,18 @@ export class PlayerRenderer {
     });
   }
 
-  drawPlayer(sim, p, i, alpha, time) {
+  /** Flash a team-colored ring under player `id` (catch = offense color, interception = defense color). */
+  flash(id, color) { this.pulseId = id; this.pulseT = 1.1; this.pulse.material.color.set(color); }
+
+  drawPlayer(sim, p, i, alpha, time, dt = 1 / 60) {
     const P = this.parts;
     const x = p.px + (p.x - p.px) * alpha;
     const z = p.pz + (p.z - p.pz) * alpha;
     let f = p.pfacing + angDiff(p.facing, p.pfacing) * alpha;
     const sc = p.height / 2.06;
     const wide = 1 + p.bulk * 0.28;
-    const pose = computePose(p, time, sim);
+    const limb = 0.88 + p.bulk * 0.42; // linemen are thick through the arms and legs, receivers and DBs lean
+    const pose = this.blend(i, p.anim, computePose(p, time, sim), dt);
     const yaw = Math.PI / 2 - f;
 
     poolI = 0;
@@ -206,25 +251,31 @@ export class PlayerRenderer {
     // Pelvis/upper body frame.
     const pel = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0)).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
     P.pelvis.setMatrixAt(i, cl(pel).multiply(scaleM(wide, 1, wide)));
-    P.torso.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso * 0.45, 0)).multiply(scaleM(B.torsoW * wide, B.torso * 0.85, B.torsoD * wide)));
+    P.torso.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso * 0.45, p.bulk * 0.02)).multiply(scaleM(B.torsoW * wide, B.torso * 0.85, B.torsoD * wide * (1 + p.bulk * 0.25))));
     P.pads.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso * 0.86, 0)).multiply(scaleM(B.padW * wide, 0.2, B.padD * wide)));
     P.neck.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso + 0.04, 0.01)));
     const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotX(pose.head));
     P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
     P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.165, -0.01)));
     P.mask.setMatrixAt(i, cl(head).multiply(trans(0, -0.03, 0.16)).multiply(scaleM(0.32, 0.28, 0.3)));
+    P.bar.setMatrixAt(i * 2, cl(head).multiply(trans(0, -0.035, 0.205)).multiply(scaleM(0.2, 1, 1)));
+    P.bar.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, -0.085, 0.195)).multiply(scaleM(0.16, 1, 1)));
     // Numbers front and back.
-    P.num.setMatrixAt(i * 2, cl(pel).multiply(trans(0, B.torso * 0.5, -(B.torsoD * wide) / 2 - 0.035)).multiply(rotY(Math.PI)).multiply(scaleM(0.3 * wide, 0.3, 1)));
-    P.num.setMatrixAt(i * 2 + 1, cl(pel).multiply(trans(0, B.torso * 0.58, (B.torsoD * wide) / 2 + 0.04)).multiply(rotX(-0.12)).multiply(scaleM(0.2 * wide, 0.2, 1)));
+    P.num.setMatrixAt(i * 4, cl(pel).multiply(trans(0, B.torso * 0.5, -(B.torsoD * wide) / 2 - 0.035)).multiply(rotY(Math.PI)).multiply(scaleM(0.3 * wide, 0.3, 1)));
+    P.num.setMatrixAt(i * 4 + 1, cl(pel).multiply(trans(0, B.torso * 0.58, (B.torsoD * wide) / 2 + 0.04)).multiply(rotX(-0.12)).multiply(scaleM(0.2 * wide, 0.2, 1)));
 
     // Arms.
     for (let s = 0; s < 2; s++) {
       const side = s === 0 ? -1 : 1; // -1 = left
       const a = pose.arms[s];
+      // Shoulder-pad cap with a small number on top (like a real jersey's sleeve numbers).
+      const capM = cl(pel).multiply(trans(side * B.shX * wide * 1.02, B.torso * 0.9, 0)).multiply(rotZ(-side * 0.35));
+      P.cap.setMatrixAt(i * 2 + s, cl(capM).multiply(scaleM(0.2 * wide, 0.16, 0.24 * wide)));
+      P.num.setMatrixAt(i * 4 + 2 + s, cl(capM).multiply(trans(side * 0.005, 0.03, 0)).multiply(rotZ(side * 0.25)).multiply(rotY(side * Math.PI / 2)).multiply(scaleM(0.12, 0.12, 1)));
       const sh = cl(pel).multiply(trans(side * B.shX * wide, B.torso * 0.84, 0)).multiply(rotX(-a.pitch)).multiply(rotZ(side * a.out)).multiply(rotY(side * (a.twist || 0)));
-      P.upper.setMatrixAt(i * 2 + s, cl(sh).multiply(trans(0, -B.upper / 2, 0)).multiply(scaleM(wide, B.upper, wide)));
+      P.upper.setMatrixAt(i * 2 + s, cl(sh).multiply(trans(0, -B.upper / 2, 0)).multiply(scaleM(limb, B.upper, limb)));
       const el = cl(sh).multiply(trans(0, -B.upper, 0)).multiply(rotX(-a.elbow));
-      P.fore.setMatrixAt(i * 2 + s, cl(el).multiply(trans(0, -B.fore / 2, 0)).multiply(scaleM(wide, B.fore, wide)));
+      P.fore.setMatrixAt(i * 2 + s, cl(el).multiply(trans(0, -B.fore / 2, 0)).multiply(scaleM(limb, B.fore, limb)));
       const hand = cl(el).multiply(trans(0, -B.fore - 0.05, 0));
       P.hand.setMatrixAt(i * 2 + s, hand);
       if (s === 1) (this.handPos[i] ||= new THREE.Vector3()).setFromMatrixPosition(hand);
@@ -234,12 +285,37 @@ export class PlayerRenderer {
       const side = s === 0 ? -1 : 1;
       const l = pose.legs[s];
       const hip = cl(root).multiply(trans(side * B.hipX * wide, B.hipH + pose.crouch, 0)).multiply(rotX(-l.hip)).multiply(rotZ(side * (l.out || 0)));
-      P.thigh.setMatrixAt(i * 2 + s, cl(hip).multiply(trans(0, -B.thigh / 2, 0)).multiply(scaleM(wide, B.thigh, wide)));
+      P.thigh.setMatrixAt(i * 2 + s, cl(hip).multiply(trans(0, -B.thigh / 2, 0)).multiply(scaleM(limb * 1.05, B.thigh, limb * 1.05)));
       const knee = cl(hip).multiply(trans(0, -B.thigh, 0)).multiply(rotX(l.knee));
       P.shin.setMatrixAt(i * 2 + s, cl(knee).multiply(trans(0, -B.shin / 2, 0)).multiply(scaleM(1, B.shin, 1)));
       const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(-l.knee + l.hip * 0.6));
       P.shoe.setMatrixAt(i * 2 + s, foot);
     }
+  }
+
+  /**
+   * Crossfade between animations: when a player's animation changes, blend from the pose he was in toward
+   * the new one over ~0.2 s (falls and dives a bit faster), so moves flow instead of snapping.
+   */
+  blend(i, anim, target, dt) {
+    const last = (this.lastPose[i] ||= new Float32Array(POSE_N));
+    if (this.lastAnim[i] === undefined) { this.lastAnim[i] = anim; this.fadeT[i] = 1; packPose(target, last); return target; }
+    if (anim !== this.lastAnim[i]) {
+      (this.fromPose[i] ||= new Float32Array(POSE_N)).set(last);
+      this.lastAnim[i] = anim;
+      this.fadeT[i] = 0;
+    }
+    const dur = FAST_FADE.has(anim) ? 0.12 : 0.22;
+    if (this.fadeT[i] < 1) {
+      this.fadeT[i] = Math.min(1, this.fadeT[i] + dt / dur);
+      const k = this.fadeT[i] * this.fadeT[i] * (3 - 2 * this.fadeT[i]);
+      packPose(target, TMP);
+      const from = this.fromPose[i];
+      for (let j = 0; j < POSE_N; j++) TMP[j] = from[j] + (TMP[j] - from[j]) * k;
+      unpackPose(TMP, target);
+    }
+    packPose(target, last);
+    return target;
   }
 
   /** World position for the ball when it's carried by player i. */
@@ -257,6 +333,26 @@ export class PlayerRenderer {
     const rx = -Math.sin(f), rz = Math.cos(f); // right-hand side vector
     return out.set(x + Math.cos(f) * 0.12 + rx * 0.2 * sc, 1.25 * sc, z + Math.sin(f) * 0.12 + rz * 0.2 * sc);
   }
+}
+
+// ---------- Pose packing (for crossfades) ----------
+const POSE_KEYS = ['rootY', 'rootPitch', 'rootRoll', 'rootYaw', 'crouch', 'lean', 'twist', 'head'];
+const ARM_KEYS = ['pitch', 'out', 'elbow', 'twist'];
+const LEG_KEYS = ['hip', 'knee', 'out'];
+const POSE_N = POSE_KEYS.length + 2 * ARM_KEYS.length + 2 * LEG_KEYS.length;
+const TMP = new Float32Array(POSE_N);
+const FAST_FADE = new Set(['tackle', 'falling', 'dive', 'tackle_dive', 'hitstick', 'juke', 'spin', 'catch', 'throw', 'swat']);
+function packPose(p, a) {
+  let j = 0;
+  for (const k of POSE_KEYS) a[j++] = p[k] || 0;
+  for (const arm of p.arms) for (const k of ARM_KEYS) a[j++] = arm[k] || 0;
+  for (const leg of p.legs) for (const k of LEG_KEYS) a[j++] = leg[k] || 0;
+}
+function unpackPose(a, p) {
+  let j = 0;
+  for (const k of POSE_KEYS) p[k] = a[j++];
+  for (const arm of p.arms) for (const k of ARM_KEYS) arm[k] = a[j++];
+  for (const leg of p.legs) for (const k of LEG_KEYS) leg[k] = a[j++];
 }
 
 // ---------- Procedural poses ----------
@@ -340,14 +436,33 @@ function computePose(p, time, sim) {
       break;
     }
     case 'reach':
-    case 'catch':
     case 'swat':
       if (sp > 1) runLegs(Math.min(0.8, run));
       pose.arms[0].pitch = pose.arms[1].pitch = 2.6; pose.arms[0].elbow = pose.arms[1].elbow = 0.3;
       pose.arms[0].out = pose.arms[1].out = 0.25;
-      if (p.anim === 'swat') pose.rootY = Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.35;
+      if (p.anim === 'swat') { pose.rootY = Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.35; pose.arms[1].pitch = 3.0; }
       pose.head = 0.3;
       break;
+    case 'catch': {
+      // Hands up to the ball, then pull it into the chest.
+      if (sp > 1) runLegs(Math.min(0.8, run));
+      const k = Math.min(1, t / 0.3);
+      pose.arms[0].pitch = pose.arms[1].pitch = 2.4 - k * 1.3;
+      pose.arms[0].elbow = pose.arms[1].elbow = 0.3 + k * 1.5;
+      pose.arms[0].out = pose.arms[1].out = 0.2 - k * 0.3;
+      pose.head = 0.25 - k * 0.35; pose.lean = 0.15 + k * 0.2;
+      break;
+    }
+    case 'pick': {
+      // Interception: a leap for the ball, high-pointing it, then the tuck.
+      const k = Math.min(1, t / 0.45);
+      pose.rootY = Math.sin(Math.min(1, t / 0.4) * Math.PI) * 0.45;
+      pose.arms[0].pitch = pose.arms[1].pitch = 3.0 - k * 1.8;
+      pose.arms[0].elbow = pose.arms[1].elbow = 0.15 + k * 1.6;
+      pose.legs[0].hip = 0.9 * (1 - k); pose.legs[0].knee = 1.3 * (1 - k); pose.legs[1].knee = 0.4;
+      pose.head = 0.4 - k * 0.5;
+      break;
+    }
     case 'falling':
     case 'tackle': {
       const k = Math.min(1, t / 0.45);

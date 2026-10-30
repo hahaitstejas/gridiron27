@@ -19,6 +19,7 @@ export class Hud {
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
       <div id="flagbox" class="hidden"><div class="flagtitle">FLAG</div><div class="flagtext"></div></div>
       <div id="ticker"></div>
+      <div id="callout"></div>
       <div id="statcard" class="hidden"></div>
       <div id="audible" class="hidden"></div>
       <div id="penaltybox" class="hidden"></div>
@@ -151,6 +152,16 @@ export class Hud {
     }
     el.classList.remove('hidden');
     this.statT = 4;
+  }
+
+  /** Big quick call-out of what just happened to a pass (CAUGHT / INTERCEPTED / DROPPED / INCOMPLETE ...). */
+  callout(word, sub, color = '#ffffff', ms = 1600) {
+    const c = this.$('callout');
+    c.innerHTML = `<div class="co-word" style="--cc:${color}">${word}</div>${sub ? `<div class="co-sub">${sub}</div>` : ''}`;
+    c.classList.remove('show'); void c.offsetWidth; c.classList.add('show');
+    clearTimeout(this._coT);
+    this._coT = setTimeout(() => c.classList.remove('show'), ms);
+    this.calloutAt = performance.now();
   }
 
   ticker(text) {

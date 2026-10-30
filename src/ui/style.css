@@ -422,3 +422,10 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .pc2-sub { font: 700 12px var(--fc); letter-spacing: 1px; opacity: 0.55; margin-top: 2px; }
 .pc2-pager { text-align: center; font-weight: 800; font-size: 13px; opacity: 0.7; min-height: 16px; margin-top: 4px; }
 .tp-card.tp-extra { border-color: var(--gold) !important; background: linear-gradient(180deg, #2a2f45, #0d1222); }
+
+/* Pass call-out: who ended up with the ball. */
+#callout { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); text-align: center; pointer-events: none; opacity: 0; }
+#callout.show { animation: coin 1.6s ease-out forwards; }
+#callout .co-word { font: 800 italic 54px/1 var(--fd); letter-spacing: 3px; color: var(--cc); text-shadow: 0 3px 0 rgba(0,0,0,0.6), 0 0 24px rgba(0,0,0,0.6); }
+#callout .co-sub { font: 700 22px var(--fc); margin-top: 4px; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
+@keyframes coin { 0% { opacity: 0; transform: translateX(-50%) scale(1.35); } 10% { opacity: 1; transform: translateX(-50%) scale(1); } 75% { opacity: 1; } 100% { opacity: 0; transform: translateX(-50%) translateY(-10px); } }

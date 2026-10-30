@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildStadium } from './stadium.js';
 import { PlayerRenderer } from './players.js';
 import { CameraRig } from './camera.js';
@@ -29,6 +30,10 @@ export class GameRenderer {
     this.renderer = r;
 
     const scene = new THREE.Scene();
+    // A soft studio environment map for the PBR player materials (helmet shine, fabric sheen). Built once.
+    const pmrem = new THREE.PMREMGenerator(r);
+    const envMap = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+    pmrem.dispose();
     scene.fog = new THREE.Fog(0x0b1020, 160, 420);
     this.scene = scene;
 
@@ -53,7 +58,7 @@ export class GameRenderer {
 
     this.stadium = buildStadium(r, home, away);
     scene.add(this.stadium.group);
-    this.players = new PlayerRenderer(scene);
+    this.players = new PlayerRenderer(scene, envMap); // only the players use it (scene.environment would light the whole stadium)
     this.lines = new FieldLines(scene);
     this.precip = new Precipitation(scene);
 

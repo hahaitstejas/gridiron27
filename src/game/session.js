@@ -7,7 +7,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
-import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute } from './audibles.js';
+import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice } from './penalties.js';
@@ -352,6 +352,8 @@ export class GameSession {
       if (options.length) this.audible = { mode, options, team };
     } else if (mode === 'adjust') {
       this.audible = { mode, options: COVERAGE_CALLS, team };
+    } else if (mode === 'protect') {
+      if (this.sim.offPlay.type === 'pass') this.audible = { mode, options: PROTECTION_CALLS, team };
     } else if (mode === 'dhot') {
       const me = this.sim.withHuman(team, () => this.sim.players[this.sim.controlledId]);
       if (me) this.audible = { mode, options: DEF_HOT, team, slot: me.slot, name: me.name };
@@ -377,6 +379,15 @@ export class GameSession {
       this.audible = null;
       this.rebuildPresnap();
       this.emit('audible', { label: opt.label, play: 'Coverage', side: 'defense' });
+      return;
+    }
+    if (a.mode === 'protect') {
+      const opt = a.options.find((o) => input.pressed[o.btn]);
+      if (!opt) return;
+      this.choice.off = protectCall(this.sim.offPlay, opt.key);
+      this.audible = null;
+      this.rebuildPresnap();
+      this.emit('audible', { label: opt.label.replace(/ \(.*\)$/, ''), play: 'Protection', side: 'offense' });
       return;
     }
     if (a.mode === 'dhot') {
@@ -495,6 +506,7 @@ export class GameSession {
           : team === off && scrim && f.pressed.Y ? 'hot'
             : team === off && scrim && f.pressed.RB && !sim.motion ? 'motion'
               : team === def && f.pressed.LB ? 'adjust'
+                : team === off && scrim && f.pressed.LB ? 'protect'
                 : team === def && scrim && f.pressed.Y ? 'dhot' : null;
         if (mode) {
           this.openAudible(mode, team);

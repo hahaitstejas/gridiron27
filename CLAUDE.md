@@ -87,6 +87,11 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   player on the depth chart (`ROTATE_AT`); tired players lose some speed/strength (`TIRING` ratings). Starters
   stay in longer late in close games, in the two-minute drill and on the goal line. Snap counts are in the
   player stats (`snaps`). Typical shares: HB1 ~70%, WR1/2 ~93%, WR3 ~60%, starting DL ~80-90%; QB/OL ~100%.
+- Pass protection (offense LB at the line on pass plays, `PROTECTION_CALLS` / `protectCall(play, key)` in audibles.js):
+  slide left/right (`play.prot`: the line's lateral cost in offense.js `assignProtection` shifts one gap, backs take the
+  other edge), max protect (HB/FB/TE routes → block, `protKey: 'max'`: idle blockers double-team the nearest engaged
+  rusher in `passBlock`), everyone out (blocking HB/FB → swing, TE → flat), LT reset (`protFrom`). A QB with ≤3
+  receivers out settles and throws away sooner (`few` in qb.js). Human holdBall: max +0.3-0.5 s, all out -0.1-0.5 s.
 - `audibles.js`: pre-snap audibles (offense X → A quick / B deep / X run left / Y run right / RB flip, all from
   the current formation; defense X → A zone / B man / X blitz / Y deep shell) and hot routes (Y → receiver
   button → stick up go / down hitch / in slant / out quick out, A = block). The session swaps the play and
@@ -97,7 +102,11 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   playing. Coverage (defense LB): `session.defAdj = { cover: 'press'|'off', shade: 'in'|'out' }` → `PlaySim.defAdj`;
   press corners line up at 1 yd and jam at the snap (`pressJams`: win = receiver slowed, lose = corner a step
   behind), off = 8 yds; shade sets man leverage (`leverage()`) and pinches/widens underneath zones. The CPU defense
-  calls its own (`cpuCoverageCall` in `audibles.js`).
+  calls its own (`cpuCoverageCall` in `audibles.js`; it disguises `DISGUISE_RATE` ~25% of snaps).
+  Disguised coverage (coverage menu RB, `defAdj.disguise`): `disguiseAlign` in defense.js lines the safeties up in the
+  other shell (`shellOf(play)`: deep safeties 0/1/2 → shows two-high over one-high/cover 0, one-high with a safety walked
+  down over two-high) and they rotate at the snap; undisguised calls show their real shell. The CPU QB misreads rotating
+  safeties (`d.disguised` → `fool` in qb.js `evaluateTarget`, by awareness, fading by 1.6 s): disguise ≈ -0.7% cmp, +0.25% INT.
 - Coaching: the pause menu (games and practice) opens the depth chart editor for the human team. It edits
   `team.depth` in place (`placeInDepth` / `removeFromDepth` / `eligibleForSlot` in `data/depthChart.js`), so the
   next snap uses it; it shows each player's overall at that spot and his current energy. Edits autosave (league save).

@@ -17,12 +17,15 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
   // assuming he reacts in ~0.3s and runs flat out. Negative = he gets there first.
   let sep = 99, sep2 = 99;
   let lane = 0;
+  // A disguised safety still rotating: the QB reads the shell he was shown and underrates how far that safety
+  // can get (less so with awareness, and less as the rotation finishes).
+  const fool = sim.disguise && sim.t < 1.6 ? clamp(0.5 - (sim.R(qb, 'awareness') - 65) * 0.012, 0.1, 0.5) * (1 - sim.t / 1.6) : 0;
   const lx = pred.x - qb.x, lz = pred.z - qb.z;
   const ll = Math.hypot(lx, lz) || 1;
   for (const d of sim.players) {
     if (d.team === qb.team || d.state === 'down') continue;
     // Matches the defense: ~0.2s read, full-speed break, ~1.2 yd reach at the catch.
-    const close = d.maxSpeed * Math.max(0, T - 0.2) * (d.engagement ? 0.2 : 1) + 1.2;
+    const close = d.maxSpeed * Math.max(0, T - 0.2) * (d.engagement ? 0.2 : 1) * (d.disguised ? 1 - fool : 1) + 1.2;
     const s = Math.hypot(d.x - pred.x, d.z - pred.z) - close;
     if (s < sep) { sep2 = sep; sep = s; } else if (s < sep2) sep2 = s;
     // Defenders sitting in the throwing lane.
@@ -67,7 +70,9 @@ export function qbDecide(sim, qb, dt) {
   for (const p of sim.players) if (p.team === sim.offIdx && p.task?.type === 'route' && !order.includes(p)) order.push(p);
   const readTime = 0.5 - awr * 0.0025;
   const seen = Math.max(1, Math.floor((t - 0.6) / readTime) + 1);
-  let threshold = 0.6 - clamp((t - 0.9) / 2.2, 0, 1) * 1.3;
+  // Few receivers out (max protect, two-man routes): nobody else is coming open, so he settles sooner.
+  const few = order.length <= 3;
+  let threshold = 0.6 - clamp((t - 0.9) / (few ? 1.4 : 2.2), 0, 1) * 1.3;
   if (pressure > 0.55) threshold = Math.min(threshold, -0.5);
   const noise = (100 - awr) * 0.02;
 
@@ -89,7 +94,7 @@ export function qbDecide(sim, qb, dt) {
     return;
   }
   // Under heavy pressure or holding too long: best available, scramble or throw it away.
-  if ((pressure > 0.7 && t > 0.5) || t > 4.2) {
+  if ((pressure > 0.7 && t > 0.5) || t > (few ? 3.2 : 4.2)) {
     if (best && best.s > -1.0) { startThrow(sim, qb, best.r, best.kind); return; }
     const mobile = sim.R(qb, 'speed') > 76;
     if (mobile && task.phase !== 'scramble' && pressure > 0.5) {
@@ -98,6 +103,6 @@ export function qbDecide(sim, qb, dt) {
       return;
     }
     // Smart quarterbacks live to play another down: they throw it away before the sack is certain.
-    if (t > 5.2 || pressure > clamp(0.82 + (80 - awr) * 0.004, 0.76, 0.95)) startThrow(sim, qb, null, 'throwaway');
+    if (t > (few ? 3.7 : 5.2) || pressure > clamp(0.82 + (80 - awr) * 0.004, 0.76, 0.95)) startThrow(sim, qb, null, 'throwaway');
   }
 }

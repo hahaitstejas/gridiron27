@@ -195,12 +195,15 @@ function assignProtection(sim) {
   const free = blockers.filter((b) => !(b.engagement && b.engagement.b === b));
   // Greedy: closest blocker-threat pairs first, OL before backs.
   const pairs = [];
+  // Slide protection: the line works one gap toward the call, so the backs pick up the other edge.
+  const slide = sim.offPlay.prot === 'left' ? -1.9 : sim.offPlay.prot === 'right' ? 1.9 : 0;
   for (const b of free) for (const d of threats) {
     if (taken.has(d.id)) continue;
+    const ol = ['LT', 'LG', 'C', 'RG', 'RT'].includes(b.slot);
     let cost = Math.hypot(b.x - d.x, b.z - d.z);
-    if (!['LT', 'LG', 'C', 'RG', 'RT'].includes(b.slot)) cost += 1.5;
+    if (!ol) cost += 1.5;
     // Blockers prefer the man on their side of the center.
-    cost += Math.abs(sim.toLocal(b.x, b.z).lat - sim.toLocal(d.x, d.z).lat) * 0.6;
+    cost += Math.abs(sim.toLocal(b.x, b.z).lat + (ol ? slide : 0) - sim.toLocal(d.x, d.z).lat) * 0.6;
     pairs.push({ b, d, cost });
   }
   pairs.sort((a, c) => a.cost - c.cost);
@@ -231,8 +234,23 @@ function passBlock(sim, p) {
     seek(p, cx, pz, 0.85, 0.5);
     p.face = { x: tgt.x, z: tgt.z };
   } else {
-    seek(p, p.task.home.x, p.task.home.z, 0.5, 0.8);
-    p.face = { x: p.x + sim.dir * 10, z: p.z };
+    // Max protect: nobody to block → help on the nearest rusher a teammate is already blocking (a double team),
+    // from the QB's side of him. (Always doing it made the pocket far too safe: holdBall ~6.6 s.)
+    let help = null, hd = 3.5;
+    if (qb && sim.offPlay.protKey === 'max') for (const o of sim.players) {
+      const e = o.engagement;
+      if (o.team !== p.team || o === p || !e || e.b !== o || e.helpers.length || e.mode === 'run') continue;
+      const dd = Math.hypot(e.d.x - p.x, e.d.z - p.z);
+      if (dd < hd) { hd = dd; help = e.d; }
+    }
+    if (help) {
+      const ux = qb.x - help.x, uz = qb.z - help.z, ul = Math.hypot(ux, uz) || 1;
+      seek(p, help.x + (ux / ul) * 0.8, help.z + (uz / ul) * 0.8, 0.7, 0.3);
+      p.face = { x: help.x, z: help.z };
+    } else {
+      seek(p, p.task.home.x, p.task.home.z, 0.5, 0.8);
+      p.face = { x: p.x + sim.dir * 10, z: p.z };
+    }
   }
 }
 

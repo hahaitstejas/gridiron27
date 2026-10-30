@@ -1,6 +1,6 @@
 // Pre-snap audibles and hot routes. Pure logic: the session asks for the options and swaps plays;
 // the HUD only draws them.
-import { listOffPlays, listDefPlays, mirrorOffPlay } from '../data/playbook.js';
+import { listOffPlays, listDefPlays, mirrorOffPlay, getOffFormation } from '../data/playbook.js';
 import { playTags } from '../ai/playcaller.js';
 
 const baseId = (id) => id.replace(/__flip$/, '');
@@ -46,6 +46,37 @@ export function defenseAudibles(play) {
   return out.filter((o) => o.play);
 }
 
+// Pass protection calls (LB at the line on offense): slide the line, keep the backs and tight ends in, or send
+// everyone out. `play.prot` = 'left' | 'right' (blocking.js / offense.js assignProtection reads it).
+export const PROTECTION_CALLS = [
+  { btn: 'A', key: 'left', label: 'Slide left' },
+  { btn: 'B', key: 'right', label: 'Slide right' },
+  { btn: 'X', key: 'max', label: 'Max protect (backs and TEs stay in)' },
+  { btn: 'Y', key: 'out', label: 'Everyone out (backs and TEs release)' },
+  { btn: 'LT', key: 'reset', label: 'Reset' },
+];
+
+/** A copy of the pass play with a protection call applied (reset returns the play as called). */
+export function protectCall(play, key) {
+  const base = play.protFrom || play;
+  if (key === 'reset' || play.type !== 'pass') return base;
+  const out = { ...play, protFrom: base };
+  if (key === 'left' || key === 'right') { out.prot = key; return out; }
+  const f = getOffFormation(play.formation) || getOffFormation(play.formation.replace(/__flip$/, ''));
+  const helpers = (f?.players || []).filter((p) => ['HB', 'FB', 'TE'].includes(p.p));
+  const routes = { ...play.routes };
+  let read = [...(play.read || [])];
+  for (const h of helpers) {
+    const r = routes[h.s];
+    if (key === 'max' && r && r !== 'block' && read.filter((s) => s !== h.s).length) { routes[h.s] = 'block'; read = read.filter((s) => s !== h.s); }
+    if (key === 'out' && (!r || r === 'block' || r === 'stalk')) {
+      routes[h.s] = h.p === 'TE' ? 'flat' : 'swing';
+      read.push(h.s);
+    }
+  }
+  return { ...out, routes, read, protKey: key };
+}
+
 // Hot routes: stick direction relative to the receiver.
 export const HOT_ROUTES = { up: 'go', down: 'hitch', in: 'slant', out: 'quick_out', block: 'block' };
 
@@ -62,15 +93,21 @@ export const COVERAGE_CALLS = [
   { btn: 'B', key: 'off', label: 'Play off', set: { cover: 'off' } },
   { btn: 'X', key: 'in', label: 'Shade inside', set: { shade: 'in' } },
   { btn: 'Y', key: 'out', label: 'Shade outside', set: { shade: 'out' } },
-  { btn: 'RB', key: 'reset', label: 'Reset', set: null },
+  { btn: 'RB', key: 'disguise', label: 'Disguise the shell', set: { disguise: true } },
+  { btn: 'LT', key: 'reset', label: 'Reset', set: null },
 ];
+
+export const DISGUISE_RATE = 0.25;
 
 /** The CPU defense's coverage call for a play: man coverage presses more often than zone. */
 export function cpuCoverageCall(defPlay, rng) {
   if (!defPlay || /^st_/.test(defPlay.id)) return null;
   const r = rng.next();
-  if (defPlay.coverage === 'man') return r < 0.3 ? { cover: 'press' } : r < 0.42 ? { cover: 'off' } : null;
-  return r < 0.12 ? { cover: 'press' } : r < 0.27 ? { cover: 'off' } : null;
+  const call = defPlay.coverage === 'man' ? (r < 0.3 ? { cover: 'press' } : r < 0.42 ? { cover: 'off' } : null)
+    : (r < 0.12 ? { cover: 'press' } : r < 0.27 ? { cover: 'off' } : null);
+  // About a quarter of snaps the CPU disguises its safety shell.
+  if (rng.next() < DISGUISE_RATE) return { ...call, disguise: true };
+  return call;
 }
 
 // Defensive hot routes (Y at the line, on the defender you control): a new assignment for that one player.

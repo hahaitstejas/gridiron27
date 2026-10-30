@@ -72,7 +72,7 @@ export function alignMan(sim, walk = 0) {
   sim.manMatch = m;
   for (const d of sim.defense()) {
     const r = sim.players[m.get(d.id)?.id];
-    if (!r) continue;
+    if (!r || (walk && d.disguised)) continue;
     const rl = sim.toLocal(r.x, r.z);
     const back = rl.down < -2.5;
     const isCB = CB_SLOTS.has(d.slot);
@@ -89,6 +89,45 @@ export function alignMan(sim, walk = 0) {
     if (dl > 1e-3) { d.x += (dx / dl) * step; d.z += (dz / dl) * step; }
   }
   if (!walk) alignCorners(sim, true);
+}
+
+const SAFETIES = new Set(['FS', 'SS']);
+/** Safeties with a deep job: 0 (cover 0), 1 (one high) or 2 (two high) is the shell the play really plays. */
+export function shellOf(defPlay) {
+  let n = 0;
+  for (const [slot, a] of Object.entries(defPlay.assign || {})) if (SAFETIES.has(slot) && /^zone:deep_/.test(a)) n++;
+  return n;
+}
+
+/**
+ * Disguised coverage (defAdj.disguise): the safeties show the other shell before the snap (two high over a
+ * one-high or zero coverage, one high with a safety walked down over a two-high one) and rotate to their real
+ * jobs at the snap. Their tasks start from wherever they stand, so the rotation costs a step; the payoff is the
+ * QB's read (`d.disguised` in qb.js evaluateTarget).
+ */
+export function disguiseAlign(sim) {
+  sim.disguise = null;
+  if (/^st_/.test(sim.defPlay.id || '') || sim.defPlay.fake) return;
+  const safeties = sim.defense().filter((d) => SAFETIES.has(d.slot));
+  if (safeties.length < 2) return;
+  const real = shellOf(sim.defPlay);
+  const disguise = !!sim.defAdj?.disguise;
+  // Without a disguise the safeties simply show the real shell (cover 0 keeps its man alignment).
+  if (!disguise && real === 0) return;
+  const shown = !disguise ? Math.min(real, 2) : real >= 2 ? 1 : 2;
+  const lat = (d) => sim.toLocal(d.x, d.z).lat;
+  const [a, b] = lat(safeties[0]) <= lat(safeties[1]) ? safeties : [safeties[1], safeties[0]];
+  const put = (d, down, l) => { const w = sim.toWorld(down, l); d.x = w.x; d.z = clamp(w.z, -25.5, 25.5); d.disguised = disguise; };
+  if (shown === 2) { put(a, 12.5, -9.5); put(b, 12.5, 9.5); }
+  else {
+    // The safety with the shorter real job walks down; the other one sits in the middle of the field.
+    const deep = (d) => /^zone:deep_/.test(sim.defPlay.assign?.[d.slot] || '') ? 1 : 0;
+    const [high, low] = deep(a) >= deep(b) ? [a, b] : [b, a];
+    put(high, 13.5, 0);
+    // Not disguised: the low safety stays where the formation (or his man) put him.
+    if (disguise) put(low, 6.5, Math.sign(lat(low) || 1) * 4.5);
+  }
+  if (disguise) sim.disguise = { real, shown };
 }
 
 /** Zone corners (and man corners without a man) move to press or off depth. */

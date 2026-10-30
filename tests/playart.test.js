@@ -33,3 +33,47 @@ describe('pre-snap play art', () => {
     });
   });
 });
+
+describe('disguised coverage', async () => {
+  const { shellOf } = await import('../src/ai/defense.js');
+  const { getDefPlay } = await import('../src/data/playbook.js');
+  it('shows the other safety shell before the snap and rotates after it', () => {
+    const off = listOffPlays().find((p) => p.type === 'pass');
+    for (const id of ['43_cover3', '43_cover2']) {
+      const play = getDefPlay(id);
+      const mk = (disguise) => new PlaySim({ rng: new RNG(3), teams: [teams[4], teams[5]], offIdx: 0, dir: 1, losX: 0, ballZ: 0, offPlay: off, defPlay: play, defAdj: disguise ? { disguise: true } : null });
+      const plain = mk(false), dis = mk(true);
+      const deepSafeties = (sim) => sim.defense().filter((d) => ['FS', 'SS'].includes(d.slot) && sim.toLocal(d.x, d.z).down > 11).length;
+      expect(dis.disguise.real).toBe(shellOf(play));
+      expect(deepSafeties(dis)).toBe(dis.disguise.shown);
+      const fs = (sim) => sim.defense().find((d) => d.slot === 'FS');
+      expect(Math.hypot(fs(dis).x - fs(plain).x, fs(dis).z - fs(plain).z)).toBeGreaterThan(1);
+      dis.snap();
+      for (let k = 0; k < 150; k++) dis.tick(1 / 60, null);
+      expect(dis.state).not.toBe('presnap');
+    }
+  });
+});
+
+describe('pass protection calls', async () => {
+  const { protectCall } = await import('../src/game/audibles.js');
+  const { getOffPlay } = await import('../src/data/playbook.js');
+  it('max protect keeps backs and tight ends in, everyone out releases them, reset restores the call', () => {
+    for (const play of listOffPlays().filter((p) => p.type === 'pass')) {
+      const max = protectCall(play, 'max');
+      expect(max.read.length).toBeGreaterThan(0);
+      for (const s of max.read) expect(max.routes[s]).not.toBe('block');
+      const out = protectCall(play, 'out');
+      expect(Object.values(out.routes).filter((r) => r === 'block').length).toBeLessThanOrEqual(Object.values(play.routes).filter((r) => r === 'block').length);
+      expect(protectCall(protectCall(max, 'left'), 'reset')).toBe(play);
+      expect(protectCall(play, 'right').prot).toBe('right');
+      // Every variant still runs.
+      for (const v of [max, out]) {
+        const sim = new PlaySim({ rng: new RNG(2), teams: [teams[6], teams[7]], offIdx: 0, dir: 1, losX: -10, ballZ: 0, offPlay: v, defPlay: listDefPlays()[0] });
+        sim.snap();
+        for (let k = 0; k < 600 && !sim.finished; k++) sim.tick(1 / 60, null);
+      }
+    }
+    expect(protectCall(getOffPlay('gun_doubles_iz'), 'max').type).toBe('run'); // runs ignore protection calls
+  });
+});

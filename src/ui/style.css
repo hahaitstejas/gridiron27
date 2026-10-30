@@ -273,6 +273,13 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .st-num.up { color: #5fd17a; } .st-num.down { color: #ff7a6b; }
 
 /* Penalty accept / decline */
+#reviewbox { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: min(460px, 92vw); animation: slidein 0.2s ease-out; }
+#reviewbox .pb-head { display: flex; justify-content: space-between; align-items: center; background: #15171c; border-radius: 8px 8px 0 0; padding: 12px 18px; font: 900 22px var(--fd); text-transform: uppercase; }
+#reviewbox .pb-head span { color: #f1e85a; } #reviewbox .pb-head b { color: #fff; font-size: 14px; letter-spacing: 2px; animation: blink 1s infinite; }
+#reviewbox .pb-opt { display: flex; gap: 14px; align-items: center; background: #000; padding: 12px 18px; }
+#reviewbox .pb-label { font-weight: 900; font-size: 19px; } #reviewbox .pb-sub { color: #9aa0aa; font-size: 14px; }
+#reviewbox .rb-bar { height: 5px; background: #15171c; border-radius: 0 0 8px 8px; overflow: hidden; } #reviewbox .rb-bar i { display: block; height: 100%; background: var(--gold); }
+@keyframes blink { 50% { opacity: 0.35; } }
 #penaltybox { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); width: min(460px, 92vw); animation: slidein 0.2s ease-out; }
 #penaltybox .pb-head { display: flex; justify-content: space-between; align-items: center; background: #15171c; border-radius: 8px 8px 0 0; padding: 12px 18px; font: 900 22px var(--fd); }
 #penaltybox .pb-head span { color: #f1e85a; } #penaltybox .pb-head b { color: #fff; }

@@ -7,6 +7,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
+import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHALLENGE_T, REVIEW_T } from './review.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
@@ -552,6 +553,8 @@ export class GameSession {
       return;
     }
 
+    if (this.state === 'review') { this.updateReview(dt, input); return; }
+
     if (this.state === 'post') {
       this.wait -= dt;
       if (this.wait <= 0) this.enterPlaycall();
@@ -603,7 +606,57 @@ export class GameSession {
       }
       this.emit('flag', { foul: fouls[0], outcome });
     }
+    // A close call (sideline catch, spot at the line to gain, short of the goal line): the ruling on the field may
+    // be wrong. The booth reviews late in halves / scores; otherwise the team it went against may challenge.
+    if (!fouls.length && !this.fast && !this.practice && m.phase === 'scrimmage') {
+      const cc = closeCall(r, sim, this.rng);
+      if (cc && this.startReview(cc)) return;
+    }
     this.completePlay(outcome);
+  }
+
+  /** Returns true when the play waits for a challenge decision or a review. */
+  startReview(cc) {
+    const m = this.match, sim = this.sim;
+    sim.result = cc.call; // the ruling on the field
+    const rv = { ...cc, t: 0, by: null, booth: false, phase: null };
+    if (boothReviews(m, cc)) { rv.phase = 'review'; rv.booth = true; }
+    else if (canChallenge(m, cc.hurt)) {
+      if (this.isHuman(cc.hurt)) rv.phase = 'call';
+      else if (cpuChallenges(cc, this.rng)) { rv.phase = 'review'; rv.by = cc.hurt; }
+    }
+    if (!rv.phase) return false;
+    this.review = rv;
+    this.state = 'review';
+    this.emit('review', { phase: rv.phase, booth: rv.booth, by: rv.by, text: cc.text });
+    return true;
+  }
+
+  /** The human coach throws the challenge flag (Y during the window). */
+  challenge() {
+    const rv = this.review;
+    if (this.state !== 'review' || !rv || rv.phase !== 'call') return;
+    rv.phase = 'review'; rv.by = rv.hurt; rv.t = 0;
+    this.emit('review', { phase: 'review', booth: false, by: rv.by, text: rv.text });
+  }
+
+  updateReview(dt, input) {
+    const rv = this.review;
+    rv.t += dt;
+    if (rv.phase === 'call') {
+      const f = this.inputFor(input, rv.hurt);
+      if (f?.pressed.Y) { this.challenge(); return; }
+      if (rv.t < CHALLENGE_T && !f?.pressed.A) return;
+    } else if (rv.t < REVIEW_T) return;
+    const reviewed = rv.phase === 'review';
+    this.review = null;
+    if (reviewed) {
+      const s = settleReview(this.match, rv, rv.by);
+      this.sim.result = s.result;
+      this.match.say(s.text, 'review');
+      this.emit('reviewDone', { reversed: s.reversed, text: s.text, by: rv.by });
+    }
+    this.completePlay(null);
   }
 
   /** The human's accept/decline answer for a pending penalty. */

@@ -23,6 +23,7 @@ export class Hud {
       <div id="statcard" class="hidden"></div>
       <div id="audible" class="hidden"></div>
       <div id="penaltybox" class="hidden"></div>
+      <div id="reviewbox" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
@@ -103,7 +104,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -315,6 +316,26 @@ export class Hud {
         <div class="pb-opt"><b class="btn X">X</b><div><div class="pb-label">Decline${pen.recommend ? '' : ' <small>recommended</small>'}</div><div class="pb-sub">${c.decline}</div></div></div>
         <div class="pb-foot"><span>Choose</span><img src="${this.logoFor(me)}" alt=""/></div>`;
     } else if (!pen) pb.dataset.key = '';
+
+    // Close call: challenge window for the human it went against, then "under review".
+    const rb = this.$('reviewbox');
+    const rv = session.state === 'review' ? session.review : null;
+    rb.classList.toggle('hidden', !rv);
+    if (rv) {
+      const key = rv.phase + rv.booth + rv.by;
+      if (rb.dataset.key !== key) {
+        rb.dataset.key = key;
+        const m = session.match;
+        const left = (m.challenges || [2, 2])[rv.hurt];
+        const head = rv.phase === 'call' ? 'Close call' : rv.booth ? 'Booth review' : `${session.teams[rv.by].abbr} challenge`;
+        rb.innerHTML = `<div class="pb-head"><span>${head}</span><b>${rv.phase === 'call' ? '' : 'UNDER REVIEW'}</b></div>
+          <div class="pb-opt"><div><div class="pb-label">${rv.text}</div>${rv.phase === 'call' ? `<div class="pb-sub">${left} challenge${left === 1 ? '' : 's'} left · a lost challenge costs a timeout</div>` : ''}</div></div>
+          ${rv.phase === 'call' ? `<div class="pb-opt"><b class="btn Y">Y</b><div class="pb-label">Challenge</div><b class="btn A" style="margin-left:18px">A</b><div class="pb-label">Play on</div></div>` : ''}
+          <div class="rb-bar"><i></i></div>`;
+      }
+      const T = rv.phase === 'call' ? 3.5 : 3.2;
+      rb.querySelector('.rb-bar i').style.width = `${Math.min(100, (rv.t / T) * 100)}%`;
+    } else rb.dataset.key = '';
 
     // Name tags under the player you control and, if it's someone else, the ball carrier.
     const [tagMe, tagOther] = this.root.querySelectorAll('.tag');

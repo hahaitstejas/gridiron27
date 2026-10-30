@@ -74,7 +74,7 @@ export class PlaySim {
     this.ballLiveRun = false; // a runner has the ball (handoff, catch, scramble, turnover)
     this.result = null;
     this.deadT = 0;
-    this.stats = { passer: null, target: null, receiver: null, rusher: null, tackler: null, assist: null, airYards: 0, catchX: null };
+    this.stats = { passer: null, target: null, receiver: null, rusher: null, tackler: null, assist: null, airYards: 0, catchX: null, catchZ: null };
     this.ball = { state: 'presnap', x: 0, y: 0.15, z: 0, px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0, carrier: -1, t: 0, T: 0, kind: '', spin: 0, resolved: false, intended: -1, target: null };
     this.setup();
   }

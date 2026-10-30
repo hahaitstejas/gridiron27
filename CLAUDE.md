@@ -81,6 +81,14 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
   plane, returns, fair catches, touchbacks, onside kicks. Special plays/formations are in
   `playbooks/special.json` (ids `st_*`; `listOffPlays()`/`listDefPlays()` hide them unless `all=true`).
+- Reviews (`game/review.js`): after a play without flags, `closeCall(result, sim, rng)` finds a close call (sideline catch
+  `stats.catchZ` within 0.7 yd of the sideline, spot within 0.4 yd of the line to gain, runner down < 0.5 yd short of the
+  goal line) and the ruling on the field (`call`), wrong `MISS` of the time. `session.startReview`: the booth reviews
+  inside 2:00 of a half, in OT and on touchdowns on the field (`boothReviews`); otherwise the team it went against may
+  challenge (`canChallenge`: `match.challenges` [2, 2] and a timeout; human: state `review`, Y challenge / A play on within
+  `CHALLENGE_T`; CPU: `cpuChallenges`, 65% of wrong calls, 6% of right ones). `settleReview` → reversed (truth) or stands
+  (a lost challenge costs the challenge and a timeout). HUD `#reviewbox`; ~3 close calls and ~0.5 reviews a game. Never in
+  fast/headless games or practice.
 - `fatigue.js`: player energy across a game. Each snap costs energy by position and effort (carriers, routes,
   rushers); players on the sideline recover (more on timeouts, quarter breaks, full at halftime). The session
   passes the energy maps to each `PlaySim`, whose `place()` sits a tired HB/WR/TE/DL/LB for the next fresher

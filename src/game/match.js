@@ -28,6 +28,7 @@ export class Match {
     this.clockRunning = false;
     this.playClock = 40;
     this.timeouts = [3, 3];
+    this.challenges = [2, 2]; // coach's challenges (review.js)
     this.down = 1;
     this.toGo = 10;
     this.firstYL = 35;

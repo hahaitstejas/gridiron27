@@ -322,7 +322,7 @@ function resolveCatch(sim, reach, late = false) {
   if (catchRoll < pCatch) {
     if (sure > 0.05 && catchRoll >= pCatch - sure) sim.emit('trait', { player: r.id, trait: 'sureHands' });
     sim.stats.receiver = r.id;
-    sim.stats.catchX = r.x;
+    sim.stats.catchX = r.x; sim.stats.catchZ = r.z;
     r.anim = 'catch'; r.animT = 0;
     sim.emit('catch', { player: r.id, contested: contest > 0.15 });
     // Securing the catch costs a step, more so in traffic: gives defenders a chance to close.

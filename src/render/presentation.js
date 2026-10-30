@@ -135,7 +135,7 @@ export class Presentation {
     const st = session.state;
 
     // ---- players ----
-    const huddling = !sim.isKick && scrim && !session.fast && (st === 'post' || st === 'playcall' || (st === 'penalty')) && sim.state !== 'presnap';
+    const huddling = !sim.isKick && scrim && !session.fast && (st === 'post' || st === 'playcall' || st === 'penalty' || st === 'review') && sim.state !== 'presnap';
     const lining = !sim.isKick && scrim && !session.fast && st === 'presnap' && sim.state === 'presnap' && session.presnapT < LINEUP_T && this.spots.size;
     const mode = huddling ? 'huddle' : lining ? 'lineup' : null;
     if (mode !== this.mode) { this.mode = mode; this.modeT = 0; if (mode === 'huddle') this.startHuddle(sim); }

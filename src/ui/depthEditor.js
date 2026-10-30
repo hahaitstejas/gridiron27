@@ -12,7 +12,7 @@ const SLOT_NAMES = {
  * Coaching: depth chart editor for one team (changes apply from the next snap).
  * energy(id) -> 0..1 shows how fresh each player is during a game (optional).
  */
-export function depthChartScreen(screens, team, { energy = null, onDone, onChange = () => {} }) {
+export function depthChartScreen(screens, team, { energy = null, onDone, onChange = () => {}, inGame = false }) {
   const byId = new Map(team.roster.map((p) => [p.id, p]));
   const who = (p) => `#${p.number} ${p.first[0]}. ${p.last}`;
   const fresh = (p) => {
@@ -34,6 +34,7 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
     });
     screens.frame('depth-screen',
       el('h1', { text: `${team.city} ${team.name}: depth chart` }),
+      inGame ? el('div.league-status', { text: 'Changes made here last for this game only; your saved depth chart is back for the next one.' }) : null,
       el('div.dc-grid', {}, cards),
       el('div.setup-help', { html: '<b class="btn A">A</b> edit position &nbsp; <b class="btn B">B</b> done' }));
     screens.nav.set(cards, { columns: 6, onBack: () => { screens.extraButtons = null; onDone(); }, index: focus });

@@ -152,6 +152,7 @@ let lastSim = null;
 let padName = '';
 
 function toMenu() {
+  restoreDepth();
   // Leaving a franchise: its trades and signings stay in its save; the menus get the real league back.
   if (league.franchise) { league.leaveFranchise().then(toMenu, (e) => { console.warn(e); league.franchise = null; toMenu(); }); return; }
   app = 'menu';
@@ -201,6 +202,8 @@ function startGame(p, opts = {}) {
   });
   session.franchiseGame = opts.franchise || null;
   session.drillPrefs = opts.drillPrefs || null;
+  // Depth chart edits during a game (pause → Depth Chart) are for this game only: keep the saved charts to put back.
+  session.depthSnapshot = session.teams.map((t) => JSON.parse(JSON.stringify(t.depth)));
   session.tournamentGame = opts.tournament || null;
   session.scenarioPrefs = opts.scenarioPrefs || null;
   // Season records on the scorebug (franchise games; exhibitions show 0-0).
@@ -351,7 +354,15 @@ function showFinal() {
 }
 
 /** Back to the menus from a game (no main menu: the caller shows the next screen). */
+/** Put back the depth charts the game started with (in-game changes only last for that game). */
+function restoreDepth() {
+  if (!session?.depthSnapshot) return;
+  session.teams.forEach((t, i) => { t.depth = session.depthSnapshot[i]; });
+  session.depthSnapshot = null;
+}
+
 function leaveGame() {
+  restoreDepth();
   app = 'menu';
   session = null;
   lastSim = null;
@@ -370,7 +381,7 @@ function pause() {
     timeoutsLeft: session?.match.timeouts[session?.humanTeam] ?? 0,
     onStats: session ? () => statsScreen(screens, session.match, { onBack: () => { screens.extraButtons = null; pause(); } }) : null,
     onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
-      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => league.changed() }) : null,
+      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => {}, inGame: true }) : null,
     onControls: () => screens.controls({ onBack: pause }),
     // Quitting a franchise game goes back to the hub (the game isn't recorded: play or sim it again).
     onQuit: session?.franchiseGame ? () => { leaveGame(); franchiseUI.hub(); } : session?.tournamentGame ? () => { leaveGame(); tournamentUI.open(); } : toMenu,

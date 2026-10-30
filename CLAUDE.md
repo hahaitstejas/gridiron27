@@ -41,6 +41,8 @@ Rendering (`src/render`), UI (`src/ui`), input and audio only *read* sim state.
 - All randomness goes through the seeded `RNG` (`core/rng.js`). **Never use `Math.random()` in sim/ai/game
   code** — determinism is what makes the autosim reproducible and replays possible.
 - Input edges (pressed/released/flick) are latched until a sim step consumes them, so taps aren't lost.
+- Menus (`ui/nav.js`): only real mouse movement takes focus (`onmousemove` compared with the last pointer position), so
+  rows sliding under a resting pointer while the stick scrolls a list don't yank focus back.
 
 ### Coordinates
 World units are **yards**. `x` runs along the field (goal lines at x = ±50, end lines at ±60), `z` across it
@@ -133,7 +135,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   safeties (`d.disguised` → `fool` in qb.js `evaluateTarget`, by awareness, fading by 1.6 s): disguise ≈ -0.7% cmp, +0.25% INT.
 - Coaching: the pause menu (games and practice) opens the depth chart editor for the human team. It edits
   `team.depth` in place (`placeInDepth` / `removeFromDepth` / `eligibleForSlot` in `data/depthChart.js`), so the
-  next snap uses it; it shows each player's overall at that spot and his current energy. Edits autosave (league save).
+  next snap uses it; it shows each player's overall at that spot and his current energy. In-game edits are for that game
+  only: `startGame` keeps `session.depthSnapshot` and `restoreDepth()` (leaveGame / toMenu) puts the saved charts back;
+  nothing autosaves from the in-game editor. League → Depth Charts (and the franchise hub) edit the real, saved chart.
 - `boxscore.js`: full player stats by category (`STAT_TABS`: passing incl. passer rating, rushing, receiving,
   defense, kicking) from `match.stats.players`; `statRows(m, tab, team)`. Shown by `ui/statsScreen.js` from the
   final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter.

@@ -5,7 +5,7 @@ import { drawLogo } from './logo.js';
 // players). Poses are computed procedurally from the sim's animation state every frame.
 
 const SKIN = ['#f1c9a5', '#e0ac85', '#c68a62', '#a0663f', '#7a4a2c', '#53321e'];
-const MAX = 32; // 22 players + 7 officials (+ spare)
+const MAX = 56; // 22 players + 7 officials + 22 on the sidelines (+ spare)
 
 // Base proportions for a 6'2" player, in yards.
 const B = {
@@ -195,7 +195,7 @@ export class PlayerRenderer {
 
   /** Assign per-instance colors from team uniforms (once per play setup). */
   setColors(sim, teams) {
-    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}`).join(',') + teams.map((t) => t.colors.primary + t.colors.secondary + t.uniform.pants).join();
+    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}`).join(',') + teams.map((t) => t.colors.primary + t.colors.secondary + t.uniform.pants).join() + ':' + (this.extra?.length || 0);
     if (key === this.colorsKey) return;
     this.colorsKey = key;
     const P = this.parts;
@@ -259,6 +259,32 @@ export class PlayerRenderer {
         P.num.setColorAt(i * 4 + 2 + k, c.set('#f2f2f2'));
       }
     }
+    // Sideline players and coaches (Presentation.bench) after the officials.
+    const base = sim.players.length + 7;
+    (this.extra || []).forEach((b, k) => {
+      const i = base + k, team = teams[b.team];
+      if (!team || i >= MAX) return;
+      const u = team.uniform;
+      const jersey = b.team === 1 ? '#f4f4f4' : pick(team, u.jersey), helmet = pick(team, u.helmet), pants = pick(team, u.pants);
+      const skin = SKIN[b.skin % SKIN.length];
+      const top = b.coach ? team.colors.primary : jersey, bottom = b.coach ? '#b9a77c' : pants;
+      const numColor = isDark(top) ? (isDark(team.colors.secondary) ? '#ffffff' : team.colors.secondary) : (isDark(team.colors.primary) ? team.colors.primary : '#111111');
+      P.torso.setColorAt(i, c.set(top)); P.pads.setColorAt(i, c.set(top)); P.pelvis.setColorAt(i, c.set(bottom)); P.neck.setColorAt(i, c.set(skin));
+      P.helmet.setColorAt(i, c.set(b.coach ? team.colors.primary : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.secondary : u.helmetStripe ? team.colors.secondary : helmet));
+      P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
+      for (let s2 = 0; s2 < 2; s2++) {
+        const j = i * 2 + s2;
+        this.decalAttr.setXY(j, b.team, s2);
+        P.thigh.setColorAt(j, c.set(bottom)); P.shin.setColorAt(j, c.set(b.coach ? '#b9a77c' : u.pants === 'white' ? team.colors.primary : '#f2f2f2'));
+        P.shoe.setColorAt(j, c.set('#151515')); P.upper.setColorAt(j, c.set(top)); P.fore.setColorAt(j, c.set(skin));
+        P.hand.setColorAt(j, c.set(b.coach ? skin : team.colors.secondary)); P.bar.setColorAt(j, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
+        P.cap.setColorAt(j, c.set(top));
+        P.num.setColorAt(i * 4 + s2, c.set(numColor)); P.num.setColorAt(i * 4 + 2 + s2, c.set(numColor));
+        this.cellAttr.setXY(i * 4 + s2, b.number % 10, Math.floor(b.number / 10)); this.cellAttr.setXY(i * 4 + 2 + s2, b.number % 10, Math.floor(b.number / 10));
+      }
+      sT.setX(i, 0); sU.setX(i * 2, 0); sU.setX(i * 2 + 1, 0);
+    });
+    sT.needsUpdate = sU.needsUpdate = true;
     this.cellAttr.needsUpdate = true;
     this.decalAttr.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;
@@ -267,14 +293,14 @@ export class PlayerRenderer {
   /** Update all instance matrices. alpha interpolates between the previous and current sim tick. */
   update(sim, alpha, time, controlledId, refs = null) {
     const P = this.parts;
-    const n = sim.players.length + (refs ? refs.length : 0);
+    const n = Math.min(MAX, sim.players.length + (refs ? refs.length : 0));
     for (const m of Object.values(P)) m.count = m === P.num ? n * 4 : this.pairs.has(m) ? n * 2 : n;
     // A new play: poses start fresh (no crossfade from the last play's players).
     if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; this.fallAnim.length = 0; }
     const dt = Math.min(0.1, Math.max(0, time - (this.lastTime ?? time)));
     this.lastTime = time;
     for (let i = 0; i < sim.players.length; i++) this.drawPlayer(sim, this.display?.[i] || sim.players[i], i, alpha, time, dt);
-    if (refs) for (let r = 0; r < refs.length; r++) this.drawPlayer(sim, refs[r], sim.players.length + r, alpha, time, dt, true);
+    if (refs) for (let r = 0; r < refs.length && sim.players.length + r < MAX; r++) this.drawPlayer(sim, refs[r], sim.players.length + r, alpha, time, dt, r < 7 || !!refs[r].coach);
     // Catch / interception pulse under the player with the ball.
     if (this.pulseT > 0) {
       this.pulseT -= dt;

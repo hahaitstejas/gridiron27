@@ -45,6 +45,45 @@ export class Presentation {
     this.modeT = 0;
     this.lastSim = null;
     this.announce = null; // { sig, until }
+    this.bench = null; // sideline players and a head coach per team (built on the first frame)
+  }
+
+  /** Ten reserves and a coach on each team's sideline (home on one side, visitors across), facing the field. */
+  makeBench(session) {
+    const out = [];
+    session.teams.forEach((t, team) => {
+      const side = team === 0 ? -1 : 1;
+      const reserves = [...t.roster].sort((a, b) => a.ovr - b.ovr).slice(0, 10);
+      reserves.forEach((rp, k) => {
+        const x = -16 + k * 3.4 + (k % 2) * 0.8, z = side * (HALF_WIDTH + 4.2 + (k % 3) * 1.3);
+        out.push({ id: 200 + out.length, team, number: rp.number, skin: rp.skin ?? k, height: 1.95 + (rp.height ? (rp.height - 74) * 0.02 : 0), bulk: ['T', 'G', 'C', 'DT', 'DE'].includes(rp.pos) ? 0.8 : 0.25,
+          state: 'active', move: null, x, z, px: x, pz: z, hx: x, hz: z, facing: -side * Math.PI / 2, pfacing: -side * Math.PI / 2, vx: 0, vz: 0, anim: 'idle', animT: k * 0.37, cycle: 0 });
+      });
+      const x = 2 * side, z = side * (HALF_WIDTH + 3.4);
+      out.push({ id: 200 + out.length, team, coach: true, number: 0, skin: team * 3 + 1, height: 1.9, bulk: 0.2, state: 'active', move: null,
+        x, z, px: x, pz: z, hx: x, hz: z, facing: -side * Math.PI / 2, pfacing: -side * Math.PI / 2, vx: 0, vz: 0, anim: 'idle', animT: 0, cycle: 0 });
+    });
+    return out;
+  }
+
+  /** The sidelines: reserves drift a little and watch the ball; they celebrate their team's touchdowns. */
+  sidelines(sim, dt) {
+    const b = sim.ball;
+    for (const p of this.bench) {
+      p.px = p.x; p.pz = p.z; p.pfacing = p.facing;
+      p.animT += dt;
+      // The coach paces along his sideline with the ball; reserves shuffle within a couple of yards.
+      const tx = p.coach ? Math.max(-18, Math.min(18, b.x * 0.5)) : p.hx + Math.sin(p.animT * 0.23 + p.id) * 1.2;
+      const dx = tx - p.x, dist = Math.abs(dx);
+      const v = dist > 0.3 ? Math.min(1.6, dist) * Math.sign(dx) : 0;
+      p.vx = v; p.x += v * dt;
+      const look = Math.atan2(b.z - p.z, b.x - p.x);
+      p.facing = turn(p.facing, Math.abs(v) > 0.4 ? Math.atan2(0, v) : look, dt * 3);
+      const party = this.cel && this.cel.team === p.team && !p.coach;
+      const anim = party ? 'celebrate' : Math.abs(v) > 0.4 ? 'run' : p.coach ? 'idle' : sim.state === 'live' && (p.id % 3 === 0) ? 'clap' : 'idle';
+      if (anim === 'run') p.cycle += dt * 3;
+      if (anim !== p.anim) { p.anim = anim; p.animT = 0; }
+    }
   }
 
   /** Session events: officials react (TD, incomplete, flags, first downs). */
@@ -107,9 +146,11 @@ export class Presentation {
     else if (mode === 'lineup') display = this.lineup(sim, session.presnapT, dt);
     else if (!mode && sim.state === 'presnap') this.spots.clear();
 
-    // ---- officials ----
+    // ---- officials, sidelines ----
     this.officials(sim, session, dir, losX, ballZ, dt);
-    return { display, refs: this.refs, ballAt: mode === 'huddle' && this.modeT > HUDDLE_DELAY + 0.5 ? { x: losX, z: ballZ } : null };
+    if (!this.bench) this.bench = this.makeBench(session);
+    this.sidelines(sim, dt);
+    return { display, refs: [...this.refs, ...this.bench], bench: this.bench, ballAt: mode === 'huddle' && this.modeT > HUDDLE_DELAY + 0.5 ? { x: losX, z: ballZ } : null };
   }
 
   /** Close-up camera target while a touchdown celebration runs: { x, z, dir } or null. */

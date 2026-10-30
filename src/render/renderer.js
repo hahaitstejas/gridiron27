@@ -156,6 +156,8 @@ export class GameRenderer {
     this._presT = time;
     const pr = session ? this.presentation.frame(session, sim, dt) : null;
     players.display = pr?.display || null;
+    // The sidelines appear on the first presented frame: color them once.
+    if (pr?.bench && players.extra !== pr.bench) { players.extra = pr.bench; players.colorsKey = null; players.setColors(sim, session.teams); }
     players.update(sim, alpha, time, sim.humanTeams?.length ? sim.humanTeams.map((t) => sim.controlled[t] ?? -1) : sim.humanTeam !== null ? sim.controlledId : -1, pr?.refs || null);
     // Ball
     const b = sim.ball;

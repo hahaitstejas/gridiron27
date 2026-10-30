@@ -1,4 +1,5 @@
 import { RNG } from '../core/rng.js';
+import { addFoul } from '../sim/fouls.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
@@ -246,8 +247,18 @@ export class GameSession {
       if (m.clock <= 0) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
       if (!m.clockRunning) { this.flushMessages(); } // two-minute warning stopped it
     }
-    // Pre-snap fouls (false start / offsides) kill the play before it starts.
+    // Pre-snap fouls: a false start kills the play; a defender jumping offsides gets flagged and the
+    // offense has a free play (enforced after it, take the better of the play or the 5 yards).
     const foul = rollPresnapFoul(m, sim, this.rng, this.penaltyRate());
+    if (foul?.type === 'offsides') {
+      this.audible = null;
+      sim.snap();
+      jumpOffsides(sim, foul.player);
+      if (!this.fast) { this.recorder.reset(); this.recorder.capture(sim); }
+      this.state = 'live';
+      this.plays++;
+      return;
+    }
     if (foul) {
       const out = enforce(m, foul, null);
       m.stats.team[foul.team].penalties++;
@@ -550,3 +561,12 @@ function cyclePresnapDefender(sim) {
 }
 
 export { STEP };
+
+/** The offsides defender is caught across the line at the snap; the flag flies right away. */
+function jumpOffsides(sim, p) {
+  if (!p) return;
+  const l = sim.toLocal(p.x, p.z);
+  const w = sim.toWorld(Math.min(l.down, -0.6), l.lat);
+  p.x = p.px = w.x; p.z = p.pz = w.z;
+  addFoul(sim, 'offsides_live', p.team, p, { spotX: sim.losX });
+}

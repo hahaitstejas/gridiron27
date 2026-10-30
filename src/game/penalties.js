@@ -5,6 +5,7 @@ export const PENALTIES = {
   false_start: { name: 'False start', side: 'off', yards: 5, dead: true },
   delay_of_game: { name: 'Delay of game', side: 'off', yards: 5, dead: true },
   offsides: { name: 'Offsides', side: 'def', yards: 5, dead: true },
+  offsides_live: { name: 'Offsides', side: 'def', yards: 5 }, // the defender jumped and the snap came anyway: free play
   holding_off: { name: 'Holding', side: 'off', yards: 10 },
   holding_def: { name: 'Defensive holding', side: 'def', yards: 5, autoFirst: true },
   dpi: { name: 'Pass interference', side: 'def', spot: true, autoFirst: true },

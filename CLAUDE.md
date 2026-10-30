@@ -65,6 +65,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   human's choice: the session waits in state `penalty` (`pendingPenalty` with `describeChoice()` lines for accept /
   decline and the recommended pick) until A (accept) or X (decline) → `choosePenalty()` → `completePlay()`. Fouls
   by the human, CPU-vs-CPU and fast/headless games still decide automatically.
+  Defensive offsides is a live foul (`offsides_live`): `rollPresnapFoul` → the session snaps anyway, puts the jumper across
+  the line and flags it (`jumpOffsides`) = a free play for the offense. The scorebug shows FLAG while any foul is on the
+  field (`sim.fouls`) and during the accept/decline choice. False start / delay of game still kill the play.
 - `session.js` → `GameSession`: drives one game — states `playcall → presnap → live → post` (→ `over`).
   Gets play calls from the human (`humanChoose`) or `ai/playcaller.js`, builds each `PlaySim`, runs the
   play clock / runoff (accelerated clock option), enforces fouls via `penalties.js`, then `match.applyResult`.
@@ -207,6 +210,12 @@ Original line-art icons (`ICONS` in screens.js). Tiles use `Nav.set(items, { spa
 nearest item in that direction by on-screen rectangles (any layout). Shared style (end of style.css): slanted panels
 (`--skew`), gold focus edge, `--accent` = your team's primary color (set by the hub), stripe background, fixed bottom
 hint bar (`.setup-help`). The design is our own; don't copy other games' menus or trade dress.
+
+### Scorebug
+`Hud.renderBug()`: a full-width bar along the bottom (layout from the user's design): GRIDIRON 27 | away logo panel |
+`(rec) AWY [timeout bars] • score × score • HOM (rec)` (dot = possession) | home logo panel | quarter, clock and a boxed
+play clock | down & distance, which turns into a yellow FLAG while a foul is on the field. Records come from
+`session.records` (franchise games, else 0-0).
 
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /

@@ -10,7 +10,7 @@ import { teamEditor } from './ui/teamEditor.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
-import { unavailableFor, gameConditions } from './franchise/franchise.js';
+import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.js';
 import { makeConditions, conditionsText } from './game/weather.js';
 import { RNG } from './core/rng.js';
 import { InputManager } from './input/input.js';
@@ -154,6 +154,8 @@ function startGame(p, opts = {}) {
     seed,
   });
   session.franchiseGame = opts.franchise || null;
+  // Season records on the scorebug (franchise games; exhibitions show 0-0).
+  if (opts.franchise && league.franchise) session.records = [home, away].map((t) => { const r = recordOf(league.franchise, teams, teams.indexOf(t)); return `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`; });
   renderer.setTeams(home, away);
   renderer.setConditions(conditions);
   hud.ticker(conditionsText(conditions));

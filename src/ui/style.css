@@ -355,3 +355,34 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .title-screen .title::after { content: ''; display: block; height: 8px; margin: 18px auto 0; width: 70%; transform: skewX(var(--skew)); background: linear-gradient(90deg, transparent, var(--gold), transparent); }
 .title-screen .sub { animation: pulse 1.6s ease-in-out infinite; }
 @keyframes pulse { 0%, 100% { opacity: 0.95; } 50% { opacity: 0.55; } }
+
+/* Scorebug v3: full-width broadcast bar along the bottom (layout from the user's own design). */
+#scorebug { left: 0 !important; right: 0; bottom: 0 !important; transform: none !important; background: none; border: 0; border-radius: 0; box-shadow: none; }
+.sb3 { display: flex; align-items: stretch; height: 58px; width: 100%; font-family: "Arial Black", Impact, sans-serif; box-shadow: 0 -6px 24px rgba(0,0,0,0.45); }
+.sb3 > div { display: flex; align-items: center; justify-content: center; }
+.sb3-brand { flex: 0 0 auto; padding: 0 26px; background: #f4f4f2; color: #111; font: 600 24px/1 "Arial Narrow", "Roboto Condensed", Arial, sans-serif; letter-spacing: 0.5px; border-right: 2px solid #c9c9c9; }
+.sb3-logo { flex: 1 1 0; min-width: 90px; overflow: hidden; background:
+    repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 2px, transparent 2px 7px),
+    linear-gradient(90deg, color-mix(in srgb, var(--tc) 85%, #000), var(--tc)); }
+.sb3-logo img { height: 140%; max-width: 70%; object-fit: contain; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+.sb3-mid { flex: 2 1 0; gap: 14px; background: #f4f4f2; color: #111; font-size: 26px; padding: 0 18px; white-space: nowrap; }
+.sb3-mid small { font: 700 15px Arial, sans-serif; color: #333; }
+.sb3-ab { position: relative; letter-spacing: 1px; }
+.sb3-to { position: absolute; left: 0; right: 0; bottom: -8px; display: flex; gap: 4px; }
+.sb3-to i { flex: 1; height: 4px; border-radius: 1px; background: rgba(0,0,0,0.12); }
+.sb3-to i.on { background: #111; }
+.sb3-dot { font-size: 30px; line-height: 0; color: #111; opacity: 0; }
+.sb3-dot.on { opacity: 1; }
+.sb3-sc { font-size: 34px; min-width: 30px; text-align: center; font-variant-numeric: tabular-nums; }
+.sb3-x { color: #aaa; font-size: 18px; }
+.sb3-clock { flex: 0 0 auto; gap: 16px; padding: 0 22px; background: #0d0d0f; color: #fff; font-size: 24px; }
+.sb3-clock b { font-variant-numeric: tabular-nums; }
+.sb3-q { font-size: 20px; }
+.sb3-q sup, .sb3-dd sup { font-size: 0.55em; vertical-align: 0.55em; text-transform: lowercase; }
+.sb3-pc { background: #fff; color: #111; padding: 4px 10px; border-radius: 2px; font-size: 22px; font-variant-numeric: tabular-nums; }
+.sb3-pc.low { color: #d4241b; }
+.sb3-dd { flex: 0 0 auto; min-width: 210px; padding: 0 22px; background: #000; color: #fff; font-size: 26px; border-left: 2px solid #222; }
+.sb3-dd.flag { background: #ffd400; color: #111; letter-spacing: 3px; animation: flagpulse 0.8s ease-in-out infinite; }
+@keyframes flagpulse { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.25); } }
+@media (max-width: 1000px) { .sb3 { height: 46px; } .sb3-brand { font-size: 16px; padding: 0 12px; } .sb3-mid { font-size: 18px; gap: 8px; } .sb3-sc { font-size: 24px; } .sb3-mid small { display: none; } .sb3-clock { font-size: 18px; padding: 0 12px; } .sb3-dd { min-width: 130px; font-size: 18px; } }
+.sb3-dd sup { margin-right: 8px; }

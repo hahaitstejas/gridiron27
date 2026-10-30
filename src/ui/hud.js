@@ -285,28 +285,35 @@ export class Hud {
     const m = session.match;
     const bug = this.$('scorebug');
     bug.classList.remove('hidden');
-    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker].join('|');
+    // A foul on the field shows right away (free play!); the call is explained after the whistle.
+    const sim = session.sim;
+    const flag = !m.over && (session.state === 'penalty' || ((session.state === 'live') && sim?.fouls?.length > 0));
+    const recs = session.records || ['0-0', '0-0'];
+    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
-    // Broadcast-style bar: away on the left, home on the right, game situation in the middle.
+    // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
     const hasBall = (i) => (m.phase === 'kickoff' ? m.kicker !== i : m.possession === i) && !m.over;
-    const team = (i, side) => {
-      const t = m.teams[i];
+    const logo = (i) => `<div class="sb3-logo" style="--tc:${m.teams[i].colors.primary};--tc2:${m.teams[i].colors.secondary}"><img src="${this.logoFor(m.teams[i])}" alt=""/></div>`;
+    const name = (i, side) => {
       const bars = [0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : ''}"></i>`).join('');
-      return `<div class="sb2-team ${side}${hasBall(i) ? ' ball' : ''}" style="--tc:${t.colors.primary};--tc2:${t.colors.secondary}">
-        <img class="sb2-logo" src="${this.logoFor(t)}" alt="${t.abbr}"/>
-        <div class="sb2-score">${m.score[i]}</div>
-        <div class="sb2-to">${bars}</div>
-        <span class="sb2-poss">▶</span></div>`;
+      const rec = `<small>(${recs[i]})</small>`;
+      const ab = `<span class="sb3-ab">${m.teams[i].abbr}<span class="sb3-to">${bars}</span></span>`;
+      const dot = `<span class="sb3-dot${hasBall(i) ? ' on' : ''}">•</span>`;
+      return side === 'away' ? `${rec}${ab}${dot}` : `${dot}${ab}${rec}`;
     };
-    const ord = (q) => (q > 4 ? 'OT' : `${q}<sup>${['', 'ST', 'ND', 'RD', 'TH'][q]}</sup>`);
+    const ord = (q) => (q > 4 ? 'OT' : `${q}<sup>${['', 'st', 'nd', 'rd', 'th'][q]}</sup>`);
     const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? downText(m).toUpperCase().replace(/(\d)(ST|ND|RD|TH)/, '$1<sup>$2</sup>') : downText(m).toUpperCase();
-    const pc = m.over ? '' : `<span class="sb2-pc${m.playClock <= 10 ? ' low' : ''}">${Math.ceil(m.playClock)}</span>`;
-    bug.innerHTML = `<div class="sb2">${team(1, 'away')}<div class="sb2-mid"><div class="sb2-dd">${dd}</div>` +
-      `<div class="sb2-clock"><span class="sb2-q">${m.over ? '' : ord(m.quarter)}</span><b>${m.over ? '' : clockText(m.clock)}</b>${pc}</div>` +
-      `<div class="sb2-spot">${m.phase === 'scrimmage' && !m.over ? yardLineText(m) : ''}</div></div>${team(0, 'home')}</div>`;
+    const pc = m.over || m.phase !== 'scrimmage' ? '' : `<span class="sb3-pc${m.playClock <= 10 ? ' low' : ''}">:${String(Math.ceil(m.playClock)).padStart(2, '0')}</span>`;
+    bug.innerHTML = `<div class="sb3">
+      <div class="sb3-brand">GRIDIRON 27</div>
+      ${logo(1)}
+      <div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>
+      ${logo(0)}
+      <div class="sb3-clock">${m.over ? '' : `<span class="sb3-q">${ord(m.quarter)}</span><b>${clockText(m.clock)}</b>`}${pc}</div>
+      <div class="sb3-dd${flag ? ' flag' : ''}">${flag ? 'FLAG' : dd}</div>
+    </div>`;
   }
-
 }
 
 /** Small note of the defense's current coverage call, e.g. " · Press, inside". */

@@ -224,6 +224,11 @@ rounds}, history[], seed, offseason{step, …} }`.
   then team totals split into box-score lines for the depth chart's players (same fields as Match stats). CPU
   games and "Sim this game" use it; games the human plays record their real Match stats (`matchToResult`). The
   session gets `franchiseGame`; the final screen's button returns to the hub (`FranchiseUI.recordPlayed`).
+- Hub (`FranchiseUI.hub`): the menu style (hub tiles, `ICONS` from screens.js, `--accent` = your team color): a next-game
+  card with both logos and records (Play Game / Sim Game / Sim to Playoffs, or Finish the Week), then Season (standings tile
+  with your division's top four, schedule, bracket, team stats, leaders), Team (my player, roster, depth chart, injuries,
+  contracts, trade) and League (news, awards & records, transactions, main menu) columns; `hub(key)` refocuses a tile by
+  label. The Franchise menu (`open()`) is tiles too: Continue (your logo), other saved franchises, New Franchise / Career.
 - Hub Team Stats (`FranchiseUI.teamStatsScreen`): season totals in `f.stats` shown with the end-of-game `STAT_TABS`
   (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →

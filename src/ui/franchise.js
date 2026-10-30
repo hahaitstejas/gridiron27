@@ -1,4 +1,5 @@
 import { el } from './nav.js';
+import { ICONS } from './screens.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
@@ -29,10 +30,18 @@ export class FranchiseUI {
     const { screens, league } = this.ctx;
     const saves = (await listSaves()).filter((s) => s.franchise);
     if (!saves.length && !this.f) { this.newFranchise(); return; }
-    const items = [];
+    const byAbbr = (name) => this.teams.find((t) => `${t.city} ${t.name}` === name || t.name === name || t.abbr === name);
+    const tile = (cls, label, sub, action, art) => {
+      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, art, el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })));
+      t.activate = action;
+      return t;
+    };
+    const tiles = [];
     for (const s of saves) {
       const cur = s.slot === league.slot && this.f;
-      const it = screens.menuItem(`${cur ? 'Continue: ' : ''}${s.franchise.team}`, `${s.franchise.year} · ${s.franchise.when}${cur ? '' : ' · load this franchise'}`, async () => {
+      const t = byAbbr(s.franchise.team);
+      const art = t ? el('div.fr-save-logo', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 72)) : el('div.ht-icon', { html: ICONS.trophy });
+      const it = tile(cur ? 'feature' : '', cur ? `Continue` : s.franchise.team, `${cur ? `${s.franchise.team} · ` : ''}${s.franchise.year} · ${s.franchise.when}`, async () => {
         if (!cur) {
           const L = deserializeLeague(await readSave(s.slot));
           league.slot = s.slot; setActiveSlot(s.slot);
@@ -40,13 +49,15 @@ export class FranchiseUI {
           await league.replaceLeague(L.teams, L.name);
         }
         this.hub();
-      });
-      cur ? items.unshift(it) : items.push(it);
+      }, art);
+      cur ? tiles.unshift(it) : tiles.push(it);
     }
-    items.push(screens.menuItem('New Franchise', 'Start from your current league', () => this.newFranchise()));
-    items.push(screens.menuItem('New Career', 'Create a player and play as him, season after season', () => newCareer(this)));
-    screens.frame('menu-screen', el('div.logo-small', { html: 'FRANCHISE' }), el('div.menu-list', {}, items));
-    screens.nav.set(items, { onBack: this.ctx.onExit });
+    tiles.push(tile('new', 'New Franchise', 'Run a team: seasons, the draft, free agency', () => this.newFranchise(), el('div.ht-icon', { html: ICONS.trophy })));
+    tiles.push(tile('new', 'New Career', 'Create a player and play as him', () => newCareer(this), el('div.ht-icon', { html: ICONS.user })));
+    screens.frame('hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'FRANCHISE <span>MODE</span>' })),
+      el('div.fr-saves', {}, tiles),
+      el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Back' }));
+    screens.nav.set(tiles, { spatial: true, onBack: this.ctx.onExit });
   }
 
   // ---------- new franchise ----------
@@ -90,7 +101,7 @@ export class FranchiseUI {
   }
 
   // ---------- hub ----------
-  hub(focus = 0) {
+  hub(focus = null) {
     const { screens } = this.ctx;
     const f = this.f, teams = this.teams, me = teams[f.userTeam];
     screens.extraButtons = null;
@@ -99,50 +110,74 @@ export class FranchiseUI {
     const g = userGame(f);
     const rec = recordOf(f, teams, f.userTeam);
     const stage = f.phase === 'regular' ? `Week ${f.week + 1} of ${f.weeks}` : PLAYOFF_ROUND_NAMES[f.playoffs.rounds.length - 1];
-    const items = [];
-    const add = (label, sub, fn) => { const it = screens.menuItem(label, sub, fn); items.push(it); return it; };
-    let next = 'Your season is over: watch the rest of the playoffs.';
-    if (g && !g.score) {
-      const home = g.home === f.userTeam;
-      const opp = teams[home ? g.away : g.home];
-      const oppRec = recordOf(f, teams, home ? g.away : g.home);
-      next = `${home ? 'vs' : '@'} ${opp.city} ${opp.name} (${recText(oppRec)})`;
-      add(`Play: ${next}`, `${f.phase === 'playoffs' ? 'Playoff game · ' : ''}${f.settings.quarterMinutes}-minute quarters`, () => this.ctx.playGame(g));
-      add('Sim this game', 'Quick result, your stats count', () => { simGame(f, teams, g); this.afterUserGame(); });
-    } else if (g && g.score) {
-      next = `Final: ${teams[g.away].abbr} ${g.score[1]} – ${g.score[0]} ${teams[g.home].abbr}`;
-    }
+    const tile = (cls, icon, label, sub, action, ...extra) => {
+      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, el('div.ht-icon', { html: ICONS[icon] || '' }),
+        el('div.ht-text', {}, el('div.ht-label', { text: label }), sub ? el('div.ht-sub', { text: sub }) : null), ...extra);
+      t.activate = action;
+      t.key = label;
+      return t;
+    };
+    const back = (key) => () => this.hub(key);
+
+    // The next game: a big matchup card (or the result / what's left of the season).
+    const hero = [];
     const allDone = !currentGames(f).some((x) => !x.score);
-    const advLabel = f.phase === 'regular' ? 'Finish the week' : 'Finish the round';
-    if (!g || g.score) add(advLabel, allDone ? 'Move on' : 'Quick-sim the remaining games', () => { simOthers(f, teams); advance(f, teams); this.save(); this.hub(); });
-    if (f.phase === 'regular') add('Sim to the playoffs', 'Quick-sim the rest of the regular season (your games too)', () => {
+    const advance1 = () => { simOthers(f, teams); advance(f, teams); this.save(); this.hub(); };
+    if (g && !g.score) {
+      const home = g.home === f.userTeam, oi = home ? g.away : g.home, opp = teams[oi];
+      const side = (t, r) => el('div.htm-team', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 96), el('b', { text: t.abbr }), el('small', { text: recText(r) }));
+      const matchup = el('div.ht-matchup', {}, side(teams[g.away], recordOf(f, teams, g.away)), el('div.htm-at', { text: '@' }), side(teams[g.home], recordOf(f, teams, g.home)));
+      hero.push(tile('feature.fr-play', 'play', f.phase === 'playoffs' ? 'Play Playoff Game' : 'Play Game',
+        `${home ? 'vs' : 'at'} ${opp.city} ${opp.name} (${recText(recordOf(f, teams, oi))}) · ${stage} · ${f.settings.quarterMinutes}-min quarters`, () => this.ctx.playGame(g), matchup));
+      hero.push(tile('small', 'fast', 'Sim Game', 'Quick result, stats count', () => { simGame(f, teams, g); this.afterUserGame(); }));
+    } else {
+      const done = g && g.score ? `Final: ${teams[g.away].abbr} ${g.score[1]} – ${g.score[0]} ${teams[g.home].abbr}` : 'Your season is over: watch the rest of the playoffs';
+      hero.push(tile('feature.fr-play', 'fast', f.phase === 'regular' ? 'Finish the Week' : 'Finish the Round', `${done} · ${allDone ? 'move on' : 'quick-sim the other games'}`, advance1));
+    }
+    if (f.phase === 'regular') hero.push(tile('small', 'calendar', 'Sim to Playoffs', 'The rest of the regular season', () => {
       while (f.phase === 'regular') { simOthers(f, teams); const ug = userGame(f); if (ug && !ug.score) simGame(f, teams, ug); advance(f, teams); }
       this.save(); this.hub();
-    });
+    }));
+
+    // Division race: your division's top four on the standings tile.
+    const rows = rank(standings(teams, f.schedule).filter((x) => teams[x.team].conference === me.conference && teams[x.team].division === me.division));
+    const mini = el('div.fr-mini', {}, rows.slice(0, 4).map((x, i) => el(`div${x.team === f.userTeam ? '.mine' : ''}`, { style: { '--tc': teams[x.team].colors.primary } },
+      el('span', { text: `${i + 1}` }), el('b', { text: teams[x.team].abbr }), el('span', { text: recText(x) }))));
+
     const cp = careerPlayer(f, teams);
-    if (cp) add('My Player', `${cp.first} ${cp.last} · ${cp.pos} · ${cp.ovr} OVR · ${f.career.points} skill point${f.career.points === 1 ? '' : 's'}`, () => careerScreen(this));
-    add('Standings', 'Divisions, records, points', () => this.standingsScreen());
-    add('Schedule & Results', 'Your games and every week\'s scores', () => this.scheduleScreen(f.phase === 'regular' ? f.week : f.weeks - 1));
-    if (f.phase === 'playoffs') add('Playoff Bracket', 'Seeds and results', () => this.bracketScreen());
-    add('Team Stats', 'Your players\' season totals: passing, rushing, receiving, defense, kicking', () => this.teamStatsScreen());
-    add('League Leaders', 'Season stats', () => this.leadersScreen());
     const hurt = me.roster.filter((p) => p.injury).length;
-    add('Injury Report', hurt ? `${hurt} of your players injured` : 'Everyone healthy', () => this.injuryScreen());
-    add('News', latestHeadline(f), () => newsScreen(this));
-    add('Awards & Records', 'MVP and other awards, league records, past champions', () => awardsScreen(this));
-    add('Contracts & Cap', capLine(f, me), () => contractsScreen(this));
-    if (f.phase === 'regular') add('Trade', tradeDeadlinePassed(f) ? 'The trade deadline has passed' : `Deal with CPU teams · deadline after week ${Math.ceil(f.weeks * 0.6)}`, () => tradeScreen(this));
-    add('Transactions', 'Trades and signings around the league', () => transactionsScreen(this));
-    add('Roster', `${me.roster.length} players`, () => this.ctx.rosterScreen(f.userTeam, () => this.hub(items.length - 3)));
-    add('Depth Chart', 'Starters and rotation', () => this.ctx.depthScreen(f.userTeam, () => this.hub(items.length - 2)));
-    add('Main Menu', 'Your franchise autosaves', this.ctx.onExit);
-    screens.frame('menu-screen',
-      el('div.fr-head', {}, logoCanvas(me.logo, 64), el('div', {},
-        el('div.fr-team', { text: `${me.city} ${me.name}` }),
-        el('div.fr-sub', { text: `${f.year} season · ${stage} · ${recText(rec)}` }),
-        el('div.fr-next', { text: next }))),
-      el('div.menu-list', {}, items));
-    screens.nav.set(items, { onBack: this.ctx.onExit, index: Math.min(focus, items.length - 1) });
+    const season = [
+      tile('', 'list', 'Standings', `${CONFERENCES[me.conference]} ${DIVISIONS[me.division]}`, () => this.standingsScreen(), mini),
+      tile('', 'calendar', 'Schedule', 'Your games, every score', () => this.scheduleScreen(f.phase === 'regular' ? f.week : f.weeks - 1)),
+      f.phase === 'playoffs' ? tile('', 'bracket', 'Bracket', 'Seeds and results', () => this.bracketScreen()) : null,
+      tile('', 'chart', 'Team Stats', 'Season totals', () => this.teamStatsScreen()),
+      tile('', 'trophy', 'Leaders', 'League stat leaders', () => this.leadersScreen()),
+    ].filter(Boolean);
+    const team = [
+      cp ? tile('', 'user', 'My Player', `${cp.pos} · ${cp.ovr} OVR · ${f.career.points} pts`, () => careerScreen(this)) : null,
+      tile('', 'people', 'Roster', `${me.roster.length} players`, () => this.ctx.rosterScreen(f.userTeam, back('Roster'))),
+      tile('', 'clipboard', 'Depth Chart', 'Starters, rotation', () => this.ctx.depthScreen(f.userTeam, back('Depth Chart'))),
+      tile('', 'medkit', 'Injuries', hurt ? `${hurt} hurt` : 'All healthy', () => this.injuryScreen()),
+      tile('', 'money', 'Contracts', capLine(f, me), () => contractsScreen(this)),
+      f.phase === 'regular' ? tile('', 'swap', 'Trade', tradeDeadlinePassed(f) ? 'Deadline passed' : `Deadline: week ${Math.ceil(f.weeks * 0.6)}`, () => tradeScreen(this)) : null,
+    ].filter(Boolean);
+    const league = [
+      tile('', 'news', 'News', latestHeadline(f), () => newsScreen(this)),
+      tile('', 'star', 'Awards & Records', 'MVP, records, champions', () => awardsScreen(this)),
+      tile('', 'swap', 'Transactions', 'Trades and signings', () => transactionsScreen(this)),
+      tile('', 'exit', 'Main Menu', 'Autosaved', this.ctx.onExit),
+    ];
+    const col = (title, tiles, cls = '') => el(`div.fr-col${cls}`, {}, el('div.fr-col-head', { text: title }), ...tiles);
+    const top = el('div.hub-top', {}, el('div.hub-logo', { html: `FRANCHISE <span>${f.year}</span>` }),
+      el('div.hub-me', { style: { '--tc': me.colors.primary } }, logoCanvas(me.logo, 40),
+        el('div', {}, el('small', { text: `${stage.toUpperCase()} · ${recText(rec)}` }), el('b', { text: `${me.city} ${me.name}` }))));
+    screens.frame('hub-screen fr-hub-screen', top,
+      el('div.fr-hub', {}, el('div.fr-hero', {}, ...hero), col('Season', season), col('Team', team), col('League', league)),
+      el('div.hub-foot', { html: `<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Main menu <span class="tiny">${f.name || ''} · autosaves</span>` }));
+    screens.root.style.setProperty('--accent', me.colors.primary);
+    const items = [...hero, ...season, ...team, ...league];
+    const at = typeof focus === 'string' ? items.findIndex((t) => t.key === focus) : focus ?? 0;
+    screens.nav.set(items, { spatial: true, onBack: this.ctx.onExit, index: Math.max(0, Math.min(at, items.length - 1)) });
   }
 
   /** The human's game is decided (played or simmed): sim the others, move on if everything is done. */

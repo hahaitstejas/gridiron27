@@ -22,6 +22,7 @@ import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.
 import { PLAYOFF_ROUND_NAMES } from './franchise/season.js';
 import { makeConditions, conditionsText } from './game/weather.js';
 import { introShot, INTRO_T } from './render/intro.js';
+import { TRAITS } from './data/traits.js';
 import { RNG } from './core/rng.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
@@ -363,6 +364,7 @@ function onSessionEvent(e) {
   else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
   else if (e.type === 'tackle') input.rumble(0.35, 110);
   else if (e.type === 'flag') renderer.showFlag?.(e);
+  else if (e.type === 'trait') { const p = session?.sim?.players[e.player]; if (p) hud.ticker(`★ ${TRAITS[e.trait]?.name || e.trait}: ${p.name}`); }
   else if (e.type === 'hardCount') hud.ticker(e.result === 'jump' ? 'Hard count: the defense jumped! Free play' : e.result === 'flinch' ? 'Hard count: your line flinched' : 'Hard count: nobody bit');
   else if (e.type === 'watching') hud.ticker('On the sideline: fast-forwarding to your next snap');
 }

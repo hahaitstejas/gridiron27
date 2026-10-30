@@ -1,3 +1,4 @@
+import { has } from '../data/traits.js';
 import { GRAVITY, HALF_WIDTH } from '../core/constants.js';
 import { clamp } from '../core/math.js';
 import { reactionDelay } from './play.js';
@@ -84,7 +85,8 @@ function release(sim, qb, rec, kind, lead, place = null) {
     const dist = Math.hypot(tx - qb.x, tz - qb.z);
     const pressure = pressureOn(sim, qb);
     const moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
-    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22) * (1 + pressure * 0.9 + moving * 0.6);
+    // Traits: Pocket Poise halves the pressure penalty, Cannon keeps deep balls tighter.
+    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22 * (has(qb, 'cannon') ? 0.6 : 1)) * (1 + pressure * 0.9 * (has(qb, 'pocketPoise') ? 0.5 : 1) + moving * 0.6);
     if (kind === 'bullet') sd *= 1.1;
     if (sim.difficulty) sd *= qb.team !== sim.humanTeam ? sim.difficulty.cpuAccuracy ?? 1 : sim.difficulty.humanAccuracy ?? 1;
     sd *= 1 - 0.45 * sim.sl(qb.team, 'qbAccuracy');
@@ -237,8 +239,14 @@ function resolveCatch(sim, reach, late = false) {
     if (b.catchType === 'aggressive') pPlay -= 0.08;
     else if (b.catchType === 'rac') pPlay += 0.05;
     if (userPick) pPlay -= 0.06; // going for the pick, not the swat: miss it and the receiver has it
-    pPlay = clamp(pPlay, 0.03, 0.95);
-    if (rng.next() < pPlay) {
+    // Traits: a Lockdown defender plays more balls; a Route Technician's breaks leave him a step behind.
+    const intendedR = sim.players[b.intended];
+    const lock = has(d, 'lockdown') ? 0.07 : 0, tech = has(intendedR, 'routeTech') ? 0.06 : 0;
+    pPlay = clamp(pPlay + lock - tech, 0.03, 0.95);
+    const playRoll = rng.next();
+    if (tech && playRoll >= pPlay && playRoll < pPlay + tech) sim.emit('trait', { player: intendedR.id, trait: 'routeTech' });
+    if (playRoll < pPlay) {
+      if (lock && playRoll >= pPlay - lock) sim.emit('trait', { player: d.id, trait: 'lockdown' });
       // Base hands, then much better odds when the defender beat the receiver to the ball, when the
       // ball is thrown into a crowd, or when the receiver is out of the play entirely.
       const ir = sim.players[b.intended];
@@ -254,7 +262,10 @@ function resolveCatch(sim, reach, late = false) {
       if (b.place) pInt *= 0.6;
       if (recDist < 0.8) pInt *= 0.6;
       if (userPick) pInt = Math.min(0.92, pInt + 0.22 + sim.R(d, 'catching') * 0.002);
-      if (rng.next() < pInt && Math.abs(b.z) < HALF_WIDTH - 0.2) {
+      const hawk = has(d, 'ballhawk') ? 0.12 : 0;
+      const intRoll = rng.next();
+      if (intRoll < pInt + hawk && Math.abs(b.z) < HALF_WIDTH - 0.2) {
+        if (hawk && intRoll >= pInt) sim.emit('trait', { player: d.id, trait: 'ballhawk' });
         interception(sim, d);
       } else {
         deflect(sim, d);
@@ -288,6 +299,8 @@ function resolveCatch(sim, reach, late = false) {
   const ct = b.catchType && r.id === b.intended ? b.catchType : null;
   if (ct === 'aggressive') contest *= 0.55;
   else if (ct === 'rac') contest *= 1.35;
+  const sure = has(r, 'sureHands') ? contest * 0.4 : 0; // Sure Hands: traffic matters much less
+  contest -= sure;
   let pCatch = 0.57 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
@@ -305,7 +318,9 @@ function resolveCatch(sim, reach, late = false) {
     incomplete(sim, 'oob');
     return;
   }
-  if (rng.next() < pCatch) {
+  const catchRoll = rng.next();
+  if (catchRoll < pCatch) {
+    if (sure > 0.05 && catchRoll >= pCatch - sure) sim.emit('trait', { player: r.id, trait: 'sureHands' });
     sim.stats.receiver = r.id;
     sim.stats.catchX = r.x;
     r.anim = 'catch'; r.animT = 0;

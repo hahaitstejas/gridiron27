@@ -6,6 +6,7 @@ import { RATINGS } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise } from '../franchise/franchise.js';
 import { SEASON_LENGTHS } from '../franchise/season.js';
+import { traitsOf, TRAITS } from '../data/traits.js';
 import { CAREER_POSITIONS, createCareerPlayer, startCareer, careerPlayer, careerKeys, upgradeCost, trainRating, lineText, XP_PER_POINT } from '../franchise/career.js';
 
 const POS_NAMES = { QB: 'Quarterback (calls the offense)', HB: 'Running back', WR: 'Wide receiver', TE: 'Tight end', DE: 'Defensive end', OLB: 'Outside linebacker',
@@ -74,6 +75,11 @@ export function careerScreen(ui, focus = 0) {
     row.activate = () => { if (trainRating(f, p, k)) { ui.save(); careerScreen(ui, rows.indexOf(row)); } };
     return row;
   });
+  // Traits: the ones he has, and what the others at his position need (a goal for the skill points).
+  const have = traitsOf(p);
+  const goals = Object.entries(TRAITS).filter(([id, t]) => t.pos.includes(p.pos) && !have.includes(id))
+    .map(([, t]) => `${t.name}: ${Object.entries(t.need).map(([k, v]) => `${label(k)} ${p.ratings[k] ?? 0}/${v}`).join(', ')}`);
+  const traitBox = el('div.cr-traits', { html: `${have.map((t) => `<i>★ ${TRAITS[t].name}</i>`).join('')}${goals.length ? `<small>To unlock · ${goals.join(' · ')}</small>` : ''}` });
   const back = el('div.start-btn', { text: 'Back to the Hub' });
   back.activate = () => ui.hub();
   const log = c.games.slice(0, 8).map((g) => el('div.cr-game', {}, el('b', { text: `${g.year}${g.week ? ` · Wk ${g.week}` : ' · Playoffs'} vs ${ui.teams[g.opp]?.abbr || '?'}` }),
@@ -84,6 +90,7 @@ export function careerScreen(ui, focus = 0) {
       el('div', {}, el('div.cr-name', { text: `${p.first} ${p.last}` }), el('div.cr-sub', { text: `${p.pos} · ${team ? `${team.city} ${team.name}` : 'Free agent'} · age ${p.age} · year ${f.year - (p.rookieYear || f.year) + 1}` })),
       el('div.cr-ovr', {}, el('small', { text: 'OVR' }), el('b', { text: String(p.ovr) })),
       el('div.cr-pts', {}, el('small', { text: 'SKILL POINTS' }), el('b', { text: String(c.points) }), el('div.cr-xp', {}, el('i', { style: { width: `${(100 * c.xp) / XP_PER_POINT}%` } })))),
+    traitBox,
     el('div.cr-body', {}, el('div.cr-ratings', {}, rows), el('div.cr-log', {}, el('h3', { text: 'Game log' }), ...(log.length ? log : [el('div.cr-game', { text: 'No games yet: play (or sim) your first game from the hub.' })]))),
     back,
     el('div.setup-help', { html: `<b class="btn A">A</b> train the rating (+1) &nbsp; <b class="btn B">B</b> back &nbsp; · XP comes from every game, played or simmed (${XP_PER_POINT} XP = 1 point)` }));

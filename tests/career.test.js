@@ -121,3 +121,21 @@ describe('broadcast info', () => {
     for (const d of D.filter((x) => x.result === 'Touchdown')) expect(d.yards).toBe(100 - Math.round(d.start));
   }, 60000);
 });
+
+describe('traits', () => {
+  it('come from ratings and fire during plays', async () => {
+    const { traitsOf } = await import('../src/data/traits.js');
+    expect(traitsOf({ pos: 'WR', ratings: { catching: 90, routeRunning: 70 } })).toEqual(['sureHands']);
+    expect(traitsOf({ pos: 'CB', ratings: { catching: 90 } })).toEqual([]); // wrong position for Sure Hands
+    const { defaultTeams: dt } = await import('../src/data/teams.js');
+    const teams = generateLeagueRosters(dt(), 41);
+    // Give one team stars everywhere so the traits come up.
+    for (const p of teams[5].roster) for (const k of ['catching', 'routeRunning', 'passBlock', 'coverage', 'tackling', 'hitPower', 'passRush', 'breakTackle']) p.ratings[k] = 95;
+    const seen = new Set();
+    for (let g = 0; g < 2; g++) {
+      const s = new GameSession({ teams: g ? [teams[5], teams[6]] : [teams[6], teams[5]], settings: { quarterMinutes: 15 }, seed: 50 + g, fast: true });
+      for (let k = 0; k < 2e6 && s.state !== 'over'; k++) { s.tick(STEP, null); for (const e of s.events) if (e.type === 'trait') seen.add(e.trait); }
+    }
+    for (const t of ['sureHands', 'lockdown', 'enforcer']) expect(seen.has(t)).toBe(true);
+  }, 90000);
+});

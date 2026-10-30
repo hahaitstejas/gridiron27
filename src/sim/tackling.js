@@ -1,3 +1,4 @@
+import { has } from '../data/traits.js';
 import { clamp } from '../core/math.js';
 import { HALF_WIDTH } from '../core/constants.js';
 import { injuryChance, rollInjury } from './injuries.js';
@@ -157,9 +158,15 @@ export function attemptTackle(sim, d, c, air) {
   }
   if (sim.difficulty) p += c.team === sim.humanTeam ? (sim.difficulty.cpuTackle ?? 0) : -(sim.difficulty.humanTackle ?? 0);
   p += 0.12 * sim.sl(d.team, 'tackling');
-  p = clamp(p, 0.04, 0.97);
+  // Traits: an Enforcer wraps up (and hits harder), a Bruiser shrugs off arm tackles.
+  const enf = has(d, 'enforcer') ? 0.07 : 0, bru = has(c, 'bruiser') && !d.engagement ? 0.08 : 0;
+  p = clamp(p + enf - bru, 0.04, 0.97);
+  const tRoll = rng.next();
+  if (enf && tRoll < p && tRoll >= p - enf) sim.emit('trait', { player: d.id, trait: 'enforcer' });
+  if (bru && tRoll >= p && tRoll < p + bru) sim.emit('trait', { player: c.id, trait: 'bruiser' });
+  if (enf && !bigHit && cSpeedHit(c, d) > 6) bigHit = true;
 
-  if (rng.next() < p) {
+  if (tRoll < p) {
     const power = Math.hypot(c.vx - d.vx, c.vz - d.vz) / 10 + (bigHit ? 0.6 : 0);
     // Wrap and fall forward with momentum.
     d.anim = 'tackle'; d.animT = 0;
@@ -222,3 +229,6 @@ function injure(sim, p) {
   sim.injuries.push({ id: p.id, rid: p.rid, team: p.team, name: p.name, pos: p.pos, number: p.number, ...inj });
   sim.emit('injury', { player: p.id, ...inj });
 }
+
+/** Closing speed between tackler and runner (yd/s). */
+function cSpeedHit(c, d) { return Math.hypot(c.vx - d.vx, c.vz - d.vz); }

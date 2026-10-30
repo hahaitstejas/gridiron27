@@ -1,4 +1,5 @@
 // Offensive line blocking, pass rush and block shedding.
+import { has } from '../data/traits.js';
 import { addFoul, foulRate } from './fouls.js';
 const ENGAGE_DIST = 1.05;
 const CONTACT_DIST = 0.85;
@@ -66,7 +67,8 @@ function updateEngagement(sim, e, dt) {
   let bPow = (pass ? sim.R(b, 'passBlock') : sim.R(b, 'runBlock')) * 0.6 + sim.R(b, 'strength') * 0.4 + b.bulk * 6;
   for (const h of e.helpers) bPow += ((pass ? sim.R(h, 'passBlock') : sim.R(h, 'runBlock')) * 0.6 + sim.R(h, 'strength') * 0.4) * 0.55;
   // A user who keeps working (stick held) gets a little extra leverage.
-  const diff = dPow - bPow + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 3 : 0);
+  // Brick Wall linemen hold up in pass protection.
+  const diff = dPow - bPow + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 3 : 0) - (pass && has(b, 'brickWall') ? 6 : 0);
   e.bal = e.bal * 0.95 + diff * 0.05;
 
   // Where the defender wants to go.
@@ -163,12 +165,14 @@ export function passRushMove(sim, d, type) {
   const e = d.engagement;
   if (!e || e.d !== d || (d.rushMoveCd || 0) > sim.t) return;
   const mv = RUSH_MOVES[type] || RUSH_MOVES.swim;
-  const edge = mv.atk(sim, d) - mv.def(sim, e.b);
+  const edge = mv.atk(sim, d) - mv.def(sim, e.b) + (has(d, 'edgeBender') ? 10 : 0) - (has(e.b, 'brickWall') ? 8 : 0);
   // Quick get-off (a move early in the rep) helps; each extra blocker hurts.
   const p = Math.max(0.12, Math.min(0.85, 0.2 + edge * 0.013 + (e.t < 1 ? 0.06 : 0) - e.helpers.length * 0.18));
   sim.emit('rushMove', { player: d.id, kind: type });
   const qb = sim.bySlot(sim.offIdx, 'QB');
-  if (sim.rng.next() < p) {
+  const roll = sim.rng.next();
+  if (roll < p) {
+    if (has(d, 'edgeBender') && roll >= p - 0.13) sim.emit('trait', { player: d.id, trait: 'edgeBender' });
     d.rushMoveCd = sim.t + 0.9;
     if (type === 'bull') {
       // Walk the blocker back into the pocket; often that's enough to shed him too.

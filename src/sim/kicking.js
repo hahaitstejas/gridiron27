@@ -1,3 +1,4 @@
+import { has } from '../data/traits.js';
 import { GOAL_X, END_X, HALF_WIDTH, GRAVITY } from '../core/constants.js';
 
 const WIND_PUSH = 0.12; // wind acceleration on a kicked ball, per yd/s of wind
@@ -109,7 +110,7 @@ export const fgDistance = (yardLine) => 100 - yardLine + 17;
 export function launchKick(sim, kicker, params) {
   const b = sim.ball;
   const kac = sim.R(kicker, 'kickAccuracy');
-  const kpw = sim.R(kicker, 'kickPower');
+  const kpw = sim.R(kicker, 'kickPower') + (has(kicker, 'bigLeg') ? 3 : 0); // Big Leg: a few more yards
   const type = params.type;
   const spec = KICKS[type];
   // A mis-timed meter press is a shank, not a dribbler that dies at the tee.

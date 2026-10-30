@@ -190,6 +190,13 @@ rounds}, history[], seed, offseason{step, …} }`.
   rookie class; `makePick`, `simToUserPick`, `finishDraft`) → cutdown (`cutDown` to 53 keeping position minimums)
   → `startNextSeason`.
 
+### Traits (`data/traits.js`)
+Original star abilities derived from ratings at eligible positions (`traitsOf(p)`, no save data; ~9% of players): Sure Hands,
+Route Technician, Bruiser, Pocket Poise, Cannon, Edge Bender, Brick Wall, Lockdown, Ballhawk, Enforcer, Big Leg. Sim players
+carry `traits` (entities.js); hooks use `has(p, id)` in passing.js (accuracy, pPlay, pInt, contest), tackling.js, blocking.js
+(shed contest, rush moves), kicking.js. When the trait's own bonus decided the roll the sim emits `trait` → HUD ticker
+"★ Sure Hands: K. Long". Shown on the roster player card and My Player (with what the rest need: a career goal).
+
 ### Career mode (`franchise/career.js`, `ui/career.js`)
 A franchise with `f.career = { rid, xp, points, spent, games[] }` (Franchise menu → New Career: name, position from
 `CAREER_POSITIONS`, number, team). `createCareerPlayer` adds a 21-year-old starter flagged `p.career` (never retired, cut,

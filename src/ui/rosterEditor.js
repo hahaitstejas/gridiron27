@@ -1,3 +1,4 @@
+import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
 import { RATINGS, POSITIONS, overall } from '../data/positions.js';
 import { generatePlayer } from '../data/generator.js';
@@ -68,11 +69,13 @@ export function playerCard(ctx, ti, id, focus = 0) {
   const ovrEl = el('span.pc-ovr', { text: String(p.ovr) });
   const titleEl = el('h1');
   const subEl = el('span');
+  const traitEl = el('span.pc-traits');
   const refresh = () => {
     p.ovr = overall(p);
     ovrEl.textContent = String(p.ovr);
     titleEl.textContent = `#${p.number} ${p.first} ${p.last}`;
     subEl.textContent = `${team.abbr} · ${p.pos} · OVR `;
+    traitEl.innerHTML = traitsOf(p).map((t) => `<i title="${TRAITS[t].desc}">★ ${TRAITS[t].name}</i>`).join('');
   };
   const changed = () => { refresh(); ctx.onChange(); };
 
@@ -137,7 +140,7 @@ export function playerCard(ctx, ti, id, focus = 0) {
   const all = [...rows, trade, release, done];
   screens.frame('depth-screen',
     titleEl,
-    el('div.league-status', {}, subEl, ovrEl),
+    el('div.league-status', {}, subEl, ovrEl, traitEl),
     el('div.setup-opts.card-opts', {}, all),
     el('div.setup-help', { html: '◀▶ change (hold to repeat) &nbsp; <b class="btn A">A</b> type a value &nbsp; <b class="btn B">B</b> back' }));
   refresh();

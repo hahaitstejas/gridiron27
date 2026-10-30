@@ -1,4 +1,5 @@
 import { clamp } from '../core/math.js';
+import { traitsOf } from '../data/traits.js';
 
 /** Create the per-play simulation entity for a roster player. */
 export function makeSimPlayer(idx, rp, team, side, slot) {
@@ -13,6 +14,7 @@ export function makeSimPlayer(idx, rp, team, side, slot) {
     number: rp.number,
     name: `${rp.first[0]}. ${rp.last}`,
     r,
+    traits: traitsOf(rp), // star abilities from ratings (data/traits.js)
     height: (rp.height || 74) / 36, // inches -> yards
     bulk: clamp(((rp.weight || 220) - 180) / 140, 0, 1), // 0 slim .. 1 lineman
     skin: rp.skin ?? 2,

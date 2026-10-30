@@ -1,3 +1,4 @@
+import { frontBonus } from '../ai/defense.js';
 // Offensive line blocking, pass rush and block shedding.
 import { has } from '../data/traits.js';
 import { addFoul, foulRate } from './fouls.js';
@@ -68,7 +69,7 @@ function updateEngagement(sim, e, dt) {
   for (const h of e.helpers) bPow += ((pass ? sim.R(h, 'passBlock') : sim.R(h, 'runBlock')) * 0.6 + sim.R(h, 'strength') * 0.4) * 0.55;
   // A user who keeps working (stick held) gets a little extra leverage.
   // Brick Wall linemen hold up in pass protection.
-  const diff = dPow - bPow + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 3 : 0) - (pass && has(b, 'brickWall') ? 6 : 0);
+  const diff = dPow - bPow + frontBonus(sim, d, pass) + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 3 : 0) - (pass && has(b, 'brickWall') ? 6 : 0);
   e.bal = e.bal * 0.95 + diff * 0.05;
 
   // Where the defender wants to go.

@@ -103,6 +103,11 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   player on the depth chart (`ROTATE_AT`); tired players lose some speed/strength (`TIRING` ratings). Starters
   stay in longer late in close games, in the two-minute drill and on the goal line. Snap counts are in the
   player stats (`snaps`). Typical shares: HB1 ~70%, WR1/2 ~93%, WR3 ~60%, starting DL ~80-90%; QB/OL ~100%.
+- Fronts (defense RB at the line, `FRONT_CALLS` in audibles.js → `defAdj.front` 'pinch'|'spread', `defAdj.show`
+  'blitz'|'crowd'; LT resets): `frontAlign(sim)` in defense.js moves the line / backers / safeties pre-snap, `frontBonus` adds
+  to the defender's side of the block contest in blocking.js. Measured (yds/play vs base 4.7 inside / 4.9 outside / 7.5 pass,
+  7% sacks): pinch 4.5 / 5.5 / 7.1; spread 4.6 / 4.4 / 7.6; show blitz 4.4 / 6.7 / 6.9 with 10% sacks; crowd 4.4 / 5.2 / 7.7.
+  The CPU calls them by situation (`cpuCoverageCall(play, rng, m)`).
 - Pass protection (offense LB at the line on pass plays, `PROTECTION_CALLS` / `protectCall(play, key)` in audibles.js):
   slide left/right (`play.prot`: the line's lateral cost in offense.js `assignProtection` shifts one gap, backs take the
   other edge), max protect (HB/FB/TE routes → block, `protKey: 'max'`: idle blockers double-team the nearest engaged

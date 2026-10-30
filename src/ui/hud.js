@@ -56,6 +56,7 @@ export class Hud {
       ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect · LB pitch (speed option) · hold LT at the mesh to keep (zone read)'],
       ['At the line (offense)', 'A snap · X audible · Y hot route · RB motion · LB protection (slide left/right, max protect, everyone out) · LT hard count (may draw the defense offside: a free play) · B spike · hold RT to see the play art (one player)'],
       ['Catching (ball in the air)', 'Y aggressive catch (wins in traffic, no run after) · X run after catch (turns upfield, riskier) · B possession (sure hands, feet in at the sideline)'],
+      ['At the line (defense)', 'X audible · Y hot route (your player) · LB coverage (press/off, shade, disguise) · RB front (pinch, spread, show blitz, crowd the line)'],
       ['Defense', 'B switch player · RT sprint · A swat · Y with the ball in the air: go for the pick · X dive tackle · Y strip · RS ↑ hit stick · RS ←→↑ rush moves when blocked'],
       ['Kicking', 'A start meter · A set power · A set accuracy (near the line) · left stick aims'],
       ['Kick block', 'Beat the protection to a spot just in front of the holder (punter), then A jump / X lay out as the ball comes off the foot'],
@@ -258,7 +259,7 @@ export class Hud {
     } else if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${sim.offPlay.type === 'pass' && session.match.phase === 'scrimmage' ? `<b class="btn LB">LB</b> Protection${protTag(sim.offPlay)} &nbsp; ` : ''}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}<b class="btn view">View</b> Timeout`;
-    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${sim.isKick && sim.offPlay.type !== 'kickoff' ? 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ' : ''}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
+    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${sim.isKick && sim.offPlay.type !== 'kickoff' ? 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ' : ''}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.state === 'live' && session.humanSide === 'defense' && sim.players[sim.controlledId]?.engagement?.d === sim.players[sim.controlledId]) h = '<b class="btn A">A</b> Bull rush &nbsp; <b class="btn X">X</b> Swim &nbsp; <b class="btn Y">Y</b> Spin &nbsp; RS ↓ Rip';
     else if (sim && sim.state === 'live' && sim.ball.state === 'air' && !sim.kick && session.humanSide === 'offense' && sim.ball.intended === sim.controlledId) {
@@ -284,7 +285,7 @@ export class Hud {
             a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span></div>`).join('') +
             `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
         } else if (a.mode === 'adjust' || a.mode === 'protect') {
-          au.innerHTML = `<div class="au-title">${a.mode === 'protect' ? 'Protection' : 'Coverage'}</div>` +
+          au.innerHTML = `<div class="au-title">${a.mode === 'protect' ? 'Protection' : a.title || 'Coverage'}</div>` +
             a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span></div>`).join('') +
             `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
         } else if (a.mode === 'motion' && !a.slot) {
@@ -439,7 +440,8 @@ function protTag(play) {
 
 function coverageTag(adj) {
   if (!adj) return '';
-  const parts = [adj.cover === 'press' ? 'Press' : adj.cover === 'off' ? 'Off' : '', adj.shade === 'in' ? 'inside' : adj.shade === 'out' ? 'outside' : '', adj.disguise ? 'disguised' : ''].filter(Boolean);
+  const parts = [adj.cover === 'press' ? 'Press' : adj.cover === 'off' ? 'Off' : '', adj.shade === 'in' ? 'inside' : adj.shade === 'out' ? 'outside' : '', adj.disguise ? 'disguised' : '',
+    adj.front ? `${adj.front} line` : '', adj.show === 'blitz' ? 'showing blitz' : adj.show === 'crowd' ? 'crowding the line' : ''].filter(Boolean);
   return parts.length ? ` &nbsp; <small>${parts.join(', ')}</small>` : '';
 }
 

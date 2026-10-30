@@ -92,6 +92,45 @@ export function alignMan(sim, walk = 0) {
 }
 
 const SAFETIES = new Set(['FS', 'SS']);
+const ENDS = new Set(['LE', 'RE']), TACKLES = new Set(['LDT', 'RDT', 'DT', 'NT']), BACKERS = new Set(['LOLB', 'MLB', 'ROLB', 'LILB', 'RILB', 'WLB', 'SLB']);
+
+/**
+ * Front calls (defAdj.front / defAdj.show, defense RB at the line): pinch the line inside or spread it wide,
+ * walk the linebackers up to show blitz, or crowd the line with safeties and backers in the box.
+ */
+export function frontAlign(sim) {
+  const a = sim.defAdj;
+  if (!a || (!a.front && !a.show) || /^st_/.test(sim.defPlay.id || '')) return;
+  for (const d of sim.defense()) {
+    const l = sim.toLocal(d.x, d.z);
+    let down = l.down, lat = l.lat;
+    const side = Math.sign(lat || 1);
+    if (a.front === 'pinch') { if (ENDS.has(d.slot)) lat -= side * 1.1; else if (TACKLES.has(d.slot)) lat -= side * 0.4; }
+    if (a.front === 'spread') { if (ENDS.has(d.slot)) lat += side * 0.3; } // a wider set; the edge-rush effect is in frontBonus
+    if (a.show === 'blitz' && BACKERS.has(d.slot)) { down = 2.3; lat *= 0.85; }
+    if (a.show === 'crowd') {
+      if (BACKERS.has(d.slot)) down = Math.min(down, 3.2);
+      if (SAFETIES.has(d.slot) && !d.disguised) { down = Math.min(down, 7.5); lat = clamp(lat, -6, 6); }
+    }
+    if (down === l.down && lat === l.lat) continue;
+    const w = sim.toWorld(down, lat);
+    d.x = w.x; d.z = clamp(w.z, -25.5, 25.5);
+  }
+}
+
+/**
+ * Shed bonus from the front for a defensive lineman (+ helps him): pinched lines win inside runs and lose the
+ * edge; spread lines win the edge rush and give up inside runs. Linebackers showing blitz arrive faster.
+ */
+export function frontBonus(sim, d, pass) {
+  const f = sim.defAdj?.front;
+  if (!f || d.team !== sim.defIdx) return 0;
+  const run = sim.offPlay.type === 'run' && sim.offPlay.run;
+  const inside = run && Math.abs(run.aim?.[1] ?? 0) < 3;
+  if (f === 'pinch') return run ? (inside ? 5 : -5) : -2;
+  if (f === 'spread') return pass ? (ENDS.has(d.slot) ? 9 : 0) : run ? (inside ? -4 : 6) : 0;
+  return 0;
+}
 /** Safeties with a deep job: 0 (cover 0), 1 (one high) or 2 (two high) is the shell the play really plays. */
 export function shellOf(defPlay) {
   let n = 0;

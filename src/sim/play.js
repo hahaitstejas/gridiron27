@@ -10,7 +10,7 @@ import { updateAnimations } from './anim.js';
 import { getOffFormation, getDefFormation } from '../data/playbook.js';
 import { ROUTES } from '../data/routes.js';
 import { runOffenseAI } from '../ai/offense.js';
-import { runDefenseAI, assignDefense, alignMan, disguiseAlign } from '../ai/defense.js';
+import { runDefenseAI, assignDefense, alignMan, disguiseAlign, frontAlign } from '../ai/defense.js';
 import { applyHuman } from './human.js';
 import { setupSpecialSnap, updateSpecial, newMeter } from './kicking.js';
 import { startMove } from './tackling.js';
@@ -117,6 +117,7 @@ export class PlaySim {
     this.alignDefense(defF);
     alignMan(this);
     disguiseAlign(this);
+    frontAlign(this);
     const oFace = this.dir > 0 ? 0 : Math.PI;
     for (const p of this.players) {
       p.facing = p.pfacing = p.side === 'O' ? oFace : oFace + Math.PI;

@@ -10,7 +10,7 @@ import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
 import { applyScenario, scenarioById, scenarioCheck } from './scenarios.js';
 import { newDrill, drillSpot, drillPlays, drillControl, drillWatch, drillScore, DRILLS } from './drills.js';
 import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHALLENGE_T, REVIEW_T } from './review.js';
-import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall } from './audibles.js';
+import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall, FRONT_CALLS } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice , KICK_FOULS } from './penalties.js';
@@ -164,7 +164,7 @@ export class GameSession {
     const off = this.offTeam, def = this.defTeam;
     if (this.drill) { const d = drillPlays(this.drill); this.choice = { off: d.off, def: d.def }; this.flushMessages(); this.emit('playcall', { human: this.humanSide }); return; }
     if (!this.calls(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
-    if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng); }
+    if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng, m); }
     // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
     if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
     // The human's special-teams unit comes on automatically (kick return, punt return, FG block).
@@ -374,6 +374,8 @@ export class GameSession {
       if (options.length) this.audible = { mode, options, team };
     } else if (mode === 'adjust') {
       this.audible = { mode, options: COVERAGE_CALLS, team };
+    } else if (mode === 'front') {
+      this.audible = { mode: 'adjust', options: FRONT_CALLS, team, title: 'Front' };
     } else if (mode === 'protect') {
       if (this.sim.offPlay.type === 'pass') this.audible = { mode, options: PROTECTION_CALLS, team };
     } else if (mode === 'dhot') {
@@ -397,10 +399,10 @@ export class GameSession {
     if (a.mode === 'adjust') {
       const opt = a.options.find((o) => input.pressed[o.btn]);
       if (!opt) return;
-      this.defAdj = opt.key === 'reset' ? null : { ...this.defAdj, ...opt.set };
+      this.defAdj = opt.key === 'reset' && !a.title ? null : { ...this.defAdj, ...opt.set };
       this.audible = null;
       this.rebuildPresnap();
-      this.emit('audible', { label: opt.label, play: 'Coverage', side: 'defense' });
+      this.emit('audible', { label: opt.label.replace(/ \(.*\)$/, ''), play: a.title || 'Coverage', side: 'defense' });
       return;
     }
     if (a.mode === 'protect') {
@@ -529,6 +531,7 @@ export class GameSession {
             : team === off && scrim && f.pressed.RB && !sim.motion ? 'motion'
               : team === def && f.pressed.LB ? 'adjust'
                 : team === off && scrim && f.pressed.LB ? 'protect'
+                  : team === def && scrim && f.pressed.RB ? 'front'
                 : team === def && scrim && f.pressed.Y ? 'dhot' : null;
         if (mode) {
           this.openAudible(mode, team);

@@ -435,7 +435,7 @@ function onSessionEvent(e) {
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
   else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); if (session.match.lastPlayText && !session.practice) hud.pbp('PLAY', session.match.lastPlayText); }
-  else if (e.type === 'audible') hud.ticker(['Coverage', 'Protection'].includes(e.play) ? `${e.play}: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);
+  else if (e.type === 'audible') hud.ticker(['Coverage', 'Protection', 'Front'].includes(e.play) ? `${e.play}: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);
   else if (e.type === 'review' && e.phase === 'review') hud.ticker(e.booth ? 'The booth is reviewing the play' : `${session.teams[e.by].abbr} challenges the ruling`);
   else if (e.type === 'reviewDone') hud.banner(e.reversed ? 'REVERSED' : 'CALL STANDS', e.text.replace(/^After review, /, ''), 2.6, e.reversed ? 'score' : 'miss');
   else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);

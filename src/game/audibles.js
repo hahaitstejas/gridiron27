@@ -99,14 +99,30 @@ export const COVERAGE_CALLS = [
 
 export const DISGUISE_RATE = 0.25;
 
+// Front calls (defense RB at the line): line splits and linebacker / safety depth.
+export const FRONT_CALLS = [
+  { btn: 'A', key: 'pinch', label: 'Pinch the line (stop inside runs)', set: { front: 'pinch' } },
+  { btn: 'B', key: 'spread', label: 'Spread the line (contain the edge)', set: { front: 'spread' } },
+  { btn: 'X', key: 'blitz', label: 'Show blitz (more sacks, weak outside)', set: { show: 'blitz' } },
+  { btn: 'Y', key: 'crowd', label: 'Crowd the line (stop the run, thin coverage)', set: { show: 'crowd' } },
+  { btn: 'LT', key: 'reset', label: 'Reset front', set: { front: null, show: null } },
+];
+
 /** The CPU defense's coverage call for a play: man coverage presses more often than zone. */
-export function cpuCoverageCall(defPlay, rng) {
+export function cpuCoverageCall(defPlay, rng, m = null) {
   if (!defPlay || /^st_/.test(defPlay.id)) return null;
   const r = rng.next();
-  const call = defPlay.coverage === 'man' ? (r < 0.3 ? { cover: 'press' } : r < 0.42 ? { cover: 'off' } : null)
+  let call = defPlay.coverage === 'man' ? (r < 0.3 ? { cover: 'press' } : r < 0.42 ? { cover: 'off' } : null)
     : (r < 0.12 ? { cover: 'press' } : r < 0.27 ? { cover: 'off' } : null);
   // About a quarter of snaps the CPU disguises its safety shell.
-  if (rng.next() < DISGUISE_RATE) return { ...call, disguise: true };
+  if (rng.next() < DISGUISE_RATE) call = { ...call, disguise: true };
+  // Fronts by situation: short yardage pinches and crowds, obvious passing downs spread the rush.
+  if (m && m.phase === 'scrimmage') {
+    const f = rng.next();
+    if (m.toGo <= 2 && f < 0.6) call = { ...call, front: 'pinch', show: f < 0.35 ? 'crowd' : null };
+    else if (m.toGo >= 3 && m.toGo <= 6 && f < 0.25) call = { ...call, front: 'spread' };
+    else if (/blitz|fire|cover0/i.test(defPlay.id) ? f < 0.3 : f < 0.06) call = { ...call, show: 'blitz' };
+  }
   return call;
 }
 

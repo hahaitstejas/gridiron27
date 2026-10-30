@@ -244,7 +244,7 @@ export class GameRenderer {
     this.precip.update(dt, this.rig.camera.position);
     if (this.flagT > 0 && (this.flagT -= dt) <= 0) this.flag.visible = false;
     this.stadium.update(dt, excitement);
-    this.rig.update(dt, focus, dir, phase, snap);
+    this.rig.update(dt, focus, dir, phase, snap, { shot: this.presentation.celebration() });
     this.renderer.render(this.scene, this.rig.camera);
   }
 

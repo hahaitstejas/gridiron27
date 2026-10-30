@@ -563,7 +563,8 @@ export class GameSession {
     }
     this.emit('result', { result: r, outcome, statLines });
     this.state = 'post';
-    this.wait = this.fast ? 0 : 0.7;
+    // A touchdown gets a few seconds for the celebration (render/presentation.js); the clock is stopped anyway.
+    this.wait = this.fast ? 0 : r.touchdown !== null && r.touchdown !== undefined && !this.practice ? 3.0 : 0.7;
   }
 }
 

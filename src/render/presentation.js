@@ -9,6 +9,8 @@ import { HALF_WIDTH } from '../core/constants.js';
 
 const JOG = 4.2; // yd/s
 const HUDDLE_DELAY = 0.8; // seconds after the whistle before players head to the huddle
+const CEL_T = 3.2; // touchdown celebration (scorer + teammates, close-up camera) before the walk back
+const CEL_STYLES = ['cel_spike', 'cel_point', 'cel_flex', 'cel_leap'];
 
 // Officials: [name, downfield, lateral] from the ball in the offense frame (lateral 'S' = on the sideline).
 const CREW = [
@@ -60,6 +62,10 @@ export class Presentation {
       const a = nearest(ball.x, ball.z);
       const b = nearest(ball.x, ball.z, this.refs.indexOf(a));
       for (const r of [a, b]) this.signal(r, 'sig_td', 3);
+      // The scorer celebrates (style by player, so a star keeps his own) and his teammates join him.
+      const idx = ball.carrier >= 0 ? ball.carrier : -1;
+      const sp = sim.players[idx];
+      if (sp && !session.fast) this.cel = { idx, team: sp.team, t: 0, style: CEL_STYLES[(sp.number + sp.id) % CEL_STYLES.length], x: sp.x, z: sp.z, dir: session.match.dirOf(sp.team) };
     } else if (e.type === 'incomplete' && e.why !== 'spike') this.signal(nearest(ball.x, ball.z), 'sig_incomplete', 1.8);
     else if (e.type === 'flag' && e.live) {
       // A flag flies on the field: the nearest official throws it.
@@ -95,6 +101,8 @@ export class Presentation {
     const mode = huddling ? 'huddle' : lining ? 'lineup' : null;
     if (mode !== this.mode) { this.mode = mode; this.modeT = 0; if (mode === 'huddle') this.startHuddle(sim); }
     this.modeT += dt;
+    if (this.cel && mode === 'huddle') this.cel.t += dt;
+    if (this.cel && (this.cel.t > CEL_T || (mode !== 'huddle' && sim.state === 'presnap'))) this.cel = null;
     if (mode === 'huddle') display = this.huddle(sim, m, dir, losX, ballZ, dt);
     else if (mode === 'lineup') display = this.lineup(sim, session.presnapT, dt);
     else if (!mode && sim.state === 'presnap') this.spots.clear();
@@ -102,6 +110,45 @@ export class Presentation {
     // ---- officials ----
     this.officials(sim, session, dir, losX, ballZ, dt);
     return { display, refs: this.refs, ballAt: mode === 'huddle' && this.modeT > HUDDLE_DELAY + 0.5 ? { x: losX, z: ballZ } : null };
+  }
+
+  /** Close-up camera target while a touchdown celebration runs: { x, z, dir } or null. */
+  celebration() {
+    const c = this.cel;
+    if (!c || c.t > CEL_T - 0.3) return null;
+    const d = this.disp[c.idx];
+    return d ? { x: d.x, z: d.z, facing: d.facing, t: c.t } : null;
+  }
+
+  /** Touchdown: the scorer celebrates facing the field; teammates run over and celebrate around him. */
+  celebrate(sim, i, d, dt) {
+    const c = this.cel, p = sim.players[i];
+    if (i === c.idx) {
+      d.vx = d.vz = 0;
+      d.facing = turn(d.facing, c.dir > 0 ? Math.PI : 0, dt * 5); // back toward the field (and the camera)
+      if (d.anim !== c.style) { d.anim = c.style; d.animT = 0; }
+      c.x = d.x; c.z = d.z;
+      return true;
+    }
+    if (p.team !== c.team || Math.hypot(d.x - c.x, d.z - c.z) > 28) return false;
+    // An arc behind the scorer (toward the end line), so the camera in front of him sees everyone.
+    const a = (c.dir > 0 ? 0 : Math.PI) + ((i % 11) / 10 - 0.5) * 2.6;
+    const r = 1.5 + (i % 3) * 0.55;
+    const tx = c.x + Math.cos(a) * r, tz = c.z + Math.sin(a) * r;
+    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz);
+    if (dist > 0.4) {
+      const v = Math.min(7, dist / dt);
+      d.vx = (dx / dist) * v; d.vz = (dz / dist) * v;
+      d.x += d.vx * dt; d.z += d.vz * dt;
+      d.facing = turn(d.facing, Math.atan2(dz, dx), dt * 9);
+      if (d.anim !== 'run') { d.anim = 'run'; d.animT = 0; }
+      d.cycle += dt * (2.2 + v * 1.05);
+    } else {
+      d.vx = d.vz = 0;
+      d.facing = turn(d.facing, Math.atan2(c.z - d.z, c.x - d.x), dt * 6);
+      if (d.anim !== 'celebrate') { d.anim = 'celebrate'; d.animT = 0; }
+    }
+    return true;
   }
 
   startHuddle(sim) {
@@ -128,7 +175,9 @@ export class Presentation {
       const off = p.team === m.possession;
       const s = this.huddleSpot(off, k, dir, losX, ballZ);
       d.animT += dt;
-      if (this.modeT < HUDDLE_DELAY) {
+      if (this.cel && d.anim !== 'down' && !(d.anim === 'getup' && d.animT < 0.6) && this.celebrate(sim, i, d, dt)) {
+        // celebrating
+      } else if (this.modeT < HUDDLE_DELAY) {
         // A beat after the whistle: whoever is down stays down for a moment, the rest stand.
         if (!d.down) { d.anim = 'idle'; d.vx = d.vz = 0; }
       } else if (d.down && d.anim === 'down') { d.anim = 'getup'; d.animT = 0; }

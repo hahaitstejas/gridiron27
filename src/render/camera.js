@@ -22,7 +22,13 @@ export class CameraRig {
   update(dt, focus, dir, phase, snap = false, extra = {}) {
     const p = this._p, l = this._l;
     const fz = focus.z;
-    switch (this.mode) {
+    // A presentation shot (touchdown celebration) overrides the mode: low, in front of the subject.
+    const shot = extra.shot;
+    if (shot) {
+      const fx = Math.cos(shot.facing), fz2 = Math.sin(shot.facing);
+      p.set(shot.x + fx * 8 + fz2 * 2.5, 4.2, shot.z + fz2 * 8 - fx * 2.5);
+      l.set(shot.x, 1.1, shot.z);
+    } else switch (this.mode) {
       case 'endzone':
         p.set(focus.x - dir * 30, 14, fz * 0.3);
         l.set(focus.x + dir * 5, 0, fz * 0.8);
@@ -47,7 +53,7 @@ export class CameraRig {
       this.pos.copy(p);
       this.look.copy(l);
     } else {
-      const k = 1 - Math.exp(-dt * (phase === 'presnap' ? 3 : 4.2));
+      const k = 1 - Math.exp(-dt * (shot ? 2.2 : phase === 'presnap' ? 3 : 4.2));
       const kl = 1 - Math.exp(-dt * 6);
       this.pos.lerp(p, k);
       this.look.lerp(l, kl);

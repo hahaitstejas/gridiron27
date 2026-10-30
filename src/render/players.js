@@ -607,6 +607,32 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 2.9 + Math.sin(time * 8) * 0.2; pose.arms[0].elbow = pose.arms[1].elbow = 0.2;
       pose.rootY = Math.abs(Math.sin(time * 6)) * 0.2;
       break;
+    // ---- touchdown celebrations (scorer) ----
+    case 'cel_spike': {
+      // Wind up and spike the ball, then arms out.
+      const k = Math.min(1, t / 0.55);
+      pose.lean = k < 0.6 ? -0.15 : 0.35 * (1 - (k - 0.6) / 0.4) + 0.05;
+      pose.arms[1].pitch = k < 0.6 ? 2.9 : 2.9 - (k - 0.6) / 0.4 * 2.6; pose.arms[1].elbow = 0.3;
+      if (t > 0.8) { pose.arms[0].pitch = pose.arms[1].pitch = 2.5; pose.arms[0].out = pose.arms[1].out = 0.7; pose.lean = -0.1; }
+      break;
+    }
+    case 'cel_point':
+      // Point to the sky with both hands.
+      pose.lean = -0.2; pose.head = 0.45;
+      pose.arms[0].pitch = 2.7; pose.arms[1].pitch = 2.95; pose.arms[0].elbow = 0.35; pose.arms[1].elbow = 0.05; pose.arms[0].out = 0.25; pose.arms[1].out = 0.1;
+      break;
+    case 'cel_flex':
+      // Wide stance, both arms flexed.
+      pose.crouch = -0.08; pose.legs[0].out = pose.legs[1].out = 0.28; pose.legs[0].knee = pose.legs[1].knee = 0.3;
+      pose.arms[0].pitch = pose.arms[1].pitch = 1.5; pose.arms[0].out = pose.arms[1].out = 0.85 + Math.sin(t * 7) * 0.06; pose.arms[0].elbow = pose.arms[1].elbow = 1.75;
+      break;
+    case 'cel_leap': {
+      // Jump with arms up, every 1.1 s.
+      const c = (t % 1.1) / 1.1, air = c < 0.5 ? Math.sin(c / 0.5 * Math.PI) : 0;
+      pose.rootY = air * 0.7; pose.legs[0].hip = pose.legs[1].hip = air * 0.6; pose.legs[0].knee = pose.legs[1].knee = air * 1.1 + (c > 0.85 ? 0.4 : 0);
+      pose.arms[0].pitch = pose.arms[1].pitch = 2.6 + air * 0.4; pose.arms[0].out = pose.arms[1].out = 0.35;
+      break;
+    }
     case 'huddle':
       // Hands on knees in the huddle, listening for the call.
       pose.crouch = -0.12; pose.lean = 0.55; pose.head = -0.1;

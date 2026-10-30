@@ -152,20 +152,36 @@ export function buildStadium(renderer, home, away) {
   group.add(stands);
 
   // Crowd: one instanced mesh, bobbing in the vertex shader. Excitement drives the motion.
-  const crowdGeo = new THREE.BoxGeometry(0.5, 0.75, 0.35);
-  crowdGeo.translate(0, 0.4, 0);
+  // Each fan: a torso (shirt = instance color) and a head (skin tone, sometimes a cap) from one merged
+  // geometry; aHead marks the head's vertices so the shader colors it.
+  const torsoG = new THREE.BoxGeometry(0.46, 0.58, 0.3); torsoG.translate(0, 0.32, 0);
+  const headG = new THREE.BoxGeometry(0.22, 0.24, 0.22); headG.translate(0, 0.76, 0.02);
+  torsoG.setAttribute('aHead', new THREE.Float32BufferAttribute(new Float32Array(torsoG.attributes.position.count).fill(0), 1));
+  headG.setAttribute('aHead', new THREE.Float32BufferAttribute(new Float32Array(headG.attributes.position.count).fill(1), 1));
+  const crowdGeo = mergeGeometries([torsoG, headG]);
   const crowdMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const crowdUniforms = { uTime: { value: 0 }, uExcite: { value: 0.2 } };
   crowdMat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = crowdUniforms.uTime;
     shader.uniforms.uExcite = crowdUniforms.uExcite;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uExcite;')
+      .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uExcite;\nattribute float aHead; varying float vHead; varying float vH;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         float ph = float(gl_InstanceID) * 12.9898;
         float h = fract(sin(ph) * 43758.5453);
+        vHead = aHead; vH = h;
         float bob = max(0.0, sin(uTime * (5.0 + h * 4.0) + h * 30.0));
-        transformed.y += bob * (0.05 + uExcite * 0.55) * step(0.35, h + uExcite * 0.6);`);
+        transformed.y += bob * (0.05 + uExcite * 0.55) * step(0.35, h + uExcite * 0.6);
+        // A little sway at the shoulders so rows don't move in lockstep.
+        transformed.x += sin(uTime * (1.3 + h) + h * 20.0) * 0.04 * position.y;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vHead; varying float vH;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        if (vHead > 0.5) {
+          // Skin tones, with a cap in the shirt color on about a quarter of the fans.
+          vec3 skin = mix(vec3(0.93, 0.76, 0.62), vec3(0.36, 0.22, 0.14), fract(vH * 7.31));
+          diffuseColor.rgb = fract(vH * 3.7) < 0.25 ? diffuseColor.rgb * 0.9 : skin;
+        }`);
   };
   const crowd = new THREE.InstancedMesh(crowdGeo, crowdMat, seatPositions.length);
   const m = new THREE.Matrix4();
@@ -174,12 +190,13 @@ export function buildStadium(renderer, home, away) {
   let seed = 11;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const fillCrowdColors = (h, a) => {
-    const palette = [h.colors.primary, h.colors.primary, h.colors.secondary, h.colors.primary, a.colors.primary, '#e8e8e8', '#202020', '#7a5c3a'];
+    const palette = [h.colors.primary, h.colors.primary, h.colors.secondary, h.colors.primary, h.colors.primary, a.colors.primary, a.colors.secondary,
+      '#e8e8e8', '#d8d8d8', '#202020', '#3b4f6b', '#5a5f66', '#7a5c3a'];
     for (let i = 0; i < seatPositions.length; i++) {
       // Leave some seats empty-looking (dark), keep a mostly-home crowd.
       const c = rnd();
       col.set(palette[Math.floor(c * palette.length)]);
-      col.offsetHSL(0, 0, (rnd() - 0.5) * 0.15);
+      col.offsetHSL(0, -0.12 * rnd(), (rnd() - 0.5) * 0.18);
       crowd.setColorAt(i, col);
     }
     crowd.instanceColor.needsUpdate = true;

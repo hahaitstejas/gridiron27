@@ -52,18 +52,32 @@ League → Saves & Files → Export, then Import in the offline copy.
 | Returner: fair catch · kneel in end zone | Y · X | I · U |
 | Penalty against the CPU: accept / decline | A / X | J / U |
 | Spike (at the line) | B | K |
+| Hard count (at the line, once per play: may draw the defense offside) | LT | E |
+| Catch type (ball in the air to your receiver): aggressive · run after catch · possession | Y · X · B | I · U · K |
+| Defense, ball in the air: go for the interception | Y | I |
 | No-huddle: rerun last play (play-call screen) | Y | I |
 | Timeout (between plays) | View (or Share) | T |
 | Audible (pre-snap) | X, then A/B/X/Y/RB | U, then J/K/U/I/O |
 | Hot route (pre-snap) | Y, receiver button, then left stick (A = block) | I, receiver key, then WASD |
 | Motion (pre-snap, offense) | RB, receiver button, then left stick (toward the ball = across) | O, receiver key, then A/D |
 | Coverage (pre-snap, defense) | LB, then A press / B off / X shade inside / Y shade outside / RB reset | Q, then the same keys |
-| Instant replay (between plays) | RS click | R |
+| Instant replay (between plays) | RS click; LB/RB switch camera angle | R; Q/O |
 | Depth chart (pause menu → Coaching) | A pick up / drop, ▲▼ move, X remove | J, W/S, U |
 | Controls panel | — | H |
 
 Kicks use a three-press meter: press A to start the kicker, A again to set power on the way up, and A a
 third time as the needle comes back to set accuracy (closest to the line = straightest).
+
+**Career** (Franchise → New Career): create a player, pick his position and team, and play only as him: the CPU calls
+the plays (unless he's your QB or middle linebacker) and fast-forwards the snaps he sits out. Every game earns XP for skill
+points you spend on his ratings in **My Player**; reaching a trait's thresholds unlocks it.
+
+**Traits**: stars have abilities that come from their ratings (Sure Hands, Lockdown, Enforcer, Edge Bender, Brick Wall,
+Ballhawk, Bruiser, Pocket Poise, Cannon, Route Technician, Big Leg). A ★ callout appears when one decides a play.
+
+**Broadcast touches**: a skippable pregame intro, huddles and officials who signal and announce penalties, touchdown
+celebrations, a play-by-play line after every play, drive summaries, a halftime stats card, the chain crew, sidelines with
+reserves and coaches, and a Player of the Game on the final screen.
 
 **Practice** (main menu) runs any play from any spot and situation with no clock. **Settings** has the camera (standard / wide / tight / high), name tags, the post-play stat card and automatic replays of big plays.
 

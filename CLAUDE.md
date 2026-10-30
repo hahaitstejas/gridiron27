@@ -107,6 +107,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Play-call screen (`ui/playcall.js`): a formation strip (LB/RB; Suggested, My Plays, every formation by family, Special
   Teams; ▲▼ jumps a family), three big dark diagrams per page (◀▶ pages) picked with X / A / Y, PASS/RUN (ZONE/MAN)
   badges and per-game `session.callStats` ("N CALLS | avg yds"); RT flips, View = timeout.
+- Play art (one player): hold RT at the line → `game/playArt.js` `playArt(sim, team)` returns world-space shapes for the
+  human's side (offense: routes via `sim.makeRoute` colored by receiver button, run path, block T's; defense: zones, man
+  matchups via `matchMan`, rush/blitz/spy arrows) and `render/playArt.js` `PlayArtOverlay` paints them on the turf (one
+  mesh, RGBA vertex colors, rebuilt ~8×/s so motion drags routes along). Not in 2-player, kicks or watched snaps.
 - Tempo: on the play-call screen LS click = no-huddle (`session.noHuddle()` reruns `lastOffPlay`, no accelerated-clock
   runoff); at the line B = spike (`session.spike()` swaps in `st_spike` and snaps). View (or the Share button,
   gamepad button 17) calls a timeout between plays; the pause menu has Call Timeout too.

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { PlayArtOverlay } from './playArt.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildStadium } from './stadium.js';
 import { PlayerRenderer } from './players.js';
@@ -89,6 +90,7 @@ export class GameRenderer {
     this.flag = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.05, 0.35), new THREE.MeshLambertMaterial({ color: 0xffd400, emissive: 0x332a00 }));
     this.flag.visible = false;
     scene.add(this.flag);
+    this.playArt = new PlayArtOverlay(scene);
 
     this.rig = new CameraRig(container.clientWidth / container.clientHeight);
     this.container = container;

@@ -37,6 +37,8 @@ import { playbookScreen } from './ui/playbookEditor.js';
 import { registerCustomPlays, loadSpecs } from './data/customPlays.js';
 import { statsScreen } from './ui/statsScreen.js';
 import { energyOf } from './game/fatigue.js';
+import { playArt } from './game/playArt.js';
+const SPECIAL_ART = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike']);
 
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
@@ -491,6 +493,7 @@ function frameBody(now) {
     renderer.drawSim(replay.player.ghost, replay.alpha ?? 0, time);
     renderer.lines.set(null, null);
     renderer.setAim(null);
+    renderer.playArt.update(null, 1);
     renderer.renderReplay(dt, replay.player.focus(), replay.yaw, replay.pitch, replay.dist, replay.fresh);
     replay.fresh = false;
     hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed, auto: replay.auto, angle: REPLAY_ANGLES[replay.angle].name });
@@ -501,6 +504,10 @@ function frameBody(now) {
     const losX = sim ? sim.losX : m.xOf(m.possession, m.yardLine);
     renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null, scrim ? m.down : null);
     renderer.setAim(sim);
+    // One player: hold RT at the line to see your play drawn on the field.
+    const showArt = sim && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
+      && session.humanTeam !== null && session.humanTeam !== undefined && (input.frame.rt || 0) > 0.5 && !SPECIAL_ART.has(sim.offPlay.type);
+    renderer.playArt.update(showArt ? playArt(sim, session.humanTeam) : null, dt);
     const b = renderer.ball.position;
     const live = sim && sim.state !== 'presnap';
     const phase = !live || session.state === 'playcall' ? 'presnap' : sim.ball.state === 'air' || sim.ball.state === 'kick' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
@@ -528,6 +535,7 @@ function frameBody(now) {
   } else {
     // Menus: slow orbit over the empty stadium.
     renderer.hidePlayers();
+    renderer.playArt.update(null, 1);
     renderer.lines.set(null, null);
     attract += dt * 0.05;
     renderer.renderOrbit(dt, attract);

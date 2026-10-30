@@ -166,9 +166,10 @@ export class GameSession {
     if (!this.calls(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
     if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng, m); }
     // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
-    if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
-    // The human's special-teams unit comes on automatically (kick return, punt return, FG block).
-    else if (m.phase === 'kickoff' || (this.choice.off && defenseForSpecial(this.choice.off))) this.choice.def = this.cpuDefenseFor(this.choice.off);
+    if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && m.phase === 'scrimmage' && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
+    // The human's special-teams unit comes on automatically (kick return, punt return, FG block). (This used to be an
+    // `else` of the motion roll above, so ~30% of the time a human returner got the defensive play-call screen.)
+    if (m.phase === 'kickoff' || (this.choice.off && defenseForSpecial(this.choice.off))) this.choice.def = this.cpuDefenseFor(this.choice.off);
     this.flushMessages();
     this.emit('playcall', { human: this.humanSide });
   }

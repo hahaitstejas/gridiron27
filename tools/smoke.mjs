@@ -37,7 +37,7 @@ await page.keyboard.press('KeyJ'); await page.waitForTimeout(600); // Play Now
 await page.screenshot({ path: `${out}/setup.png` });
 await page.keyboard.press('KeyJ'); await page.waitForTimeout(1500); // Start Game
 await page.screenshot({ path: `${out}/intro.png` });
-if ((await state(page)).app === 'intro') { await page.keyboard.press('KeyJ'); await page.waitForTimeout(600); } // skip the pregame intro
+for (let i = 0; i < 10 && (await state(page)).app === 'intro'; i++) { await page.keyboard.press('KeyJ'); await page.waitForTimeout(600); } // skip the pregame intro
 for (let i = 0; i < 40; i++) {
   const s = await state(page);
   if (s.app !== 'game') break;

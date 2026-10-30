@@ -81,3 +81,14 @@ describe('new penalties', async () => {
     expect(valueOfPlay(m, { offTeam: 0, kickType: 'fg', possTeam: 0, fgGood: true, touchdown: null })).toBe(3);
   });
 });
+
+describe('special teams play calls', () => {
+  it('never asks a human receiving team to call a defense on kickoffs, punts or field goals', () => {
+    const teams = generateLeagueRosters(defaultTeams(), 9);
+    for (let seed = 0; seed < 30; seed++) {
+      const s = new GameSession({ teams: [teams[0], teams[1]], settings: { quarterMinutes: 5 }, humanTeam: 0, seed });
+      if (s.offTeam === 0) continue; // we kick: our call
+      if (s.match.phase === 'kickoff') expect(s.needsHumanCall).toBe(false);
+    }
+  });
+});

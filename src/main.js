@@ -21,6 +21,7 @@ import { offseasonScreen } from './ui/offseason.js';
 import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.js';
 import { PLAYOFF_ROUND_NAMES } from './franchise/season.js';
 import { makeConditions, conditionsText } from './game/weather.js';
+import { introShot, INTRO_T } from './render/intro.js';
 import { RNG } from './core/rng.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
@@ -184,6 +185,26 @@ function startGame(p, opts = {}) {
   lastSim = null;
   speed = opts.speed || 1;
   for (const e of session.events) onSessionEvent(e);
+  // Pregame intro (not in practice, fast CPU games or when turned off in Settings).
+  if (prefs.intro !== false && !opts.practice && speed <= 1 && !opts.noIntro) {
+    app = 'intro';
+    intro = { t: 0 };
+    hud.hideAll();
+    const lg = championship ? `${LEAGUE.championship}` : opts.franchise && league.franchise ? `${LEAGUE.name} · ${league.franchise.year} season` : LEAGUE.name;
+    hud.intro({ title: lg.toUpperCase(), home, away, recs: session.records, sub: conditionsText(conditions) });
+  }
+}
+
+let intro = null;
+function updateIntro(f, dt) {
+  intro.t += dt;
+  if (intro.t >= INTRO_T || f.pressed.A || f.pressed.B || f.pressed.Menu || f.pressed.X) endIntro();
+}
+function endIntro() {
+  intro = null;
+  hud.intro(null);
+  app = 'game';
+  snapCam = false; // the game camera eases in from the last intro shot
 }
 
 function startReplay(auto = false) {
@@ -351,6 +372,9 @@ function frameBody(now) {
     screens.extraButtons?.(f);
     nav.update(f, dt);
     consumed = true;
+  } else if (app === 'intro' && intro) {
+    updateIntro(f, dt);
+    consumed = true;
   } else if (app === 'replay' && replay) {
     updateReplay(f, dt);
     consumed = true;
@@ -391,7 +415,14 @@ function frameBody(now) {
   const sim = session?.sim || null;
   if (app !== 'replay' && sim !== lastSim) { if (sim) renderer.players.setColors(sim, session.teams); lastSim = sim; }
   const alpha = Math.min(1, acc / STEP);
-  if (app === 'replay' && replay) {
+  if (app === 'intro' && intro && session) {
+    const m = session.match;
+    if (sim) renderer.drawSim(sim, alpha, time, session); else renderer.hidePlayers();
+    renderer.lines.set(null, null);
+    renderer.setAim(null);
+    const sh = introShot(intro.t, sim ? sim.losX : m.xOf(m.possession, 35), m.dirOf(m.possession));
+    renderer.renderShot(dt, sh.pos, sh.look, 0.6);
+  } else if (app === 'replay' && replay) {
     renderer.drawSim(replay.player.ghost, replay.alpha ?? 0, time);
     renderer.lines.set(null, null);
     renderer.setAim(null);

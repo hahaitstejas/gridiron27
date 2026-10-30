@@ -230,6 +230,18 @@ export class GameRenderer {
     this.renderer.render(this.scene, cam);
   }
 
+  /** A scripted camera shot (pregame intro): pos/look arrays. Also parks the game camera there for a smooth hand-off. */
+  renderShot(dt, pos, look, excitement = 0.5) {
+    this.precip.update(dt, this.rig.camera.position);
+    this.stadium.update(dt, excitement);
+    const cam = this.rig.camera;
+    cam.position.set(...pos);
+    cam.lookAt(...look);
+    this.rig.pos.copy(cam.position);
+    this.rig.look.set(...look);
+    this.renderer.render(this.scene, cam);
+  }
+
   /** Slow orbit over the empty stadium for menus. */
   renderOrbit(dt, t) {
     this.precip.update(dt, this.rig.camera.position);

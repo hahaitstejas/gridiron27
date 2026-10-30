@@ -274,6 +274,12 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   an enforced penalty (`SIGNAL` per foul type). The sim never sees any of this.
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js).
+- Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc
+  behind him and `CameraRig.update(..., { shot })` cuts to a close-up (`Presentation.celebration()`); the session holds
+  `post` 3 s after a TD (not fast/practice) so it plays before the PAT call.
+- Pregame intro (`render/intro.js` `introShot(t)`, app state `intro` in main.js, `Hud.intro()` lower-third): sweep, midfield
+  dolly, crane to the kickoff; A/B/X/Menu skips; Settings → Pregame intro; never in practice or sped-up games.
+- Penalties: `Hud.flag()` is a referee announcement card (foul name, who, enforcement) at the top center.
 
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/

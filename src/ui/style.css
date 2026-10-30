@@ -461,3 +461,18 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .ps-clock { font: 800 26px var(--fd); letter-spacing: 1px; }
 .ps-down { font-size: 14px; color: var(--gold); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
 .pause-grid { grid-template-rows: repeat(2, minmax(110px, 19vh)) minmax(70px, 10vh); }
+
+/* Pregame intro lower-third */
+#intro { position: absolute; left: 50%; bottom: 7%; transform: translateX(-50%); width: min(900px, 92vw); animation: fbIn 0.5s ease-out; --skew: -9deg; }
+#intro .in-top { display: inline-block; background: var(--gold, #ffd34d); color: #111; font: 900 15px var(--fd); letter-spacing: 3px; padding: 4px 14px; transform: skewX(var(--skew)); margin-left: 14px; }
+#intro .in-row { display: flex; align-items: stretch; transform: skewX(var(--skew)); background: rgba(6, 10, 22, 0.94); border-bottom: 4px solid var(--gold, #ffd34d); box-shadow: 0 16px 40px rgba(0,0,0,0.6); }
+#intro .in-row > * { transform: skewX(calc(var(--skew) * -1)); }
+#intro .in-team { flex: 1; display: flex; align-items: center; gap: 16px; padding: 14px 22px; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 75%, #000), transparent 85%); }
+#intro .in-team:last-child { flex-direction: row-reverse; text-align: right; background: linear-gradient(270deg, color-mix(in srgb, var(--tc) 75%, #000), transparent 85%); }
+#intro .in-team img { width: 76px; height: 76px; filter: drop-shadow(0 6px 12px rgba(0,0,0,0.6)); }
+#intro .in-team small { display: block; font: 700 15px var(--fd); letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.75); }
+#intro .in-team b { display: block; font: 900 40px/1 var(--fd); font-style: italic; text-transform: uppercase; }
+#intro .in-team i { font: 700 15px var(--fd); font-style: normal; color: var(--gold, #ffd34d); }
+#intro .in-at { align-self: center; font: 900 22px var(--fd); color: rgba(255,255,255,0.55); padding: 0 10px; }
+#intro .in-sub { margin: 8px 0 0 30px; font: 700 15px var(--fd); letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.85); text-shadow: 0 2px 8px #000; }
+#intro .in-skip { position: absolute; right: 8px; bottom: -2px; font-size: 13px; opacity: 0.8; }

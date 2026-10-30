@@ -17,7 +17,7 @@ export class Hud {
       <div id="icons"></div>
       <div id="tags"><div class="tag me"></div><div class="tag other"></div></div>
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
-      <div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
+      <div id="intro" class="hidden"></div><div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
       <div id="ticker"></div>
       <div id="callout"></div>
       <div id="statcard" class="hidden"></div>
@@ -62,8 +62,18 @@ export class Hud {
       <p class="tiny">H toggles this panel · \` toggles FPS</p>`;
   }
 
+  /** Pregame lower-third: matchup, records, league, conditions (null hides it). */
+  intro(info) {
+    const el = this.$('intro');
+    if (!info) { el.classList.add('hidden'); return; }
+    const team = (t, rec) => `<div class="in-team" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}"><div><small>${t.city}</small><b>${t.name}</b>${rec ? `<i>${rec}</i>` : ''}</div></div>`;
+    el.innerHTML = `<div class="in-top">${info.title}</div><div class="in-row">${team(info.away, info.recs?.[1])}<div class="in-at">AT</div>${team(info.home, info.recs?.[0])}</div>
+      <div class="in-sub">${info.sub}</div><div class="in-skip"><b class="btn A">A</b> Skip</div>`;
+    el.classList.remove('hidden');
+  }
+
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'kickmeter', 'statcard', 'audible', 'penaltybox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'kickmeter', 'statcard', 'audible', 'penaltybox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;

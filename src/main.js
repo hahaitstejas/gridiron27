@@ -1,18 +1,9 @@
-// Bundled fonts (offline): the Settings -> Font sets in style.css.
-import '@fontsource/oswald/500.css';
-import '@fontsource/oswald/700.css';
-import '@fontsource/bebas-neue/400.css';
+// Bundled font (offline): Saira Condensed for every menu, HUD and canvas text.
+import '@fontsource/saira-condensed/400.css';
+import '@fontsource/saira-condensed/500.css';
+import '@fontsource/saira-condensed/600.css';
 import '@fontsource/saira-condensed/700.css';
 import '@fontsource/saira-condensed/800.css';
-import '@fontsource/teko/500.css';
-import '@fontsource/teko/600.css';
-import '@fontsource/rajdhani/500.css';
-import '@fontsource/rajdhani/700.css';
-import '@fontsource/barlow/400.css';
-import '@fontsource/barlow/600.css';
-import '@fontsource/barlow/700.css';
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
@@ -35,7 +26,7 @@ import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
-import { Screens, loadPrefs, savePrefs, applyFont } from './ui/screens.js';
+import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen } from './ui/depthEditor.js';
@@ -48,7 +39,6 @@ import { energyOf } from './game/fatigue.js';
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 const prefs = loadPrefs();
-applyFont(prefs.font);
 // A saved league (Phase 4) wins; without one, the optional spreadsheets in public/local/ apply.
 let saved = null;
 try { const slot = activeSlot(); saved = slot ? deserializeLeague(await readSave(slot)) : null; } catch (e) { console.warn('Could not load the saved league', e); }
@@ -67,6 +57,8 @@ const input = new InputManager({ other: () => input2?.padIndex ?? -1 });
 input2 = new InputManager({ keyboard: false, other: () => input.padIndex }); // player 2 (local 2-player)
 let p2Wait = null; // start callback waiting for player 2's controller
 const hud = new Hud(document.getElementById('hud'));
+// Canvas text (field numbers, end zones, jerseys, logos, video boards) is painted once: wait for the font first.
+try { await Promise.all(['500', '700', '800'].map((w) => document.fonts.load(`${w} 40px "Saira Condensed"`))); } catch { /* fall back */ }
 const renderer = new GameRenderer(document.getElementById('game'), teams[prefs.home], teams[prefs.away]);
 const nav = new Nav();
 const screens = new Screens(document.getElementById('screen'), nav);
@@ -141,7 +133,7 @@ function toMenu() {
     onLeague: () => league.menu(),
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
-    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); applyFont(prefs.font); toMenu(); }, onBack: toMenu }),
+    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
     onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
     onSaves: () => league.saves(0, toMenu),
   }, {

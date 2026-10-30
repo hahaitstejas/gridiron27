@@ -220,9 +220,9 @@ export function buildStadium(renderer, home, away) {
     drawLogo(g, a.logo, 854, 175, 120);
     g.fillStyle = '#fff';
     g.textAlign = 'center';
-    g.font = '900 64px "Arial Black", Impact, sans-serif';
+    g.font = '800 68px "Saira Condensed", "Arial Narrow", sans-serif';
     g.fillText('VS', 512, 200);
-    g.font = '700 40px Arial, sans-serif';
+    g.font = '700 42px "Saira Condensed", "Arial Narrow", sans-serif';
     g.fillStyle = '#ffd34d';
     g.fillText(line, 512, 340);
     boardTex.needsUpdate = true;

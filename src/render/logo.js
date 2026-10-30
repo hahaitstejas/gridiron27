@@ -57,7 +57,7 @@ export function drawLogo(ctx, logo, cx, cy, r) {
   ctx.fill();
   const text = logo.text || '';
   const size = r * (text.length <= 2 ? 0.9 : text.length === 3 ? 0.68 : 0.5) * (logo.shape === 'star' ? 0.7 : 1);
-  ctx.font = `900 ${size}px "Arial Black", Impact, sans-serif`;
+  ctx.font = `800 ${size}px "Saira Condensed", "Arial Narrow", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = size * 0.12;

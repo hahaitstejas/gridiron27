@@ -1,10 +1,7 @@
-/* Fonts: three roles, switched by Settings -> Font (html[data-font]). --fd display (titles, scorebug, big
-   numbers), --fc condensed labels, --fb body text. All bundled (@fontsource, OFL), so they work offline. */
-:root { --fd: "Oswald", "Arial Narrow", sans-serif; --fc: "Barlow Condensed", "Arial Narrow", sans-serif; --fb: "Barlow", system-ui, sans-serif; }
-:root[data-font="stadium"] { --fd: "Bebas Neue", "Oswald", sans-serif; --fc: "Barlow Condensed", sans-serif; --fb: "Barlow", system-ui, sans-serif; }
-:root[data-font="tech"] { --fd: "Saira Condensed", sans-serif; --fc: "Saira Condensed", sans-serif; --fb: "Rajdhani", system-ui, sans-serif; }
-:root[data-font="arcade"] { --fd: "Teko", sans-serif; --fc: "Teko", sans-serif; --fb: "Rajdhani", system-ui, sans-serif; }
-:root[data-font="classic"] { --fd: "Arial Black", Impact, sans-serif; --fc: "Arial Narrow", Arial, sans-serif; --fb: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+/* Fonts: Saira Condensed everywhere (bundled via @fontsource, OFL, works offline). Three roles kept as
+   variables so weights/fallbacks can be tuned in one place: --fd display, --fc labels, --fb body. */
+:root { --fd: "Saira Condensed", "Arial Narrow", sans-serif; --fc: "Saira Condensed", "Arial Narrow", sans-serif; --fb: "Saira Condensed", "Arial Narrow", system-ui, sans-serif; }
+body { font-weight: 500; letter-spacing: 0.2px; }
 :root { --gold: #ffd34d; --panel: rgba(8, 12, 26, 0.88); --line: rgba(255, 255, 255, 0.12); }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #05070d; color: #fff; font-family: var(--fb); overflow: hidden; user-select: none; }

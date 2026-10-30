@@ -25,7 +25,7 @@ function setup(w, h, dark = false) {
     g.lineWidth = 1;
     for (let d = -10; d <= 30; d += 5) { const y = losY - d * sy; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
     g.fillStyle = 'rgba(255,255,255,0.22)';
-    g.font = `800 ${Math.round(sy * 3.2)}px Arial, sans-serif`;
+    g.font = `800 ${Math.round(sy * 3.2)}px "Saira Condensed", sans-serif`;
     g.textAlign = 'center';
     for (const [d, n] of [[10, '30'], [20, '20']]) {
       for (const x of [w * 0.12, w * 0.88]) { g.save(); g.translate(x, losY - d * sy); g.rotate(x < w / 2 ? Math.PI / 2 : -Math.PI / 2); g.fillText(n, 0, sy * 1.1); g.restore(); }
@@ -166,7 +166,7 @@ export function defenseArt(play, w = 210, h = 120, dark = false) {
 export function specialArt(label, w = 210, h = 120, dark = false) {
   const { c, g } = setup(w, h, dark);
   g.fillStyle = 'rgba(255,255,255,0.9)';
-  g.font = '700 22px Arial, sans-serif';
+  g.font = '700 24px "Saira Condensed", sans-serif';
   g.textAlign = 'center';
   g.fillText(label, w / 2, h / 2 + 8);
   return c;

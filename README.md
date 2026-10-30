@@ -74,10 +74,9 @@ Zone read and speed option, jet sweep (the snap button starts the motion, the ba
 designed QB runs, and fake punts / a fake field goal in the Special Teams tab on 4th down. The CPU calls QB runs
 only with a mobile quarterback and fakes now and then on 4th and short.
 
-### League identity and fonts
+### League identity
 League → Teams & Logos → **League & Conferences**: rename the league, the championship game and both conferences,
 and build or upload a league logo. It's painted at both 25-yard lines, and at midfield in the championship game.
-Settings → **Font** switches the game's typeface (Broadcast, Stadium, Tech, Arcade, Classic) with a live preview.
 
 ### Weather
 Play Now has Weather (clear, rain, snow, windy, random) and Time of day (day, dusk, night, random). Rain makes the ball

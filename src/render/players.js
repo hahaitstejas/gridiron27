@@ -28,7 +28,7 @@ function numberAtlas() {
   const g = c.getContext('2d');
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = 'bold 74px "Arial Narrow", Arial, sans-serif';
+  g.font = '700 78px "Saira Condensed", "Arial Narrow", sans-serif';
   for (let n = 0; n < 100; n++) {
     const cx = (n % 10) * 102.4 + 51.2, cy = Math.floor(n / 10) * 102.4 + 54;
     g.lineWidth = 9;

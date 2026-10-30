@@ -215,11 +215,10 @@ nearest item in that direction by on-screen rectangles (any layout). Shared styl
 hint bar (`.setup-help`). The design is our own; don't copy other games' menus or trade dress.
 
 ### Fonts
-Three CSS roles at the top of style.css: `--fd` display (titles, scorebug, big numbers), `--fc` condensed labels, `--fb`
-body. Settings → Font switches sets via `html[data-font]` (`FONTS` / `applyFont()` in screens.js, live preview):
-broadcast (Oswald + Barlow, default), stadium (Bebas Neue), tech (Saira Condensed + Rajdhani), arcade (Teko + Rajdhani),
-classic (Arial). Fonts are bundled from `@fontsource/*` (imported at the top of main.js; OFL, offline). Canvas text
-(field numbers, jerseys, logos) still uses its own fonts. The post-play stat card sits top-left (clear of the scorebug).
+Saira Condensed everywhere (the user's pick): menus, HUD, scorebug and canvas text (field numbers, end zones, jerseys,
+logos, video boards, play diagrams). Bundled with `@fontsource/saira-condensed` (imported at the top of main.js; OFL,
+offline); main.js waits for `document.fonts.load` before the renderer paints its canvases. CSS roles `--fd` / `--fc` /
+`--fb` at the top of style.css. The post-play stat card sits top-left (clear of the scorebug).
 
 ### League identity (`data/leagueInfo.js`)
 `LEAGUE = { name, championship, logo }` plus the two conference names (written into `CONFERENCES` in place, so every

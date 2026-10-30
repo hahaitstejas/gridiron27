@@ -41,7 +41,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
     g.rotate(rot);
     const name = team.name.toUpperCase();
     const fs = Math.min(5.6 * S, (HALF_WIDTH * 2 * S * 0.86) / (name.length * 0.72));
-    g.font = `900 ${fs}px "Arial Black", Impact, sans-serif`;
+    g.font = `800 ${fs}px "Saira Condensed", "Arial Narrow", sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.lineWidth = fs * 0.09;
@@ -77,7 +77,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
   g.fillRect(px(60), pz(-HALF_WIDTH - 2), 2 * S, (HALF_WIDTH * 2 + 4) * S);
 
   // Yard numbers every 10 yards, read from the sidelines, with direction arrows.
-  g.font = `bold ${2 * S}px "Arial Narrow", Arial, sans-serif`;
+  g.font = `700 ${2.2 * S}px "Saira Condensed", "Arial Narrow", sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   for (let x = -40; x <= 40; x += 10) {

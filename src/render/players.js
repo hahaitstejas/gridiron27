@@ -152,6 +152,9 @@ export class PlayerRenderer {
       stripe: part(box(0.06, 0.03, 0.36), lam(), MAX, false),
       mask: part(maskGeo, mat(0.35, 0.6, 1), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
+      // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
+      visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), mat(0.1, 0.3, 1.2), MAX, false),
+      towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
       bar: part(barGeo, mat(0.35, 0.6, 1), MAX * 2, false),
       cap: part(capGeo, mat(0.8), MAX * 2),
       num: part(numGeo, numMat, MAX * 4, false),
@@ -222,6 +225,8 @@ export class PlayerRenderer {
       P.helmet.setColorAt(i, c.set(helmet));
       P.stripe.setColorAt(i, c.set(u.helmetStripe ? team.colors.secondary : helmet));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
+      P.visor.setColorAt(i, c.set(p.number % 3 ? '#1a1f2a' : '#3a2a10'));
+      P.towel.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);
         P.bar.setColorAt(i * 2 + k, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
@@ -249,7 +254,7 @@ export class PlayerRenderer {
       const i = sim.players.length + r;
       const cap = r === 0 ? '#f4f4f4' : '#141414';
       P.torso.setColorAt(i, c.set('#f2f2f2')); P.pads.setColorAt(i, c.set('#f2f2f2')); P.pelvis.setColorAt(i, c.set('#1a1a1a'));
-      P.neck.setColorAt(i, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.helmet.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
+      P.neck.setColorAt(i, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.helmet.setColorAt(i, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
       for (let k = 0; k < 2; k++) {
         const j = i * 2 + k;
         P.thigh.setColorAt(j, c.set('#1a1a1a')); P.shin.setColorAt(j, c.set('#1a1a1a')); P.shoe.setColorAt(j, c.set('#0e0e0e'));
@@ -270,7 +275,8 @@ export class PlayerRenderer {
       const top = b.coach ? team.colors.primary : jersey, bottom = b.coach ? '#b9a77c' : pants;
       const numColor = isDark(top) ? (isDark(team.colors.secondary) ? '#ffffff' : team.colors.secondary) : (isDark(team.colors.primary) ? team.colors.primary : '#111111');
       P.torso.setColorAt(i, c.set(top)); P.pads.setColorAt(i, c.set(top)); P.pelvis.setColorAt(i, c.set(bottom)); P.neck.setColorAt(i, c.set(skin));
-      P.helmet.setColorAt(i, c.set(b.coach ? team.colors.primary : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.secondary : u.helmetStripe ? team.colors.secondary : helmet));
+      P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
+      P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
       for (let s2 = 0; s2 < 2; s2++) {
         const j = i * 2 + s2;
@@ -363,13 +369,19 @@ export class PlayerRenderer {
     P.neck.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso + 0.04, 0.01)));
     const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotX(pose.head));
     if (official) {
-      // Officials: a flat cap with a bill instead of a helmet and facemask.
-      P.helmet.setMatrixAt(i, cl(head).multiply(trans(0, 0.06, 0)).multiply(scaleM(0.27, 0.16, 0.27)));
-      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.05, 0.13)).multiply(scaleM(2.6, 0.6, 0.45)));
+      // Officials and coaches: a bare head (the helmet part, skin-colored) under a cap: the towel part is the
+      // crown, the helmet stripe the brim.
+      P.helmet.setMatrixAt(i, cl(head).multiply(trans(0, 0.01, 0.01)).multiply(scaleM(0.23, 0.27, 0.25)));
+      P.towel.setMatrixAt(i, cl(head).multiply(trans(0, 0.185, 0)).multiply(scaleM(2.3, 0.33, 16.5)));
+      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.105, 0.15)).multiply(scaleM(2.5, 0.6, 0.42)));
       P.mask.setMatrixAt(i, ZERO); P.bar.setMatrixAt(i * 2, ZERO); P.bar.setMatrixAt(i * 2 + 1, ZERO);
       P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
+      P.visor.setMatrixAt(i, ZERO);
     } else {
       P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
+      const g = gearOf(p);
+      P.visor.setMatrixAt(i, g.visor ? cl(head).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
+      P.towel.setMatrixAt(i, g.towel ? cl(pel).multiply(trans(-0.07, -0.02, (B.torsoD * wide) / 2 + 0.01)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
       P.decal.setMatrixAt(i * 2, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
       P.decal.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
@@ -754,6 +766,13 @@ function computePose(p, time, sim) {
       runLegs(Math.min(1.05, 0.25 + run * 0.85));
   }
   return pose;
+}
+
+/** Per-player gear, stable by number: visors on ~35% (more for skill players), towels on QBs and some skill players. */
+function gearOf(p) {
+  const k = ((p.number || 0) * 37 + (p.skin || 0) * 11) % 100;
+  const skill = ['QB', 'HB', 'WR', 'CB', 'FS', 'SS'].includes(p.pos);
+  return { visor: k < (skill ? 45 : 22), towel: p.pos === 'QB' || (skill && k % 3 === 0) };
 }
 
 // ---------- matrix helpers ----------

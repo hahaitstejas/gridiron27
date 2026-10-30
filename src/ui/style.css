@@ -19,7 +19,7 @@ html, body { margin: 0; height: 100%; background: #05070d; color: #fff; font-fam
 
 .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; border-radius: 12px; font-size: 13px; font-weight: 800; padding: 0 6px; color: #fff; }
 .btn.A { background: #3fbf3f; } .btn.B { background: #e0403a; } .btn.X { background: #3a7be0; } .btn.Y { background: #e8c32c; color: #222; }
-.btn.LB, .btn.RB { background: #59606b; border-radius: 6px; }
+.btn.LB, .btn.RB, .btn.LT, .btn.RT { background: #59606b; border-radius: 6px; }
 
 #bug { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); display: flex; align-items: stretch; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; font-weight: 700; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
 #bug > div { padding: 8px 16px; display: flex; align-items: center; gap: 8px; }

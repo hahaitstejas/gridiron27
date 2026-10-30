@@ -674,7 +674,7 @@ export class PlaySim {
     for (const q of this.players) {
       if (q === p) continue;
       if (q.team === p.team) {
-        if (!q.engagement && q.task?.type !== 'pass_block' && q.task?.type !== 'run_block') q.task = { type: 'escort' };
+        if (!q.engagement && q.task?.type !== 'pass_block' && q.task?.type !== 'run_block' && q.task?.type !== 'kr_block') q.task = { type: 'escort' };
         if (q.slot === 'QB' && q.task?.type !== 'escort') q.task = { type: 'escort' };
       } else {
         // Defenders right on top of the catch/handoff react almost instantly.

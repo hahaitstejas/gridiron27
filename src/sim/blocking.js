@@ -128,7 +128,7 @@ function updateEngagement(sim, e, dt) {
   // Field goal / punt protection is a wall of big bodies for ~1.3 s: rushers rarely get clean through.
   if (sim.kick && b.team === sim.offIdx && b.task?.type === 'pass_block' && !sim.kick.launched) rate *= 0.22;
   if (b.task?.type === 'escort') rate *= sim.kick ? 10 : 3; // open-field blocks don't hold long
-  if (b.task?.type === 'kr_block') rate *= 6; // gunners and coverage fight through return blocks
+  if (b.task?.type === 'kr_block') rate *= sim.ball.state === 'kick' ? (sim.kick?.type === 'punt' ? 2 : 3) : 8; // coverage fights through return blocks (vises hold gunners a bit longer)
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);
 }
 

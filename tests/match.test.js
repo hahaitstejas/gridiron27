@@ -29,13 +29,13 @@ describe('Match rules', () => {
     expect(m.yardLine).toBe(35);
   });
 
-  it('kickoff touchback gives the receiver the 25', () => {
+  it('kickoff touchback gives the receiver the 30', () => {
     const m = newMatch(3);
     const kicker = m.possession;
     m.applyResult({ ...res(m, { yl: 35 }), kickType: 'kickoff', touchback: true, possTeam: 1 - kicker });
     expect(m.phase).toBe('scrimmage');
     expect(m.possession).toBe(1 - kicker);
-    expect(m.yardLine).toBe(25);
+    expect(m.yardLine).toBe(30);
     expect(m.down).toBe(1);
     expect(m.toGo).toBe(10);
   });

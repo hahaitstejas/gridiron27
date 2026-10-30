@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS = {
   difficulty: 'pro',
 };
 
-const TOUCHBACK_KICKOFF = 25;
+const TOUCHBACK_KICKOFF = 30; // modern rule: a kickoff touchback comes out to the 30 (punts: the 20)
 const TOUCHBACK_PUNT = 20;
 const KICKOFF_YL = 35;
 const PAT_YL = 85; // 15-yard line: 33-yard kick

@@ -159,6 +159,8 @@ export function launchKick(sim, kicker, params) {
   if (type === 'fg' || type === 'punt') blockCheck(sim, kicker, type, R);
   for (const p of sim.players) {
     if (p.team === sim.offIdx && p.task && ['pass_block', 'hold_kick', 'cover_wait'].includes(p.task.type)) p.task = { type: 'cover', safety: !!p.task.safety };
+    // The punt-rush unit turns and blocks for the return (it used to just jog back without blocking anyone).
+    if (p.team !== sim.offIdx && p.task?.type === 'st_rush' && type === 'punt') p.task = { type: 'kr_block', drive: { x: -sim.dir, z: 0 } };
     if (p.engagement) sim.breakEngagement(p.engagement);
   }
   // A human on the kicking team takes over a coverage man in the middle of the field.
@@ -474,6 +476,11 @@ function runSpecialAI(sim, dt) {
           // Onside or loose kick: race to where it comes down, then attack the ball itself.
           if (!b.bounces && b.target) seek(p, b.target.x, b.target.z, 1, 0.05);
           else seek(p, b.x + b.vx * 0.25, b.z + b.vz * 0.25, 1, 0.05);
+        } else if (b.state === 'kick') {
+          // Ball still in the air: get downfield in your lane, then break down a few yards short of the catch
+          // (no contact before the catch), so the returner gets a moment to start.
+          const stopAt = k.type === 'punt' ? 6 : 4;
+          seek(p, tgt.x - sim.dir * stopAt, laneZ, d < stopAt + 5 ? 0.5 : 1, 0.6);
         } else if (ret && d < 14) seek(p, ret.x, ret.z, 1, 0.1);
         else seek(p, tgt.x - sim.dir * (d > 15 ? 4 : 0), laneZ, 1, 0.5);
         break;
@@ -497,7 +504,7 @@ function runSpecialAI(sim, dt) {
           // CPU fair catch when the coverage will be on him as the ball arrives.
           if (k.type === 'punt' && !p.fairCatch && !sim.isHumanControlled(p) && b.T - b.t < 1.2) {
             const left = Math.max(0, b.T - b.t);
-            const close = sim.players.some((q) => q.team === sim.offIdx && Math.hypot(q.x - b.target.x, q.z - b.target.z) < 3 + q.maxSpeed * left * 0.45);
+            const close = sim.players.some((q) => q.team === sim.offIdx && Math.hypot(q.x - b.target.x, q.z - b.target.z) < 5 + q.maxSpeed * left * 0.45);
             if (close) { p.fairCatch = true; sim.emit('fairCatchSignal', { player: p.id }); }
           }
         } else if (b.state === 'kick') stop(p);
@@ -513,6 +520,21 @@ function runSpecialAI(sim, dt) {
           break;
         }
         const tgt = b.state === 'kick' && b.target ? b.target : null;
+        const runner = sim.ballLiveRun && sim.ball.state === 'held' ? sim.players[sim.ball.carrier] : null;
+        if (!tgt && runner && runner.team === p.team) {
+          // The return is on: pick up the most dangerous coverage man near me and get between him and the runner.
+          let threat = null, ts = 1e9;
+          for (const q of sim.players) {
+            if (q.team === p.team || q.engagement || q.state !== 'active') continue;
+            const dMe = Math.hypot(q.x - p.x, q.z - p.z);
+            if (dMe > 9) continue;
+            const s = dMe + Math.hypot(q.x - runner.x, q.z - runner.z) * 0.6;
+            if (s < ts) { ts = s; threat = q; }
+          }
+          if (threat) seek(p, threat.x + (runner.x - threat.x) * 0.2, threat.z + (runner.z - threat.z) * 0.2, 1, 0.1);
+          else seek(p, runner.x - sim.dir * 6, runner.z + (p.z - runner.z) * 0.5, 0.9, 1); // lead the way
+          break;
+        }
         if (!tgt) {
           if (k.type === 'punt' && p.task.target !== undefined) {
             const g = sim.players[p.task.target];

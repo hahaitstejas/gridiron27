@@ -18,7 +18,8 @@ export async function attachLogos(teams) {
  * Owns the autosave: editors call `changed()` after every edit.
  */
 export class LeagueUI {
-  constructor({ teams, prefs, screens, onExit, onLeagueReplaced }) {
+  constructor({ teams, prefs, screens, onExit, onLeagueReplaced, loadDefault }) {
+    this.loadDefault = loadDefault; // () => { teams, name }: the default league (+ public/local spreadsheets)
     this.teams = teams;
     this.prefs = prefs;
     this.screens = screens;
@@ -48,6 +49,26 @@ export class LeagueUI {
     let i = 1;
     while (taken.has(`league-${i}`)) i++;
     return `league-${i}`;
+  }
+
+  /**
+   * Back to the real league after franchise mode. A franchise is fictional: its trades, signings, drafts and career
+   * player live only in its own save, so Play Now / Practice / the editors go back to the league it started from
+   * (`franchise.baseSlot`; older franchises: the newest save without a franchise; else the default league).
+   */
+  async leaveFranchise() {
+    if (!this.franchise) return;
+    clearTimeout(this.saveT);
+    if (this.slot) await this.saveNow(); // keep the franchise's progress in its own slot
+    const slot = await baseLeagueSlot(this.franchise.baseSlot);
+    this.franchise = null;
+    let L = null;
+    if (slot) { try { L = deserializeLeague(await readSave(slot)); } catch { L = null; } }
+    if (!L || L.franchise) L = null;
+    this.slot = L ? slot : null;
+    setActiveSlot(this.slot);
+    if (L) await this.replaceLeague(L.teams, L.name);
+    else { const d = await this.loadDefault(); await this.replaceLeague(d.teams, d.name); }
   }
 
   /** Replace the whole league in place (keeps every reference to `teams` valid). */
@@ -158,4 +179,14 @@ export class LeagueUI {
     S.nav.set(rows, { onBack: () => (this.savesBack ? this.savesBack() : this.menu(5)), index: Math.min(focus, rows.length - 1) });
     S.extraButtons = (f) => { if (f.pressed.X) S.nav.current?.deleteSave?.(); };
   }
+}
+
+/** The save slot holding the league a franchise started from: `wanted` if it still exists without a franchise,
+ * otherwise (older franchises: `wanted` undefined) the newest save without one; null = the default league. */
+export async function baseLeagueSlot(wanted) {
+  const saves = await listSaves();
+  if (wanted === null) return null;
+  const hit = wanted !== undefined && saves.find((s) => s.slot === wanted && !s.franchise);
+  if (hit) return hit.slot;
+  return saves.find((s) => !s.franchise)?.slot ?? null;
 }

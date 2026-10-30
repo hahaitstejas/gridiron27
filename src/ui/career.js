@@ -46,10 +46,14 @@ export function newCareer(ui) {
   const start = el('div.start-btn', { text: 'Start Career' });
   start.activate = async () => {
     const L = ui.ctx.league;
+    // Save the real league before the career player joins a roster: leaving the career goes back to it.
+    if (L.slot && !L.franchise) await L.saveNow();
+    const baseSlot = L.franchise ? L.franchise.baseSlot ?? null : L.slot ?? null;
     const seed = (Date.now() % 100000) + 1;
     const p = createCareerPlayer(ui.teams[o.team], o, new RNG(seed));
     L.franchise = createFranchise(ui.teams, { userTeam: o.team, weeks: o.weeks, difficulty: o.difficulty, quarterMinutes: o.quarterMinutes, seed, name: `${o.first} ${o.last} career` });
     startCareer(L.franchise, p);
+    L.franchise.baseSlot = baseSlot;
     L.name = L.franchise.name;
     L.slot = null;
     await L.saveNow();

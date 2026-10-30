@@ -71,8 +71,12 @@ export class FranchiseUI {
     const start = el('div.start-btn', { text: 'Start Franchise' });
     start.activate = async () => {
       const L = this.ctx.league;
-      // A franchise gets its own save slot (a copy of the current league), so the league itself stays as is.
+      // A franchise gets its own save slot (a copy of the current league), so the league itself stays as is;
+      // remember that league so leaving the franchise goes back to it (LeagueUI.leaveFranchise).
+      if (L.slot && !L.franchise) await L.saveNow();
+      const baseSlot = L.franchise ? L.franchise.baseSlot ?? null : L.slot ?? null;
       L.franchise = createFranchise(this.teams, { ...opts, seed: (Date.now() % 100000) + 1 });
+      L.franchise.baseSlot = baseSlot;
       L.name = L.franchise.name;
       L.slot = null;
       await L.saveNow();

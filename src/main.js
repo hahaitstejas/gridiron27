@@ -10,8 +10,8 @@ import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
 import { loadLocalLeague } from './data/localLeague.js';
 import { deserializeLeague } from './data/league.js';
-import { activeSlot, readSave } from './data/storage.js';
-import { LeagueUI, attachLogos } from './ui/league.js';
+import { activeSlot, readSave, setActiveSlot } from './data/storage.js';
+import { LeagueUI, attachLogos, baseLeagueSlot } from './ui/league.js';
 import { rosterScreen } from './ui/rosterEditor.js';
 import { teamEditor, leagueEditor } from './ui/teamEditor.js';
 import { LEAGUE } from './data/leagueInfo.js';
@@ -44,7 +44,17 @@ const teams = generateLeagueRosters(defaultTeams(), 2027);
 const prefs = loadPrefs();
 // A saved league (Phase 4) wins; without one, the optional spreadsheets in public/local/ apply.
 let saved = null;
-try { const slot = activeSlot(); saved = slot ? deserializeLeague(await readSave(slot)) : null; } catch (e) { console.warn('Could not load the saved league', e); }
+try {
+  let slot = activeSlot();
+  saved = slot ? deserializeLeague(await readSave(slot)) : null;
+  // A franchise is fictional: start up on the league it came from, never on its rosters (it loads from the Franchise menu).
+  if (saved?.franchise) {
+    slot = await baseLeagueSlot(saved.franchise.baseSlot);
+    setActiveSlot(slot);
+    saved = slot ? deserializeLeague(await readSave(slot)) : null;
+    if (saved?.franchise) saved = null;
+  }
+} catch (e) { console.warn('Could not load the saved league', e); }
 let local = null;
 if (saved) {
   teams.splice(0, teams.length, ...saved.teams);
@@ -70,6 +80,12 @@ hud.prefs = prefs;
 const league = new LeagueUI({
   teams, prefs, screens,
   onExit: () => toMenu(),
+  // The default league plus any public/local spreadsheets (what a fresh start loads).
+  loadDefault: async () => {
+    const t = generateLeagueRosters(defaultTeams(), 2027);
+    await loadLocalLeague(t);
+    return { teams: t, name: 'My League' };
+  },
   onLeagueReplaced: () => {
     prefs.home = Math.min(prefs.home, teams.length - 1);
     if (prefs.away === prefs.home || prefs.away >= teams.length) prefs.away = (prefs.home + 8) % teams.length;
@@ -125,6 +141,8 @@ let lastSim = null;
 let padName = '';
 
 function toMenu() {
+  // Leaving a franchise: its trades and signings stay in its save; the menus get the real league back.
+  if (league.franchise) { league.leaveFranchise().then(toMenu, (e) => { console.warn(e); league.franchise = null; toMenu(); }); return; }
   app = 'menu';
   session = null;
   lastSim = null;

@@ -154,7 +154,10 @@ Text fields use the browser's prompt dialog (needs a keyboard).
 
 ### Franchise mode (Phase 5, `src/franchise/` + `ui/franchise.js`, `ui/offseason.js`)
 The franchise state is plain JSON stored in the league save (`league.franchise`, `serializeLeague({ franchise })`),
-so a franchise is a save slot: New Franchise copies the current league into a new slot; the Franchise menu lists
+so a franchise is a save slot: New Franchise copies the current league into a new slot (`franchise.baseSlot` = the league
+it came from). A franchise is fictional: `toMenu()` → `LeagueUI.leaveFranchise()` saves it and reloads the base league
+(`baseLeagueSlot()`: that slot, else the newest non-franchise save, else the default + spreadsheets), and startup never
+loads a franchise save as the league, so trades/signings/career players never leak into Play Now, Practice or the editors; the Franchise menu lists
 saves that hold one (`listSaves()` → `franchise` info). State: `{ userTeam, year, weeks, week, phase:
 'regular'|'playoffs'|'offseason', schedule[week][{home, away, score}], stats{rid: season totals}, playoffs{seeds,
 rounds}, history[], seed, offseason{step, …} }`.

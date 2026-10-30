@@ -404,6 +404,9 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   pts and ~350-410 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
   violations. Every play is exercised by `npm test` against several opponents; `npm run sim -- --plays 600
   --only "screen|draw"` checks a subset (each play's ypp should look like football). Known high: CPU completion ~70% and kickoff-return TDs ~2% of kickoffs.
+- Forward progress (`PlaySim.forwardProgress`): while a free defender is within 0.9 yd of the runner, the furthest
+  point the ball reached is kept (`c.fp`); a tackle behind it is spotted there (`result.forwardProgress`), and being
+  driven back 2+ yards in contact blows the whistle (not for a QB in the pocket). 0.35 s free resets it.
 - Ball spotting: the dead-ball spot and the goal-line plane use the **ball's** position
   (`PlaySim.carrierBallPos`), which moves forward as a tackled runner falls (matching the animation). A QB
   slide is spotted where the slide began.

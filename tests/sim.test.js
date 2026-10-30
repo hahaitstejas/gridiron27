@@ -98,6 +98,8 @@ describe('ball spotting', () => {
       const sim = runPlay(s, op, listDefPlays()[0]);
       const r = sim.result;
       if (r.reason !== 'tackle') continue;
+      // Forward progress: the spot is where his progress stopped, never behind the ball.
+      if (r.forwardProgress) { expect((r.spotX - r.ballSpotX) * sim.dir).toBeGreaterThan(0); continue; }
       const c = sim.players[r.carrierId];
       // Ball is spotted ahead of the carrier's feet in his facing direction (he falls forward).
       const ahead = (r.spotX - c.x) * Math.cos(c.facing) + (r.spotZ - c.z) * Math.sin(c.facing);

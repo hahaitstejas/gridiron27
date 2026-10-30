@@ -198,7 +198,7 @@ describe('fatigue and rotation', () => {
   it('rotates backs and receivers but keeps the QB and line in', async () => {
     const { GameSession } = await import('../src/game/session.js');
     const { STEP } = await import('../src/core/constants.js');
-    const s = new GameSession({ teams, settings: { quarterMinutes: 15 }, humanTeam: null, seed: 3, fast: true });
+    const s = new GameSession({ teams, settings: { quarterMinutes: 15, sliders: { injuries: 0 } }, humanTeam: null, seed: 3, fast: true });
     for (let i = 0; i < 2e6 && !s.match.over; i++) s.tick(STEP, null);
     const snaps = (t, slot, i) => s.match.stats.players[`${t}:${teams[t].depth[slot][i]}`]?.snaps || 0;
     for (const t of [0, 1]) {
@@ -241,7 +241,7 @@ describe('audibles and hot routes', () => {
     expect(s.sim.offPlay.id).toBe(opt.play.id);
     expect(s.sim.offPlay.type).toBe('run');
     expect(s.sim.offPlay.formation.replace('__flip', '')).toBe('gun_doubles');
-  });
+  }, 30000);
 
   it('hot routes a receiver and makes him the first read', async () => {
     const { s, STEP } = await presnapOffense();

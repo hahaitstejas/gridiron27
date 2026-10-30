@@ -738,6 +738,27 @@ export class PlaySim {
     }
   }
 
+  /**
+   * Forward progress: while a defender is on the runner, remember the furthest point the ball reached
+   * (c.fp, along his team's direction). Wrapped up and driven back 2+ yards = whistle. Breaking free
+   * (nobody on him for 0.35 s) starts fresh, so reversing field after shaking a tackle still counts.
+   */
+  forwardProgress(c, bp, td) {
+    let contact = false;
+    for (const d of this.players) {
+      if (d.team === c.team || d.engagement || (d.state !== 'active' && d.state !== 'down')) continue;
+      if (Math.hypot(d.x - c.x, d.z - c.z) < 0.9) { contact = true; break; }
+    }
+    const f = bp.x * td;
+    if (contact) {
+      c.fpT = this.t;
+      if (c.fp === undefined || f > c.fp) { c.fp = f; c.fpZ = bp.z; }
+      const pocketQB = c.slot === 'QB' && !this.passThrown && !this.qbCrossed;
+      if (f < c.fp - 2 && c.state === 'active' && !pocketQB) { this.emit('forwardProgress', { player: c.id }); this.tackleCarrier(c, null, 0); c.fallT = 0.1; return false; }
+    } else if (c.fp !== undefined && this.t - c.fpT > 0.35) c.fp = undefined;
+    return false;
+  }
+
   checkRules() {
     if (this.state !== 'live') return;
     const c = this.carrier();
@@ -764,6 +785,7 @@ export class PlaySim {
     if (Math.abs(c.z) > HALF_WIDTH) { this.whistle('oob'); return; }
     const td = this.teamDir(c.team);
     const bp = this.carrierBallPos(c);
+    if (this.forwardProgress(c, bp, td)) return;
     if (bp.x * td >= GOAL_X && c.state !== 'tackled') { this.whistle('td'); return; }
     if (c.x * td <= -END_X) { this.whistle('oob'); return; }
   }
@@ -856,6 +878,8 @@ export class PlaySim {
       r.spotX = clamp(bp.x, -END_X, END_X);
       r.spotZ = bp.z;
       const td = this.teamDir(c.team);
+      // Forward progress: a runner pushed back while in a defender's grasp gets the ball where his progress stopped.
+      if (reason === 'tackle' && c.fp !== undefined && r.spotX * td < c.fp) { r.ballSpotX = r.spotX; r.spotX = clamp(c.fp * td, -END_X, END_X); r.spotZ = c.fpZ; r.forwardProgress = true; }
       if (reason === 'td') r.touchdown = c.team;
       else if (r.spotX * td <= -GOAL_X) {
         if (c.caughtInEZ) r.touchback = true;

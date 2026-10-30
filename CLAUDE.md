@@ -121,6 +121,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).
+- Field-goal target zone (`fgZone(team, m, kickTeam)` in playcaller.js): per kicker `comfort` = 53 + (KPW-85)*0.4 +
+  (KAC-80)*0.1 yds (snow -4, rain -1.5, ±1.2 per yd/s of tail/headwind), `max` = comfort + 4. 4th down: kick inside the
+  comfort zone; the long-shot band only on 4th & 6+; end of a half: anything inside max (+2 at halftime). Isolated make
+  rates (CPU noise 0.6 + (100-KAC)*0.1 deg): 33 yd ~93%, 45 ~83%, 52 ~76%, 57 ~63%.
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
   clock management, timeouts). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.

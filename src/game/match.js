@@ -190,6 +190,7 @@ export class Match {
   afterResult(r, sim, penalty, b) {
     const off = r.offTeam;
     let line = describePlay(this, r, sim, true);
+    if (r.kickType === 'fg' && b.phase === 'scrimmage') line = line.replace(/ is (GOOD|NO GOOD)$/, ` ${Math.round(100 - b.yardLine + 17)}-yd try is $1`);
     if (penalty && penalty.accepted) line = `${penalty.text} (play nullified)`;
     else if (b.phase === 'scrimmage' && this.phase === 'scrimmage' && this.possession === off && this.down === 1 && !r.kickType && (r.yards || 0) > 0 && r.touchdown === null) line += ' · FIRST DOWN';
     this.lastPlayText = b.sit ? `${b.sit}: ${line}` : line;
@@ -590,7 +591,7 @@ function describePlay(m, r, sim, rich = false) {
     const td = r.touchdown !== null && r.touchdown !== undefined ? ' · TOUCHDOWN' : '';
     if (r.kickType === 'kickoff') return r.touchback ? 'Kickoff into the end zone, touchback' : r.kickOOB ? 'Kickoff out of bounds' : `Kickoff returned by ${n(r.carrierId)}${tk}${td}`;
     if (r.kickType === 'punt') return r.fairCatch ? `Punt, fair catch by ${n(r.returner)}` : r.touchback ? 'Punt into the end zone, touchback' : r.downed ? 'Punt downed' : r.kickOOB ? 'Punt out of bounds' : `Punt returned by ${n(r.carrierId)}${tk}${td}`;
-    if (r.kickType === 'fg') return `${n(r.kicker) || 'The kick'}${r.kickDistance ? ` ${Math.round(r.kickDistance)}-yd try` : ''} is ${r.fgGood ? 'GOOD' : 'NO GOOD'}`;
+    if (r.kickType === 'fg') return `${n(r.kicker) || 'The kick'} is ${r.fgGood ? 'GOOD' : 'NO GOOD'}`; // afterResult adds the distance
     if (r.stats?.spike || (r.reason === 'incomplete' && r.passer === null)) return 'Spiked to stop the clock';
     if (r.sack) return `${n(r.carrierId)} sacked by ${n(r.tackler) || 'the defense'} for ${yds}`;
     if (r.interception) return `${n(r.passer)} pass INTERCEPTED by ${n(r.intBy)}${td}`;

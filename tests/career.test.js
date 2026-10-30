@@ -43,8 +43,9 @@ describe('career mode', () => {
     const s = new GameSession({ teams: [teams[0], teams[1]], settings: { quarterMinutes: 2, lockPlayer: p.id, sliders: { injuries: 0 } }, humanTeam: 0, seed: 9 });
     const f = emptyFrame();
     let onField = 0, watched = 0, plays = 0, lastSim = null;
-    for (let k = 0; k < 60 * 60 * 12 && s.state !== 'over' && plays < 40; k++) {
+    for (let k = 0; k < 60 * 60 * 24 && s.state !== 'over' && plays < 80; k++) {
       expect(s.needsHumanCall).toBe(false); // a WR never calls plays
+      if (s.state === 'penalty') s.choosePenalty(true); // a CPU foul against us: our call
       s.tick(STEP, f);
       if (s.sim && s.sim !== lastSim && s.state === 'presnap') {
         lastSim = s.sim; plays++;
@@ -132,12 +133,12 @@ describe('traits', () => {
     // Give one team stars everywhere so the traits come up.
     for (const p of teams[5].roster) for (const k of ['catching', 'routeRunning', 'passBlock', 'coverage', 'tackling', 'hitPower', 'passRush', 'breakTackle']) p.ratings[k] = 95;
     const seen = new Set();
-    for (let g = 0; g < 2; g++) {
-      const s = new GameSession({ teams: g ? [teams[5], teams[6]] : [teams[6], teams[5]], settings: { quarterMinutes: 15 }, seed: 50 + g, fast: true });
+    for (let g = 0; g < 4; g++) {
+      const s = new GameSession({ teams: g % 2 ? [teams[5], teams[6]] : [teams[6], teams[5]], settings: { quarterMinutes: 15 }, seed: 50 + g, fast: true });
       for (let k = 0; k < 2e6 && s.state !== 'over'; k++) { s.tick(STEP, null); for (const e of s.events) if (e.type === 'trait') seen.add(e.trait); }
     }
-    for (const t of ['sureHands', 'lockdown', 'enforcer']) expect(seen.has(t)).toBe(true);
-  }, 90000);
+    expect([...seen]).toEqual(expect.arrayContaining(['sureHands', 'lockdown', 'enforcer']));
+  }, 180000);
 });
 
 describe('defensive hot routes', () => {

@@ -27,10 +27,30 @@ export function playTags(p) {
   return tags;
 }
 
-export function kickerMaxFG(team) {
+/**
+ * Field-goal target zone for a team's kicker, like real staffs set before every game. `comfort` = the longest kick
+ * the coach sends him out for without a second thought (NFL norm: every kicker is good from 50-52, big legs 55+);
+ * `max` = the long shot, taken on 4th and long or when the half is ending. Leg strength sets the range, accuracy adds
+ * a little; a headwind or snow shortens it, a tailwind stretches it. `m` (optional) supplies weather and direction.
+ */
+export function fgZone(team, m = null, kickTeam = null) {
   const k = team.roster.find((p) => p.id === team.depth.K?.[0]);
-  const kpw = k ? k.ratings.kickPower : 80;
-  return Math.round(44 + (kpw - 80) * 0.45);
+  const kpw = k ? k.ratings.kickPower : 80, kac = k ? k.ratings.kickAccuracy : 78;
+  let comfort = 53 + (kpw - 85) * 0.4 + (kac - 80) * 0.1;
+  const w = m?.settings?.weather;
+  if (w) {
+    if (w.type === 'snow') comfort -= 4; else if (w.type === 'rain') comfort -= 1.5;
+    const dir = kickTeam !== null && m.dirOf ? m.dirOf(kickTeam) : 0;
+    comfort += (w.wind?.x || 0) * dir * 1.2; // wind along the kick (yd/s): + tailwind, - headwind
+  }
+  comfort = Math.max(38, Math.min(60, comfort));
+  return { comfort: Math.round(comfort), max: Math.round(Math.min(64, comfort + 4)) };
+}
+
+/** Longest field goal the CPU will try (the comfort zone; `longShot` = the end-of-half / 4th-and-long range). */
+export function kickerMaxFG(team, m = null, kickTeam = null, longShot = false) {
+  const z = fgZone(team, m, kickTeam);
+  return longShot ? z.max : z.comfort;
 }
 
 /** Decide what to do on the current snap. Returns a play object (may be special teams). */
@@ -55,8 +75,10 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
     if (d === 'fg') return m.toGo <= 3 && rng.next() < 0.025 ? getOffPlay('st_fake_fg') : getOffPlay('st_fg');
   }
   const fgDist = fgDistance(m.yardLine);
-  if ((m.quarter === 2 || q4) && m.clock < 8 && !m.clockRunning && fgDist <= kickerMaxFG(m.teams[team]) && (m.quarter === 2 || (lead >= -3 && lead <= 0))) return getOffPlay('st_fg');
-  if ((m.quarter === 2 || q4) && m.clock < 4 && m.clockRunning && fgDist <= kickerMaxFG(m.teams[team])) return getOffPlay('st_fg');
+  // Last seconds of a half: any kick inside the long-shot range (nothing to lose).
+  const lastShot = kickerMaxFG(m.teams[team], m, team, true) + (m.quarter === 2 ? 2 : 0);
+  if ((m.quarter === 2 || q4) && m.clock < 8 && !m.clockRunning && fgDist <= lastShot && (m.quarter === 2 || (lead >= -3 && lead <= 0))) return getOffPlay('st_fg');
+  if ((m.quarter === 2 || q4) && m.clock < 4 && m.clockRunning && fgDist <= lastShot) return getOffPlay('st_fg');
 
   // Run/pass mix.
   let run = 0.45;
@@ -121,14 +143,16 @@ export function fourthDown(m, team, rng) {
   const yl = m.yardLine, toGo = m.toGo;
   const lead = s.lead;
   const fgDist = fgDistance(yl);
-  const inRange = fgDist <= kickerMaxFG(m.teams[team]);
+  const inRange = fgDist <= kickerMaxFG(m.teams[team], m, team);
+  // The long-shot band: worth a try on 4th and long (a punt from there nets little), not on 4th and short.
+  const longShot = !inRange && fgDist <= kickerMaxFG(m.teams[team], m, team, true) && toGo >= 6;
   const late = m.quarter >= 4 && m.clock < 240;
   // Desperation: trailing late, must keep the ball.
   if (late && lead < 0 && !(inRange && lead >= -3)) return 'go';
   if (late && lead < -3 && m.clock < 120) return 'go';
   if (toGo <= 1 && yl >= 45 && !(inRange && toGo > 0.9 && rng.chance(0.3))) return 'go';
   if (toGo <= 2 && yl >= 60 && yl < 75 && !inRange) return 'go';
-  if (inRange) return 'fg';
+  if (inRange || longShot) return 'fg';
   if (toGo <= 3 && yl >= 55) return rng.chance(0.4) ? 'go' : 'punt';
   return 'punt';
 }

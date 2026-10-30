@@ -108,9 +108,20 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #banner.turnover .big { color: #ff5a4f; }
 #banner.miss .big { color: #aab3c5; }
 #banner.final .big { color: var(--gold); }
-#flagbox { position: absolute; top: 18%; right: 3%; background: #ffd400; color: #111; padding: 12px 18px; border-radius: 6px; max-width: 360px; box-shadow: 0 8px 30px rgba(0,0,0,0.5); animation: pop 0.2s ease-out; }
-#flagbox .flagtitle { font: 900 22px var(--fd); letter-spacing: 2px; }
-#flagbox .flagtext { font-size: 15px; font-weight: 700; margin-top: 4px; }
+/* Referee announcement: a lower-third card above the scorebug while the referee signals on the field. */
+#flagbox { position: absolute; z-index: 40; left: 50%; top: 9%; transform: translateX(-50%) skewX(var(--skew, -8deg)); min-width: 420px; max-width: 70vw; padding: 10px 26px 12px;
+  background: linear-gradient(90deg, rgba(8, 12, 26, 0.96), rgba(20, 24, 40, 0.94)); border-left: 8px solid #ffd400; border-bottom: 3px solid #ffd400;
+  box-shadow: 0 12px 34px rgba(0,0,0,0.55); animation: fbIn 0.28s cubic-bezier(.2,.9,.3,1.2); }
+#flagbox > * { transform: skewX(calc(var(--skew, -8deg) * -1)); }
+#flagbox .fb-head { display: flex; align-items: center; gap: 10px; }
+#flagbox .fb-chip { background: #ffd400; color: #111; font: 900 13px var(--fd); letter-spacing: 2px; padding: 2px 8px; }
+#flagbox .fb-ref { font: 800 12px var(--fd); letter-spacing: 3px; color: var(--dim, #9aa3b8); }
+#flagbox .fb-foul { font: 900 34px/1.05 var(--fd); font-style: italic; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; color: #fff; }
+#flagbox .flagtext { font: 700 17px var(--fb, sans-serif); color: #ffe27a; margin-top: 2px; text-transform: capitalize; }
+#flagbox.declined { border-color: #8b93a8; }
+#flagbox.declined .fb-chip { background: #8b93a8; }
+#flagbox.declined .flagtext { color: #c9cfdc; }
+@keyframes fbIn { from { opacity: 0; transform: translateX(-50%) skewX(var(--skew, -8deg)) translateY(24px); } to { opacity: 1; transform: translateX(-50%) skewX(var(--skew, -8deg)); } }
 #ticker { position: absolute; top: 16px; right: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 #ticker .tick { background: var(--panel); border: 1px solid var(--line); padding: 6px 12px; border-radius: 6px; font-size: 14px; animation: pop 0.2s ease-out; }
 

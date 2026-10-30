@@ -17,7 +17,7 @@ export class Hud {
       <div id="icons"></div>
       <div id="tags"><div class="tag me"></div><div class="tag other"></div></div>
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
-      <div id="flagbox" class="hidden"><div class="flagtitle">FLAG</div><div class="flagtext"></div></div>
+      <div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
       <div id="ticker"></div>
       <div id="callout"></div>
       <div id="statcard" class="hidden"></div>
@@ -98,10 +98,16 @@ export class Hud {
   }
 
   flag(text) {
+    // "Holding, offense, #72. 10 yard penalty, repeat 3rd down" → foul name / who + enforcement, read out like the referee.
     const f = this.$('flagbox');
-    f.querySelector('.flagtext').textContent = text;
+    const [first, ...rest] = text.split('. ');
+    const [foul, ...who] = first.split(', ');
+    f.querySelector('.fb-foul').textContent = foul;
+    f.querySelector('.flagtext').textContent = [who.join(' '), rest.join('. ')].filter(Boolean).join(' · ');
+    f.classList.toggle('declined', /declined/.test(text));
     f.classList.remove('hidden');
-    this.flagT = 3.2;
+    f.style.animation = 'none'; void f.offsetWidth; f.style.animation = '';
+    this.flagT = 4.2;
   }
 
   placeTag(el, p, renderer, session) {

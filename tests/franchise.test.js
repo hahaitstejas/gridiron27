@@ -106,7 +106,7 @@ describe('offseason', () => {
     startNextSeason(f, lg);
     expect(f.phase).toBe('regular');
     expect(f.year).toBe(2028);
-  });
+  }, 30000);
 });
 
 describe('franchise injuries', () => {

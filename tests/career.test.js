@@ -96,3 +96,28 @@ describe('hard count', () => {
     expect(flinch).toBeGreaterThan(0); expect(none).toBeGreaterThan(140);
   });
 });
+
+describe('broadcast info', () => {
+  it('logs a play-by-play line for every play and a summary for every drive', async () => {
+    const { defaultTeams: dt } = await import('../src/data/teams.js');
+    const teams = generateLeagueRosters(dt(), 31);
+    const s = new GameSession({ teams: [teams[2], teams[3]], settings: { quarterMinutes: 15 }, seed: 8, fast: true });
+    const lines = [], drives = [];
+    for (let k = 0; k < 2e6 && s.state !== 'over'; k++) {
+      s.tick(STEP, null);
+      for (const e of s.events) {
+        if (e.type === 'result') lines.push(s.match.lastPlayText);
+        if (e.type === 'message' && e.kind === 'drive') drives.push(e.text);
+      }
+    }
+    expect(lines.length).toBeGreaterThan(80);
+    expect(lines.every((l) => typeof l === 'string' && l.length > 5 && !/undefined|NaN/.test(l))).toBe(true);
+    const D = s.match.drives;
+    expect(D.length).toBeGreaterThan(12);
+    expect(D.length).toBe(drives.length);
+    const ok = ['Touchdown', 'Field goal', 'Missed field goal', 'Interception', 'Fumble', 'Punt', 'Safety', 'Turnover on downs', 'End of half', 'End of game'];
+    expect(D.every((d) => ok.includes(d.result) && d.plays >= 1 && d.yards <= 100 && d.secs >= 0)).toBe(true);
+    // Every touchdown drive covered the rest of the field from where it started.
+    for (const d of D.filter((x) => x.result === 'Touchdown')) expect(d.yards).toBe(100 - Math.round(d.start));
+  }, 60000);
+});

@@ -178,6 +178,40 @@ export class Match {
    */
   applyResult(r, sim, penalty = null) {
     if (this.over) return;
+    // Snapshot for the play-by-play line and the drive summary (see afterResult).
+    const before = { phase: this.phase, down: this.down, toGo: this.toGo, firstYL: this.firstYL, yardLine: this.yardLine, poss: this.possession,
+      score: [...this.score], quarter: this.quarter, clock: this.clock, drive: this.driveStart, sit: this.phase === 'scrimmage' ? `${downText(this)} at ${yardLineText(this)}` : '' };
+    const out = this.applyResultInner(r, sim, penalty);
+    this.afterResult(r, sim, penalty, before);
+    return out;
+  }
+
+  /** Play-by-play line for the last play, and the drive summary when a drive just ended. */
+  afterResult(r, sim, penalty, b) {
+    const off = r.offTeam;
+    let line = describePlay(this, r, sim, true);
+    if (penalty && penalty.accepted) line = `${penalty.text} (play nullified)`;
+    else if (b.phase === 'scrimmage' && this.phase === 'scrimmage' && this.possession === off && this.down === 1 && !r.kickType && (r.yards || 0) > 0 && r.touchdown === null) line += ' · FIRST DOWN';
+    this.lastPlayText = b.sit ? `${b.sit}: ${line}` : line;
+    // Drives end on the first play that changes possession, scores, or runs out the half.
+    const d = b.drive; // a punt or turnover has already started the other team's drive
+    if (!d || d.done || b.phase !== 'scrimmage' || d.team !== off) return;
+    const pts = this.score[off] - b.score[off];
+    const halfOver = this.over || (b.quarter === 2 && this.quarter === 3) || (b.quarter <= 4 && this.quarter > 4);
+    const end = pts >= 6 ? 'Touchdown' : pts === 3 ? 'Field goal' : r.kickType === 'fg' ? 'Missed field goal' : r.interception ? 'Interception'
+      : r.fumbleLost || (r.turnover && !r.interception) ? 'Fumble' : r.kickType === 'punt' ? 'Punt' : r.safety ? 'Safety'
+        : this.possession !== off || this.phase !== 'scrimmage' ? 'Turnover on downs' : halfOver ? (this.over ? 'End of game' : 'End of half') : null;
+    if (!end) return;
+    d.done = true;
+    const endYL = pts >= 6 ? 100 : r.kickType || this.possession !== off ? b.yardLine : this.yardLine;
+    const qs = (this.settings.quarterMinutes || 15) * 60;
+    const secs = Math.max(0, (Math.min(this.quarter, 5) - d.quarter) * qs + d.clock - this.clock);
+    const drive = { team: off, plays: d.plays, yards: Math.round(endYL - d.yl), secs: Math.round(secs), result: end, start: d.yl };
+    (this.drives ||= []).push(drive);
+    this.say(`${this.teams[off].abbr} drive: ${drive.plays} play${drive.plays === 1 ? '' : 's'}, ${drive.yards} yds, ${clockText(drive.secs)} · ${end}`, 'drive');
+  }
+
+  applyResultInner(r, sim, penalty = null) {
     const off = r.offTeam;
     const def = 1 - off;
     const desc = describePlay(this, r, sim);
@@ -546,8 +580,24 @@ export function clockText(sec) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-function describePlay(m, r, sim) {
+function describePlay(m, r, sim, rich = false) {
   const n = (id) => nameOf(sim, id);
+  if (rich) {
+    const y = Math.round(r.yards || 0), yds = `${y} yd${Math.abs(y) === 1 ? '' : 's'}`;
+    const tk = r.tackler !== null && r.tackler !== undefined && n(r.tackler) ? ` (${n(r.tackler)})` : '';
+    const td = r.touchdown !== null && r.touchdown !== undefined ? ' · TOUCHDOWN' : '';
+    if (r.kickType === 'kickoff') return r.touchback ? 'Kickoff into the end zone, touchback' : r.kickOOB ? 'Kickoff out of bounds' : `Kickoff returned by ${n(r.carrierId)}${tk}${td}`;
+    if (r.kickType === 'punt') return r.fairCatch ? `Punt, fair catch by ${n(r.returner)}` : r.touchback ? 'Punt into the end zone, touchback' : r.downed ? 'Punt downed' : r.kickOOB ? 'Punt out of bounds' : `Punt returned by ${n(r.carrierId)}${tk}${td}`;
+    if (r.kickType === 'fg') return `${n(r.kicker) || 'The kick'}${r.kickDistance ? ` ${Math.round(r.kickDistance)}-yd try` : ''} is ${r.fgGood ? 'GOOD' : 'NO GOOD'}`;
+    if (r.stats?.spike || (r.reason === 'incomplete' && r.passer === null)) return 'Spiked to stop the clock';
+    if (r.sack) return `${n(r.carrierId)} sacked by ${n(r.tackler) || 'the defense'} for ${yds}`;
+    if (r.interception) return `${n(r.passer)} pass INTERCEPTED by ${n(r.intBy)}${td}`;
+    if (r.incomplete) return `${n(r.passer)} pass incomplete${r.target !== null && r.target !== undefined ? `, intended for ${n(r.target)}` : ''}`;
+    if (r.fumbleLost) return `${n(r.carrierId) || n(r.fumbleBy)} FUMBLES, recovered by ${n(r.recoveredBy) || 'the defense'}${td}`;
+    if (r.complete) return `${n(r.passer)} pass complete to ${n(r.receiver)} for ${yds}${tk}${td}`;
+    if (r.outOfBounds) return `${n(r.carrierId)} runs for ${yds}, out of bounds${td}`;
+    return `${n(r.carrierId)} runs for ${yds}${tk}${td}`;
+  }
   if (r.kickType === 'kickoff') return r.touchback ? 'Kickoff, touchback' : r.kickOOB ? 'Kickoff out of bounds' : `Kickoff returned by ${n(r.carrierId)}`;
   if (r.kickType === 'punt') return r.fairCatch ? 'Punt, fair catch' : r.touchback ? 'Punt, touchback' : r.downed ? 'Punt, downed' : `Punt returned by ${n(r.carrierId)}`;
   if (r.kickType === 'fg') return r.fgGood ? 'Kick is good' : 'Kick is no good';

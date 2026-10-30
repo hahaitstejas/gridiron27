@@ -17,7 +17,7 @@ export class Hud {
       <div id="icons"></div>
       <div id="tags"><div class="tag me"></div><div class="tag other"></div></div>
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
-      <div id="intro" class="hidden"></div><div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
+      <div id="intro" class="hidden"></div><div id="halfcard" class="hidden"></div><div id="pbp" class="hidden"><span class="pb-tag"></span><span class="pb-text"></span></div><div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
       <div id="ticker"></div>
       <div id="callout"></div>
       <div id="statcard" class="hidden"></div>
@@ -64,6 +64,33 @@ export class Hud {
       <p class="tiny">H toggles this panel · \` toggles FPS</p>`;
   }
 
+  /** Halftime: the two teams side by side (yards, passing, rushing, first downs, third downs, turnovers, possession). */
+  halfCard(session) {
+    const m = session.match, [h, a] = m.teams, S = m.stats.team;
+    const top = (t) => clockText(S[t].top || 0);
+    const rows = [['Total yards', (s) => Math.round(s.yards)], ['Passing', (s) => `${s.passCmp}/${s.passAtt}, ${Math.round(s.passYds)}`], ['Rushing', (s) => `${s.rushAtt}-${Math.round(s.rushYds)}`],
+      ['First downs', (s) => s.firstDowns], ['Third downs', (s) => `${s.thirdConv}/${s.thirdAtt}`], ['Turnovers', (s) => s.turnovers], ['Penalties', (s) => `${s.penalties}-${s.penYds}`]];
+    const el = this.$('halfcard');
+    el.innerHTML = `<div class="hc-head"><span style="--tc:${a.colors.primary}"><img src="${this.logoFor(a)}">${a.abbr} <b>${m.score[1]}</b></span><em>HALFTIME</em><span style="--tc:${h.colors.primary}"><b>${m.score[0]}</b> ${h.abbr}<img src="${this.logoFor(h)}"></span></div>` +
+      rows.map(([l, f]) => `<div class="hc-row"><b>${f(S[1])}</b><span>${l}</span><b>${f(S[0])}</b></div>`).join('') +
+      (S[0].top !== undefined ? `<div class="hc-row"><b>${top(1)}</b><span>Possession</span><b>${top(0)}</b></div>` : '');
+    el.classList.remove('hidden');
+    this.halfT = 7;
+  }
+
+  /** Play-by-play strip above the scorebug (tag: PLAY / DRIVE). A drive summary isn't replaced by the next play line. */
+  pbp(tag, text, secs = 4, drive = false) {
+    if (!drive && this.pbpDrive > 0) return;
+    const el = this.$('pbp');
+    el.querySelector('.pb-tag').textContent = tag;
+    el.querySelector('.pb-text').textContent = text;
+    el.classList.toggle('drive', drive);
+    el.classList.remove('hidden');
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    this.pbpT = secs;
+    this.pbpDrive = drive ? secs : 0;
+  }
+
   /** Pregame lower-third: matchup, records, league, conditions (null hides it). */
   intro(info) {
     const el = this.$('intro');
@@ -75,7 +102,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'kickmeter', 'statcard', 'audible', 'penaltybox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -94,10 +121,13 @@ export class Hud {
     } else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
     else if (k === 'penalty') this.flag(msg.text);
     else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
+    else if (k === 'drive') this.pbp('DRIVE', msg.text.replace(/^\w+ drive: /, `${msg.text.split(' ')[0]} · `), 5, true);
     else if (k === 'injury') this.banner('INJURY', msg.text.replace(/^Injury: /, ''), 2.6, 'miss');
     else if (k === 'final') this.banner('FINAL', msg.text, 99, 'final');
-    else if (k === 'half' || k === 'twoMinute') this.banner(k === 'half' ? msg.text.split('!')[0].toUpperCase() : 'TWO-MINUTE WARNING', k === 'half' ? msg.text : '', 2.4, 'info');
-    else this.ticker(msg.text);
+    else if (k === 'half' || k === 'twoMinute') {
+      if (k === 'half' && /half/i.test(msg.text) && !session.practice) { this.halfCard(session); return; } // the card has its own header
+      this.banner(k === 'half' ? msg.text.split('!')[0].toUpperCase() : 'TWO-MINUTE WARNING', k === 'half' ? msg.text : '', 2.4, 'info');
+    } else this.ticker(msg.text);
   }
 
   banner(big, small, secs = 2.2, cls = '') {
@@ -199,6 +229,9 @@ export class Hud {
     this.renderBug(session);
     if ((this.bannerT -= dt) <= 0) this.$('banner').classList.add('hidden');
     if ((this.flagT -= dt) <= 0) this.$('flagbox').classList.add('hidden');
+    this.pbpDrive = Math.max(0, (this.pbpDrive || 0) - dt);
+    if (this.halfT > 0 && (this.halfT -= dt) <= 0) this.$('halfcard').classList.add('hidden');
+    if (this.pbpT > 0 && (this.pbpT -= dt) <= 0) this.$('pbp').classList.add('hidden');
     // Hide the stat card once the next play is snapped (or after a few seconds).
     if ((this.statT -= dt) <= 0 || (sim && sim.state === 'live' && session.state === 'live')) this.$('statcard').classList.add('hidden');
 
@@ -261,6 +294,7 @@ export class Hud {
     } else au.dataset.key = '';
     hint.innerHTML = h;
     hint.classList.toggle('hidden', !h || playcallOpen);
+    this.$('pbp').style.visibility = playcallOpen ? 'hidden' : '';
 
     // Accept / decline a penalty against the CPU.
     const pb = this.$('penaltybox');

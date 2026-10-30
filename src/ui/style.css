@@ -508,3 +508,25 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .cr-game span { grid-column: 1; color: rgba(255,255,255,0.8); }
 .cr-game em { grid-row: 1 / span 2; grid-column: 2; align-self: center; color: var(--gold, #ffd34d); font-style: normal; font-weight: 800; }
 @media (max-width: 900px) { .cr-body { grid-template-columns: 1fr; } }
+
+/* Play-by-play strip (above the scorebug) */
+#pbp { position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%); display: flex; align-items: stretch; max-width: 86vw; white-space: nowrap;
+  background: rgba(6, 10, 22, 0.92); border-bottom: 2px solid rgba(255,255,255,0.25); box-shadow: 0 8px 24px rgba(0,0,0,0.5); animation: fbIn 0.25s ease-out; z-index: 5; }
+#pbp .pb-tag { background: #2a7bff; color: #fff; font: 900 13px var(--fd); letter-spacing: 2px; padding: 6px 10px; display: flex; align-items: center; }
+#pbp .pb-text { font: 700 16px var(--fd); padding: 6px 14px; overflow: hidden; text-overflow: ellipsis; }
+#pbp.drive { border-bottom-color: var(--gold, #ffd34d); }
+#pbp.drive .pb-tag { background: var(--gold, #ffd34d); color: #111; }
+
+/* Halftime stats card */
+#halfcard { position: absolute; left: 50%; top: 16%; transform: translateX(-50%); width: min(560px, 90vw); background: rgba(6, 10, 22, 0.94);
+  border-top: 4px solid var(--gold, #ffd34d); box-shadow: 0 18px 50px rgba(0,0,0,0.6); padding-bottom: 10px; animation: hcIn 0.35s ease-out; z-index: 30; }
+@keyframes hcIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%); } }
+#halfcard .hc-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.12); }
+#halfcard .hc-head span { display: flex; align-items: center; gap: 8px; font: 800 20px var(--fd); }
+#halfcard .hc-head b { font: 900 30px var(--fd); }
+#halfcard .hc-head img { width: 36px; height: 36px; }
+#halfcard .hc-head em { font: 900 16px var(--fd); font-style: italic; letter-spacing: 3px; color: var(--gold, #ffd34d); }
+#halfcard .hc-row { display: grid; grid-template-columns: 1fr 1.2fr 1fr; padding: 5px 18px; font-size: 15px; }
+#halfcard .hc-row b { font: 800 17px var(--fd); }
+#halfcard .hc-row b:last-child { text-align: right; }
+#halfcard .hc-row span { text-align: center; color: rgba(255,255,255,0.7); text-transform: uppercase; font-size: 12px; letter-spacing: 2px; align-self: center; }

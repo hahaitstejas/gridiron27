@@ -12,6 +12,8 @@ import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
 import { deserializeLeague } from '../data/league.js';
 import { newCareer, careerScreen } from './career.js';
+import { fantasyDraftScreen } from './fantasyDraft.js';
+import { startFantasyDraft } from '../franchise/fantasy.js';
 import { careerPlayer } from '../franchise/career.js';
 
 const recText = (r) => `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`;
@@ -66,7 +68,8 @@ export class FranchiseUI {
   // ---------- new franchise ----------
   newFranchise(mode = 'franchise', preset = null) {
     const { screens, prefs } = this.ctx;
-    const opts = preset || { userTeam: prefs.home, weeks: mode === 'season' ? 10 : 17, difficulty: prefs.difficulty, quarterMinutes: prefs.quarterMinutes };
+    const opts = preset || { userTeam: prefs.home, weeks: mode === 'season' ? 10 : 17, difficulty: prefs.difficulty, quarterMinutes: prefs.quarterMinutes, rosters: 'current' };
+    opts.rosters ||= 'current';
     const option = (label, values, key, fmt) => {
       const row = el('div.opt-row');
       const draw = () => { row.innerHTML = ''; row.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ ${fmt(opts[key])} ▶` })); };
@@ -81,6 +84,7 @@ export class FranchiseUI {
       option('Season length', SEASON_LENGTHS, 'weeks', (w) => `${w} games`),
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length (games you play)', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`),
+      option('Rosters', ['current', 'fantasy'], 'rosters', (v) => (v === 'fantasy' ? 'Fantasy draft: every team drafts from scratch' : 'Keep the current rosters')),
     ];
     const start = el('div.start-btn', { text: mode === 'season' ? 'Start Season' : 'Start Franchise' });
     start.activate = async () => {
@@ -89,8 +93,11 @@ export class FranchiseUI {
       // remember that league so leaving the franchise goes back to it (LeagueUI.leaveFranchise).
       if (L.slot && !L.franchise) await L.saveNow();
       const baseSlot = L.franchise ? L.franchise.baseSlot ?? null : L.slot ?? null;
-      L.franchise = createFranchise(this.teams, { ...opts, mode, seed: (Date.now() % 100000) + 1 });
+      const seed = (Date.now() % 100000) + 1;
+      L.franchise = createFranchise(this.teams, { ...opts, mode, seed });
       L.franchise.baseSlot = baseSlot;
+      // Fantasy draft: the franchise (its own save slot) empties every roster into one pool; the hub runs the draft.
+      if (opts.rosters === 'fantasy') startFantasyDraft(L.franchise, this.teams, seed);
       L.name = L.franchise.name;
       L.slot = null;
       await L.saveNow();
@@ -111,6 +118,7 @@ export class FranchiseUI {
     upgradeFranchise(f, teams);
     if (f.phase === 'offseason') { this.ctx.offseason(this); return; }
     if (f.phase === 'done') { this.seasonOver(); return; }
+    if (f.fantasy && !f.fantasy.done) { fantasyDraftScreen(this); return; }
     const g = userGame(f);
     const rec = recordOf(f, teams, f.userTeam);
     const stage = f.phase === 'regular' ? `Week ${f.week + 1} of ${f.weeks}` : PLAYOFF_ROUND_NAMES[f.playoffs.rounds.length - 1];

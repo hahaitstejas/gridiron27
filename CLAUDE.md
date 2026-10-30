@@ -244,6 +244,12 @@ rounds}, history[], seed, offseason{step, …} }`.
   adding sudden-death periods — franchise playoff games use it too). Play / Sim Game / Finish the Round; state in
   localStorage `g27.tournament` (team indexes of the current league); the final screen's button returns to the bracket
   (`session.tournamentGame` → `recordPlayed`).
+- Fantasy draft (New Franchise / New Season → Rosters: Fantasy draft; `franchise/fantasy.js`, `ui/fantasyDraft.js`): after
+  the franchise slot is created, `startFantasyDraft` empties every roster into `f.fantasy.pool` (saved with the franchise,
+  so a reload resumes the draft) and sets a random snake order; the hub shows the draft until done. CPU picks by
+  `draftValue` (overall + need toward `TARGET` 53-man shape − age; specialists late); the board's All tab is ranked the
+  same way for you. A draft, X auto-pick, Y auto-draft the rest, LB/RB position filter. `finishFantasyDraft` builds depth
+  charts and redoes the cap (`setupMoney`). Team ratings come out ~80-83 (vs 75-88 before).
 - Hub Team Stats (`FranchiseUI.teamStatsScreen`): season totals in `f.stats` shown with the end-of-game `STAT_TABS`
   (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →

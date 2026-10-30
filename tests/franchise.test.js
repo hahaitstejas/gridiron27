@@ -247,3 +247,35 @@ describe('tournament', async () => {
     }
   });
 });
+
+describe('fantasy draft', async () => {
+  const FD = await import('../src/franchise/fantasy.js');
+  const { serializeLeague, deserializeLeague } = await import('../src/data/league.js');
+  it('drafts full, balanced rosters from one pool and survives a save mid-draft', () => {
+    const lg = generateLeagueRosters(defaultTeams(), 31);
+    const total = lg.reduce((a, t) => a + t.roster.length, 0);
+    const f = createFranchise(lg, { userTeam: 2, weeks: 6, seed: 8 });
+    FD.startFantasyDraft(f, lg, 5);
+    expect(lg.every((t) => t.roster.length === 0)).toBe(true);
+    expect(f.fantasy.pool.length).toBe(total);
+    FD.simToUser(f, lg);
+    expect(FD.onTheClock(f.fantasy)).toBe(2);
+    FD.makeFantasyPick(f, lg, f.fantasy.pool[0]);
+    // Save and reload in the middle of the draft.
+    const back = deserializeLeague(JSON.parse(JSON.stringify(serializeLeague(lg, { name: 'x', franchise: f }))));
+    const f2 = back.franchise, lg2 = back.teams;
+    expect(f2.fantasy.pick).toBe(f.fantasy.pick);
+    expect(f2.fantasy.pool.length).toBe(f.fantasy.pool.length);
+    FD.finishFantasyDraft(f2, lg2);
+    expect(f2.fantasy.done).toBe(true);
+    const ids = new Set();
+    for (const t of lg2) {
+      expect(t.roster.length).toBeGreaterThanOrEqual(50);
+      expect(t.roster.filter((p) => p.pos === 'QB').length).toBeGreaterThanOrEqual(2);
+      expect(t.roster.filter((p) => p.pos === 'K').length).toBeGreaterThanOrEqual(1);
+      expect(t.depth.QB?.length).toBeGreaterThan(0);
+      for (const p of t.roster) { expect(ids.has(p.id)).toBe(false); ids.add(p.id); }
+    }
+    expect(f2.cap).toBeGreaterThan(100);
+  }, 30000);
+});

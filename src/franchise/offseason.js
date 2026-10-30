@@ -1,6 +1,7 @@
 // Franchise offseason (pure logic): progression and retirements, contracts, free agency, the draft and
 // cut-downs. Steps run in order; f.offseason.step says where the user is:
 //   summary -> progression -> resign -> freeagency -> draft -> cutdown -> (next season)
+import { retireCareers } from './legacy.js';
 import { RNG } from '../core/rng.js';
 import { generatePlayer } from '../data/generator.js';
 import { OVERALL_WEIGHTS, ROSTER_COUNTS, overall } from '../data/positions.js';
@@ -55,6 +56,7 @@ export function progressPlayers(f, teams) {
   });
   f.offseason.report = report.sort((a, b) => (b.after ?? 0) - (b.before) - ((a.after ?? 0) - a.before));
   f.offseason.retired = retired.length;
+  f.offseason.hof = retireCareers(f, retired); // Hall of Fame inductees (legacy.js)
   f.offseason.step = 'progression';
 }
 

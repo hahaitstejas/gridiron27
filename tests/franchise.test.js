@@ -279,3 +279,28 @@ describe('fantasy draft', async () => {
     expect(f2.cap).toBeGreaterThan(100);
   }, 30000);
 });
+
+describe('hall of fame', async () => {
+  const L = await import('../src/franchise/legacy.js');
+  it('archives seasons into careers and inducts great retired careers only', () => {
+    const f = { year: 2030, stats: {}, awards: {}, careers: {}, news: [] };
+    const line = (o) => ({ name: 'P', pos: 'HB', team: 'AAA', teamIdx: 1, gp: 17, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 300, rushYds: 1300, rushTD: 12, rec: 30, recYds: 250, recTD: 1, tackles: 0, sacks: 0, defInt: 0, ff: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, ...o });
+    // 60 ordinary careers and one great one (ID 1: an MVP).
+    for (let y = 0; y < 6; y++) {
+      f.year = 2030 + y;
+      f.stats = { 1: line({ name: 'Star Back', rushYds: 1900, rushTD: 20 }) };
+      for (let i = 2; i < 62; i++) f.stats[i] = line({ name: `Guy ${i}`, rushYds: 300 + i, rushTD: 2, teamIdx: 3 });
+      f.awards[f.year] = y === 2 ? [{ award: 'Most Valuable Player', rid: 1 }] : [];
+      L.archiveSeason(f, 1);
+    }
+    expect(f.careers[1].seasons).toBe(6);
+    expect(f.careers[1].rings).toBe(6);
+    expect(f.careers[1].awards).toEqual(['2032 Most Valuable Player']);
+    const inducted = L.retireCareers(f, [{ id: 1 }, { id: 5 }, { id: 6 }]);
+    expect(inducted.map((h) => h.name)).toEqual(['Star Back']);
+    expect(f.hof[0].inducted).toBe(f.year);
+    expect(f.careers[5].retired).toBe(f.year);
+    expect(L.retireCareers(f, [{ id: 1 }]).length).toBe(0); // only once
+    expect(L.topActive(f, 3).length).toBe(3);
+  });
+});

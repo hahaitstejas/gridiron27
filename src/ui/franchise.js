@@ -6,7 +6,7 @@ import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
 import { contractsScreen, tradeScreen, transactionsScreen, capLine } from './franchiseMoney.js';
-import { newsScreen, awardsScreen, latestHeadline } from './franchiseExtras.js';
+import { newsScreen, awardsScreen, latestHeadline, hallScreen } from './franchiseExtras.js';
 import { standings, rank, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
@@ -177,6 +177,7 @@ export class FranchiseUI {
       tile('', 'news', 'News', latestHeadline(f), () => newsScreen(this)),
       tile('', 'star', 'Awards & Records', 'MVP, records, champions', () => awardsScreen(this)),
       tile('', 'swap', 'Transactions', 'Trades and signings', () => transactionsScreen(this)),
+      tile('', 'trophy', 'Hall of Fame', `${(f.hof || []).length} inducted · your history`, () => hallScreen(this)),
       tile('', 'exit', 'Main Menu', 'Autosaved', this.ctx.onExit),
     ];
     const col = (title, tiles, cls = '') => el(`div.fr-col${cls}`, {}, el('div.fr-col-head', { text: title }), ...tiles);
@@ -211,6 +212,7 @@ export class FranchiseUI {
       tile('', 'bracket', 'Playoff Bracket', 'How it played out', () => this.bracketScreen()),
       tile('', 'trophy', 'Leaders', 'Season stat leaders', () => this.leadersScreen()),
       tile('', 'star', 'Awards', 'MVP and more', () => awardsScreen(this)),
+      tile('', 'trophy', 'Hall of Fame', 'Career history', () => hallScreen(this)),
       tile('', 'exit', 'Main Menu', 'The season is saved', this.ctx.onExit),
     ];
     screens.frame('hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: `${f.year} <span>SEASON</span>` })),

@@ -49,7 +49,7 @@ function progression(ctx, ui, f) {
     return row([el('span.dc-pos', { text: r.pos }), el('span.st-name', { text: r.name }), el('span.st-num', { text: String(r.age) }),
       el('span.st-num', { text: `${r.before} → ${r.after ?? '—'}` }), el(`span.st-num${r.retired || r.after < r.before ? '.down' : '.up'}`, { text: d })]);
   });
-  frame(ctx, 'Player Progression', `Your players a year older · ${f.offseason.retired} players retired around the league`,
+  frame(ctx, 'Player Progression', `Your players a year older · ${f.offseason.retired} players retired around the league${f.offseason.hof?.length ? ` · Hall of Fame class: ${f.offseason.hof.map((h) => `${h.name} (${h.pos})`).join(', ')}` : ''}`,
     el('div.st-table', {}, row([el('span.dc-pos', { text: 'POS' }), el('span.st-name', { text: 'Player' }), el('span.st-num', { text: 'AGE' }), el('span.st-num', { text: 'OVR' }), el('span.st-num', { text: '+/-' })], '.st-head'), rows),
     [button('Contracts', () => { f.offseason.step = 'resign'; save(ctx); offseasonScreen(ctx, ui); })], '▲▼ scroll', { rows });
 }

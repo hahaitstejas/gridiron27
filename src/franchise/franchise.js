@@ -1,6 +1,7 @@
 // Franchise mode state machine (pure logic). The state is plain JSON (saved with the league):
 //   phase: 'regular' -> 'playoffs' -> 'offseason' (see offseason.js) -> next season's 'regular'.
 // Games the human plays are recorded from their Match; everything else goes through quickSim().
+import { archiveSeason } from './legacy.js';
 import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats, STAT_FIELDS } from './season.js';
 import { quickSim } from './quicksim.js';
 import { RNG } from '../core/rng.js';
@@ -163,6 +164,7 @@ export function advance(f, teams) {
     const next = nextPlayoffRound(f.playoffs);
     if (next) { f.playoffs.rounds.push(next); return true; }
     const champ = championOf(f.playoffs);
+    archiveSeason(f, champ); // careers and rings (legacy.js)
     const rec = standings(teams, f.schedule).find((r) => r.team === f.userTeam);
     addNews(f, `${teams[champ].city} ${teams[champ].name} win the ${f.year} ${LEAGUE.championship}!`, 'playoff');
     f.history.push({ year: f.year, champion: champ, championName: `${teams[champ].city} ${teams[champ].name}`, record: `${rec.w}-${rec.l}${rec.t ? '-' + rec.t : ''}`, madePlayoffs: f.playoffs.seeds.flat().includes(f.userTeam) });

@@ -250,6 +250,11 @@ rounds}, history[], seed, offseason{step, …} }`.
   `draftValue` (overall + need toward `TARGET` 53-man shape − age; specialists late); the board's All tab is ranked the
   same way for you. A draft, X auto-pick, Y auto-draft the rest, LB/RB position filter. `finishFantasyDraft` builds depth
   charts and redoes the cap (`setupMoney`). Team ratings come out ~80-83 (vs 75-88 before).
+- Hall of Fame (`franchise/legacy.js`, hub → Hall of Fame, `hallScreen` in ui/franchiseExtras.js): `archiveSeason(f, champ)`
+  at the end of each season folds `f.stats`, that year's awards and championship rings into `f.careers[rid]`;
+  `progressPlayers` → `retireCareers(f, retired)` inducts a retiring player with 5+ seasons and an MVP, 2+ major awards or
+  a `careerScore` in the top 3% of established careers (`f.hof`, news, the offseason progression line; ~1 a year once
+  careers build up). Tabs: Hall of Fame, Legends in the making (`topActive`), Franchise history (`f.history`).
 - Hub Team Stats (`FranchiseUI.teamStatsScreen`): season totals in `f.stats` shown with the end-of-game `STAT_TABS`
   (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →

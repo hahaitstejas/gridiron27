@@ -140,6 +140,7 @@ export class PlayerRenderer {
     this.pulseId = -1;
     // Pose crossfades (per player index): the pose an animation change starts from, and the last drawn pose.
     this.fromPose = []; this.lastPose = []; this.lastAnim = []; this.fadeT = []; this.poseSim = null;
+    this.fall = []; this.fallAnim = [];
 
     this._m = new THREE.Matrix4();
     this._t = new THREE.Matrix4();
@@ -201,7 +202,7 @@ export class PlayerRenderer {
     const n = sim.players.length;
     for (const m of Object.values(P)) m.count = m === P.num ? n * 4 : this.pairs.has(m) ? n * 2 : n;
     // A new play: poses start fresh (no crossfade from the last play's players).
-    if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; }
+    if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; this.fallAnim.length = 0; }
     const dt = Math.min(0.1, Math.max(0, time - (this.lastTime ?? time)));
     this.lastTime = time;
     for (let i = 0; i < n; i++) this.drawPlayer(sim, this.display?.[i] || sim.players[i], i, alpha, time, dt);
@@ -237,6 +238,17 @@ export class PlayerRenderer {
     const sc = p.height / 2.06;
     const wide = 1 + p.bulk * 0.28;
     const limb = 0.88 + p.bulk * 0.42; // linemen are thick through the arms and legs, receivers and DBs lean
+    // Falls go the way the player is moving at the moment he goes down (forward, sideways, or onto his back on
+    // a big hit), measured once in his own frame and kept through the time he lies on the turf.
+    const falling = p.anim === 'falling' || p.anim === 'tackle' || p.anim === 'down' || p.anim === 'getup';
+    if (falling && this.fallAnim[i] !== true) {
+      const sp = Math.hypot(p.vx, p.vz);
+      const a = sp > 0.6 ? Math.atan2(p.vz, p.vx) - p.facing : 0;
+      (this.fall[i] ||= { fwd: 1, side: 0 });
+      this.fall[i].fwd = Math.cos(a); this.fall[i].side = Math.sin(a);
+      this.fallAnim[i] = true;
+    } else if (!falling) this.fallAnim[i] = false;
+    FALL = falling ? this.fall[i] : null;
     const pose = this.blend(i, p.anim, computePose(p, time, sim), dt);
     const yaw = Math.PI / 2 - f;
 
@@ -356,6 +368,7 @@ function unpackPose(a, p) {
 }
 
 // ---------- Procedural poses ----------
+let FALL = null; // fall direction of the player being posed (set by drawPlayer)
 function computePose(p, time, sim) {
   const sp = Math.hypot(p.vx, p.vz);
   const run = Math.min(1, sp / 8);
@@ -463,24 +476,44 @@ function computePose(p, time, sim) {
       pose.head = 0.4 - k * 0.5;
       break;
     }
-    case 'falling':
-    case 'tackle': {
-      const k = Math.min(1, t / 0.45);
-      pose.rootPitch = k * 1.45; pose.rootY = -k * 0.15; pose.lean = 0.3;
-      pose.arms[0].pitch = pose.arms[1].pitch = 1.8; pose.arms[0].elbow = pose.arms[1].elbow = 0.6;
-      pose.legs[0].hip = -0.3; pose.legs[1].hip = -0.1; pose.legs[0].knee = 0.5; pose.legs[1].knee = 0.3;
+    case 'falling': {
+      // Ball carrier going down: pitch/roll toward the fall direction; on his back after a big hit.
+      const f = FALL || { fwd: 1, side: 0 };
+      const k = Math.min(1, t / 0.45), e = k * k * (3 - 2 * k);
+      const back = f.fwd < -0.25;
+      pose.rootPitch = e * (back ? -1.35 : 1.4 * Math.max(0.3, f.fwd));
+      pose.rootRoll = -e * f.side * 1.2;
+      pose.rootY = -e * 0.12; pose.lean = back ? -0.2 : 0.3;
+      pose.arms[0].pitch = pose.arms[1].pitch = back ? 2.6 : 1.7; pose.arms[0].elbow = pose.arms[1].elbow = 0.5;
+      pose.arms[0].out = pose.arms[1].out = 0.35 + e * 0.4;
+      pose.legs[0].hip = back ? 1.0 * e : -0.35; pose.legs[1].hip = back ? 0.6 * e : -0.1; pose.legs[0].knee = 0.5; pose.legs[1].knee = 0.3;
+      pose.head = back ? 0.5 : -0.2;
       break;
     }
-    case 'down':
-      pose.rootPitch = 1.5; pose.rootY = -0.02;
-      pose.arms[0].pitch = 2.4; pose.arms[1].pitch = 1.2; pose.arms[0].elbow = 0.6; pose.arms[1].elbow = 1.0;
-      pose.arms[0].out = 0.6;
-      pose.legs[0].hip = 0.2; pose.legs[0].knee = 0.6; pose.legs[1].knee = 0.1;
+    case 'tackle': {
+      // Tackler: drive in with arms wrapped, then go down with the runner.
+      const f = FALL || { fwd: 1, side: 0 };
+      const k = Math.min(1, t / 0.4), e = k * k * (3 - 2 * k);
+      pose.rootPitch = e * 1.35; pose.rootRoll = -e * f.side * 0.6; pose.rootY = -e * 0.15; pose.lean = 0.45;
+      pose.arms[0].pitch = pose.arms[1].pitch = 1.6; pose.arms[0].elbow = pose.arms[1].elbow = 1.3;
+      pose.arms[0].out = pose.arms[1].out = -0.35; // wrapped around the ball carrier
+      pose.legs[0].hip = -0.4; pose.legs[1].hip = 0.2; pose.legs[0].knee = 0.6; pose.legs[1].knee = 0.9;
+      pose.head = -0.4;
+      break;
+    }
+    case 'down': {
+      const f = FALL || { fwd: 1, side: 0 };
+      const back = f.fwd < -0.25;
+      pose.rootPitch = back ? -1.45 : 1.5; pose.rootRoll = -f.side * 0.5; pose.rootY = -0.02;
+      pose.arms[0].pitch = back ? 2.9 : 2.4; pose.arms[1].pitch = back ? 2.2 : 1.2; pose.arms[0].elbow = 0.6; pose.arms[1].elbow = 1.0;
+      pose.arms[0].out = 0.6; pose.arms[1].out = back ? 0.5 : 0.15;
+      pose.legs[0].hip = back ? 0.5 : 0.2; pose.legs[0].knee = back ? 1.0 : 0.6; pose.legs[1].knee = 0.1;
       pose.lean = 0;
       break;
+    }
     case 'getup': {
       const k = Math.min(1, t / 0.6);
-      pose.rootPitch = 1.5 * (1 - k); pose.crouch = -0.3 * (1 - k);
+      pose.rootPitch = (FALL && FALL.fwd < -0.25 ? -1.45 : 1.5) * (1 - k); pose.crouch = -0.3 * (1 - k);
       pose.legs[0].hip = pose.legs[1].hip = 1.2 * (1 - k); pose.legs[0].knee = pose.legs[1].knee = 1.6 * (1 - k);
       break;
     }

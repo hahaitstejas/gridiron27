@@ -164,8 +164,13 @@ export function attemptTackle(sim, d, c, air) {
     // Wrap and fall forward with momentum.
     d.anim = 'tackle'; d.animT = 0;
     d.state = 'down'; d.downT = 1.2;
-    d.vx = c.vx * 0.5; d.vz = c.vz * 0.5;
-    c.vx *= bigHit ? 0.2 : 0.55; c.vz *= bigHit ? 0.2 : 0.55;
+    // Momentum: the pair moves together, weighted by size. A head-on hit stops the runner (or drives him back
+    // on a big hit); from behind he keeps falling forward. Forward progress protects the spot either way.
+    const mc = 1 + c.bulk * 0.6, md = 1 + d.bulk * 0.6;
+    const vx = (c.vx * mc + d.vx * md) / (mc + md), vz = (c.vz * mc + d.vz * md) / (mc + md);
+    const keep = bigHit ? 0.75 : 0.6;
+    c.vx = vx * keep; c.vz = vz * keep;
+    d.vx = c.vx * 0.9 + (c.x - d.x) * 1.5; d.vz = c.vz * 0.9 + (c.z - d.z) * 1.5; // ...and lands on him
     if (bigHit) sim.emit('bigHit', { player: c.id, tackler: d.id });
     // Fumble? More likely on big hits and strip attempts, less when protecting the ball.
     let pf = 0.008 + (sim.R(d, 'hitPower') - sim.R(c, 'carrying')) * 0.0005 + (bigHit ? 0.05 : 0) + (moveActive(d, 'strip') ? 0.12 : 0);
@@ -183,6 +188,7 @@ export function attemptTackle(sim, d, c, air) {
       else if (bigHit && !d.injured && sim.rng.next() < injuryChance(d, 0.3, false, rate) * 0.3) injure(sim, d);
     }
     if (fumbled) sim.fumble(c, d);
+    else pileOn(sim, c, d);
   } else {
     // Broken tackle.
     if (knockDown || moveActive(d, 'tackle_dive') || moveActive(d, 'hitstick')) {
@@ -194,6 +200,18 @@ export function attemptTackle(sim, d, c, air) {
     c.speedCap = Math.min(c.speedCap, 0.8);
     c.recoverAt = sim.t + 0.35;
     sim.emit('brokenTackle', { player: c.id, tackler: d.id, move: brokenBy || null });
+  }
+}
+
+/** Gang tackle: defenders arriving at the pile dive on (visual: the play is over unless the ball came out). */
+function pileOn(sim, c, d) {
+  for (const o of sim.players) {
+    if (o === d || o.team === c.team || o.state !== 'active' || o.engagement) continue;
+    const dist = Math.hypot(o.x - c.x, o.z - c.z);
+    if (dist > 2.4 || sim.rng.next() > 0.6) continue;
+    o.anim = 'tackle'; o.animT = 0;
+    o.state = 'down'; o.downT = 1.2;
+    o.vx = (c.x - o.x) * 2 + c.vx * 0.5; o.vz = (c.z - o.z) * 2 + c.vz * 0.5;
   }
 }
 

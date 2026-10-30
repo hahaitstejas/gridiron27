@@ -59,17 +59,20 @@ export class Nav {
   }
 
   moveSpatial(dx, dy) {
-    const r0 = this.current.getBoundingClientRect();
-    const cx = r0.left + r0.width / 2, cy = r0.top + r0.height / 2;
+    // Layout boxes (offsetLeft/Top), not getBoundingClientRect: slanted or scaled tiles overlap on screen.
+    const box = (el) => ({ l: el.offsetLeft, t: el.offsetTop, r: el.offsetLeft + el.offsetWidth, b: el.offsetTop + el.offsetHeight });
+    const r0 = box(this.current);
+    const cx = (r0.l + r0.r) / 2, cy = (r0.t + r0.b) / 2;
     let best = -1, bestS = Infinity;
     for (const [i, el] of this.items.entries()) {
       if (i === this.index) continue;
-      const r = el.getBoundingClientRect();
-      // Distance from my edge to theirs along the direction, plus a penalty for being off-axis.
-      const along = dx ? (dx > 0 ? r.left - r0.right : r0.left - r.right) : (dy > 0 ? r.top - r0.bottom : r0.top - r.bottom);
-      if (along < -4) continue;
-      const off = dx ? Math.max(0, Math.abs(r.top + r.height / 2 - cy) - (r.height + r0.height) / 4) : Math.max(0, Math.abs(r.left + r.width / 2 - cx) - (r.width + r0.width) / 4);
-      const s = along + off * 2.5;
+      const r = box(el);
+      // Gap along the direction (must be ahead of me), plus how far off my row / column it is.
+      const along = dx ? (dx > 0 ? r.l - r0.r : r0.l - r.r) : (dy > 0 ? r.t - r0.b : r0.t - r.b);
+      if (along < -8) continue;
+      const off = dx ? Math.max(0, r.t - r0.b, r0.t - r.b) + Math.abs((r.t + r.b) / 2 - cy) * 0.1
+        : Math.max(0, r.l - r0.r, r0.l - r.r) + Math.abs((r.l + r.r) / 2 - cx) * 0.1;
+      const s = Math.max(0, along) + off * 3;
       if (s < bestS) { bestS = s; best = i; }
     }
     if (best >= 0) this.focus(best);

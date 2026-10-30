@@ -438,7 +438,7 @@ function frameBody(now) {
     if (sim) renderer.drawSim(sim, alpha, time, session); else renderer.hidePlayers();
     const scrim = m.phase === 'scrimmage';
     const losX = sim ? sim.losX : m.xOf(m.possession, m.yardLine);
-    renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null);
+    renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null, scrim ? m.down : null);
     renderer.setAim(sim);
     const b = renderer.ball.position;
     const live = sim && sim.state !== 'presnap';

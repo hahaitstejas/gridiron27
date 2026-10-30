@@ -310,6 +310,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
 - Chain crew (`render/lines.js` `makeChains`): poles at the line and the line to gain, chain, down marker (`lines.set(los,
   first, down)`), on the home sideline between the officials and the bench. Sidelines: `Presentation.bench` (10 reserves +
   a coach per team, colored by `PlayerRenderer.extra`). Replay angles: `REPLAY_ANGLES` in main.js (LB/RB).
+- Video boards: `stadium.setBoardGame(h, a, { score, q, clock, down, flash })` from `boardFrame()` in main.js (repaints on
+  change; flashes TOUCHDOWN / FIELD GOAL / INTERCEPTION in team color). Seats tint toward the home color. Names on jersey
+  backs: `PlayerRenderer.nameCanvas` atlas (one row per instance). Loose balls bounce erratically (play.js `updateBall`).
 - Penalties: `Hud.flag()` is a referee announcement card (foul name, who, enforcement) at the top center.
 
 ### Instant replay (`src/replay/replay.js`)

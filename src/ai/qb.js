@@ -97,6 +97,7 @@ export function qbDecide(sim, qb, dt) {
       task.side = sim.rng.chance(0.5) ? 1 : -1;
       return;
     }
-    if (t > 5.2 || pressure > 0.92) startThrow(sim, qb, null, 'throwaway');
+    // Smart quarterbacks live to play another down: they throw it away before the sack is certain.
+    if (t > 5.2 || pressure > clamp(0.82 + (80 - awr) * 0.004, 0.76, 0.95)) startThrow(sim, qb, null, 'throwaway');
   }
 }

@@ -256,6 +256,7 @@ export function buildStadium(renderer, home, away) {
   for (const sx of [-60, -50, 50, 60]) for (const sz of [-1, 1]) pyl.push(box(0.12, 0.6, 0.12, sx, 0.3, sz * (HALF_WIDTH + 0.06)));
   group.add(new THREE.Mesh(mergeGeometries(pyl), new THREE.MeshLambertMaterial({ color: 0xff6a00, emissive: 0x401800 })));
 
+  let boardKey = ''; // last live-scoreboard text (setBoardGame)
   // Video boards above each end.
   const boardCanvas = document.createElement('canvas');
   boardCanvas.width = 1024; boardCanvas.height = 384;
@@ -272,6 +273,7 @@ export function buildStadium(renderer, home, away) {
     group.add(frame);
   }
   function updateBoards(h, a, line = 'GRIDIRON 27') {
+    boardKey = ''; // the next live update repaints over this
     const g = boardCanvas.getContext('2d');
     const grd = g.createLinearGradient(0, 0, 0, 384);
     grd.addColorStop(0, '#0a0f1e'); grd.addColorStop(1, '#151d38');
@@ -288,6 +290,38 @@ export function buildStadium(renderer, home, away) {
     boardTex.needsUpdate = true;
   }
   const setBoardText = (h, a, text) => updateBoards(h, a, text);
+
+  /**
+   * Live scoreboard: { score: [h, a], q, clock, down, flash } — logos with scores, quarter and clock, down and
+   * distance, or a big flash ("TOUCHDOWN") in the scoring team's color. Repaints only when the text changes.
+   */
+  const setBoardGame = (h, a, info) => {
+    const key = [info.score, info.q, info.clock, info.down, info.flash?.text].join('|');
+    if (key === boardKey) return;
+    boardKey = key;
+    const g = boardCanvas.getContext('2d');
+    const grd = g.createLinearGradient(0, 0, 0, 384);
+    grd.addColorStop(0, '#0a0f1e'); grd.addColorStop(1, '#151d38');
+    g.fillStyle = grd; g.fillRect(0, 0, 1024, 384);
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    if (info.flash) {
+      g.fillStyle = info.flash.color; g.fillRect(0, 0, 1024, 384);
+      g.fillStyle = '#fff'; g.font = '900 150px "Saira Condensed", "Arial Narrow", sans-serif';
+      g.fillText(info.flash.text, 512, 190, 980);
+      boardTex.needsUpdate = true;
+      return;
+    }
+    drawLogo(g, a.logo, 130, 150, 95);
+    drawLogo(g, h.logo, 894, 150, 95);
+    g.fillStyle = '#fff'; g.font = '900 150px "Saira Condensed", "Arial Narrow", sans-serif';
+    g.fillText(String(info.score[1]), 330, 160); g.fillText(String(info.score[0]), 694, 160);
+    g.font = '800 54px "Saira Condensed", "Arial Narrow", sans-serif'; g.fillStyle = '#ffd34d';
+    g.fillText(info.q, 512, 110); g.fillStyle = '#fff'; g.fillText(info.clock, 512, 190);
+    g.font = '700 46px "Saira Condensed", "Arial Narrow", sans-serif'; g.fillStyle = '#9fb3d9';
+    g.fillText(`${a.abbr}        ${h.abbr}`, 512, 290);
+    g.fillStyle = '#ffd34d'; g.fillText(info.down || '', 512, 345);
+    boardTex.needsUpdate = true;
+  };
 
   setTeams(home, away);
   fillCrowdColors(home, away);
@@ -324,6 +358,7 @@ export function buildStadium(renderer, home, away) {
     snow,
     setTeams: (h, a, opts) => { setTeams(h, a, opts); fillCrowdColors(h, a); standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85); },
     setBoardText,
+    setBoardGame,
     update(dt, excitement) {
       time += dt;
       crowdUniforms.uTime.value = time;

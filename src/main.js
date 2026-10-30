@@ -298,6 +298,16 @@ function pause() {
   });
 }
 
+/** The stadium video boards: the live score, or a flash after a score or a takeaway. */
+let boardFlash = null;
+function boardFrame(m, dt) {
+  if (boardFlash && (boardFlash.t -= dt) <= 0) boardFlash = null;
+  const ord = (q) => (q > 4 ? 'OT' : ['1ST', '2ND', '3RD', '4TH'][q - 1]);
+  renderer.stadium.setBoardGame(m.teams[0], m.teams[1], { score: m.score, q: m.over ? 'FINAL' : ord(m.quarter), clock: m.over ? '' : clockText(m.clock),
+    down: m.phase === 'scrimmage' && !m.over ? downText(m).toUpperCase() : '', flash: boardFlash });
+}
+function flashBoard(text, team) { boardFlash = { text, color: session?.teams[team]?.colors.primary || '#c8102e', t: 4 }; }
+
 function pauseInfo(s) {
   const m = s.match, [home, away] = m.teams;
   const ord = (q) => q > 4 ? 'OT' : ['1st', '2nd', '3rd', '4th'][q - 1];
@@ -348,7 +358,11 @@ const isDarkHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16)
 function onSessionEvent(e) {
   renderer.presentation.onEvent(e, session);
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
-  if (e.type === 'message') hud.message(e, session);
+  if (e.type === 'message') {
+    hud.message(e, session);
+    if (e.kind === 'score') { const w = session.match.lastScore?.what || ''; flashBoard(/touchdown|pick six/i.test(w) ? 'TOUCHDOWN!' : /field goal/i.test(w) ? 'FIELD GOAL' : /safety/i.test(w) ? 'SAFETY' : '', session.match.lastScore?.team ?? 0); if (!boardFlash.text) boardFlash = null; }
+    else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
+  }
   else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); if (session.match.lastPlayText && !session.practice) hud.pbp('PLAY', session.match.lastPlayText); }
   else if (e.type === 'audible') hud.ticker(e.play === 'Coverage' ? `Coverage: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);
   else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);
@@ -470,6 +484,7 @@ function frameBody(now) {
     if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
     const camDir = m.dirOf(m.possession);
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15;
+    boardFrame(m, dt);
     renderer.render(dt, focus, camDir, phase, snapCam, excite);
     snapCam = false;
     hud.update(session, renderer, dt, frameMs, playcall.open);

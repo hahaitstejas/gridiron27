@@ -153,6 +153,12 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   scores it (`drillScore`); after `reps` the match ends → `showDrillResult()` in main.js (medal, rep log, best scores in
   localStorage `g27.drills`). HUD `#drillbar`. Medal lines (`medals`) are set so the CPU doing the drill
   (`settings.drillAuto`, tests) lands around silver.
+- Scenarios (`game/scenarios.js`, Practice → Scenarios, `Screens.scenarios` / `scenarioResult`): `SCENARIOS` (two-minute drill,
+  last gasp, goal-line stand, protect the lead, fourth and long, seventeen down, sudden pressure) with a goal (`win` | `td`
+  | `stop`). `settings.scenario = { id }` → `applyScenario(match, sc)` sets quarter, clock, score, timeouts, possession and
+  spot (human = home team 0, 15-minute quarters); `scenarioCheck` after each play ends td/stop goals early
+  (`session.scenario.result`, `scenarioDone`), else `scenarioFinal(m)` judges the final. Beaten ones: localStorage
+  `g27.scenarios`. CPU-vs-CPU success: two-minute ~40%, protect ~85%, comeback ~0%.
 - Field-goal target zone (`fgZone(team, m, kickTeam)` in playcaller.js): per kicker `comfort` = 53 + (KPW-85)*0.4 +
   (KAC-80)*0.1 yds (snow -4, rain -1.5, ±1.2 per yd/s of tail/headwind), `max` = comfort + 4. 4th down: kick inside the
   comfort zone; the long-shot band only on 4th & 6+; end of a half: anything inside max (+2 at halftime). Isolated make

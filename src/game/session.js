@@ -7,6 +7,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
+import { applyScenario, scenarioById, scenarioCheck } from './scenarios.js';
 import { newDrill, drillSpot, drillPlays, drillControl, drillWatch, drillScore, DRILLS } from './drills.js';
 import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHALLENGE_T, REVIEW_T } from './review.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall } from './audibles.js';
@@ -69,6 +70,8 @@ export class GameSession {
       const t = teams[this.baseHumans[0]];
       this.lockPos = t?.roster.find((p) => p.id === this.lock)?.pos || null;
     }
+    // Scenario (scenarios.js): the game starts in a late situation with a goal; the human is the home team.
+    this.scenario = settings.scenario ? applyScenario(this.match, scenarioById(settings.scenario.id)) : null;
     this.enterPlaycall();
   }
 
@@ -709,6 +712,10 @@ export class GameSession {
       const off = this.practice.side === 'offense' ? me : 1 - me;
       if (this.practice.after !== 'continue' || m.over || m.phase !== 'scrimmage' || m.possession !== off) this.practiceReset();
       m.clockRunning = false;
+    }
+    if (this.scenario && !this.scenario.result) {
+      const v = scenarioCheck(m, this.scenario, r);
+      if (v) { this.scenario.result = v; m.over = true; this.emit('scenarioDone', v); }
     }
     if (drillRep) {
       this.emit('drillRep', { ...drillRep, rep: this.drill.rep, reps: DRILLS[this.drill.id].reps, score: this.drill.score });

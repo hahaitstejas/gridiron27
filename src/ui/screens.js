@@ -5,6 +5,7 @@ import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { KEY_HELP } from '../input/keyboard.js';
 import { gameXP, lineText } from '../franchise/career.js';
 import { DRILLS, DRILL_IDS, MEDALS, medalFor } from '../game/drills.js';
+import { SCENARIOS } from '../game/scenarios.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
@@ -164,7 +165,7 @@ export class Screens {
     this.nav.set([away, home, side, diff, qlen, accel, pens, wx, tod, start], { columns: 1, onBack, index: 9 });
   }
 
-  practice(teams, prefs, { onStart, onDrills, onBack }) {
+  practice(teams, prefs, { onStart, onDrills, onScenarios, onBack }) {
     const p = { ...prefs };
     const option = (label, values, key, fmt = (v) => v) => {
       const row = el('div.opt-row');
@@ -193,9 +194,11 @@ export class Screens {
     };
     const drills = el('div.start-btn', { text: 'Skills Drills' });
     drills.activate = () => { if (p.home === p.away) p.away = (p.home + 1) % teams.length; onDrills(p); };
-    this.frame('setup-screen', el('h1', { text: 'Practice' }), el('div.setup-opts', {}, ...rows, start, drills),
+    const scen = el('div.start-btn', { text: 'Scenarios' });
+    scen.activate = () => { if (p.home === p.away) p.away = (p.home + 1) % teams.length; onScenarios(p); };
+    this.frame('setup-screen', el('h1', { text: 'Practice' }), el('div.setup-opts', {}, ...rows, start, drills, scen),
       el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> back' }));
-    this.nav.set([...rows, start, drills], { columns: 1, onBack, index: rows.length });
+    this.nav.set([...rows, start, drills, scen], { columns: 1, onBack, index: rows.length });
   }
 
   /** Skills drills: one tile per drill with your best score and medal. bests = { id: score }. */
@@ -217,6 +220,36 @@ export class Screens {
       el('div.hub-grid.drill-grid', {}, tiles), help,
       el('div.hub-foot', { html: '<b class="btn A">A</b> Start drill &nbsp;&nbsp; <b class="btn B">B</b> Back' }));
     this.nav.set(tiles, { spatial: true, onBack });
+  }
+
+  /** Scenarios: late-game challenges; done = { id: true } for the ones you've beaten. */
+  scenarios(done, matchup, { onStart, onBack }) {
+    const goal = { win: 'Win the game', td: 'Score a touchdown', stop: 'Get the stop' };
+    const tiles = SCENARIOS.map((sc, i) => {
+      const t = el(`div.hub-tile${i === 0 ? '.feature' : ''}`, {}, el('div.ht-icon', { html: ICONS[sc.side === 'you' ? 'ball' : 'shield'] }),
+        el('div.ht-text', {}, el('div.ht-label', { text: sc.name }), el('div.ht-sub', { text: `${goal[sc.goal]} · ${sc.score[0]}–${sc.score[1]}, ${Math.floor(sc.clock / 60)}:${String(sc.clock % 60).padStart(2, '0')} Q4` })),
+        done[sc.id] ? el('div.dr-medal.m2', { text: '✓' }) : null);
+      t.activate = () => onStart(sc.id);
+      t.onfocusitem = () => { help.innerHTML = `<b>${sc.name}</b> — ${sc.desc}`; };
+      return t;
+    });
+    const help = el('div.dr-help', {});
+    this.frame('drills-screen hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'SCENARIOS' }), el('div.ps-brand', { text: matchup })),
+      el('div.hub-grid.scen-grid', {}, tiles), help,
+      el('div.hub-foot', { html: `<b class="btn A">A</b> Play &nbsp;&nbsp; <b class="btn B">B</b> Back &nbsp;&nbsp; <span class="tiny">${Object.keys(done).length}/${SCENARIOS.length} beaten</span>` }));
+    this.nav.set(tiles, { spatial: true, onBack });
+  }
+
+  /** Scenario verdict: beaten or not, the final situation; A tries again. */
+  scenarioResult(sc, verdict, { onRetry, onDone }) {
+    const retry = el('div.start-btn', { text: 'Try Again' }); retry.activate = onRetry;
+    const done = el('div.start-btn', { text: 'Scenarios' }); done.activate = onDone;
+    this.frame('drill-result setup-screen', el('h1', { text: sc.name }),
+      el('div.dr-score', {}, el(`div.dr-medal.big.${verdict.success ? 'm2' : 'm-1'}`, { text: verdict.success ? 'Challenge complete' : 'Challenge failed' })),
+      el('div.dr-sub', { text: verdict.text }), el('div.dr-sub', { text: sc.desc }),
+      el('div.dr-btns', {}, retry, done),
+      el('div.setup-help', { html: '<b class="btn A">A</b> select &nbsp; <b class="btn B">B</b> scenarios' }));
+    this.nav.set([retry, done], { columns: 2, onBack: onDone, index: verdict.success ? 1 : 0 });
   }
 
   /** Drill results: score, medal, the rep log; A tries again, B back to the drills. */

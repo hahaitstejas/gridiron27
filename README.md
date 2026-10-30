@@ -60,6 +60,7 @@ League → Saves & Files → Export, then Import in the offline copy.
 | Audible (pre-snap) | X, then A/B/X/Y/RB | U, then J/K/U/I/O |
 | Hot route (pre-snap) | Y, receiver button, then left stick (A = block) | I, receiver key, then WASD |
 | Motion (pre-snap, offense) | RB, receiver button, then left stick (toward the ball = across) | O, receiver key, then A/D |
+| Defensive hot route (pre-snap, the defender you control) | Y, then A blitz / X QB spy / Y hook zone / B deep zone / RB flat zone | I, then J / U / I / K / O |
 | Coverage (pre-snap, defense) | LB, then A press / B off / X shade inside / Y shade outside / RB reset | Q, then the same keys |
 | Instant replay (between plays) | RS click; LB/RB switch camera angle | R; Q/O |
 | Depth chart (pause menu → Coaching) | A pick up / drop, ▲▼ move, X remove | J, W/S, U |

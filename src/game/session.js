@@ -7,7 +7,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
-import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall } from './audibles.js';
+import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
 import { injuryText } from '../sim/injuries.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice } from './penalties.js';
@@ -350,6 +350,9 @@ export class GameSession {
       if (options.length) this.audible = { mode, options, team };
     } else if (mode === 'adjust') {
       this.audible = { mode, options: COVERAGE_CALLS, team };
+    } else if (mode === 'dhot') {
+      const me = this.sim.withHuman(team, () => this.sim.players[this.sim.controlledId]);
+      if (me) this.audible = { mode, options: DEF_HOT, team, slot: me.slot, name: me.name };
     } else {
       this.sim.computeIcons(true); // every eligible receiver gets a button
       this.audible = { mode, slot: null, team };
@@ -372,6 +375,19 @@ export class GameSession {
       this.audible = null;
       this.rebuildPresnap();
       this.emit('audible', { label: opt.label, play: 'Coverage', side: 'defense' });
+      return;
+    }
+    if (a.mode === 'dhot') {
+      const opt = a.options.find((o) => input.pressed[o.btn]);
+      if (!opt) return;
+      const sim = this.sim, me = sim.players.find((p) => p.team === a.team && p.slot === a.slot);
+      this.choice.def = defHotRoute(sim.defPlay, a.slot, opt.key, me ? sim.toLocal(me.x, me.z).lat : 0);
+      this.audible = null;
+      this.rebuildPresnap();
+      // Stay on the same defender after the re-line-up.
+      const again = this.sim.players.find((p) => p.team === a.team && p.slot === a.slot);
+      if (again) this.sim.withHuman(a.team, () => { this.sim.controlledId = again.id; });
+      this.emit('audible', { label: `${a.name}: ${opt.label}`, play: 'Hot route', side: 'defense' });
       return;
     }
     if (a.mode === 'motion') {
@@ -476,7 +492,8 @@ export class GameSession {
         const mode = f.pressed.X ? 'menu'
           : team === off && scrim && f.pressed.Y ? 'hot'
             : team === off && scrim && f.pressed.RB && !sim.motion ? 'motion'
-              : team === def && f.pressed.LB ? 'adjust' : null;
+              : team === def && f.pressed.LB ? 'adjust'
+                : team === def && scrim && f.pressed.Y ? 'dhot' : null;
         if (mode) {
           this.openAudible(mode, team);
           this.sim.tick(dt, null);

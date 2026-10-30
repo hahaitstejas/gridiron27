@@ -253,7 +253,7 @@ export class Hud {
     } else if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `<b class="btn A">A</b> Start kick meter &nbsp; Left stick: aim &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}<b class="btn view">View</b> Timeout`;
-    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
+    } else if (pre && session.humanSide === 'defense') h = `<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : '<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; '}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.state === 'live' && session.humanSide === 'defense' && sim.players[sim.controlledId]?.engagement?.d === sim.players[sim.controlledId]) h = '<b class="btn A">A</b> Bull rush &nbsp; <b class="btn X">X</b> Swim &nbsp; <b class="btn Y">Y</b> Spin &nbsp; RS ↓ Rip';
     else if (sim && sim.state === 'live' && sim.ball.state === 'air' && !sim.kick && session.humanSide === 'offense' && sim.ball.intended === sim.controlledId) {
@@ -273,6 +273,10 @@ export class Hud {
         if (a.mode === 'menu') {
           au.innerHTML = `<div class="au-title">${session.humanSide === 'offense' ? 'Audible' : 'Defensive audible'}</div>` +
             a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span><small>${o.play.name}</small></div>`).join('') +
+            `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+        } else if (a.mode === 'dhot') {
+          au.innerHTML = `<div class="au-title">Hot route: ${a.name} (${a.slot})</div>` +
+            a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span></div>`).join('') +
             `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
         } else if (a.mode === 'adjust') {
           au.innerHTML = `<div class="au-title">Coverage</div>` +

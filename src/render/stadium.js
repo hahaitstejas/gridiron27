@@ -148,7 +148,9 @@ export function buildStadium(renderer, home, away) {
   standGeos.push(box((WALL_X + backOff) * 2 + 2, 6, 1, 0, topY + 3 - 1, -(WALL_Z + backOff + 0.5)));
   standGeos.push(box(1, 6, (WALL_Z + backOff) * 2 + 2, WALL_X + backOff + 0.5, topY + 3 - 1, 0));
   standGeos.push(box(1, 6, (WALL_Z + backOff) * 2 + 2, -(WALL_X + backOff + 0.5), topY + 3 - 1, 0));
-  const stands = new THREE.Mesh(mergeGeometries(standGeos), new THREE.MeshLambertMaterial({ color: 0x3a3f4a }));
+  // Seats take a dark tint of the home team's color (set in setTeams), so every stadium looks like home.
+  const standMat = new THREE.MeshLambertMaterial({ color: 0x3a3f4a });
+  const stands = new THREE.Mesh(mergeGeometries(standGeos), standMat);
   group.add(stands);
 
   // Crowd: one instanced mesh, bobbing in the vertex shader. Excitement drives the motion.
@@ -320,7 +322,7 @@ export function buildStadium(renderer, home, away) {
     sky: skyUniforms,
     lampMat,
     snow,
-    setTeams: (h, a, opts) => { setTeams(h, a, opts); fillCrowdColors(h, a); },
+    setTeams: (h, a, opts) => { setTeams(h, a, opts); fillCrowdColors(h, a); standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85); },
     setBoardText,
     update(dt, excitement) {
       time += dt;

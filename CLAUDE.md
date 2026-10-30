@@ -224,6 +224,8 @@ runs the snap CPU vs CPU (`session.watching`, main.js fast-forwards 4x). The cam
 - Catch types (ball in the air to the user's receiver, `b.catchType`): Y aggressive (traffic ×0.55, no run after), X run after
   catch (traffic ×1.35, full speed after), B possession (+6% clean, feet in at the sideline). Defense: Y = go for the pick
   (`b.pickT`: big INT bonus, fewer swats). `npm run bot` smartTapAggressive / RAC / Possession.
+- Defensive hot routes (Y at the line, on the controlled defender; `DEF_HOT` / `defHotRoute` in audibles.js): A blitz, X QB
+  spy, Y hook zone (side by alignment), B deep middle, RB flat zone; the session rebuilds the play and keeps him controlled.
 - Hard count (`session.hardCount()`, LT at the line, once per play, not vs a human defense): ~5% a CPU lineman jumps (forced
   `offsides` → free play; less vs high-awareness lines), 4% your own lineman false-starts.
 - Passing: hold LB (high) / LT (low) while throwing (`b.place`: harder for defenders to play, -5% catch, no YAC);

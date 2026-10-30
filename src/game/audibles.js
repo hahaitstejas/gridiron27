@@ -72,3 +72,20 @@ export function cpuCoverageCall(defPlay, rng) {
   if (defPlay.coverage === 'man') return r < 0.3 ? { cover: 'press' } : r < 0.42 ? { cover: 'off' } : null;
   return r < 0.12 ? { cover: 'press' } : r < 0.27 ? { cover: 'off' } : null;
 }
+
+// Defensive hot routes (Y at the line, on the defender you control): a new assignment for that one player.
+export const DEF_HOT = [
+  { btn: 'A', key: 'blitz', label: 'Blitz' },
+  { btn: 'X', key: 'spy', label: 'QB spy' },
+  { btn: 'Y', key: 'hook', label: 'Hook zone' },
+  { btn: 'B', key: 'deep', label: 'Deep zone' },
+  { btn: 'RB', key: 'flat', label: 'Flat zone' },
+];
+
+/** A copy of the defensive play with `slot` reassigned; `lat` (offense frame) picks the side for flat/hook zones. */
+export function defHotRoute(play, slot, key, lat = 0) {
+  const side = lat < 0 ? 'l' : 'r';
+  const assign = key === 'blitz' ? 'blitz' : key === 'spy' ? 'spy' : key === 'deep' ? 'zone:deep_middle'
+    : key === 'flat' ? `zone:flat_${side}` : Math.abs(lat) > 3 ? `zone:hook_${side}` : 'zone:hook_middle';
+  return { ...play, assign: { ...play.assign, [slot]: assign }, dhot: { ...(play.dhot || {}), [slot]: assign } };
+}

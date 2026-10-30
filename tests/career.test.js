@@ -139,3 +139,25 @@ describe('traits', () => {
     for (const t of ['sureHands', 'lockdown', 'enforcer']) expect(seen.has(t)).toBe(true);
   }, 90000);
 });
+
+describe('defensive hot routes', () => {
+  it('reassign the controlled defender and keep him controlled', async () => {
+    const { defaultTeams: dt } = await import('../src/data/teams.js');
+    const { emptyFrame: ef } = await import('../src/input/actions.js');
+    const teams = generateLeagueRosters(dt(), 61);
+    const s = new GameSession({ teams: [teams[0], teams[1]], settings: { quarterMinutes: 5, penalties: false }, humanTeam: 1, seed: 4, fast: true });
+    s.match.newPossession(0, 30, 0); s.enterPlaycall();
+    const { listDefPlays } = await import('../src/data/playbook.js');
+    s.humanChoose(listDefPlays().find((p) => p.coverage === 'zone'));
+    for (let k = 0; k < 5 && s.state === 'playcall'; k++) s.tick(STEP, null);
+    const sim = s.sim;
+    const me = sim.withHuman(1, () => sim.players[sim.controlledId]);
+    s.openAudible('dhot', 1);
+    expect(s.audible.mode).toBe('dhot');
+    const f = ef(); f.pressed.A = true; // blitz
+    s.audibleInput(f);
+    expect(s.choice.def.assign[me.slot]).toBe('blitz');
+    const now = s.sim.withHuman(1, () => s.sim.players[s.sim.controlledId]);
+    expect(now.slot).toBe(me.slot);
+  });
+});

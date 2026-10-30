@@ -152,7 +152,7 @@ function toMenu() {
   playcall.hide();
   screens.mainMenu({
     onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
-    onPractice: () => screens.practice(teams, prefs, { onStart: (p, practice) => startGame({ ...p, side: 'home' }, { practice }), onBack: toMenu }),
+    onPractice: showPractice,
     onLeague: () => league.menu(),
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
@@ -185,12 +185,13 @@ function startGame(p, opts = {}) {
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
   });
   session.franchiseGame = opts.franchise || null;
+  session.drillPrefs = opts.drillPrefs || null;
   // Season records on the scorebug (franchise games; exhibitions show 0-0).
   if (opts.franchise && league.franchise) session.records = [home, away].map((t) => { const r = recordOf(league.franchise, teams, teams.indexOf(t)); return `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`; });
   // The championship game: league logo at midfield.
@@ -293,6 +294,28 @@ function showHalftime() {
     onStats: () => statsScreen(screens, session.match, { onBack: showHalftime }) });
 }
 
+function showPractice() {
+  screens.practice(teams, prefs, { onStart: (p, practice) => startGame({ ...p, side: 'home' }, { practice }), onDrills: showDrills, onBack: toMenu });
+}
+
+// Skills drills: best scores per browser (localStorage g27.drills).
+const drillBests = () => { try { return JSON.parse(localStorage.getItem('g27.drills') || '{}'); } catch { return {}; } };
+function showDrills(p) {
+  app = 'menu';
+  const t = teams[p.home];
+  screens.drills(drillBests(), `${t.city} ${t.name}`, { onStart: (id) => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id }, drillPrefs: p }), onBack: showPractice });
+}
+function showDrillResult() {
+  const drill = session.drill, p = session.drillPrefs;
+  const bests = drillBests();
+  const best = Math.max(bests[drill.id] ?? -Infinity, drill.score);
+  const prev = bests[drill.id];
+  bests[drill.id] = best;
+  try { localStorage.setItem('g27.drills', JSON.stringify(bests)); } catch { /* private mode: no bests */ }
+  leaveGame();
+  screens.drillResult(drill, prev ?? drill.score, { onRetry: () => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id: drill.id }, drillPrefs: p }), onDone: () => showDrills(p) });
+}
+
 function showFinal() {
   screens.extraButtons = null;
   const g = session.franchiseGame;
@@ -358,7 +381,7 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2 };
+window.__g27 = { get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
@@ -402,11 +425,12 @@ function onSessionEvent(e) {
   else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
   else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
+  else if (e.type === 'drillRep') hud.banner(`${e.pts > 0 ? '+' : ''}${e.pts}`, e.text, 1.6, e.pts > 0 ? 'score' : 'miss');
   else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');
   else if (e.type === 'gameOver') {
     app = 'over';
     playcall.hide();
-    setTimeout(() => { if (app === 'over' && session) { hud.hideAll(); showFinal(); } }, 2500);
+    setTimeout(() => { if (app === 'over' && session) { hud.hideAll(); if (session.drill) showDrillResult(); else showFinal(); } }, session.drill ? 1500 : 2500);
   } else if (e.type === 'tackle' && e.power > 0.9) renderer.rig.shake = Math.min(1, e.power * 0.5);
   else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
   else if (e.type === 'tackle') input.rumble(0.35, 110);

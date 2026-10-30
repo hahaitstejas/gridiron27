@@ -7,6 +7,7 @@ import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
 import { Match, playStatLines, yardLineText } from './match.js';
 import { newEnergy, applyPlayFatigue, restAll } from './fatigue.js';
+import { newDrill, drillSpot, drillPlays, drillControl, drillWatch, drillScore, DRILLS } from './drills.js';
 import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHALLENGE_T, REVIEW_T } from './review.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
@@ -52,6 +53,12 @@ export class GameSession {
     // Practice: { side: 'offense'|'defense', yardLine, down, toGo, after: 'reset'|'continue' }.
     // No clock, no penalties, no fatigue; the situation resets after each play (or when a drive ends).
     this.practice = settings.practice || null;
+    // Skills drill (drills.js): practice with fixed reps, the drill's plays and a score.
+    this.drill = settings.drill ? newDrill(settings.drill.id) : null;
+    if (this.drill) this.practice = { side: DRILLS[this.drill.id].side, after: 'reset', ...drillSpot(this.drill) };
+    // The drill's human team (settings.drillAuto: the CPU runs the drill, for tools/tests).
+    this.drillHuman = this.humanTeams[0] ?? 0;
+    if (this.drill && settings.drillAuto) this.humanTeams = [];
     if (this.practice) this.practiceReset();
     // Career mode: settings.lockPlayer = roster id. The human plays only as him: he calls plays only as a QB
     // (offense) or MLB (defense), and snaps he isn't on the field for run CPU vs CPU (`watching`).
@@ -73,9 +80,11 @@ export class GameSession {
   }
 
   practiceReset() {
+    if (this.drill) Object.assign(this.practice, drillSpot(this.drill));
     const pr = this.practice;
     const m = this.match;
-    const off = pr.side === 'offense' ? this.humanTeam : 1 - this.humanTeam;
+    const me = this.drill ? this.drillHuman : this.humanTeam;
+    const off = pr.side === 'offense' ? me : 1 - me;
     m.over = false;
     m.quarter = 1;
     m.clock = m.settings.quarterMinutes * 60;
@@ -150,6 +159,7 @@ export class GameSession {
     // CPU timeouts (stopping the clock between plays).
     for (const t of [0, 1]) if (!this.isHuman(t) && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
+    if (this.drill) { const d = drillPlays(this.drill); this.choice = { off: d.off, def: d.def }; this.flushMessages(); this.emit('playcall', { human: this.humanSide }); return; }
     if (!this.calls(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
     if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng); }
     // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
@@ -241,6 +251,7 @@ export class GameSession {
       weather: this.settings.weather || null,
     });
     if (this.lock !== null) this.lockOn(this.sim);
+    if (this.drill) drillControl(this.sim, this.drill);
     this.state = 'presnap';
     this.presnapT = 0;
     this.jetWait = false;
@@ -536,6 +547,7 @@ export class GameSession {
     if (this.state === 'live') {
       const sim = this.sim;
       sim.tick(dt, humanInvolved ? input : null);
+      if (this.drill) drillWatch(sim, this.drill, sim.events);
       if (!this.fast) this.recorder.capture(sim);
       for (const e of sim.events) this.events.push(e);
       // Game clock runs during live plays (not during tries, or while a kick is in the air before it's touched).
@@ -688,12 +700,19 @@ export class GameSession {
     applyPlayFatigue(this.energy, sim, (r.duration || 5) * ((this.settings.sliders?.fatigue ?? 50) / 50));
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break
+    let drillRep = null;
+    if (this.drill) drillRep = drillScore(this.drill, r, sim);
     if (this.practice) {
       // Fresh legs every rep; back to the chosen spot after each play, or when the drive is over.
       restAll(this.energy, 1);
-      const off = this.practice.side === 'offense' ? this.humanTeam : 1 - this.humanTeam;
+      const me = this.drill ? this.drillHuman : this.humanTeam;
+      const off = this.practice.side === 'offense' ? me : 1 - me;
       if (this.practice.after !== 'continue' || m.over || m.phase !== 'scrimmage' || m.possession !== off) this.practiceReset();
       m.clockRunning = false;
+    }
+    if (drillRep) {
+      this.emit('drillRep', { ...drillRep, rep: this.drill.rep, reps: DRILLS[this.drill.id].reps, score: this.drill.score });
+      if (this.drill.done) m.over = true; // enterPlaycall ends it (gameOver); main.js shows the drill results
     }
     if (outcome && !outcome.accepted) m.say(outcome.text, 'penalty');
     this.flushMessages();

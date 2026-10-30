@@ -4,6 +4,7 @@ import { teamRatings } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { KEY_HELP } from '../input/keyboard.js';
 import { gameXP, lineText } from '../franchise/career.js';
+import { DRILLS, DRILL_IDS, MEDALS, medalFor } from '../game/drills.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
@@ -95,7 +96,7 @@ export class Screens {
     const tiles = [
       tile('feature', 'ball', 'Play Now', info.home ? `${info.away.city} ${info.away.name} at ${info.home.city} ${info.home.name}` : 'Exhibition game', onPlayNow, matchup),
       tile('', 'trophy', 'Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Seasons, the draft, or a player career', onFranchise),
-      tile('', 'cone', 'Practice', 'Any play, any spot, no clock', onPractice),
+      tile('', 'cone', 'Practice', 'Skills drills, scenarios, any play anywhere', onPractice),
       tile('', 'shield', 'League', info.leagueName ? `${info.leagueName}: rosters, teams, saves` : 'Rosters, teams, logos, saves', onLeague),
       tile('', 'board', 'Playbook', 'Design your own plays', onPlaybook),
       tile('small', 'gear', 'Settings', 'Camera, sliders, game options', onSettings),
@@ -163,7 +164,7 @@ export class Screens {
     this.nav.set([away, home, side, diff, qlen, accel, pens, wx, tod, start], { columns: 1, onBack, index: 9 });
   }
 
-  practice(teams, prefs, { onStart, onBack }) {
+  practice(teams, prefs, { onStart, onDrills, onBack }) {
     const p = { ...prefs };
     const option = (label, values, key, fmt = (v) => v) => {
       const row = el('div.opt-row');
@@ -190,9 +191,48 @@ export class Screens {
       const [down, toGo] = p.practiceSit.split('-').map(Number);
       onStart(p, { side: p.practiceSide, yardLine: p.practiceYL, down, toGo, after: p.practiceAfter });
     };
-    this.frame('setup-screen', el('h1', { text: 'Practice' }), el('div.setup-opts', {}, ...rows, start),
+    const drills = el('div.start-btn', { text: 'Skills Drills' });
+    drills.activate = () => { if (p.home === p.away) p.away = (p.home + 1) % teams.length; onDrills(p); };
+    this.frame('setup-screen', el('h1', { text: 'Practice' }), el('div.setup-opts', {}, ...rows, start, drills),
       el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> back' }));
-    this.nav.set([...rows, start], { columns: 1, onBack, index: rows.length });
+    this.nav.set([...rows, start, drills], { columns: 1, onBack, index: rows.length });
+  }
+
+  /** Skills drills: one tile per drill with your best score and medal. bests = { id: score }. */
+  drills(bests, teamName, { onStart, onBack }) {
+    const icons = { passing: 'ball', rushing: 'cone', kicking: 'trophy', passRush: 'shield', coverage: 'people' };
+    const tiles = DRILL_IDS.map((id, i) => {
+      const d = DRILLS[id], best = bests[id];
+      const medal = best !== undefined ? medalFor(id, best) : -1;
+      const sub = best !== undefined ? `Best ${best}${medal >= 0 ? ` · ${MEDALS[medal]}` : ''}` : `${d.reps} reps · ${d.side === 'offense' ? 'Offense' : 'Defense'}`;
+      const t = el(`div.hub-tile${i === 0 ? '.feature' : ''}`, {}, el('div.ht-icon', { html: ICONS[icons[id]] || '' }),
+        el('div.ht-text', {}, el('div.ht-label', { text: d.name }), el('div.ht-sub', { text: sub }), i === 0 ? el('div.ht-sub.dr-desc', { text: d.desc }) : null),
+        medal >= 0 ? el(`div.dr-medal.m${medal}`, { text: MEDALS[medal][0] }) : null);
+      t.activate = () => onStart(id);
+      t.onfocusitem = () => { help.innerHTML = `<b>${d.name}</b> — ${d.desc} <small>Medals: ${d.medals.join(' / ')}</small>`; };
+      return t;
+    });
+    const help = el('div.dr-help', {});
+    this.frame('drills-screen hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'SKILLS DRILLS' }), el('div.ps-brand', { text: teamName })),
+      el('div.hub-grid.drill-grid', {}, tiles), help,
+      el('div.hub-foot', { html: '<b class="btn A">A</b> Start drill &nbsp;&nbsp; <b class="btn B">B</b> Back' }));
+    this.nav.set(tiles, { spatial: true, onBack });
+  }
+
+  /** Drill results: score, medal, the rep log; A tries again, B back to the drills. */
+  drillResult(drill, best, { onRetry, onDone }) {
+    const d = DRILLS[drill.id];
+    const medal = medalFor(drill.id, drill.score);
+    const next = medal < 2 ? d.medals[medal + 1] : null;
+    const log = el('div.dr-log', {}, ...drill.log.map((l) => el('div.dr-rep', {}, el('span', { text: `Rep ${l.rep}` }), el('span', { text: l.text }), el('b', { text: `${l.pts > 0 ? '+' : ''}${l.pts}` }))));
+    const retry = el('div.start-btn', { text: 'Try Again' }); retry.activate = onRetry;
+    const done = el('div.start-btn', { text: 'Drills Menu' }); done.activate = onDone;
+    this.frame('drill-result setup-screen', el('h1', { text: d.name }),
+      el('div.dr-score', {}, el('div', { text: String(drill.score) }), el(`div.dr-medal.big.m${medal}`, { text: medal >= 0 ? MEDALS[medal] : 'No medal' })),
+      el('div.dr-sub', { text: `${drill.score >= best ? 'New best!' : `Best ${best}`}${next ? ` · ${MEDALS[medal + 1]} at ${next}` : ''}` }),
+      log, el('div.dr-btns', {}, retry, done),
+      el('div.setup-help', { html: '<b class="btn A">A</b> select &nbsp; <b class="btn B">B</b> drills menu' }));
+    this.nav.set([retry, done], { columns: 2, onBack: onDone });
   }
 
   /** Gameplay sliders: LB/RB switch User / CPU / League; ◀▶ change by 5. */

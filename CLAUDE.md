@@ -146,6 +146,13 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).
+- Skills drills (`game/drills.js`, Practice → Skills Drills, `Screens.drills` / `drillResult`): Passing Targets, Rushing
+  Gauntlet, Kicking Challenge (25→55 yds), Pass Rush (you're the edge), Lockdown Coverage (you're the corner). A practice
+  session with `settings.drill = { id }`: the drill sets the spot (`drillSpot`), both play calls (`drillPlays`, no play-call
+  screen), the human's player (`drillControl` → `drill.me`), watches the rep (`drillWatch`: pressure, broken tackles) and
+  scores it (`drillScore`); after `reps` the match ends → `showDrillResult()` in main.js (medal, rep log, best scores in
+  localStorage `g27.drills`). HUD `#drillbar`. Medal lines (`medals`) are set so the CPU doing the drill
+  (`settings.drillAuto`, tests) lands around silver.
 - Field-goal target zone (`fgZone(team, m, kickTeam)` in playcaller.js): per kicker `comfort` = 53 + (KPW-85)*0.4 +
   (KAC-80)*0.1 yds (snow -4, rain -1.5, ±1.2 per yd/s of tail/headwind), `max` = comfort + 4. 4th down: kick inside the
   comfort zone; the long-shot band only on 4th & 6+; end of a half: anything inside max (+2 at halftime). Isolated make

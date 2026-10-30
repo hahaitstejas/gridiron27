@@ -553,3 +553,24 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 
 /* Halftime report: a full screen (the game stays hidden until the second half starts) */
 .screen.halftime-screen { background: radial-gradient(ellipse at 50% 0%, #1b2547, #070b18 70%); }
+
+/* Skills drills */
+.drill-grid { grid-template-rows: repeat(2, minmax(130px, 24vh)); }
+.drill-grid .hub-tile.feature { grid-row: span 2; }
+.dr-desc { margin-top: 8px; max-width: 30ch; opacity: 0.8; }
+.dr-help { max-width: 1280px; width: 100%; margin: 16px auto 0; font-size: 16px; opacity: 0.85; min-height: 1.4em; }
+.dr-help small { margin-left: 10px; color: var(--gold); }
+.dr-medal { position: absolute; top: 12px; right: 14px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font: 900 18px var(--fd); color: #111; transform: skewX(calc(-1 * var(--skew))); }
+.dr-medal.m0 { background: linear-gradient(135deg, #e0a774, #8a5a2b); }
+.dr-medal.m1 { background: linear-gradient(135deg, #f2f4f7, #9aa3ad); }
+.dr-medal.m2 { background: linear-gradient(135deg, #ffe58a, #c9971c); }
+.dr-medal.big { position: static; width: auto; height: auto; border-radius: 6px; padding: 6px 16px; font-size: 22px; transform: none; }
+.dr-medal.big.m-1 { background: rgba(255,255,255,0.12); color: #ccd; }
+.dr-score { display: flex; align-items: center; gap: 24px; font: 900 72px var(--fd); }
+.dr-sub { font-size: 18px; opacity: 0.85; margin-bottom: 14px; }
+.dr-log { width: min(620px, 92vw); max-height: 46vh; overflow-y: auto; margin-bottom: 18px; }
+.dr-rep { display: grid; grid-template-columns: 70px 1fr 70px; gap: 12px; padding: 4px 12px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 16px; }
+.dr-rep b { text-align: right; }
+.dr-btns { display: flex; gap: 16px; }
+#drillbar { position: absolute; top: 14px; right: 18px; display: flex; gap: 18px; align-items: center; background: rgba(10,12,16,0.85); border-left: 4px solid var(--gold); padding: 8px 18px; font: 800 18px var(--fd); letter-spacing: 0.5px; }
+#drillbar b { color: var(--gold); font-size: 22px; } #drillbar small { opacity: 0.75; font-weight: 700; }

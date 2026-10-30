@@ -12,6 +12,28 @@ const ROW_RISE = 0.55;
 const WALL_H = 2.6;
 
 /** Builds the static stadium. Returns { group, update(dt, excitement), setTeams(home, away) }. */
+/** 256 px tile of grass blades for the field's detail layer (grey: multiplies the painted turf). */
+function grassDetailCanvas() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#808080';
+  g.fillRect(0, 0, 256, 256);
+  let s = 12345;
+  const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+  for (let i = 0; i < 9000; i++) {
+    const x = rnd() * 256, y = rnd() * 256, l = 2 + rnd() * 5, a = rnd() * Math.PI * 2;
+    const v = Math.floor(70 + rnd() * 120);
+    g.strokeStyle = `rgb(${v},${v},${v})`;
+    g.lineWidth = 0.6 + rnd() * 0.8;
+    // Blades that cross an edge are drawn again on the other side, so the tile repeats seamlessly.
+    for (const ox of x > 248 ? [0, -256] : [0]) for (const oy of y > 248 ? [0, -256] : [0]) {
+      g.beginPath(); g.moveTo(x + ox, y + oy); g.lineTo(x + ox + Math.cos(a) * l, y + oy + Math.sin(a) * l); g.stroke();
+    }
+  }
+  return c;
+}
+
 export function buildStadium(renderer, home, away) {
   const group = new THREE.Group();
 
@@ -44,8 +66,27 @@ export function buildStadium(renderer, home, away) {
   ground.position.y = -0.02;
   group.add(ground);
 
-  // The field.
+  // The field. A tiled blade-detail texture adds grain up close, and the mowing stripes catch the light
+  // depending on which way you look along the field (cut grass leans one way per stripe).
   const fieldMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const detail = new THREE.CanvasTexture(grassDetailCanvas());
+  detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
+  detail.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  fieldMat.onBeforeCompile = (sh) => {
+    sh.uniforms.tDetail = { value: detail };
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;\nuniform sampler2D tDetail;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        float dGrain = texture2D(tDetail, vGW.xz * 0.45).r * 0.6 + texture2D(tDetail, vGW.xz * 0.11 + 0.37).r * 0.4;
+        float onGrass = step(abs(vGW.z), 26.6) * step(abs(vGW.x), 49.9);
+        // Mowing sheen: 5-yard bands, brighter when you look along the cut, darker against it.
+        float band = mod(floor((vGW.x + 50.0) / 5.0), 2.0) * 2.0 - 1.0;
+        float look = clamp((cameraPosition.x - vGW.x) / 25.0, -1.0, 1.0);
+        float sheen = 1.0 + band * look * 0.1 * onGrass;
+        float grainK = mix(0.35, 1.0, step(0.32, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.8)); // less on paint
+        diffuseColor.rgb *= sheen * mix(1.0, 0.76 + dGrain * 0.44, grainK);`);
+  };
   const field = new THREE.Mesh(new THREE.PlaneGeometry(FX * 2, FZ * 2), fieldMat);
   field.rotation.x = -Math.PI / 2;
   field.receiveShadow = true;

@@ -21,7 +21,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
   g.fillStyle = '#2f6b2a';
   g.fillRect(0, 0, W, H);
   for (let x = -50; x < 50; x += 5) {
-    g.fillStyle = (Math.floor((x + 50) / 5) % 2) ? '#3c8a35' : '#368030';
+    g.fillStyle = (Math.floor((x + 50) / 5) % 2) ? '#3f8634' : '#33712b';
     g.fillRect(px(x), pz(-HALF_WIDTH), 5 * S, HALF_WIDTH * 2 * S);
   }
   // Turf speckle for texture.

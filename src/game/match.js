@@ -423,7 +423,18 @@ export class Match {
     }
     if (q === 4 || q >= 5) {
       if (this.score[0] !== this.score[1]) return this.endGame('regulation');
-      if (q >= 5) return this.endGame('tie');
+      if (q >= 5 && !this.settings.noTies) return this.endGame('tie');
+      if (q >= 5) {
+        // Playoffs and tournaments can't end tied: another sudden-death period.
+        this.quarter++;
+        this.clock = this.periodLength();
+        this.timeouts = [2, 2];
+        this.ot.suddenDeath = true;
+        const recv = this.rng.chance(0.5) ? 0 : 1;
+        this.say(`Still tied: another overtime period. ${this.teams[recv].name} will receive.`, 'half');
+        this.setupKickoff(1 - recv, KICKOFF_YL);
+        return;
+      }
       // Overtime: new coin toss, 10-minute period (scaled), 2 timeouts each.
       this.quarter = 5;
       this.clock = this.periodLength();

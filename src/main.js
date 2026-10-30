@@ -16,6 +16,7 @@ import { rosterScreen } from './ui/rosterEditor.js';
 import { teamEditor, leagueEditor } from './ui/teamEditor.js';
 import { LEAGUE } from './data/leagueInfo.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
+import { TournamentUI } from './ui/tournament.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
 import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.js';
@@ -108,13 +109,18 @@ league.onTeams = (focus = prefs.home) => screens.teamPicker(teams, focus, {
   extra: { label: 'League & Conferences', sub: `${LEAGUE.name} · logo, names`, logo: LEAGUE.logo,
     onPick: () => leagueEditor({ ...teamCtx, onBack: () => league.onTeams(-1) }) },
 });
+const tournamentUI = new TournamentUI({
+  teams, prefs, screens, onExit: () => toMenu(),
+  playGame: (t, g) => startGame({ home: g.home, away: g.away, side: g.home === t.userTeam ? 'home' : 'away', difficulty: t.difficulty, quarterMinutes: t.quarterMinutes },
+    { tournament: g, noTies: true, neutral: true }),
+});
 const franchiseUI = new FranchiseUI({
-  teams, prefs, screens, league, pickTeam,
+  teams, prefs, screens, league, pickTeam, tournament: () => tournamentUI.open(),
   onExit: () => toMenu(),
   playGame: (g) => {
     const f = league.franchise;
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
-      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null });
+      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, noTies: f.phase === 'playoffs', unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null });
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
@@ -187,13 +193,14 @@ function startGame(p, opts = {}) {
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
   });
   session.franchiseGame = opts.franchise || null;
   session.drillPrefs = opts.drillPrefs || null;
+  session.tournamentGame = opts.tournament || null;
   session.scenarioPrefs = opts.scenarioPrefs || null;
   // Season records on the scorebug (franchise games; exhibitions show 0-0).
   if (opts.franchise && league.franchise) session.records = [home, away].map((t) => { const r = recordOf(league.franchise, teams, teams.indexOf(t)); return `${r.w}-${r.l}${r.t ? '-' + r.t : ''}`; });
@@ -336,9 +343,10 @@ function showScenarioResult() {
 
 function showFinal() {
   screens.extraButtons = null;
-  const g = session.franchiseGame;
-  const done = g ? () => { const m = session.match, inj = session.injuries; leaveGame(); franchiseUI.recordPlayed(g, m, inj); } : toMenu;
-  screens.gameOver(session, { onDone: done, doneLabel: g ? 'Back to Franchise' : 'Main Menu', onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
+  const g = session.franchiseGame, tg = session.tournamentGame;
+  const done = g ? () => { const m = session.match, inj = session.injuries; leaveGame(); franchiseUI.recordPlayed(g, m, inj); }
+    : tg ? () => { const m = session.match; leaveGame(); tournamentUI.recordPlayed(tg, m); } : toMenu;
+  screens.gameOver(session, { onDone: done, doneLabel: g ? 'Back to Franchise' : tg ? 'Back to the Bracket' : 'Main Menu', onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
 }
 
 /** Back to the menus from a game (no main menu: the caller shows the next screen). */
@@ -364,7 +372,7 @@ function pause() {
       energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => league.changed() }) : null,
     onControls: () => screens.controls({ onBack: pause }),
     // Quitting a franchise game goes back to the hub (the game isn't recorded: play or sim it again).
-    onQuit: session?.franchiseGame ? () => { leaveGame(); franchiseUI.hub(); } : toMenu,
+    onQuit: session?.franchiseGame ? () => { leaveGame(); franchiseUI.hub(); } : session?.tournamentGame ? () => { leaveGame(); tournamentUI.open(); } : toMenu,
     game: session ? pauseInfo(session) : null,
   });
 }

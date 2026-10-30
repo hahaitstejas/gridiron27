@@ -238,6 +238,12 @@ rounds}, history[], seed, offseason{step, …} }`.
 - Single Season (Franchise menu → New Season): `createFranchise(..., { mode: 'season' })` (default 10 games); after the
   championship `advance` sets `f.phase = 'done'` instead of the offseason and the hub shows `seasonOver()` (champion
   banner, your finish, awards; Play Another Season with the same settings, standings, bracket, leaders, awards).
+- Tournament (Franchise menu → Tournament; `franchise/tournament.js` + `ui/tournament.js` `TournamentUI`): 4/8/16 teams
+  (yours + the best by `teamRatings`), seeded by rating in standard bracket order (1 vs N, 1 and 2 in opposite halves),
+  neutral sites (`settings.neutral`: no crowd noise, no home field in quick-sims), no ties (`settings.noTies`: Match keeps
+  adding sudden-death periods — franchise playoff games use it too). Play / Sim Game / Finish the Round; state in
+  localStorage `g27.tournament` (team indexes of the current league); the final screen's button returns to the bracket
+  (`session.tournamentGame` → `recordPlayed`).
 - Hub Team Stats (`FranchiseUI.teamStatsScreen`): season totals in `f.stats` shown with the end-of-game `STAT_TABS`
   (+ GP), your team or the whole league (X).
 - `franchise.js`: `createFranchise`, `currentGames`, `userGame`, `simGame`, `simOthers`, `advance` (week → playoffs →

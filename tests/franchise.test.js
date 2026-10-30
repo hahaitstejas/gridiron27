@@ -223,3 +223,27 @@ describe('single season', () => {
     expect(advance(f, lg)).toBe(false);
   });
 });
+
+describe('tournament', async () => {
+  const T = await import('../src/franchise/tournament.js');
+  it('seeds the field, keeps 1 and 2 apart and crowns one champion', () => {
+    const lg = generateLeagueRosters(defaultTeams(), 12);
+    for (const size of T.TOURNAMENT_SIZES) {
+      const t = T.createTournament(lg, { size, userTeam: 7, seed: size });
+      expect(t.seeds.length).toBe(size);
+      expect(t.seeds).toContain(7);
+      expect(new Set(t.seeds).size).toBe(size);
+      const first = t.rounds[0];
+      expect(first.length).toBe(size / 2);
+      expect(first[0].home).toBe(t.seeds[0]);
+      expect(first[0].away).toBe(t.seeds[size - 1]); // 1 plays N
+      // Seeds 1 and 2 are in different halves.
+      const half = (team) => first.findIndex((g) => g.home === team || g.away === team) < size / 4;
+      expect(half(t.seeds[0])).not.toBe(half(t.seeds[1]));
+      for (let k = 0; k < 10 && t.champion === null; k++) T.advanceTournament(t, lg);
+      expect(t.rounds.length).toBe(Math.log2(size));
+      expect(t.seeds).toContain(t.champion);
+      for (const r of t.rounds) for (const g of r) expect(g.score[0]).not.toBe(g.score[1]);
+    }
+  });
+});

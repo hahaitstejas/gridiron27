@@ -623,3 +623,23 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .so-banner b { display: block; font: 900 52px/1 var(--fd); font-style: italic; text-transform: uppercase; }
 .so-me { margin-top: 8px; font-size: 18px; }
 .so-awards { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-size: 14px; color: var(--dim); }
+
+/* Tournament bracket */
+.tb-bracket { display: flex; gap: 18px; max-width: 1280px; width: 100%; margin: 0 auto; overflow-x: auto; min-height: 0; flex: 1; }
+.tb-col { flex: 1; min-width: 150px; display: flex; flex-direction: column; gap: 8px; }
+.tb-games { flex: 1; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; }
+.tb-head { font: 800 13px var(--fd); letter-spacing: 3px; text-transform: uppercase; color: var(--gold); border-left: 3px solid var(--gold); padding-left: 8px; }
+.tb-card { background: rgba(8, 12, 26, 0.88); border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; overflow: hidden; }
+.tb-card.mine { border-color: var(--gold); box-shadow: 0 0 0 1px rgba(255, 211, 77, 0.35); }
+.tb-team { display: grid; grid-template-columns: 18px 28px 1fr auto; gap: 8px; align-items: center; padding: 3px 10px; font: 700 15px var(--fd); border-left: 4px solid var(--tc); opacity: 0.75; }
+.tb-team canvas { width: 26px; height: 26px; }
+.tb-team.win { opacity: 1; background: rgba(255,255,255,0.05); } .tb-team.win b, .tb-team.win .tb-score { color: #fff; font-weight: 900; }
+.tb-team.me b { color: var(--gold); }
+.tb-team.tbd { display: block; color: var(--dim); border-left-color: transparent; padding: 7px 10px; }
+.tb-seed { color: var(--dim); font-size: 12px; } .tb-score { min-width: 22px; text-align: right; }
+.tb-champ .tb-card { transform: scale(1.12); border-color: var(--gold); }
+.tb-tiles { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 14px; max-width: 1280px; width: 100%; margin: 16px auto 50px; }
+.tb-tiles .hub-tile { min-height: 84px; align-items: center; padding: 12px 18px; }
+.tb-tiles .hub-tile.feature { grid-row: auto; flex-direction: row; }
+.tb-tiles .hub-tile.feature .ht-label { font-size: 30px; }
+.tourney-screen { display: flex; flex-direction: column; }

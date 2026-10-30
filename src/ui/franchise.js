@@ -30,7 +30,6 @@ export class FranchiseUI {
   async open() {
     const { screens, league } = this.ctx;
     const saves = (await listSaves()).filter((s) => s.franchise);
-    if (!saves.length && !this.f) { this.newFranchise(); return; }
     const byAbbr = (name) => this.teams.find((t) => `${t.city} ${t.name}` === name || t.name === name || t.abbr === name);
     const tile = (cls, label, sub, action, art) => {
       const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, art, el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })));
@@ -56,8 +55,9 @@ export class FranchiseUI {
     }
     tiles.push(tile('new', 'New Franchise', 'Run a team: seasons, the draft, free agency', () => this.newFranchise(), el('div.ht-icon', { html: ICONS.trophy })));
     tiles.push(tile('new', 'New Season', 'One season to a championship, no offseason', () => this.newFranchise('season'), el('div.ht-icon', { html: ICONS.calendar })));
+    tiles.push(tile('new', 'Tournament', '4, 8 or 16 teams, single elimination', () => this.ctx.tournament(), el('div.ht-icon', { html: ICONS.bracket })));
     tiles.push(tile('new', 'New Career', 'Create a player and play as him', () => newCareer(this), el('div.ht-icon', { html: ICONS.user })));
-    screens.frame('hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'FRANCHISE <span>MODE</span>' })),
+    screens.frame('hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'SEASONS <span>&amp; MORE</span>' })),
       el('div.fr-saves', {}, tiles),
       el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Back' }));
     screens.nav.set(tiles, { spatial: true, onBack: this.ctx.onExit });

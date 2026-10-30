@@ -98,7 +98,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - `boxscore.js`: full player stats by category (`STAT_TABS`: passing incl. passer rating, rushing, receiving,
   defense, kicking) from `match.stats.players`; `statRows(m, tab, team)`. Shown by `ui/statsScreen.js` from the
   final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter.
-- Tempo: on the play-call screen Y = no-huddle (`session.noHuddle()` reruns `lastOffPlay`, no accelerated-clock
+- Play-call screen (`ui/playcall.js`): a formation strip (LB/RB; Suggested, My Plays, every formation by family, Special
+  Teams; ▲▼ jumps a family), three big dark diagrams per page (◀▶ pages) picked with X / A / Y, PASS/RUN (ZONE/MAN)
+  badges and per-game `session.callStats` ("N CALLS | avg yds"); RT flips, View = timeout.
+- Tempo: on the play-call screen LS click = no-huddle (`session.noHuddle()` reruns `lastOffPlay`, no accelerated-clock
   runoff); at the line B = spike (`session.spike()` swaps in `st_spike` and snaps). View (or the Share button,
   gamepad button 17) calls a timeout between plays; the pause menu has Call Timeout too.
 - Injuries (`sim/injuries.js`): each successful tackle may hurt the carrier (`injuryChance`: power, big hits, age;

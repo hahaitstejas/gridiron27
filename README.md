@@ -22,7 +22,8 @@ control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalt
 | | Xbox | Keyboard |
 |---|---|---|
 | Menus: move · select · back · tabs | D-pad / left stick · A · B · LB/RB | WASD or 1–4 · J · K · Q/O |
-| Play call: flip play · timeout | X · View | U · T |
+| Play call: formation · more plays · call the left/middle/right play | LB/RB · stick ◀▶ (▲▼ jumps a group) · X / A / Y | Q/O · A/D · U / J / I |
+| Play call: flip · no huddle · timeout | RT · LS click · View | Shift · F · T |
 | Snap | A | J or Space |
 | Pause | Menu | Enter / Esc |
 | Move | Left stick | W A S D |

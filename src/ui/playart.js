@@ -6,22 +6,40 @@ import { ZONES } from '../ai/zones.js';
 const OL = new Set(['LT', 'LG', 'C', 'RG', 'RT']);
 const cache = new Map();
 
-function setup(w, h) {
+function setup(w, h, dark = false) {
   const c = document.createElement('canvas');
   const dpr = Math.min(2, window.devicePixelRatio || 1);
   c.width = w * dpr; c.height = h * dpr;
   c.style.width = w + 'px'; c.style.height = h + 'px';
   const g = c.getContext('2d');
   g.scale(dpr, dpr);
-  // Turf with yard lines.
-  g.fillStyle = '#1f5a2a';
-  g.fillRect(0, 0, w, h);
   const sy = h / 34;
   const losY = h * 0.72;
-  g.strokeStyle = 'rgba(255,255,255,0.12)';
-  g.lineWidth = 1;
-  for (let d = -10; d <= 30; d += 5) { const y = losY - d * sy; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
-  g.strokeStyle = 'rgba(80,150,255,0.85)';
+  if (dark) {
+    // Play-call style: dark field, faint yard lines with sideways numbers, gold line of scrimmage.
+    const grd = g.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#15191f'); grd.addColorStop(1, '#0b0e12');
+    g.fillStyle = grd;
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.16)';
+    g.lineWidth = 1;
+    for (let d = -10; d <= 30; d += 5) { const y = losY - d * sy; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    g.fillStyle = 'rgba(255,255,255,0.22)';
+    g.font = `800 ${Math.round(sy * 3.2)}px Arial, sans-serif`;
+    g.textAlign = 'center';
+    for (const [d, n] of [[10, '30'], [20, '20']]) {
+      for (const x of [w * 0.12, w * 0.88]) { g.save(); g.translate(x, losY - d * sy); g.rotate(x < w / 2 ? Math.PI / 2 : -Math.PI / 2); g.fillText(n, 0, sy * 1.1); g.restore(); }
+    }
+    g.strokeStyle = 'rgba(255,214,80,0.75)';
+  } else {
+    // Turf with yard lines.
+    g.fillStyle = '#1f5a2a';
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,0.12)';
+    g.lineWidth = 1;
+    for (let d = -10; d <= 30; d += 5) { const y = losY - d * sy; g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    g.strokeStyle = 'rgba(80,150,255,0.85)';
+  }
   g.lineWidth = 2;
   g.beginPath(); g.moveTo(0, losY); g.lineTo(w, losY); g.stroke();
   const sx = w / 50;
@@ -60,11 +78,11 @@ function tBlock(g, x, y, up = true) {
 const ROUTE_COLORS = ['#ffd84d', '#ff6b6b', '#5ec8ff', '#9cff6b', '#ff9df5'];
 
 /** Offensive play (or formation when routes are missing) diagram. Returns a canvas. */
-export function offenseArt(play, w = 210, h = 120) {
-  const key = `o:${play.id || play.formation}:${play.rev || 0}:${w}x${h}`;
+export function offenseArt(play, w = 210, h = 120, dark = false) {
+  const key = `o:${play.id || play.formation}:${play.rev || 0}:${w}x${h}:${dark}`;
   if (cache.has(key)) return cloneCanvas(cache.get(key));
   const f = getOffFormation(play.formation);
-  const { c, g, P } = setup(w, h);
+  const { c, g, P } = setup(w, h, dark);
   const routes = play.routes || {};
   let ci = 0;
   for (const p of f.players) {
@@ -106,11 +124,11 @@ export function offenseArt(play, w = 210, h = 120) {
 }
 
 /** Defensive play diagram: zones, man assignments, rushers and blitzers. */
-export function defenseArt(play, w = 210, h = 120) {
-  const key = `d:${play.id || play.formation}:${w}x${h}`;
+export function defenseArt(play, w = 210, h = 120, dark = false) {
+  const key = `d:${play.id || play.formation}:${w}x${h}:${dark}`;
   if (cache.has(key)) return cloneCanvas(cache.get(key));
   const f = getDefFormation(play.formation);
-  const { c, g, P, sx, sy } = setup(w, h);
+  const { c, g, P, sx, sy } = setup(w, h, dark);
   const assign = play.assign || {};
   for (const p of f.players) {
     const [x, y] = P(p.at[0], p.at[1]);
@@ -145,8 +163,8 @@ export function defenseArt(play, w = 210, h = 120) {
 }
 
 /** Special teams icon art (no diagram data needed). */
-export function specialArt(label, w = 210, h = 120) {
-  const { c, g } = setup(w, h);
+export function specialArt(label, w = 210, h = 120, dark = false) {
+  const { c, g } = setup(w, h, dark);
   g.fillStyle = 'rgba(255,255,255,0.9)';
   g.font = '700 22px Arial, sans-serif';
   g.textAlign = 'center';

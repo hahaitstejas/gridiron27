@@ -548,6 +548,15 @@ export class GameSession {
     this.flushMessages();
     // Who made the play and their game totals (skipped on tries and plays wiped out by a flag).
     const statLines = scrimmage && !(outcome && outcome.accepted) ? playStatLines(m, r, sim) : [];
+    // Per-game call counts and yards for the play-call screen ("3 CALLS | 5.3 AVG YDS").
+    if (this.sim && !this.sim.isKick) {
+      this.callStats ||= {};
+      for (const play of [this.sim.offPlay, this.sim.defPlay]) {
+        const id = play.id.replace(/__flip$/, '');
+        const cs = (this.callStats[id] ||= { n: 0, yds: 0 });
+        cs.n++; cs.yds += r.yards || 0;
+      }
+    }
     this.emit('result', { result: r, outcome, statLines });
     this.state = 'post';
     this.wait = this.fast ? 0 : 0.7;

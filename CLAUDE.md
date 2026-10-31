@@ -347,12 +347,24 @@ default behind your player = rig mode `follow` for non-QBs; a defender's stick i
   LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
 
 ### Menus (look and navigation)
-The main menu is a hub (`Screens.mainMenu(handlers, info)`): a featured Play Now tile with the current matchup, tiles for
-Franchise / Practice / League / Playbook and a small row (Settings, Controls, Saves), your team in the top bar.
-Original line-art icons (`ICONS` in screens.js). Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the
-nearest item in that direction by on-screen rectangles (any layout). Shared style (end of style.css): slanted panels
-(`--skew`), gold focus edge, `--accent` = your team's primary color (set by the hub), stripe background, fixed bottom
-hint bar (`.setup-help`). The design is our own; don't copy other games' menus or trade dress.
+Monochrome theme (the user's mockups): black / white / gray only, flat panels with thin white lines, the focused item
+inverted (white, black text), small italic titles top-left, monochrome controller glyphs and a black hint bar; only team
+logos and jerseys carry color. It's the "Monochrome theme" block at the end of style.css: it overrides the older styles
+(`--gold` → white, `--skew` 0, team `--accent`s neutralized on the screen's children), so every screen picks it up.
+- Main menu (`Screens.mainMenu`): a featured player (`featuredCard`: a random top-40 non-lineman/specialist from the league,
+  on an SVG jersey in his team's colors; new each visit), the league logo, GRIDIRON 27, and tabs Quick Play / Training
+  (practice, drills, scenarios) / Franchise / Rosters / Edit League / Playbook / Settings; Y Controls, X Saves.
+- Quick Play: `playNow` = Team Select (away and home logo boxes with OVR / city / name cards; ◀▶ changes the focused team;
+  the controller row puts P1 left = away, middle = watch, right = home, or both for 2 players) → A → `gameSettings`
+  (quarter length, accelerated clock, difficulty, stadium home / neutral → `settings.neutral`, weather, time, penalties).
+- Pause (`Screens.pause`): a list (Resume, Timeout, Challenge Play when a close call against you is open, Stats, Coaching,
+  Instant Replay, Settings, Controls, Controller Select, Restart, Quit; dimmed when not available) beside the two starting
+  QBs' game so far (`pauseInfo().qbs`: comp %, yards, TDs), the scorebug left visible below. Controller Select
+  (`controllerSelect()` in main.js → `session.setHumans()`) switches sides or watches, Quick Play only; Restart reruns
+  `lastStart`.
+Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest item in that direction by on-screen
+rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
+menus or trade dress.
 
 ### Fonts
 Saira Condensed everywhere (the user's pick): menus, HUD, scorebug and canvas text (field numbers, end zones, jerseys,

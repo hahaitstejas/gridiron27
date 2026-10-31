@@ -31,7 +31,8 @@ import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
-import { Screens, loadPrefs, savePrefs } from './ui/screens.js';
+import { logoCanvas } from './render/logo.js';
+import { Screens, loadPrefs, savePrefs, ICONS } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen } from './ui/depthEditor.js';
@@ -164,17 +165,19 @@ function toMenu() {
     onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
     onPractice: showPractice,
     onLeague: () => league.menu(),
+    onRosters: () => league.onRosters(),
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
     onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
     onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
     onSaves: () => league.saves(0, toMenu),
   }, {
-    home: teams[prefs.home], away: teams[prefs.away], mine: teams[prefs.home], leagueName: league.slot ? league.name : null,
+    home: teams[prefs.home], away: teams[prefs.away], mine: teams[prefs.home], leagueName: league.slot ? league.name : null, teams, leagueLogo: LEAGUE.logo,
     franchise: league.franchise ? { team: teams[league.franchise.userTeam]?.name, year: league.franchise.year } : null,
   });
 }
 
+let lastStart = null;
 function startGame(p, opts = {}) {
   autoReplayPending = false;
   // Franchise games don't touch the Play Now preferences.
@@ -191,11 +194,12 @@ function startGame(p, opts = {}) {
     return;
   }
   const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : cfg.side === 'home' ? 0 : 1;
+  lastStart = [p, opts]; // pause → Restart
   const seed = opts.seed ?? (Date.now() % 1e9);
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral, sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
@@ -383,6 +387,15 @@ function pause() {
     onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
       energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => {}, inGame: true }) : null,
     onControls: () => screens.controls({ onBack: pause }),
+    onReplay: session?.lastReplay ? () => { screens.clear(); app = 'game'; startReplay(); } : null,
+    // A close call against you is waiting for your decision: challenge it from here too.
+    onChallenge: session?.state === 'review' && session.review?.phase === 'call' && session.isHuman(session.review.hurt)
+      ? () => { session.challenge(); for (const e of session.events.splice(0)) onSessionEvent(e); screens.clear(); app = 'game'; } : null,
+    onSettings: () => screens.settings(prefs, { onSave: (np) => { Object.assign(prefs, np); savePrefs(prefs); applyCamera(); pause(); }, onBack: pause }),
+    // Controller Select: switch sides or watch (Quick Play only: franchise, career and 2-player games keep their sides).
+    onController: session && !session.franchiseGame && !session.tournamentGame && session.lock === null && !session.twoPlayer && !session.practice && !session.scenario
+      ? () => controllerSelect() : null,
+    onRestart: lastStart && session && !session.drill ? () => { const [lp, lo] = lastStart; leaveGame(); startGame(lp, { ...lo, noIntro: true }); } : null,
     // Quitting a franchise game goes back to the hub (the game isn't recorded: play or sim it again).
     onQuit: session?.franchiseGame ? () => { leaveGame(); franchiseUI.hub(); } : session?.tournamentGame ? () => { leaveGame(); tournamentUI.open(); } : toMenu,
     game: session ? pauseInfo(session) : null,
@@ -399,12 +412,45 @@ function boardFrame(m, dt) {
 }
 function flashBoard(text, team) { boardFlash = { text, color: session?.teams[team]?.colors.primary || '#c8102e', t: 4 }; }
 
+/** Pause → Controller Select: move your controller to a side (or the middle to watch); applies at the line. */
+function controllerSelect() {
+  const s = session;
+  const SIDES = ['away', 'cpu', 'home'];
+  let side = s.humanTeams.length ? (s.humanTeams[0] === 0 ? 'home' : 'away') : 'cpu';
+  const row = el('div.ts-pads');
+  const draw = () => {
+    row.innerHTML = '';
+    const col = (n) => el(`div.ts-padcol${n === 1 ? '.mid' : ''}`, {}, ...(n === SIDES.indexOf(side) ? [el('div.ts-pad', { html: `${ICONS.pad}<small>P1</small>` })] : []));
+    row.append(col(0), col(1), col(2), el('div.ts-padnote', { text: side === 'cpu' ? 'Watch: CPU vs CPU' : `Play ${s.teams[side === 'home' ? 0 : 1].name}` }));
+  };
+  row.spin = (d) => { side = SIDES[(SIDES.indexOf(side) + d + 3) % 3]; draw(); };
+  row.activate = () => { s.setHumans(side === 'cpu' ? [] : [side === 'home' ? 0 : 1]); for (const e of s.events.splice(0)) onSessionEvent(e); pause(); };
+  draw();
+  const [h, a] = s.teams;
+  screens.frame('mono-screen ts-screen', el('h1', { text: 'Controller Select' }),
+    el('div.ts-row.small', {}, el('div.ts-team', {}, el('div.ts-side', { text: 'AWAY' }), el('div.ts-logo', {}, logoCanvas(a.logo, 140)), el('div.ts-card', {}, el('div.ts-name', {}, el('small', { text: a.city.toUpperCase() }), el('b', { text: a.name.toUpperCase() })))),
+      el('div.ts-at', { text: '@' }),
+      el('div.ts-team', {}, el('div.ts-side', { text: 'HOME' }), el('div.ts-logo', {}, logoCanvas(h.logo, 140)), el('div.ts-card', {}, el('div.ts-name', {}, el('small', { text: h.city.toUpperCase() }), el('b', { text: h.name.toUpperCase() }))))),
+    row, el('div.setup-help', { html: '◀▶ Move your controller &nbsp; <b class="btn A">A</b> Confirm &nbsp; <b class="btn B">B</b> Back' }));
+  screens.nav.set([row], { onBack: pause });
+}
+
 function pauseInfo(s) {
   const m = s.match, [home, away] = m.teams;
   const ord = (q) => q > 4 ? 'OT' : ['1st', '2nd', '3rd', '4th'][q - 1];
   const down = m.phase === 'scrimmage' ? `${downText(m)} · ${m.teams[m.possession].abbr} ball on the ${yardLineText(m)}` : m.phase === 'try' ? 'Extra point try' : 'Kickoff';
   const mine = s.humanTeam !== null ? m.teams[s.humanTeam] : home;
-  return { home, away, score: m.score, quarter: ord(m.quarter), clock: clockText(m.clock), down, practice: !!s.practice, accent: mine.colors.primary };
+  // Each side's starting quarterback and his game so far (the pause screen's matchup).
+  const qbs = [0, 1].map((t) => {
+    const id = s.teams[t].depth.QB?.[0];
+    const p = s.teams[t].roster.find((q) => q.id === id);
+    if (!p) return null;
+    const st = m.stats.players[`${t}:${p.id}`] || {};
+    const comp = st.passAtt ? ((100 * st.passCmp) / st.passAtt).toFixed(1) : '0.0';
+    return { first: p.first, last: p.last, number: p.number, comp, yds: Math.round(st.passYds || 0), td: st.passTD || 0 };
+  });
+  const mode = s.franchiseGame ? 'Franchise' : s.tournamentGame ? 'Tournament' : s.scenario ? 'Scenario' : s.drill ? 'Skills Drill' : 'Play Now';
+  return { home, away, score: m.score, quarter: ord(m.quarter), clock: clockText(m.clock), down, practice: !!s.practice, accent: mine.colors.primary, qbs, mode };
 }
 
 input.onConnect = (id) => {

@@ -101,6 +101,21 @@ export class GameSession {
   }
 
   get twoPlayer() { return this.humanTeams.length === 2; }
+
+  /**
+   * Controller Select (pause menu): change which side the human plays mid-game ([0] home, [1] away, [] watch the
+   * CPU). Takes effect at the line (the play is re-lined up) or on the next play call.
+   */
+  setHumans(list) {
+    this.humanTeams = [...list];
+    this.baseHumans = [...list];
+    const h = list.length === 1 ? list[0] : null;
+    this.diff = difficultyConfig(this.settings.difficulty, h);
+    this.smart = h === null ? 0.9 : (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).smart;
+    this.match.humanTeam = h;
+    if (this.state === 'presnap' && this.sim?.state === 'presnap') this.rebuildPresnap();
+    else if (this.state === 'playcall') this.enterPlaycall();
+  }
   /** Gameplay sliders for a team: the user set for human teams, the CPU set otherwise. */
   slidersFor(team) {
     const s = this.settings.sliders;

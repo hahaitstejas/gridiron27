@@ -66,6 +66,30 @@ export const ICONS = {
   pad: svg('<path d="M6 8h12a4 4 0 0 1 3.8 5.2l-1.2 3.6a2.2 2.2 0 0 1-3.9.6L15 15H9l-1.7 2.4a2.2 2.2 0 0 1-3.9-.6l-1.2-3.6A4 4 0 0 1 6 8z"/><path d="M7 11v3M5.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/>'),
 };
 
+/** A random top-rated player for the main menu (from the league's rosters), shown on his jersey. */
+function featuredCard(teams) {
+  const pool = [];
+  teams.forEach((t) => t.roster?.forEach((p) => { if (!['K', 'P', 'T', 'G', 'C', 'FB'].includes(p.pos)) pool.push({ p, t }); }));
+  pool.sort((a, b) => (b.p.ovr ?? 0) - (a.p.ovr ?? 0));
+  const top = pool.slice(0, 40);
+  if (!top.length) return el('div.mm-feature');
+  // The menu is UI, not the sim: Math.random is fine here (a different star each visit).
+  const { p, t } = top[Math.floor(Math.random() * top.length)];
+  const c = t.colors;
+  const jersey = `<svg viewBox="0 0 200 220" class="mm-jersey"><path d="M58 14 L82 6 Q100 22 118 6 L142 14 L192 44 L172 96 L150 86 L150 214 L50 214 L50 86 L28 96 L8 44 Z" fill="${c.primary}" stroke="${c.secondary}" stroke-width="5"/>
+    <path d="M82 6 Q100 22 118 6" fill="none" stroke="${c.secondary}" stroke-width="8"/>
+    <text x="100" y="${p.last.length > 9 ? 62 : 64}" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="800" font-size="${p.last.length > 9 ? 17 : 21}" fill="${c.secondary}" letter-spacing="2">${p.last.toUpperCase()}</text>
+    <text x="100" y="168" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="96" fill="${c.secondary}" stroke="${c.accent || '#fff'}" stroke-width="2">${p.number}</text></svg>`;
+  return el('div.mm-feature', {}, el('div.mm-jersey-wrap', { html: jersey }),
+    el('div.mm-player', {}, el('small', { text: `${p.pos} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
+      el('div.mm-ovr', {}, el('b', { text: String(p.ovr) }), el('small', { text: 'OVR' }))));
+}
+
+/** A line-art controller with a label (Team Select / Controller Select). */
+function padIcon(label) {
+  return el('div.ts-pad', { html: `${ICONS.pad}<small>${label}</small>` });
+}
+
 export class Screens {
   constructor(root, nav) {
     this.root = root;
@@ -94,33 +118,34 @@ export class Screens {
    * Main menu hub: a featured Play Now tile with tonight's matchup, then tiles for the other modes.
    * info = { home, away (teams), mine (your team), franchise: { team, year } | null, leagueName }.
    */
-  mainMenu({ onPlayNow, onPractice, onFranchise, onLeague, onPlaybook, onControls, onSettings, onSaves }, info = {}) {
-    const tile = (cls, icon, label, sub, action, extra = null) => {
-      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, el('div.ht-icon', { html: ICONS[icon] || '' }), el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })), extra);
-      t.activate = action;
-      return t;
-    };
-    const matchup = info.home && info.away ? el('div.ht-matchup', {},
-      el('div.htm-team', { style: { '--tc': info.away.colors.primary } }, logoCanvas(info.away.logo, 96), el('b', { text: info.away.abbr })),
-      el('div.htm-at', { text: '@' }),
-      el('div.htm-team', { style: { '--tc': info.home.colors.primary } }, logoCanvas(info.home.logo, 96), el('b', { text: info.home.abbr }))) : null;
+  /**
+   * Main menu (the user's layout): a featured player (a random top-rated one, new each visit), the league logo
+   * and the title, then a row of tabs. Black / white / gray; only logos and the jersey carry color.
+   */
+  mainMenu({ onPlayNow, onPractice, onFranchise, onRosters, onLeague, onPlaybook, onControls, onSettings, onSaves }, info = {}) {
     const fr = info.franchise;
-    const tiles = [
-      tile('feature', 'ball', 'Play Now', info.home ? `${info.away.city} ${info.away.name} at ${info.home.city} ${info.home.name}` : 'Exhibition game', onPlayNow, matchup),
-      tile('', 'trophy', 'Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Seasons, the draft, or a player career', onFranchise),
-      tile('', 'cone', 'Practice', 'Skills drills, scenarios, any play anywhere', onPractice),
-      tile('', 'shield', 'League', info.leagueName ? `${info.leagueName}: rosters, teams, saves` : 'Rosters, teams, logos, saves', onLeague),
-      tile('', 'board', 'Playbook', 'Design your own plays', onPlaybook),
-      tile('small', 'gear', 'Settings', 'Camera, sliders, game options', onSettings),
-      tile('small', 'pad', 'Controls', 'Controller and keyboard', onControls),
-      tile('small', 'disk', 'Saves', 'Save slots, files, start over', onSaves),
-    ];
-    const mine = info.mine;
-    const top = el('div.hub-top', {}, el('div.hub-logo', { html: 'GRIDIRON <span>27</span>' }),
-      mine ? el('div.hub-me', { style: { '--tc': mine.colors.primary } }, logoCanvas(mine.logo, 40), el('div', {}, el('small', { text: 'YOUR TEAM' }), el('b', { text: `${mine.city} ${mine.name}` }))) : null);
-    this.frame('hub-screen', top, el('div.hub-grid', {}, tiles), el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <span class="tiny">An original football game · not affiliated with any league or team</span>' }));
-    if (mine) this.root.style.setProperty('--accent', mine.colors.primary);
-    this.nav.set(tiles, { spatial: true });
+    const tabs = [
+      ['Quick Play', 'Pick two teams and play', onPlayNow],
+      ['Training', 'Practice, skills drills, scenarios', onPractice],
+      ['Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Franchise, season, career, tournament', onFranchise],
+      ['Rosters', 'Players, ratings, trades, signings', onRosters],
+      ['Edit League', 'Teams, logos, depth charts, saves, spreadsheets', onLeague],
+      ['Playbook', 'Design your own plays', onPlaybook],
+      ['Settings', 'Camera, sliders, game options', onSettings],
+    ].map(([label, sub, action]) => {
+      const t = el('div.mm-tab', {}, el('span', { text: label }));
+      t.activate = action;
+      t.onfocusitem = () => { hint.textContent = sub; };
+      return t;
+    });
+    const hint = el('div.mm-hint');
+    this.frame('mono-main', el('div.mm-stage', {}, featuredCard(info.teams || []),
+      el('div.mm-league', {}, info.leagueLogo ? logoCanvas(info.leagueLogo, 150) : null),
+      el('div.mm-title', { text: 'GRIDIRON 27' })),
+      el('div.mm-tabs', {}, tabs), hint,
+      el('div.setup-help', { html: '<b class="btn A">A</b> Select &nbsp; ◀▶ Move &nbsp; <b class="btn Y">Y</b> Controls &nbsp; <b class="btn X">X</b> Saves &nbsp;&nbsp; <span class="tiny">An original football game · not affiliated with any league or team</span>' }));
+    this.nav.set(tabs, { spatial: true, index: info.focus ?? 0 });
+    this.extraButtons = (f) => { if (f.pressed.Y) { this.extraButtons = null; onControls(); } else if (f.pressed.X) { this.extraButtons = null; onSaves(); } };
   }
 
   menuItem(label, sub, action, disabled = false) {
@@ -129,51 +154,75 @@ export class Screens {
     return it;
   }
 
-  /** Play Now setup: teams, side, difficulty, quarter length, accelerated clock. */
-  playNow(teams, prefs, { onStart, onBack }) {
-    const p = { ...prefs };
-    const teamPanel = (key, label) => {
-      const box = el('div.team-pick');
+  /**
+   * Quick Play, step 1 — Team Select: the two teams (◀▶ change the focused one) and the controllers (◀▶ move yours
+   * to a side: left = away, middle = watch, right = home, or both for two players). A goes on to Game Settings.
+   */
+  playNow(teams, prefs, { onStart, onBack }, p = { ...prefs }) {
+    const box = (key, label) => {
+      const it = el('div.ts-team');
       const draw = () => {
         const t = teams[p[key]];
         const r = teamRatings(t);
-        box.innerHTML = '';
-        box.style.setProperty('--tc', t.colors.primary);
-        box.append(el('div.tp-label', { text: label }), el('div.tp-arrows', { html: '◀ &nbsp; ▶' }), logoCanvas(t.logo, 120),
-          el('div.tp-city', { text: t.city }), el('div.tp-name', { text: t.name }),
-          el('div.tp-ratings', { html: `<span>OVR <b>${r.ovr}</b></span><span>OFF <b>${r.off}</b></span><span>DEF <b>${r.def}</b></span>` }));
+        it.innerHTML = '';
+        it.append(el('div.ts-side', { text: label }), el('div.ts-logo', {}, logoCanvas(t.logo, 200)),
+          el(`div.ts-card.${key}`, {}, el('div.ts-ovr', {}, el('b', { text: String(r.ovr) }), el('small', { text: 'OVR' })),
+            el('div.ts-name', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() })),
+            el('div.ts-sub', { text: `OFF ${r.off} · DEF ${r.def}` })));
       };
-      box.spin = (d) => { p[key] = (p[key] + d + teams.length) % teams.length; if (p.home === p.away) p[key] = (p[key] + d + teams.length) % teams.length; draw(); };
-      box.activate = () => box.spin(1);
+      it.spin = (d) => { p[key] = (p[key] + d + teams.length) % teams.length; if (p.home === p.away) p[key] = (p[key] + d + teams.length) % teams.length; draw(); };
+      it.activate = () => this.gameSettings(teams, p, { onStart, onBack: () => this.playNow(teams, prefs, { onStart, onBack }, p) });
       draw();
-      return box;
+      return it;
     };
+    const away = box('away', 'AWAY'), home = box('home', 'HOME');
+    const SIDES = ['away', 'cpu', 'home', '2p'];
+    const pads = el('div.ts-pads');
+    pads.spin = (d) => { p.side = SIDES[(SIDES.indexOf(p.side) + d + SIDES.length) % SIDES.length]; drawPads(); };
+    pads.activate = away.activate;
+    const drawPads = () => {
+      const col = (n) => el(`div.ts-padcol${n === 1 ? '.mid' : ''}`, {}, ...(
+        p.side === '2p' ? (n === 0 ? [padIcon('P2')] : n === 2 ? [padIcon('P1')] : [])
+          : (n === SIDES.indexOf(p.side) ? [padIcon('P1')] : [])));
+      pads.innerHTML = '';
+      pads.append(col(0), col(1), col(2), el('div.ts-padnote', { text: p.side === 'cpu' ? 'Watch: CPU vs CPU' : p.side === '2p' ? 'Two players: P1 home, P2 away' : `You play ${p.side === 'home' ? 'home' : 'away'}` }));
+    };
+    drawPads();
+    this.frame('mono-screen ts-screen', el('h1', { text: 'Team Select' }),
+      el('div.ts-row', {}, away, el('div.ts-at', { text: '@' }), home), pads,
+      el('div.setup-help', { html: '▲▼ Teams / controllers &nbsp; ◀▶ Change &nbsp; <b class="btn A">A</b> Next: game settings &nbsp; <b class="btn B">B</b> Back' }));
+    this.nav.set([away, home, pads], { columns: 1, onBack, index: 2 });
+  }
+
+  /** Quick Play, step 2 — Game Settings: quarter length, clock, difficulty, stadium, weather, time of day. */
+  gameSettings(teams, p, { onStart, onBack }) {
     const option = (label, values, key, fmt = (v) => v) => {
       const row = el('div.opt-row');
       const draw = () => { row.innerHTML = ''; row.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ ${fmt(p[key])} ▶` })); };
-      row.spin = (d) => { const i = values.indexOf(p[key]); p[key] = values[(i + d + values.length) % values.length]; draw(); };
+      row.spin = (d) => { const i = Math.max(0, values.indexOf(p[key])); p[key] = values[(i + d + values.length) % values.length]; draw(); };
       row.activate = () => row.spin(1);
       draw();
       return row;
     };
-    const home = teamPanel('home', 'HOME');
-    const away = teamPanel('away', 'AWAY');
-    const side = option('You play as', ['home', 'away', '2p', 'cpu'], 'side', (v) => (v === 'cpu' ? 'Watch CPU vs CPU' : v === '2p' ? '2 players (P1 home, P2 away)' : v === 'home' ? 'Home team' : 'Away team'));
-    const diff = option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label);
-    const qlen = option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'quarterMinutes', (v) => `${v} min`);
-    const accel = option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `run to ${v}s` : 'Off'));
-    const pens = option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off'));
     const cap = (v) => v[0].toUpperCase() + v.slice(1);
-    const wx = option('Weather', ['random', 'clear', 'rain', 'snow', 'windy'], 'weather', cap);
-    const tod = option('Time of day', ['random', 'day', 'dusk', 'night'], 'time', cap);
+    p.stadium ||= 'home';
+    const rows = [
+      option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'quarterMinutes', (v) => `${v} min`),
+      option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `Run to ${v}s` : 'Off')),
+      option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
+      option('Stadium', ['home', 'neutral'], 'stadium', (v) => (v === 'home' ? `${teams[p.home].city} (home crowd)` : 'Neutral site')),
+      option('Weather', ['random', 'clear', 'rain', 'snow', 'windy'], 'weather', cap),
+      option('Time of day', ['random', 'day', 'dusk', 'night'], 'time', cap),
+      option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off')),
+    ];
     const start = el('div.start-btn', { text: 'Start Game' });
     start.activate = () => onStart(p);
-    this.frame('setup-screen',
-      el('h1', { text: 'Play Now' }),
-      el('div.setup-teams', {}, away, el('div.vs', { text: 'AT' }), home),
-      el('div.setup-opts', {}, side, diff, qlen, accel, pens, wx, tod, start),
-      el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> back' }));
-    this.nav.set([away, home, side, diff, qlen, accel, pens, wx, tod, start], { columns: 1, onBack, index: 9 });
+    const a = teams[p.away], h = teams[p.home];
+    this.frame('mono-screen gs-screen', el('h1', { text: 'Game Settings' }),
+      el('div.gs-match', {}, logoCanvas(a.logo, 44), el('span', { text: `${a.city} ${a.name}  @  ${h.city} ${h.name}` }), logoCanvas(h.logo, 44)),
+      el('div.gs-box', {}, ...rows), start,
+      el('div.setup-help', { html: '▲▼ Move &nbsp; ◀▶ Change &nbsp; <b class="btn A">A</b> Start (on Start Game) &nbsp; <b class="btn B">B</b> Back to team select' }));
+    this.nav.set([...rows, start], { columns: 1, onBack, index: rows.length });
   }
 
   practice(teams, prefs, { onStart, onDrills, onScenarios, onBack }) {
@@ -383,29 +432,40 @@ export class Screens {
    * Pause menu in the hub style: a situation banner (score, clock, down) over icon tiles.
    * game = { home, away, score: [h, a], quarter, clock, down, spot, practice } (optional).
    */
-  pause({ onResume, onTimeout, timeoutsLeft = 0, onReplay, onStats, onDepth, onControls, onQuit, game = null }) {
-    const tile = (cls, icon, label, sub, action) => {
-      const t = el(`div.hub-tile${cls ? '.' + cls : ''}`, {}, el('div.ht-icon', { html: ICONS[icon] || '' }), el('div.ht-text', {}, el('div.ht-label', { text: label }), el('div.ht-sub', { text: sub })));
-      t.activate = action;
-      return t;
+  /**
+   * Pause (the user's layout): the menu down the left, the two starting quarterbacks' game so far on the right, and
+   * the scorebug left visible along the bottom. Items that don't apply right now are dimmed.
+   */
+  pause({ onResume, onTimeout, timeoutsLeft = 0, onChallenge, onReplay, onStats, onDepth, onSettings, onControls, onController, onRestart, onQuit, game = null }) {
+    const items = [];
+    const add = (label, action, note = '') => {
+      const it = el(`div.pz-item${action ? '' : '.disabled'}`, {}, el('span', { text: label }), note ? el('small', { text: note }) : null);
+      it.activate = action || (() => {});
+      items.push(it);
     };
-    const tiles = [tile('feature', 'play', 'Resume', game?.practice ? 'Back to practice' : 'Back to the game', onResume)];
-    if (onTimeout) tiles.push(tile('', 'clock', 'Timeout', `${timeoutsLeft} left · stops the clock`, onTimeout));
-    if (onStats) tiles.push(tile('', 'chart', 'Game Stats', 'Passing, rushing, receiving, defense', onStats));
-    if (onDepth) tiles.push(tile('', 'people', 'Depth Chart', 'Starters, rotation, energy', onDepth));
-    if (onReplay) tiles.push(tile('', 'replay', 'Instant Replay', 'Watch the last play again', onReplay));
-    tiles.push(tile('small', 'pad', 'Controls', 'Controller and keyboard', onControls), tile('small', 'exit', 'Quit', game?.practice ? 'Leave practice' : 'Abandon this game', onQuit));
-    let banner = null;
-    if (game?.home && game?.away) {
-      const side = (t, sc) => el('div.ps-team', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 64), el('div', {}, el('small', { text: t.city }), el('b', { text: t.abbr })), el('div.ps-score', { text: game.practice ? '' : String(sc) }));
-      banner = el('div.ps-banner', {}, side(game.away, game.score[1]), el('div.ps-mid', {},
-        el('div.ps-clock', { text: game.practice ? 'PRACTICE' : `${game.quarter} · ${game.clock}` }), el('div.ps-down', { text: game.down || '' })), side(game.home, game.score[0]));
-    }
-    this.frame('pause-screen hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'PAUSED' }), el('div.ps-brand', { html: 'GRIDIRON <span>27</span>' })),
-      banner, el('div.hub-grid.pause-grid', {}, tiles),
-      el('div.hub-foot', { html: '<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Resume' }));
-    if (game?.accent) this.root.style.setProperty('--accent', game.accent);
-    this.nav.set(tiles, { spatial: true, onBack: onResume });
+    add('Resume', onResume);
+    add('Timeout', onTimeout, `${timeoutsLeft} left`);
+    add('Challenge Play', onChallenge, onChallenge ? '' : 'nothing to challenge');
+    add('Stats', onStats);
+    add('Coaching', onDepth, 'depth chart · this game');
+    add('Instant Replay', onReplay);
+    add('Settings', onSettings);
+    add('Controls', onControls);
+    add('Controller Select', onController);
+    add('Restart', onRestart);
+    add(game?.practice ? 'Quit Practice' : 'Quit', onQuit);
+    const qb = (q, t, right) => el(`div.pz-qb${right ? '.right' : ''}`, {},
+      el('div.pz-head', {}, el('div.pz-name', {}, el('small', { text: q ? `#${q.number}` : '' }), el('b', { html: q ? `${q.first.toUpperCase()}<br>${q.last.toUpperCase()}` : '' })),
+        el('div.pz-logo', {}, logoCanvas(t.logo, 110))),
+      el('div.pz-stats', {}, el('div.pz-ring', {}, el('b', { text: q ? q.comp : '0.0' }), el('small', { text: 'COMP%' })),
+        el('div.pz-nums', {}, el('b', { text: String(q?.yds ?? 0) }), el('small', { text: 'YDS' }), el('b', { text: String(q?.td ?? 0) }), el('small', { text: 'TDS' }))));
+    const title = game?.practice ? 'Practice' : game?.mode || 'Play Now';
+    this.frame('mono-screen pz-screen', el('h1', { text: title }),
+      el('div.pz-main', {}, el('div.pz-list', {}, items),
+        game?.home ? el('div.pz-matchup', {}, qb(game.qbs?.[1], game.away, false), qb(game.qbs?.[0], game.home, true)) : el('div')),
+      el('div.pz-situation', { text: game ? `${game.practice ? 'Practice' : `${game.quarter} · ${game.clock}`} · ${game.down || ''}` : '' }),
+      el('div.setup-help.pz-help', { html: '<b class="btn A">A</b> Select &nbsp; ▲▼ Move &nbsp; <b class="btn B">B</b> Resume' }));
+    this.nav.set(items, { columns: 1, onBack: onResume });
   }
 
   /** Final box score; `halftime: true` makes it the halftime report (no player of the game, Start 2nd Half). */

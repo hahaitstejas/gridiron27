@@ -856,9 +856,11 @@ export class PlaySim {
         r.possTeam = this.offIdx;
         return r;
       }
-      if (['touchback', 'fairCatch', 'downed', 'kickOOB'].includes(reason)) {
+      if (['touchback', 'fairCatch', 'downed', 'kickOOB', 'kickShort'].includes(reason)) {
         r.possTeam = this.defIdx;
         r.touchback = reason === 'touchback';
+        if (r.touchback && this.kick.touchbackYL) r.touchbackYL = this.kick.touchbackYL;
+        r.kickShort = reason === 'kickShort'; // dynamic kickoff landed short of the landing zone
         r.fairCatch = reason === 'fairCatch';
         r.downed = reason === 'downed';
         r.kickOOB = reason === 'kickOOB';

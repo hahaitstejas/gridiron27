@@ -305,3 +305,44 @@ describe('gameplay extras', () => {
     expect(sim.ball.place).toBe('high');
   });
 });
+
+describe('dynamic kickoff', async () => {
+  const { RNG } = await import('../src/core/rng.js');
+  const { STEP } = await import('../src/core/constants.js');
+  const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+  const { PlaySim } = await import('../src/sim/play.js');
+  const { generateLeagueRosters } = await import('../src/data/generator.js');
+  const { defaultTeams } = await import('../src/data/teams.js');
+  const lg = generateLeagueRosters(defaultTeams(), 6);
+  it('lines up at the receiving 40 and the setup zone, nobody moves until the ball lands, short kicks die at the 40', async () => {
+    const sim = new PlaySim({ rng: new RNG(4), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -15, ballZ: 0, offPlay: getOffPlay('st_kickoff'), defPlay: getDefPlay('st_kick_return') });
+    const loc = (p) => sim.toLocal(p.x, p.z).down;
+    const cover = sim.offense().filter((p) => p.slot !== 'K');
+    expect(cover.every((p) => Math.abs(loc(p) - 24.5) < 0.6)).toBe(true); // the receiving 40
+    const setup = sim.defense().filter((p) => !/^KR/.test(p.slot));
+    expect(setup.length).toBe(9);
+    expect(setup.every((p) => loc(p) >= 30 && loc(p) <= 35)).toBe(true); // their 30 to 35
+    sim.snap();
+    const start = new Map(sim.players.map((p) => [p.id, { x: p.x, z: p.z }]));
+    let landed = false, moved = 0;
+    for (let k = 0; k < 2000 && !sim.finished; k++) {
+      sim.tick(STEP, null);
+      if (sim.events.some((e) => e.type === 'kickLanded' || e.type === 'kickCaught')) landed = true;
+      if (!landed && sim.ball.state === 'kick') for (const p of [...cover, ...setup]) moved = Math.max(moved, Math.hypot(p.x - start.get(p.id).x, p.z - start.get(p.id).z));
+    }
+    expect(moved).toBeLessThan(1.5);
+    // A kick that lands around the receiving 35 (short of the landing zone): dead, ball at the 40.
+    const { launchKick } = await import('../src/sim/kicking.js');
+    const s2 = new PlaySim({ rng: new RNG(5), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -15, ballZ: 0, offPlay: getOffPlay('st_squib'), defPlay: getDefPlay('st_kick_return') });
+    s2.snap();
+    launchKick(s2, s2.players[s2.kick.kickerId], { type: 'squib', power: 0.6, accuracy: 0, aim: 0 });
+    for (let k = 0; k < 2000 && !s2.finished; k++) s2.tick(STEP, null);
+    expect(s2.result.kickShort).toBe(true);
+  });
+  it('onside kicks keep the old alignment with the hands team', async () => {
+    const { defenseForSpecial } = await import('../src/ai/playcaller.js');
+    expect(getOffPlay('st_onside').formation).toBe('kickoff_onside');
+    expect(defenseForSpecial(getOffPlay('st_onside')).id).toBe('st_onside_return');
+    expect(defenseForSpecial(getOffPlay('st_kickoff')).id).toBe('st_kick_return');
+  });
+});

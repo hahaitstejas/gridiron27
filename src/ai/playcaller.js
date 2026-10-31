@@ -200,7 +200,8 @@ function pickDefense(m, rng, all, blitzRate) {
 
 /** Special-teams defensive look for a known special offensive call. */
 export function defenseForSpecial(offPlay) {
-  if (offPlay.type === 'kickoff') return getDefPlay('st_kick_return');
+  // An onside kick is declared (dynamic kickoff rules): the receiving team brings its hands team.
+  if (offPlay.type === 'kickoff') return getDefPlay(offPlay.kick === 'onside' ? 'st_onside_return' : 'st_kick_return');
   if (offPlay.fake) return getDefPlay(offPlay.fake === 'punt' ? 'st_punt_return' : 'st_fg_block'); // the fake fools them
   if (offPlay.type === 'punt') return getDefPlay('st_punt_return');
   if (offPlay.type === 'fg') return getDefPlay('st_fg_block');

@@ -92,7 +92,17 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   on the meter is judged from where the CPU rush was when the kick was due (`markDue`/`dueAt`, `LATE_GRACE`).
   `node tools/fgblock.js`: CPU ~1.5-2%, human kicker ~2% even with a slow meter, a human rusher in front ~1 in 4.
 - Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
-  plane, returns, fair catches, touchbacks, onside kicks. Special plays/formations are in
+  plane, returns, fair catches, touchbacks, onside kicks.
+  Kickoffs use the NFL's dynamic kickoff (`dynamicKickoff(sim)`: every kickoff except a declared onside): formation
+  `kickoff` puts the kicker's ten teammates at the receiving 40 (25 yds from a kick at the 35), `kick_return` has nine in the
+  setup zone (their 30-35) and two returners deep; nobody but the kicker and returners moves until the ball hits the ground
+  or a player (`cover_wait` stands, launch gives coverage `task.hold`, `kr_block` waits). First bounce (`k.landYL`, yards
+  from the receiving goal): past the 20 (`LANDING_ZONE`) → dead, `kickShort`, ball at the 40; in the end zone → touchback.
+  Touchbacks come out to the 35 (in the air / out the back) or the 20 (landed in the zone, then downed in the end zone:
+  `kick.touchbackYL` → `result.touchbackYL`); out of bounds → the 40. The CPU aims for the landing zone (deep ~the 5, squib ~the
+  15); its returner takes a touchback on a ball caught in the end zone, brings out one that bounced in. Onside kicks
+  (`st_onside`, declared any time) keep the old alignment (`kickoff_onside`) against the hands team (`st_onside_return`).
+  Measured: avg start ~the 29, ~8% touchbacks, ~1.5% return TDs (was 23.6 / 26% / 5%). Special plays/formations are in
   `playbooks/special.json` (ids `st_*`; `listOffPlays()`/`listDefPlays()` hide them unless `all=true`).
 - Reviews (`game/review.js`): after a play without flags, `closeCall(result, sim, rng)` finds a close call (sideline catch
   `stats.catchZ` within 0.7 yd of the sideline, spot within 0.4 yd of the line to gain, runner down < 0.5 yd short of the

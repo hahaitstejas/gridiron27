@@ -42,7 +42,7 @@ export function updateMeter(m, dt) {
 // ---------- Kick physics ----------
 const KICKS = {
   deep: { angle: 44, range: (kpw) => 44 + kpw * 0.3 },
-  squib: { angle: 14, range: (kpw) => (30 + kpw * 0.15) },
+  squib: { angle: 14, range: (kpw) => (38 + kpw * 0.15) }, // a line drive into the landing zone
   onside: { angle: 30, range: () => 13 },
   punt: { angle: 61, range: (kpw) => 40 + kpw * 0.25 },
   fg: { angle: 33, range: (kpw) => 44 + kpw * 0.24 },
@@ -164,6 +164,10 @@ function kickerContact(sim) {
   }
 }
 
+/** The dynamic kickoff (every kickoff except a declared onside kick): see special.json `kickoff`. */
+export const dynamicKickoff = (sim) => sim.offPlay.type === 'kickoff' && sim.offPlay.kick !== 'onside';
+export const LANDING_ZONE = 20; // the receiving 20 to the goal line
+
 /** Field-goal distance in yards from a line of scrimmage (yard line = yards from own goal). */
 export const fgDistance = (yardLine) => 100 - yardLine + 17;
 
@@ -223,7 +227,8 @@ export function launchKick(sim, kicker, params) {
   sim.emit('kick', { kind: type, power, kicker: kicker.id });
   if (type === 'fg' || type === 'punt') blockCheck(sim, kicker, type, R);
   for (const p of sim.players) {
-    if (p.team === sim.offIdx && p.task && ['pass_block', 'hold_kick', 'cover_wait'].includes(p.task.type)) p.task = { type: 'cover', safety: !!p.task.safety };
+    // Dynamic kickoff: the coverage stays put at the receiving 40 until the ball hits the ground or a player.
+    if (p.team === sim.offIdx && p.task && ['pass_block', 'hold_kick', 'cover_wait'].includes(p.task.type)) p.task = { type: 'cover', safety: !!p.task.safety, hold: dynamicKickoff(sim) };
     // The punt-rush unit turns and blocks for the return (it used to just jog back without blocking anyone).
     if (p.team !== sim.offIdx && p.task?.type === 'st_rush' && type === 'punt') p.task = { type: 'kr_block', drive: { x: -sim.dir, z: 0 } };
     if (p.engagement) sim.breakEngagement(p.engagement);
@@ -300,7 +305,13 @@ export function cpuKickParams(sim, kicker) {
     return { type: 'punt', power, accuracy: accErr, aim: rng.gauss(0, 0.25) };
   }
   const style = sim.offPlay.kick || 'deep';
-  return { type: style, power: clamp(0.93 + rng.gauss(0, 0.05), 0.7, 1), accuracy: accErr, aim: rng.gauss(0, 0.3) };
+  if (style === 'onside') return { type: style, power: 1, accuracy: accErr, aim: rng.gauss(0, 0.3) };
+  // Dynamic kickoff: a touchback gives them the 35, so kickers aim for the landing zone (deep kicks around the 5,
+  // squibs around the 15), with some spread — a few land in the end zone or come up short.
+  const toGoal = GOAL_X - sim.ball.x * sim.dir; // yards from the kick to the receiving goal line
+  const land = style === 'squib' ? 15 + rng.gauss(0, 3) : 5 + rng.gauss(0, 4.5);
+  const power = clamp((toGoal - land) / kickRange(style, sim.R(kicker, 'kickPower')), 0.6, 1);
+  return { type: style, power, accuracy: accErr, aim: rng.gauss(0, 0.3) };
 }
 
 // ---------- Per-tick special teams logic ----------
@@ -420,7 +431,15 @@ function updateKickFlight(sim, dt) {
   if (b.y <= 0.12 && b.vy < 0) {
     b.y = 0.12;
     b.bounces++;
-    if (b.bounces === 1) sim.emit('kickLanded', {});
+    if (b.bounces === 1) {
+      sim.emit('kickLanded', {});
+      // Dynamic kickoff: short of the landing zone = the receiving 40; in the end zone = touchback to the 35.
+      if (k.type === 'kickoff' && dynamicKickoff(sim)) {
+        k.landYL = GOAL_X + b.x * sim.teamDir(sim.defIdx);
+        if (k.landYL > LANDING_ZONE) { kickDead(sim, 'kickShort'); return; }
+        if (k.landYL < 0) { kickDead(sim, 'touchback'); return; }
+      }
+    }
     // Pointy ball: unpredictable bounces that lose speed.
     const sp = Math.hypot(b.vx, b.vz);
     const yaw = Math.atan2(b.vz, b.vx) + sim.rng.gauss(0, 0.5);
@@ -495,7 +514,10 @@ function catchKick(sim, p) {
   }
   // Kneel in the end zone for a touchback.
   const deep = -b.x * recvDir - GOAL_X; // yards deep in own end zone (positive = in end zone)
-  if (deep > 0 && (p.kneel || (!sim.isHumanControlled(p) && deep > 2.5 && k.type === 'kickoff'))) {
+  // CPU returner: a kickoff caught in the air in the end zone is a touchback to the 35, better than most returns;
+  // one that bounced in from the landing zone only comes out to the 20, so he usually brings that one out.
+  const cpuKneel = !sim.isHumanControlled(p) && k.type === 'kickoff' && (dynamicKickoff(sim) ? (b.bounces ? deep > 3 : deep > 0.3) : deep > 2.5);
+  if (deep > 0 && (p.kneel || cpuKneel)) {
     b.carrier = p.id;
     sim.possTeam = sim.defIdx;
     kickDead(sim, 'touchback');
@@ -511,6 +533,9 @@ function catchKick(sim, p) {
 function kickDead(sim, why) {
   const k = sim.kick;
   k.endReason = why;
+  // Kickoff touchbacks: to the 35 when it reached the end zone in the air, to the 20 when it landed in the
+  // landing zone first and was downed in the end zone (dynamic kickoff); 35 for every old-style kick too.
+  if (why === 'touchback' && k.type === 'kickoff') k.touchbackYL = dynamicKickoff(sim) && k.landYL !== undefined && k.landYL >= 0 ? 20 : 35;
   sim.possTeam = sim.defIdx;
   sim.emit(why, {});
   sim.whistle(why);
@@ -530,12 +555,18 @@ function runSpecialAI(sim, dt) {
     if (sim.isHumanControlled(p) && p.userActive && t !== 'kicker') continue;
     switch (t) {
       case 'cover_wait': {
-        // Kickoff coverage: creep to the ball line as the kicker approaches, then go on the kick.
+        // Dynamic kickoff: set at the receiving 40, no running start. (Onside: the traditional alignment, creeping
+        // up to the ball line as the kicker approaches.)
+        if (dynamicKickoff(sim)) { stop(p); break; }
         const w = sim.toWorld(-0.6, sim.toLocal(p.x, p.z).lat);
         seek(p, w.x, w.z, 0.3, 0.5);
         break;
       }
       case 'cover': {
+        if (p.task.hold) {
+          if (b.state === 'kick' && !b.bounces) { stop(p); break; }
+          p.task.hold = false; // it landed (or someone caught it): go
+        }
         const ret = sim.players.find((q) => q.team === sim.defIdx && q.task?.type === 'returner');
         const tgt = b.state === 'kick' && !b.bounces ? b.target : b;
         // Stay in lanes until close, then converge on the returner/ball.
@@ -582,6 +613,8 @@ function runSpecialAI(sim, dt) {
         break;
       }
       case 'kr_block': {
+        // Dynamic kickoff: the setup zone can't move until the ball hits the ground or a player.
+        if (k.type === 'kickoff' && dynamicKickoff(sim) && (b.state === 'tee' || (b.state === 'kick' && !b.bounces))) { stop(p); break; }
         // Set up a wall in front of the landing spot, then block whoever comes through.
         if (b.state === 'kick' && b.bounces > 0 && Math.hypot(b.x - p.x, b.z - p.z) < 10) { seek(p, b.x, b.z, 1, 0.1); break; } // loose ball: fall on it
         if (b.state === 'kick' && k.style === 'onside' && b.t > 0.35 && b.target && Math.hypot(b.target.x - p.x, b.target.z - p.z) < 25) {

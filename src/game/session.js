@@ -176,7 +176,7 @@ export class GameSession {
 
   cpuDefenseFor(offPlay) {
     const m = this.match;
-    if (m.phase === 'kickoff') return getDefPlay('st_kick_return');
+    if (m.phase === 'kickoff') return offPlay ? defenseForSpecial(offPlay) || getDefPlay('st_kick_return') : getDefPlay('st_kick_return');
     if (offPlay) { const st = defenseForSpecial(offPlay); if (st) return st; }
     const blitz = (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).blitz;
     return chooseDefense(m, this.defTeam, this.rng, blitz);
@@ -232,7 +232,7 @@ export class GameSession {
     // A special-teams call on offense brings the matching unit on defense.
     const st = defenseForSpecial(off);
     if (st) def = st;
-    if (m.phase === 'kickoff') def = getDefPlay('st_kick_return');
+    if (m.phase === 'kickoff') def = defenseForSpecial(off) || getDefPlay('st_kick_return');
     const cfg = m.playConfig({ offPlay: off, defPlay: def });
     const human = this.humanTeam;
     this.sim = new PlaySim({

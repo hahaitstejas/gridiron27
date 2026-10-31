@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS = {
   difficulty: 'pro',
 };
 
-const TOUCHBACK_KICKOFF = 30; // modern rule: a kickoff touchback comes out to the 30 (punts: the 20)
+const TOUCHBACK_KICKOFF = 35; // dynamic kickoff: a touchback comes out to the 35 (20 if it landed in the landing zone first)
 const TOUCHBACK_PUNT = 20;
 const KICKOFF_YL = 35;
 const PAT_YL = 85; // 15-yard line: 33-yard kick
@@ -278,11 +278,12 @@ export class Match {
         return this.afterPlay(true);
       }
       let yl;
-      if (r.touchback) yl = r.kickType === 'kickoff' ? TOUCHBACK_KICKOFF : TOUCHBACK_PUNT;
-      else if (r.kickOOB) yl = r.kickType === 'kickoff' ? 40 : this.ylOf(recv, r.spotX);
+      if (r.touchback) yl = r.kickType === 'kickoff' ? r.touchbackYL ?? TOUCHBACK_KICKOFF : TOUCHBACK_PUNT;
+      else if (r.kickOOB || r.kickShort) yl = r.kickType === 'kickoff' ? 40 : this.ylOf(recv, r.spotX);
       else yl = this.ylOf(recv, r.spotX);
       if (r.touchback) this.say('Touchback', 'info');
-      this.changePossession(recv, yl, r.touchback || r.kickOOB ? 0 : r.spotZ, true);
+      if (r.kickShort) this.say('Kick short of the landing zone: ball at the 40', 'info');
+      this.changePossession(recv, yl, r.touchback || r.kickOOB || r.kickShort ? 0 : r.spotZ, true);
       return this.afterPlay(true);
     }
 

@@ -29,13 +29,18 @@ describe('Match rules', () => {
     expect(m.yardLine).toBe(35);
   });
 
-  it('kickoff touchback gives the receiver the 30', () => {
+  it('dynamic kickoff spots: touchback to the 35 (20 after landing in the zone), short of the zone to the 40', () => {
+    for (const [extra, yl] of [[{ touchback: true, touchbackYL: 20 }, 20], [{ kickShort: true }, 40]]) {
+      const m2 = newMatch(3);
+      m2.applyResult({ ...res(m2, { yl: 35 }), kickType: 'kickoff', possTeam: 1 - m2.possession, ...extra });
+      expect(m2.yardLine).toBe(yl);
+    }
     const m = newMatch(3);
     const kicker = m.possession;
     m.applyResult({ ...res(m, { yl: 35 }), kickType: 'kickoff', touchback: true, possTeam: 1 - kicker });
     expect(m.phase).toBe('scrimmage');
     expect(m.possession).toBe(1 - kicker);
-    expect(m.yardLine).toBe(30);
+    expect(m.yardLine).toBe(35);
     expect(m.down).toBe(1);
     expect(m.toGo).toBe(10);
   });
@@ -205,8 +210,9 @@ describe('fatigue and rotation', () => {
       const plays = s.match.stats.team[t].plays;
       expect(snaps(t, 'HB', 1)).toBeGreaterThan(plays * 0.1); // the backup back gets real work
       expect(snaps(t, 'HB', 0)).toBeGreaterThan(snaps(t, 'HB', 1));
-      expect(snaps(t, 'QB', 0)).toBe(plays);
-      expect(snaps(t, 'LT', 0)).toBe(plays);
+      // Every snap except a fake punt / fake field goal (the QB isn't in the kicking unit).
+      expect(snaps(t, 'QB', 0)).toBeGreaterThanOrEqual(plays - 2);
+      expect(snaps(t, 'LT', 0)).toBeGreaterThanOrEqual(plays - 2);
     }
   }, 60000);
 });

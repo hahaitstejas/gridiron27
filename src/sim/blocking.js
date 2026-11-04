@@ -13,7 +13,18 @@ export function canBlock(sim, b) {
 
 export function canBeBlocked(sim, d) {
   // Field goal protection blocks inside-out: the human's end man outside the wing (B1/B8) comes free, the long way round.
-  if (sim.kick?.type === 'fg' && !sim.kick.launched && (d.slot === 'B1' || d.slot === 'B8') && sim.isHumanControlled(d)) return false;
+  // Not every time, though: the wing gets a hand on him on a good share of snaps (decided once per kick, by the
+  // rusher's get-off against the wing's pass blocking), which costs him the half second he needed.
+  if (sim.kick?.type === 'fg' && !sim.kick.launched && (d.slot === 'B1' || d.slot === 'B8') && sim.isHumanControlled(d)) {
+    const k = sim.kick;
+    if (k.edgeChip === undefined) {
+      const wing = sim.players.filter((o) => o.team === sim.offIdx && o.task?.type === 'pass_block')
+        .sort((a, b) => Math.hypot(a.x - d.x, a.z - d.z) - Math.hypot(b.x - d.x, b.z - d.z))[0];
+      const edge = (sim.R(d, 'passRush') + sim.R(d, 'speed')) / 2 - (wing ? sim.R(wing, 'passBlock') : 60);
+      k.edgeChip = sim.rng.next() < Math.max(0.3, Math.min(0.75, 0.55 - edge * 0.008));
+    }
+    if (!k.edgeChip) return false;
+  }
   return d.team !== sim.possTeam && d.state === 'active' && !d.engagement && d.noEngageT <= 0;
 }
 

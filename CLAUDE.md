@@ -90,7 +90,7 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
 - Blocked kicks (`sim/kicking.js`): `blockCheck` at launch (rusher right at the kicker) plus `flightBlock` (a defender in the
   ball's path while it's still under his reach; a human's A jump / X lay-out `blockJump` raises it). A human kicker who is slow
   on the meter is judged from where the CPU rush was when the kick was due (`markDue`/`dueAt`, `LATE_GRACE`).
-  `node tools/fgblock.js`: CPU ~1.5-2%, human kicker ~2% even with a slow meter, a human rusher in front ~1 in 4.
+  `node tools/fgblock.js`: CPU ~1.5-2%, human kicker ~2% even with a slow meter, a human interior rusher ~3.5-6%, the human edge (B1/B8, chipped by the wing on ~55% of snaps: `kick.edgeChip`) ~2.5% with the X dive.
 - Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
   plane, returns, fair catches, touchbacks, onside kicks.
   Kickoffs use the NFL's dynamic kickoff (`dynamicKickoff(sim)`: every kickoff except a declared onside): formation

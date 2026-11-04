@@ -108,7 +108,7 @@ function blockCheck(sim, kicker, type, range) {
     // A late human kick is judged from where the CPU rush was when the kick was due (momentum carries them in).
     if (lateOK && !sim.isHumanControlled(d) && k.dueAt[d.id] != null) dist = Math.max(dist, k.dueAt[d.id]);
     if (dist > 2.6 || sim.toLocal(d.x, d.z).down < kl.down + 0.4) continue;
-    const reach = Math.pow((2.6 - dist) / 2.6, 1.5) * 0.38 * low * (sim.isHumanControlled(d) ? 1.15 : 1);
+    const reach = Math.pow((2.6 - dist) / 2.6, 1.5) * 0.38 * low;
     if (sim.rng.next() < reach) {
       const b = sim.ball;
       // The ball pops up and dies short of the line.
@@ -144,7 +144,7 @@ function flightBlock(sim) {
     const reach = (dove ? 2.45 : 2.25) + (jumped && !dove ? 0.65 : 0) + (d.pos === 'DE' || d.pos === 'DT' ? 0.15 : 0);
     if (b.y > reach) continue;
     k.flightTried.add(d.id);
-    const chance = (human ? (dove ? 0.85 : jumped ? 0.5 : 0.2) : 0.025) * (1 - off / (dove ? 3.2 : 1.4)) * longF;
+    const chance = (human ? (dove ? 0.85 : jumped ? 0.22 : 0.1) : 0.025) * (1 - off / (dove ? 3.2 : 1.4)) * longF;
     if (sim.rng.next() < chance) {
       b.vx = b.vx * 0.12 + sim.rng.gauss(0, 1.5); b.vz = b.vz * 0.12 + sim.rng.gauss(0, 2); b.vy = sim.rng.range(2, 5);
       b.target = { x: b.x + b.vx * 0.8, z: b.z + b.vz * 0.8 };

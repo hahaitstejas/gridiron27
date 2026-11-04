@@ -736,6 +736,8 @@ function frameBody(now) {
     const m = session.match, wt = session.settings.weather?.type;
     const prog = Math.min(1, ((Math.min(m.quarter, 4) - 1) + (1 - m.clock / Math.max(1, m.quarterLength || 300))) / 4);
     renderer.players.dirt = session.practice ? 0 : prog * (wt === 'rain' ? 0.9 : wt === 'snow' ? 0.6 : 0.25);
+    // Sweat: skin gets glossier as the game wears on (and right away in the rain).
+    renderer.players.setSweat(session.practice ? 0.2 : Math.min(1, prog * 0.9 + (wt === 'rain' ? 0.5 : 0)));
     if (sim) renderer.players.setColors(sim, session.teams);
     lastSim = sim;
   }

@@ -195,9 +195,10 @@ environment's network policy (the user can allow them in the environment setting
 - [x] A1 Human base mesh: a public-domain human (MakeHuman CC0 base mesh) shaped into a football build (pads, pants, socks,
       gloves as regions), skinned to our 13-bone skeleton (weights from the bone distance / MakeHuman weights), drop-in for
       render/body.js (same bone texture, regions, numbers); LOD (the procedural body far away).
-- [ ] A2 Materials: jersey mesh / stretch fabric, pants sheen, rubber gloves, skin subsurface look, sweat sheen late in games;
+- [x] A2 Materials: jersey mesh / stretch fabric, pants sheen, rubber gloves, skin subsurface look, sweat sheen late in games;
       grass from a CC0 texture set if reachable (else improved procedural), painted-line roughness; GTAO ambient occlusion
-      (High), contact shadows.
+      (High), contact shadows. Done: contact shadows (instanced soft patch per figure), sweat sheen (`setSweat`); GTAO skipped (its
+      depth pass would ignore our GPU skinning), textures blocked (see above).
 - [ ] B1 Mocap pipeline: tools/mocap.js reads CMU BVH (data from github.com/una-dinosauria/cmu-mocap, free for any use),
       retargets to our skeleton (joint angles per bone), loops / trims, writes compact clips to src/render/clips/*.json.
 - [ ] B2 Locomotion from mocap: walk / jog / run / sprint / backpedal / shuffle clips blended by speed and direction (phase

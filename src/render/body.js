@@ -220,7 +220,7 @@ function patchVertex(sh, normals = true) {
   sh.vertexShader = v;
 }
 
-export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null } };
+export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
@@ -228,8 +228,8 @@ export function bodyMaterial(envMap, fabric) {
     sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.35, 0.35) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
-    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex;
-    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex;
+    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
+    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform float uSweat;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 ` + sh.fragmentShader
@@ -274,7 +274,7 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       }
       diffuseColor.rgb = col;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-      roughnessFactor = region == 5 ? 0.5 : region == 7 ? 0.55 : region == 8 ? 0.35 : region == 2 || region == 3 ? 0.62 : 0.78;`)
+      roughnessFactor = region == 5 ? 0.5 - uSweat * 0.22 : region == 7 ? 0.55 : region == 8 ? 0.35 : region == 2 || region == 3 ? 0.62 : 0.78 - uSweat * 0.08;`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>`);
   };
   return m;

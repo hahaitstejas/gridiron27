@@ -126,6 +126,17 @@ export class PlayerRenderer {
     this.pairs = new Set([this.parts.decal, this.parts.shoe]);
     for (const p of Object.values(this.parts)) scene.add(p);
 
+    // Contact shadows: a soft dark patch under every figure (grounds the feet; the sun shadow alone reads as floating).
+    {
+      const c = document.createElement('canvas'); c.width = c.height = 64;
+      const g = c.getContext('2d'), grd = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+      grd.addColorStop(0, 'rgba(0,0,0,0.55)'); grd.addColorStop(0.55, 'rgba(0,0,0,0.25)'); grd.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = grd; g.fillRect(0, 0, 64, 64);
+      const geo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+      this.contact = new THREE.InstancedMesh(geo, new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }), MAX);
+      this.contact.frustumCulled = false; this.contact.renderOrder = 1; this.contact.count = 0;
+      scene.add(this.contact);
+    }
     // Ring under the user-controlled player.
     this.ring = new THREE.Mesh(
       new THREE.RingGeometry(0.55, 0.75, 32),
@@ -217,6 +228,9 @@ export class PlayerRenderer {
       this.colorsKey = '';
     } catch (e) { console.warn('[Gridiron 27] human body not loaded, using the procedural one', e); }
   }
+
+  /** Sweat sheen on skin and jerseys, 0..1 (main.js: game progress, rain). */
+  setSweat(k) { BODY_UNIFORMS.sweat.value = k; }
 
   /** Body texel helpers: region color, number, flags (row i of the bone texture). */
   texel(i, col, x, y, z, w) { const o = (i * TEX_W + col) * 4, d = this.boneData; d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = w; }
@@ -372,6 +386,7 @@ export class PlayerRenderer {
       this.pulse.material.opacity = Math.max(0, 0.95 * (1 - k));
     } else this.pulse.material.opacity = 0;
     for (const m of Object.values(P)) m.instanceMatrix.needsUpdate = true;
+    this.contact.count = n; this.contact.instanceMatrix.needsUpdate = true;
     this.boneTex.needsUpdate = true;
     const ids = Array.isArray(controlledId) ? controlledId : [controlledId];
     [this.ring, this.ring2].forEach((ring, i) => {
@@ -430,6 +445,10 @@ export class PlayerRenderer {
     if (pose.rootRoll) root.multiply(rotZ(pose.rootRoll));
     if (pose.rootYaw) root.multiply(rotY(pose.rootYaw));
     root.multiply(scaleM(sc, sc, sc));
+    // Contact shadow: centered between the feet, smaller and darker when he's up on his toes, wider when he's down.
+    const lying = p.anim === 'down' || p.anim === 'falling' || p.anim === 'tackle';
+    const cs = (lying ? 1.9 : 0.95 + 0.25 * (official ? 0 : p.bulk)) * sc * Math.max(0.55, 1 - pose.rootY * 1.5);
+    this.contact.setMatrixAt(i, this._m.makeScale(cs, 1, lying ? cs * 0.7 : cs).setPosition(x, 0.012, z));
 
     // Bones (render/body.js): hips (upright), chest (leans and twists through the waist), head, arms, legs.
     const w = official || this.human ? 1 : wide; // the MakeHuman body's joints don't move with build (bulk is a shape delta)

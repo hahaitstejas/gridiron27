@@ -69,13 +69,47 @@ export function drawLogo(ctx, logo, cx, cy, r) {
   ctx.restore();
 }
 
-export function logoCanvas(logo, size = 128) {
+export function logoCanvas(logo, size = 128, gloss = true) {
   const c = document.createElement('canvas');
-  c.width = c.height = size;
-  drawLogo(c.getContext('2d'), logo, size / 2, size / 2, size * 0.46);
+  // Draw at 2x for crisp edges, then the gloss pass.
+  const k = 2;
+  c.width = c.height = size * k;
+  c.style.width = c.style.height = `${size}px`;
+  const g = c.getContext('2d');
+  g.scale(k, k);
+  if (gloss) {
+    // A soft drop shadow lifts it off the page.
+    g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = size * 0.06; g.shadowOffsetY = size * 0.03;
+  }
+  drawLogo(g, logo, size / 2, size / 2, size * 0.44);
+  if (gloss) glossOver(g, size);
   return c;
 }
 
-export function logoDataURL(logo, size = 128) {
-  return logoCanvas(logo, size).toDataURL();
+/**
+ * Make a flat logo look like a glossy 3D badge: a light sweep over the top half and a darker rim at the bottom,
+ * applied only where the logo has paint (source-atop), so it follows any shape or uploaded image.
+ */
+function glossOver(g, size) {
+  g.save();
+  g.shadowColor = 'transparent';
+  g.globalCompositeOperation = 'source-atop';
+  const top = g.createLinearGradient(0, 0, 0, size);
+  top.addColorStop(0, 'rgba(255,255,255,0.42)');
+  top.addColorStop(0.45, 'rgba(255,255,255,0.08)');
+  top.addColorStop(0.5, 'rgba(255,255,255,0)');
+  top.addColorStop(1, 'rgba(0,0,0,0.28)');
+  g.fillStyle = top;
+  g.fillRect(0, 0, size, size);
+  // A specular arc across the upper third.
+  const spec = g.createRadialGradient(size * 0.38, size * 0.2, 0, size * 0.38, size * 0.2, size * 0.42);
+  spec.addColorStop(0, 'rgba(255,255,255,0.35)');
+  spec.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = spec;
+  g.fillRect(0, 0, size, size);
+  g.restore();
+}
+
+export function logoDataURL(logo, size = 128, gloss = true) {
+  return logoCanvas(logo, size, gloss).toDataURL();
 }

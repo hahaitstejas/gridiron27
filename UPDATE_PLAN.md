@@ -55,8 +55,8 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] C13 Stadiums CSV (fictional defaults), neutral championship venue each year
 
 ## Phase D — presentation
-- [ ] D1 End zones: team name / city, conference + league logos; championship end zones
-- [ ] D2 Glossy 3D logos
+- [x] D1 End zones: team name / city, conference + league logos; championship end zones
+- [x] D2 Glossy 3D logos
 - [ ] D3 Cutscenes: coaches, fans, tunnel run-out (skippable); TD camera locks on the scorer; kickoff camera
 - [ ] D4 Celebrations (TD, sack, INT, first down) incl. RS celebration wheel
 - [ ] D5 Tackle falls in the right direction, referees run, animations
@@ -109,3 +109,4 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   the re-sign screen, CPU tags stars), roster needs on re-sign/free-agency screens, your players highlighted grey,
   around-the-league score ticker in franchise games.
 - commit 11: depth chart X = play the backups / Y = starters back; uniform editor (home/away/alt) in Teams & Logos; settings/training checked in the no-outline style.
+- commit 12: end zones (team name / city, conference + league logos; championship: each team's name and logo), glossy 3D logos in menus and the HUD.

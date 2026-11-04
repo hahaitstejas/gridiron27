@@ -1,3 +1,4 @@
+import { CONFERENCES } from '../data/teams.js';
 import { HASH_Z, HALF_WIDTH } from '../core/constants.js';
 import { drawLogo } from './logo.js';
 import { LEAGUE } from '../data/leagueInfo.js';
@@ -43,31 +44,49 @@ export function makeFieldCanvas(home, away, opts = {}) {
     g.beginPath(); g.ellipse(px(x), pz(z), r * 1.6, r, rnd() * Math.PI, 0, Math.PI * 2); g.fill();
   }
 
-  // End zones.
-  const ez = (x0, team, rot) => {
+  // End zones (the NFL look): the team name in one, the city in the other, with the conference logo and the league
+  // logo on either side of the lettering. In the championship game each end zone belongs to one of the two teams
+  // (its name and its logo).
+  const confLogo = (t) => {
+    const name = CONFERENCES[t.conference] || '';
+    const initials = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase() || 'C';
+    return { shape: 'shield', bg: '#1b1b1b', fg: '#ffffff', border: '#ffffff', text: initials };
+  };
+  const ez = (x0, team, rot, text, side) => {
     g.fillStyle = team.colors.primary;
     g.fillRect(px(x0), pz(-HALF_WIDTH), 10 * S, HALF_WIDTH * 2 * S);
     g.save();
     g.translate(px(x0 + 5), pz(0));
     g.rotate(rot);
-    const name = team.name.toUpperCase();
-    const fs = Math.min(5.6 * S, (HALF_WIDTH * 2 * S * 0.86) / (name.length * 0.72));
+    const fs = Math.min(5.6 * S, (HALF_WIDTH * 2 * S * 0.6) / (text.length * 0.66));
     g.font = `800 ${fs}px "Saira Condensed", "Arial Narrow", sans-serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.lineWidth = fs * 0.09;
     g.strokeStyle = team.colors.accent;
-    g.strokeText(name, 0, 0);
+    g.strokeText(text, 0, 0);
     g.fillStyle = team.colors.secondary;
-    g.fillText(name, 0, 0);
+    g.fillText(text, 0, 0);
+    // Logos either side of the word (rotated with it): conference left, league right — or, in the championship, the
+    // team's own logo on both sides.
+    const off = HALF_WIDTH * S * 0.78;
+    const L = side.left, R = side.right;
+    g.rotate(-rot);
+    const ax = Math.cos(rot), az = Math.sin(rot);
+    drawLogo(g, L, -off * ax, -off * az, 2.6 * S);
+    drawLogo(g, R, off * ax, off * az, 2.6 * S);
     g.restore();
-    // Diagonal border stripes for style.
     g.strokeStyle = 'rgba(255,255,255,0.18)';
     g.lineWidth = 0.15 * S;
     g.strokeRect(px(x0) + 0.6 * S, pz(-HALF_WIDTH) + 0.6 * S, 8.8 * S, (HALF_WIDTH * 2 - 1.2) * S);
   };
-  ez(-60, home, -Math.PI / 2);
-  ez(50, home, Math.PI / 2);
+  if (opts.championship) {
+    ez(-60, home, -Math.PI / 2, home.name.toUpperCase(), { left: home.logo, right: home.logo });
+    ez(50, away, Math.PI / 2, away.name.toUpperCase(), { left: away.logo, right: away.logo });
+  } else {
+    ez(-60, home, -Math.PI / 2, home.name.toUpperCase(), { left: confLogo(home), right: LEAGUE.logo });
+    ez(50, home, Math.PI / 2, home.city.toUpperCase(), { left: confLogo(home), right: LEAGUE.logo });
+  }
 
   g.fillStyle = '#ffffff';
   const line = (x, w = 0.12) => g.fillRect(px(x) - (w * S) / 2, pz(-HALF_WIDTH), w * S, HALF_WIDTH * 2 * S);

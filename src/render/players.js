@@ -2,6 +2,7 @@ import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
+import { Gait } from './gait.js';
 import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION } from './body.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
@@ -158,6 +159,7 @@ export class PlayerRenderer {
     this._s = new THREE.Matrix4();
     this._col = new THREE.Color();
     this._v = new THREE.Vector3();
+    this.gait = new Gait();
     this.colorsKey = '';
     this.handPos = [];
   }
@@ -344,6 +346,10 @@ export class PlayerRenderer {
     } else if (!falling) this.fallAnim[i] = false;
     FALL = falling ? this.fall[i] : null;
     const pose = this.blend(i, p.anim, computePose(p, time, sim), dt);
+    // Planted feet, lean into cuts and a head that follows the ball (render/gait.js).
+    const b = sim?.ball;
+    const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
+    this.gait.apply(p, i, pose, x, z, f, sc, official ? 1 : wide, dt, look);
     const yaw = Math.PI / 2 - f;
 
     poolI = 0;
@@ -358,7 +364,7 @@ export class PlayerRenderer {
     const w = official ? 1 : wide;
     const hips = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0));
     const pel = cl(hips).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
-    const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotX(pose.head));
+    const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotY(-(pose.headYaw || 0))).multiply(rotX(pose.head));
     this.bone(i, BONE.hips, hips, w);
     this.bone(i, BONE.chest, pel, w);
     this.bone(i, BONE.head, head, w);
@@ -402,7 +408,7 @@ export class PlayerRenderer {
       const l = pose.legs[s];
       const hip = cl(root).multiply(trans(side * B.hipX * w, B.hipH + pose.crouch, 0)).multiply(rotX(-l.hip)).multiply(rotZ(side * (l.out || 0)));
       const knee = cl(hip).multiply(trans(0, -B.thigh, 0)).multiply(rotX(l.knee));
-      const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(-l.knee + l.hip * 0.6 + (l.ankle || 0)));
+      const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(-l.knee + l.hip * (l.flat ?? 0.6)));
       this.bone(i, s ? BONE.hipR : BONE.hipL, hip, w);
       this.bone(i, s ? BONE.kneeR : BONE.kneeL, knee, w);
       this.bone(i, s ? BONE.footR : BONE.footL, foot, w);

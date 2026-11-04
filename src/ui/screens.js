@@ -622,7 +622,7 @@ export class Screens {
    * completion ring, the top rusher / receiver / defender for each side, and the score by quarter. The right-hand
    * panel switches between the quarter chart, team stats and the scoring summary.
    */
-  gameOver(session, { onDone, onStats, onHighlights = null, onRestart = null, doneLabel = 'Finish Game', halftime = false }, panel = 'quarters') {
+  gameOver(session, { onDone, onStats, onHighlights = null, onRestart = null, doneLabel = 'Finish Game', halftime = false }, panel = 'quarters', focus = 0) {
     const m = session.match;
     const [h, a] = m.teams;
     const S = m.stats.team;
@@ -635,8 +635,8 @@ export class Screens {
       const comp = st?.passAtt ? (100 * st.passCmp) / st.passAtt : 0;
       return el(`div.pg-qb${right ? '.right' : ''}`, {},
         el('div.pg-qbhead', {}, el('div.pz-name', {}, el('small', { text: p ? `#${p.number}` : '' }), el('b', { html: p ? `${p.first.toUpperCase()}<br>${p.last.toUpperCase()}` : '—' })),
-          el('div.pg-logo.small', {}, logoCanvas(t.logo, 84))),
-        el('div.pg-qbstats', {}, statRing(comp, comp.toFixed(1), 'COMP%', 130),
+          el('div.pg-logo.small', {}, logoCanvas(t.logo, 56))),
+        el('div.pg-qbstats', {}, statRing(comp, comp.toFixed(1), 'COMP%', 104),
           el('div.pz-nums', {}, ...[['YDS', Math.round(st?.passYds || 0)], ['TD', st?.passTD || 0], ['INT', st?.int || 0], ['RTG', st ? passerRating(st).toFixed(1) : '0.0']]
             .map(([k, v]) => el('div.pz-num', {}, el('b', { text: String(v) }), el('small', { text: k }))))));
     };
@@ -677,33 +677,35 @@ export class Screens {
       el('div.pg-scoring', {}, ...(session.injuries || []).map((i) => el('div.pg-sc', {}, el('small', { text: m.teams[i.team].abbr }), el('b', { text: i.pos }),
         el('span', { text: `${i.name}: ${halftime ? (i.status === 'out' ? 'out' : i.status === 'returned' ? 'returned' : 'questionable') : injuryLine({ name: i.type || i.name, weeks: i.weeks, severe: i.severe })}${i.setback ? ' (aggravated)' : ''}` }), el('em', { text: '' }))),
         !(session.injuries || []).length ? el('div.st-empty', { text: 'No injuries.' }) : null));
-    const right = panel === 'team' ? teamStats() : panel === 'summary' ? summary() : panel === 'injuries' ? injuries() : quarters();
-    const redo = (p) => this.gameOver(session, { onDone, onStats, onHighlights, onRestart, doneLabel, halftime }, p);
+    // Right panel: one at a time, LB/RB switches (the menu stays short).
+    const PANELS = [['quarters', 'Quarters', quarters], ['team', 'Team', teamStats], ['summary', 'Scoring', summary], ['injuries', 'Injuries', injuries]];
+    const pi = Math.max(0, PANELS.findIndex(([k]) => k === panel));
+    const right = el('div.pg-side', {},
+      el('div.pg-tabs', {}, el('b.btn.LB', { text: 'LB' }), ...PANELS.map(([k, label], i) => el(`span${i === pi ? '.on' : ''}`, { text: label })), el('b.btn.RB', { text: 'RB' })),
+      PANELS[pi][2]());
+    const redo = (p, at = 0) => this.gameOver(session, { onDone, onStats, onHighlights, onRestart, doneLabel, halftime }, p, at);
     const item = (label, act) => { const it = el(`div.pz-item${act ? '' : '.disabled'}`, {}, el('span', { text: label })); it.activate = act || (() => {}); return it; };
     const items = [
       item(halftime ? 'Start 2nd Half' : doneLabel.toUpperCase(), onDone),
       halftime ? null : item('View Highlights', onHighlights),
       item('Player Stats', onStats),
-      item('Team Stats', () => redo('team')),
-      item('Score Summary', () => redo('summary')),
-      item('Score by Quarter', () => redo('quarters')),
-      item('Injuries', () => redo('injuries')),
       halftime ? null : item('Restart', onRestart),
     ].filter(Boolean);
+    const teamHead = (t, right) => el(`div.pg-team${right ? '.right' : ''}`, {}, el('div.pg-logo', {}, logoCanvas(t.logo, 96)),
+      el('div.pg-tname', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() })));
     this.frame(`mono-screen pg-screen${halftime ? ' halftime-screen' : ''}`, el('h1', { text: halftime ? 'Halftime' : 'Post Game' }),
       el('div.pg-main', {},
         el('div.pz-list', {}, items),
         el('div.pg-center', {},
-          el('div.pg-score', {},
-            el('div.pg-team', {}, el('div.pg-logo', {}, logoCanvas(a.logo, 150)), el('small', { text: a.city.toUpperCase() }), el('b', { text: a.name.toUpperCase() })),
-            el('div.pg-num', {}, el('small', { text: halftime ? 'HALFTIME' : m.ot ? 'FINAL / OT' : 'FINAL' }), el('b', { text: `${m.score[1]}  -  ${m.score[0]}` })),
-            el('div.pg-team', {}, el('div.pg-logo', {}, logoCanvas(h.logo, 150)), el('small', { text: h.city.toUpperCase() }), el('b', { text: h.name.toUpperCase() }))),
+          el('div.pg-score', {}, teamHead(a, false),
+            el('div.pg-num', {}, el('small', { text: halftime ? 'HALFTIME' : m.ot ? 'FINAL / OT' : 'FINAL' }), el('b', { text: `${m.score[1]} - ${m.score[0]}` })),
+            teamHead(h, true)),
           el('div.pg-qbs', {}, qbCard(1, false), qbCard(0, true)),
-          el('div.pg-sub', { text: 'Top rusher, receiver and defender' }),
           el('div.pg-leadrow', {}, leaders(1), leaders(0))),
         right),
-      el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn A">A</b> Select' + (halftime ? '' : ' &nbsp; <b class="btn B">B</b> Finish') }));
-    const idx = panel === 'team' ? 3 : panel === 'summary' ? 4 : panel === 'injuries' ? 6 : 0;
-    this.nav.set(items, { columns: 1, onBack: halftime ? () => {} : onDone, index: halftime ? Math.max(0, idx - 1) : idx });
+      el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn A">A</b> Select &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> Quarters · Team · Scoring · Injuries' + (halftime ? '' : ' &nbsp; <b class="btn B">B</b> Finish') }));
+    const idx = Math.min(focus, items.length - 1);
+    this.nav.set(items, { columns: 1, onBack: halftime ? () => {} : onDone, index: idx,
+      onTab: (d) => redo(PANELS[(pi + d + PANELS.length) % PANELS.length][0], this.nav.index) });
   }
 }

@@ -973,3 +973,32 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .sb3-ab { display: inline-flex; flex-direction: column; align-items: stretch; line-height: 1; }
 .sb3-to { position: static; margin-top: 5px; gap: 4px; }
 .sb3-to i { height: 5px; min-width: 12px; background: rgba(0,0,0,0.15); }
+
+/* Post-game, decluttered (1.1): the scorebug and ticker step aside; one compact score row; one side panel (LB/RB). */
+body:has(.pg-screen) #scorebug, body:has(.pg-screen) #scoreticker, body:has(.pg-screen) #pbp { display: none !important; }
+.screen.pg-screen { bottom: 0; padding: 64px 2.5vw 56px; overflow: auto; }
+.pg-main { gap: 2.5vw; }
+.pg-main > .pz-list { width: 230px; }
+.pg-center { gap: 18px; }
+.pg-score { gap: 2vw; width: 100%; justify-content: center; }
+.pg-team { flex-direction: row; gap: 12px; align-items: center; }
+.pg-team.right { flex-direction: row-reverse; }
+.pg-team .pg-tname { display: flex; flex-direction: column; }
+.pg-team.right .pg-tname { align-items: flex-end; }
+.pg-team small { margin-top: 0; font-size: 12px; } .pg-team b { font-size: 22px; }
+.pg-logo canvas { width: 76px; height: 76px; } .pg-logo.small canvas { width: 44px; height: 44px; }
+.pg-num b { font-size: 68px; }
+.pg-qbs { margin-top: 0; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.15); }
+.pg-qb .pz-name b { font-size: 20px; } .pg-qb .pz-name small { font-size: 14px; }
+.pg-qbstats { gap: 14px; margin-top: 8px; }
+.pg-qbstats .ring-in b, .pg-qbstats .pz-num b { font-size: 24px; }
+.pg-leadrow { padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); }
+.pg-lead { padding: 4px 10px; }
+.pg-lead b { font-size: 16px; } .pg-lead span { font-size: 14px; }
+.pg-side { width: 330px; flex: none; display: flex; flex-direction: column; gap: 12px; }
+.pg-side .pg-panel { width: 100%; }
+.pg-tabs { display: flex; align-items: center; gap: 6px; font: 600 14px var(--fd); letter-spacing: 1px; text-transform: uppercase; color: #8a8a8a; }
+.pg-tabs span { padding: 3px 8px; } .pg-tabs span.on { background: #fff; color: #000; }
+.pg-tabs .btn { font-size: 11px; }
+.pg-ptitle { display: none; }
+@media (max-width: 1200px) { .pg-side { width: 100%; } }

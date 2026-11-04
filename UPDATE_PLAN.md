@@ -119,7 +119,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] E1 No fullback on the roster: the 3rd/4th tight end plays FB (then a back)
 - [ ] E2 More 13-personnel (1 RB, 3 TE) formations and plays (and 12/22 variety)
 - [x] E3 Timeouts obvious: banner, referee signal, board flash, scorebug timeout bars blink
-- [ ] E4 Post-game screen decluttered
+- [x] E4 Post-game screen decluttered
 - [x] E5 FG block: the user's edge rusher shouldn't get through every time (wing chips him; harder dive)
 - [x] E6 Post-game injury list shows the player's name; pause → Coaching opens Depth Chart + Injury Center
 - [x] E7 Practice squad: release players; un-elevate before the game

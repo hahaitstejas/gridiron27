@@ -45,6 +45,7 @@ const KICKS = {
   squib: { angle: 14, range: (kpw) => (38 + kpw * 0.15) }, // a line drive into the landing zone
   onside: { angle: 30, range: () => 13 },
   punt: { angle: 61, range: (kpw) => 40 + kpw * 0.25 },
+  pooch: { angle: 70, range: (kpw) => 34 + kpw * 0.15 }, // high and soft (aimed short of the goal line)
   fg: { angle: 33, range: (kpw) => 44 + kpw * 0.24 },
 };
 
@@ -192,13 +193,15 @@ export function launchKick(sim, kicker, params) {
   const kac = sim.R(kicker, 'kickAccuracy');
   const kpw = sim.R(kicker, 'kickPower') + (has(kicker, 'bigLeg') ? 3 : 0); // Big Leg: a few more yards
   const type = params.type;
-  const spec = KICKS[type];
+  // Punt styles: a pooch uses its own flight; a coffin corner aims for the sideline about 8 yards from the goal line.
+  const style = type === 'punt' ? params.style || 'normal' : null;
+  const spec = style === 'pooch' ? KICKS.pooch : KICKS[type];
   // A mis-timed meter press is a shank, not a dribbler that dies at the tee.
   const power = clamp(params.power, type === 'fg' ? 0.05 : type === 'squib' ? 0.6 : 0.45, 1);
   const kickKey = type === 'fg' ? 'fg' : type === 'punt' ? 'punt' : 'kickoff';
   const R = (type === 'onside' ? spec.range(kpw) : spec.range(kpw) * power) * (1 + 0.15 * sim.sl(kicker.team, kickKey + 'Power'));
   const theta = (spec.angle * Math.PI) / 180;
-  const v = Math.sqrt((R * GRAVITY) / Math.sin(2 * theta));
+  let v = Math.sqrt((R * GRAVITY) / Math.sin(2 * theta));
   // Aim: a point downfield; field goals aim at the posts.
   let ax, az;
   const sx = b.x, sz = b.z;
@@ -208,6 +211,16 @@ export function launchKick(sim, kicker, params) {
   } else {
     ax = sx + sim.dir * R;
     az = sz + clamp(params.aim || 0, -1, 1) * (type === 'punt' ? 14 : type === 'onside' ? 8 : 18);
+    if (style === 'coffin' || style === 'pooch') {
+      // Coffin corner: out of bounds around their 8, on the chosen side (right if aiming straight). Pooch: high and
+      // soft to about their 9 (coverage gets there for a fair catch or a downing). Never longer than his leg allows.
+      const side = Math.sign(params.aim || 1);
+      ax = GOAL_X * sim.dir - (style === 'coffin' ? 8 : 9) * sim.dir;
+      az = style === 'coffin' ? side * (HALF_WIDTH + 0.8) : az;
+      const want = Math.hypot(ax - sx, az - sz);
+      if (want > R) { const k = R / want; ax = sx + (ax - sx) * k; az = sz + (az - sz) * k; }
+      v = Math.sqrt((Math.min(R, want) * GRAVITY) / Math.sin(2 * theta));
+    }
   }
   let yaw = Math.atan2(az - sz, ax - sx);
   // Accuracy: meter error (hook/slice) scaled by the kicker's accuracy, plus a little natural noise.
@@ -342,7 +355,7 @@ export function updateSpecial(sim, dt, input) {
   }
   const ready = !humanKicks || (sim.meter && sim.meter.phase === 'done');
   const params = () => humanKicks
-    ? { type: sim.offPlay.type === 'kickoff' ? sim.offPlay.kick || 'deep' : sim.offPlay.type, power: sim.meter.power, accuracy: sim.meter.accuracy, aim: sim.kickAim }
+    ? { type: sim.offPlay.type === 'kickoff' ? sim.offPlay.kick || 'deep' : sim.offPlay.type, power: sim.meter.power, accuracy: sim.meter.accuracy, aim: sim.kickAim, style: sim.kickStyle }
     : cpuKickParams(sim, kicker);
 
   if (!k.launched && kicker && kicker.state === 'active') {

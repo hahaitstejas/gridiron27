@@ -146,7 +146,7 @@ Phase C — defense
 - [x] C3 Simulated pressure / creepers: show 6-8 at the line, an unknown number actually come
 - [x] C4 Pick-six / turnover returns: the defense turns into blockers with a convoy
 Phase D — special teams
-- [ ] D1 Aim kickoffs and punts before the snap (direction + coffin corner / pooch)
+- [x] D1 Aim kickoffs and punts before the snap (direction + coffin corner / pooch)
 - [ ] D2 Return schemes: kick return left / right / middle wall; punt return Block / Return / Safe
 - [ ] D3 Scoop and score on blocked punts / FGs (live ball, defense can return it)
 - [ ] D4 Kickoff out of bounds: receiving team chooses the ball at the 40 or a re-kick from 5 yards back

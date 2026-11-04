@@ -331,6 +331,23 @@ export class PlaySim {
     }
   }
 
+  /**
+   * Kicks: before the snap the human kicker aims with the stick (left / right) and, on punts, picks the kind of punt
+   * with up / down: Normal → Coffin corner (out of bounds deep in their end) → Pooch (high, short, lands soft).
+   */
+  presnapKickAim(input, dt) {
+    if (!this.isKick || !this.meter || !input) return;
+    const f = input.perTeam ? input[this.offIdx] : this.humanTeam === this.offIdx ? input : null;
+    if (!f) return;
+    this.kickAim = clamp(this.kickAim + (f.lx || 0) * dt * 1.2 * (this.camDir > 0 ? 1 : -1), -1, 1);
+    if (this.offPlay.type === 'punt') {
+      const styles = ['normal', 'coffin', 'pooch'];
+      const k = styles.indexOf(this.kickStyle || 'normal');
+      const step = f.pressed?.Up || f.flick?.up ? 1 : f.pressed?.Down || f.flick?.down ? -1 : 0;
+      if (step) { this.kickStyle = styles[(k + step + 3) % 3]; this.emit('kickStyle', { style: this.kickStyle }); }
+    }
+  }
+
   /** CPU defense, late in a long count: the blitzers creep toward the line (a tell, a step closer to the QB). */
   updateCreep(dt) {
     if (!this.creep || this.isKick) return;
@@ -465,6 +482,7 @@ export class PlaySim {
     b.px = b.x; b.py = b.y; b.pz = b.z;
     if (this.state === 'presnap') {
       this.presnapMove(input, dt);
+      this.presnapKickAim(input, dt);
       this.updateCreep(dt);
       this.updateMotion(dt);
       updateAnimations(this, dt);

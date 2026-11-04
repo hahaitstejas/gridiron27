@@ -514,6 +514,32 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   Mindless bot scrambles ~4.7 yds.
 - Generated names never match a real player's (`blockedName` in names.js: FNV-1a hashes, the generator steps the surname).
 
+### Update 1.2 (UPDATE_PLAN.md)
+- Playbook: trick plays Wildcat / Two-QB / Fake Spike (`trick.type` 'wildcat' | 'twoqb' | 'fakespike', tricks.js); RPOs (run play
+  `rpo: { target, also }`: offense.js `rpoRead` reads the conflict defender at the mesh, human LT pulls → `rpoPull` turns the
+  play into a quick pass, `rpoPull` event); designed screens (`screen: { target, release, releaseAt, throwAt }`: released
+  linemen → `screen_wall` → escort `wall`, the QB waits for `throwAt`, on-time screens are hard to contest); option routes
+  (`option` / `option_deep` in routes.js, `optionBreak` reads leverage at the top of the stem, the QB waits for the break);
+  audible packages (Playbook → Audibles, localStorage `g27.audibles`, `setAudiblePackages` in audibles.js).
+- QB: pocket movement (stick without RT in the pocket = `pocketStep`, small accuracy cost; CPU steps up from edge pressure);
+  pre-snap read (RT play art on offense → `coverageRead(sim)` in game/reads.js, HUD `#readout`). RT art needs a fresh press
+  at the line (`artReleased` in main.js).
+- Defense: coverage menu RT bracket (`bracketStar`, task `bracket`), LS press-bail (`cover: 'bail'`, `task.bail`); front menu RT
+  simulated pressure (`show: 'sim'`, `simPressure`); turnover returns form a convoy (offense.js escort).
+- Special teams: pre-snap kick aim + punt type (`presnapKickAim`, `sim.kickStyle` normal / coffin / pooch); return calls at the
+  line (`sim.returnSide` kickoffs, `sim.returnScheme` punts block / return / safe; free rushers `task.free`); punt operation
+  ~1.9 s; blocked punts / FGs are live loose balls (scoop and score, `blockedDead`); kickoff out of bounds = the receiver's
+  choice (session pendingPenalty `kickoff_oob`: ball at the 40 or a re-kick 5 yds back).
+- Physics: pile surge (tackling.js, `pileSurge`), ball arm (`ballArm`, RS click switches; hits on the ball side fumble more),
+  batted balls (passing.js `batAtLine`), slips on wet cuts (`PlaySim.footing`, `slick`), turf vs grass (`cfg.surface`), sideline
+  toe-taps, diving catches, open-field momentum knock-downs (movement.js), tired pose `tired`, muddy uniforms (`players.dirt`).
+- Presentation: Win % (`match.wpLog`, post-game panel); camera packages (`CAMERAS` in screens.js, rig modes all22 / skycam /
+  endzone / cable; D-pad ◀▶ cycles in a game).
+- Modes / customization: local co-op (Team Select: both pads on one side → `cfg.side = 'coop'`, `PlaySim.coopId` / `withCoop`,
+  input `{ ...frame, coop: p2frame }`); uniform details (`UNIFORM_EXTRAS`); stadium creator (`team.stadium` turf / endzone /
+  midLogo / seats / roof: dome = no weather); Route Drawer + Defensive Plays + share codes (data/customDesign.js); player
+  appearance (`p.look` visor / towel / sleeves, `p.skin`); mod packs (data/mods.js, Playbook → Mod Packs).
+
 ## File layout
 
 ```

@@ -186,3 +186,26 @@ Goal (user): features are solid; now make it look and move like a real broadcast
 - [x] R6 Stadium + crowd: people-shaped crowd with variety and motion, stadium tiers / ribbon boards / sideline detail.
 - [x] R7 Gameplay feel: momentum, turning radius at speed, plant-and-cut, collision reactions (already in the sim: agility-limited
       lateral acceleration = wider turns at speed, 1.6x braking, momentum knock-downs; now visible through the gait's lean).
+
+## Update 3.0: Realism II (real people, motion capture, contact, broadcast)
+User: "do all of this" (Phases A-D), check-ins every 4 h from 6:11 PM Central. Outside assets are allowed only when they are
+public domain / free for any use (CC0, CMU mocap); each one is listed with its license in `public/assets/CREDITS.md`.
+Sources reachable from the container: public GitHub repos (git clone), npm. Polyhaven / ambientCG are blocked by the
+environment's network policy (the user can allow them in the environment settings).
+- [ ] A1 Human base mesh: a public-domain human (MakeHuman CC0 base mesh) shaped into a football build (pads, pants, socks,
+      gloves as regions), skinned to our 13-bone skeleton (weights from the bone distance / MakeHuman weights), drop-in for
+      render/body.js (same bone texture, regions, numbers); LOD (the procedural body far away).
+- [ ] A2 Materials: jersey mesh / stretch fabric, pants sheen, rubber gloves, skin subsurface look, sweat sheen late in games;
+      grass from a CC0 texture set if reachable (else improved procedural), painted-line roughness; GTAO ambient occlusion
+      (High), contact shadows.
+- [ ] B1 Mocap pipeline: tools/mocap.js reads CMU BVH (data from github.com/una-dinosauria/cmu-mocap, free for any use),
+      retargets to our skeleton (joint angles per bone), loops / trims, writes compact clips to src/render/clips/*.json.
+- [ ] B2 Locomotion from mocap: walk / jog / run / sprint / backpedal / shuffle clips blended by speed and direction (phase
+      matched), with the gait's planted feet and IK on top; procedural poses stay for stances, signals and anything without a clip.
+- [ ] B3 Action clips: throw (CMU football throw), catch, jump, fall / stumble, celebrations; blended into the current poses.
+- [ ] C1 Paired contact: tackles where both bodies move together (wrap, drive back, twist down), blocks with hands on the
+      chest and leverage, gang tackles / piles; render-side alignment of the two players.
+- [ ] C2 Physics falls: simple per-body ragdoll-ish fall (momentum + ground contact) so no two tackles look the same.
+- [ ] D1 Stadium: upper deck, suites ring, roof fascia, sideline benches / tents / cameras, end-zone seating detail.
+- [ ] D2 Broadcast: camera cuts between plays (huddle close-up, sideline, crowd, coach), better replay angles, a lower-third
+      for players with stats (face photo), field-level shot after big plays.

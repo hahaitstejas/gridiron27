@@ -3,6 +3,8 @@
 Original browser-based 3D American football game (Three.js + Vite, plain JavaScript ES modules).
 **No NFL / NFLPA / EA / Madden names, logos, teams or other IP anywhere** — all teams, players,
 logos and branding are original or procedurally generated.
+Outside art / animation data is allowed only if it is public domain or free for any use (CC0, the CMU motion-capture
+database), and every such asset is listed with its source and license in `public/assets/CREDITS.md`.
 
 ## Run / test
 

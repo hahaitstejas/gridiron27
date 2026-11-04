@@ -97,6 +97,14 @@ export function offenseArt(play, w = 210, h = 120, dark = false) {
       const tpl = ROUTES[a.replace(/_(l|r)$/, '')];
       const side = a.endsWith('_l') ? -1 : a.endsWith('_r') ? 1 : Math.abs(p.at[1]) < 0.5 ? 1 : Math.sign(p.at[1]);
       const pts = [[x, y], ...tpl.pts.map(([d, o]) => P(p.at[0] + d, p.at[1] + o * side))];
+      if (tpl.option) {
+        // Option route: stem plus a three-way fork.
+        const col = ROUTE_COLORS[ci++ % ROUTE_COLORS.length];
+        const [sd] = tpl.pts[0];
+        arrow(g, pts, col);
+        for (const [dd, ll] of [[-0.5, 3.5], [-1.3, 0.01], [0.5, -4]]) arrow(g, [pts[1], P(p.at[0] + sd + dd, p.at[1] + ll * side)], col, ll === 0.01);
+        continue;
+      }
       if (tpl.end === 'continue' && tpl.pts.length) {
         const [d1, o1] = tpl.pts.length > 1 ? tpl.pts[tpl.pts.length - 2] : [0, 0];
         const [d2, o2] = tpl.pts[tpl.pts.length - 1];

@@ -2,6 +2,7 @@ import { clamp } from '../core/math.js';
 import { seek, stop, moveDir } from '../sim/movement.js';
 import { carrierAI } from './carrier.js';
 import { qbDecide } from './qb.js';
+import { ROUTES } from '../data/routes.js';
 
 const OFF_TASKS = new Set(['screen_wall', 'pitch_trail', 'pa_fake', 'qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
 
@@ -377,6 +378,38 @@ function stalk(sim, p) {
 }
 
 // ---------- Routes ----------
+/**
+ * Option route at the top of the stem: read the nearest coverage defender. Inside leverage (he's between me and the
+ * ball) → break out; outside leverage → break in; playing off (4+ yds away, not closing) → sit in front of him.
+ * Smarter route runners read it right more often (else a coin flip).
+ */
+function optionBreak(sim, p, t) {
+  t.broke = true;
+  let near = null, nd = 99;
+  for (const d of sim.players) {
+    if (d.team === p.team || d.state !== 'active' || d.engagement) continue;
+    const dd = Math.hypot(d.x - p.x, d.z - p.z);
+    if (dd < nd) { nd = dd; near = d; }
+  }
+  const pl = sim.toLocal(p.x, p.z);
+  const out = Math.sign(pl.lat || 1);
+  let read = 'sit';
+  if (near && nd < 4) {
+    const nl = sim.toLocal(near.x, near.z);
+    read = (nl.lat - pl.lat) * out < 0 ? 'out' : 'in'; // defender inside of me → break out
+  }
+  const smart = 0.55 + sim.R(p, 'routeRunning') * 0.0045 + sim.R(p, 'awareness') * 0.001;
+  if (sim.rng.next() > smart) read = ['in', 'out', 'sit'][Math.floor(sim.rng.next() * 3)];
+  const deep = ROUTES[t.name].option === 'deep';
+  const pts = read === 'out' ? [[deep ? -1.5 : -0.5, out * 10]] : read === 'in' ? [[deep ? 0 : 0.5, -out * 11]] : [[-1.3, 0]];
+  t.brokeAt = sim.t;
+  t.pts = [...t.pts.slice(0, t.idx), ...pts.map(([dd, ll]) => sim.toWorld(pl.down + dd, pl.lat + ll))];
+  if (read === 'sit') t.end = 'settle';
+  else { const a = t.pts[t.pts.length - 1]; const ux = a.x - p.x, uz = a.z - p.z, ul = Math.hypot(ux, uz) || 1; t.pts.push({ x: a.x + (ux / ul) * 30, z: a.z + (uz / ul) * 30 }); }
+  t.optionRead = read;
+  sim.emit('optionRoute', { player: p.id, read });
+}
+
 function route(sim, p) {
   const t = p.task;
   if (t.settled) {
@@ -411,6 +444,7 @@ function route(sim, p) {
   seek(p, target.x, target.z, frac, next || t.end === 'continue' ? 0.01 : 1.2);
   if (d < 0.6) {
     t.idx++;
+    if (ROUTES[t.name]?.option && !t.broke && t.idx >= 1) { optionBreak(sim, p, t); return; }
     if (t.idx >= t.pts.length) {
       if (t.end === 'settle') { t.settled = true; }
       else stop(p);

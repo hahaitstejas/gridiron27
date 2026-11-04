@@ -5,6 +5,8 @@ import { ROUTES } from '../data/routes.js';
 /** Rate how open a receiver will be when a throw arrives. Higher is better (yards of separation-ish). */
 export function evaluateTarget(sim, qb, r, kind = 'bullet') {
   const thp = sim.R(qb, 'throwPower');
+  // An option route: the QB waits to see which way he breaks (just after the break he's throwing on time).
+  if (r.task?.type === 'route' && /^option/.test(r.task.name) && (!r.task.broke || sim.t - r.task.brokeAt < 0.25)) return { score: -9, pred: { x: r.x, z: r.z }, T: 0.5, dist: 0 };
   let pred = { x: r.x, z: r.z };
   let T = 0.5;
   for (let i = 0; i < 3; i++) {
@@ -44,7 +46,7 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
   return { score, pred, T, dist, gain };
 }
 
-const QUICK = new Set(['slant', 'quick_out', 'hitch', 'flat', 'swing', 'screen', 'rb_screen', 'arrow', 'drag', 'stick', 'sit', 'shallow', 'angle', 'whip']);
+const QUICK = new Set(['option', 'slant', 'quick_out', 'hitch', 'flat', 'swing', 'screen', 'rb_screen', 'arrow', 'drag', 'stick', 'sit', 'shallow', 'angle', 'whip']);
 const DEEP = new Set(['go', 'fade', 'post', 'corner', 'seam', 'wheel', 'skinny_post', 'out_up', 'deep_out', 'comeback']);
 
 function routeDeveloped(sim, r) {

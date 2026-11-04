@@ -33,6 +33,10 @@ export const ROUTES = {
   screen: { pts: [[-0.5, 2.5], [-0.6, 5]], end: 'settle' },
   throwback: { pts: [[-1, -1], [-3.5, -3]], end: 'settle' }, // a receiver coming back behind the line for a pass back
   rb_screen: { pts: [[2.5, 3], [3.5, 6]], end: 'settle' }, // a back leaking out to the flat behind the line
+  // Option routes: run the stem, then break by the defender's leverage (offense.js optionBreak): inside leverage →
+  // out, outside leverage → in, a soft (off) defender → sit down in front of him. The points are the stem only.
+  option: { pts: [[5, 0]], end: 'continue', option: 'short' },
+  option_deep: { pts: [[11, 0]], end: 'continue', option: 'deep' },
   tunnel: { pts: [[1, 0.5], [-1, -2.5], [-1.2, -5]], end: 'settle' }, // WR jab upfield, comes back inside behind the line
   mid_screen: { pts: [[1.5, 1.5], [3.5, 0.5]], end: 'settle' }, // the back sneaks out behind the center, just past the line
   te_screen: { pts: [[1.5, 0], [0.5, -1.5], [0, -3]], end: 'settle' }, // TE chips, slips inside behind the rush

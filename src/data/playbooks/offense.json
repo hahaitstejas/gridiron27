@@ -4263,6 +4263,90 @@
    "read": [
     "RB"
    ]
+  },
+  {
+   "id": "gd_option",
+   "name": "Option Choice",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Option routes",
+   "dropback": 5,
+   "routes": {
+    "X": "slant",
+    "H": "option",
+    "Y": "option_deep",
+    "Z": "go",
+    "RB": "block"
+   },
+   "read": [
+    "H",
+    "Y",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "trips_option_deep",
+   "name": "Trips Option",
+   "formation": "gun_trips_wr",
+   "type": "pass",
+   "concept": "Option routes",
+   "dropback": 5,
+   "routes": {
+    "X": "post",
+    "Z": "go",
+    "H": "option_deep",
+    "Y": "option",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "Z",
+    "X"
+   ]
+  },
+  {
+   "id": "ace_te_option",
+   "name": "TE Option",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Option routes",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "Z": "go",
+    "Y": "option",
+    "H": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "X",
+    "H",
+    "Z"
+   ]
+  },
+  {
+   "id": "tight_option",
+   "name": "Tight TE Option",
+   "formation": "singleback_tight",
+   "type": "pass",
+   "concept": "Option routes",
+   "dropback": 5,
+   "routes": {
+    "X": "dig",
+    "Y": "option",
+    "H": "flat",
+    "U": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "U",
+    "X",
+    "H"
+   ]
   }
  ]
 }

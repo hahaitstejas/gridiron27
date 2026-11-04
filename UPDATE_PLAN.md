@@ -135,7 +135,7 @@ Phase A — playbook and trick plays
 - [x] A1 Trick Plays: Wildcat (direct snap to a back), two-QB set (QB2 as a receiver / passer), fake spike
 - [x] A2 RPOs: run/pass read after the snap (QB reads a defender: handoff or quick throw)
 - [x] A3 Designed screens: linemen release, a timed window (HB, WR tunnel, TE screens)
-- [ ] A4 Route options: option routes break in/out/sit by the defender's leverage
+- [x] A4 Route options: option routes break in/out/sit by the defender's leverage
 - [ ] A5 Audible packages live in the playbook: pick your audibles per formation (editable; the in-game audible menu uses them)
 Phase B — QB play and reads
 - [ ] B1 Pocket movement: step up / slide / climb on the stick in the pocket; pocket-presence feel (awareness)

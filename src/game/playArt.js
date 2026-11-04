@@ -42,9 +42,17 @@ function offenseArt(sim, out) {
       if (play.boot) out.lines.push({ pts: [{ x: p.x, z: p.z }, sim.toWorld(-6, play.boot * 7)], color: '#ffffff', head: true, dashed: true, width: 0.22 });
     } else if (a && ROUTES[a.replace(/_(l|r)$/, '')]) {
       const r = sim.makeRoute(p, a);
+      const color = ART_COLORS[btnOf[p.id]] || '#ffffff';
+      if (ROUTES[r.name].option) {
+        // Option route: the stem, then a fork (out / sit / in) since the break depends on the defender.
+        const top = r.pts[0], tl = sim.toLocal(top.x, top.z), side = Math.sign(tl.lat || 1);
+        out.lines.push({ pts: [{ x: p.x, z: p.z }, top], color, width: 0.32 });
+        for (const [dd, ll] of [[-0.5, side * 3.5], [-1.3, 0], [0.5, -side * 4]]) out.lines.push({ pts: [top, sim.toWorld(tl.down + dd, tl.lat + ll)], color, head: true, width: 0.22, dashed: ll === 0 });
+        continue;
+      }
       const pts = [{ x: p.x, z: p.z }, ...r.pts];
       if (ROUTES[r.name].end === 'continue' && pts.length > 2) trimTail(pts);
-      out.lines.push({ pts, color: ART_COLORS[btnOf[p.id]] || '#ffffff', head: true, width: 0.32 });
+      out.lines.push({ pts, color, head: true, width: 0.32 });
     } else if (a === 'stalk' || OL.has(p.slot) || !a || a === 'block') {
       // Blocking: a short stem and a bar ("T"). Run blocks go forward, pass sets step back.
       const d = play.type === 'run' ? 1.4 : -1.1;

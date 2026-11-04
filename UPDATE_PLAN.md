@@ -144,7 +144,7 @@ Phase C — defense
 - [x] C1 Bracket coverage (double the best receiver; CPU brackets your star)
 - [x] C2 Press-bail (show press, bail at the snap)
 - [x] C3 Simulated pressure / creepers: show 6-8 at the line, an unknown number actually come
-- [ ] C4 Pick-six / turnover returns: the defense turns into blockers with a convoy
+- [x] C4 Pick-six / turnover returns: the defense turns into blockers with a convoy
 Phase D — special teams
 - [ ] D1 Aim kickoffs and punts before the snap (direction + coffin corner / pooch)
 - [ ] D2 Return schemes: kick return left / right / middle wall; punt return Block / Return / Safe

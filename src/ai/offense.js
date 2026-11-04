@@ -539,6 +539,13 @@ function escort(sim, p) {
   } else {
     p.task.target = undefined;
     const td = sim.teamDir(c.team);
+    // A turnover return: nobody to block yet, so form a convoy in lanes ahead of the ball (alternating sides, a
+    // couple of yards apart), rather than just jogging along.
+    if (c.team !== sim.offIdx) {
+      const k = (p.id % 4) - 1.5;
+      seek(p, c.x + td * (3 + Math.abs(k) * 1.5), c.z + k * 3.2, 1, 1);
+      return;
+    }
     seek(p, c.x + td * 4, c.z + (p.z > c.z ? 3 : -3), 0.8, 2);
   }
 }

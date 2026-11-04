@@ -81,6 +81,19 @@ export function updateTricks(sim, dt) {
   const st = sim.trickState || (sim.trickState = { phase: 0 });
   if (tr && !sim.passThrown && sim.possTeam === sim.offIdx) {
     const qb = sim.bySlot(sim.offIdx, 'QB');
+    if (tr.type === 'fakespike' && st.phase === 0 && b.state === 'held' && b.carrier === qb?.id) {
+      // Fake spike: the QB jerks the ball down like he's killing the clock. The coverage relaxes for a beat and the
+      // rush stands up (less if they've seen it already, and less for aware players); then he throws.
+      st.phase = 1;
+      qb.anim = 'throw'; qb.animT = 0.05;
+      const seen = sim.cfg.trickSeen ? 0.4 : 1;
+      for (const d of sim.players) {
+        if (d.team === qb.team || d.state !== 'active') continue;
+        const bite = Math.max(0.1, Math.min(0.6, 0.8 - sim.R(d, 'awareness') * 0.007)) * seen;
+        if (sim.rng.next() < bite) { d.speedCap = Math.min(d.speedCap, 0.15); d.recoverAt = sim.t + 0.35 + sim.rng.next() * 0.25; }
+      }
+      sim.emit('fakeSpike', { qb: qb.id });
+    }
     if (tr.type === 'flea') {
       const rb = sim.bySlot(sim.offIdx, tr.back || 'RB');
       if (st.phase === 0 && b.state === 'held' && b.carrier === qb?.id && rb && sim.t > 0.45 && Math.hypot(rb.x - qb.x, rb.z - qb.z) < 1.8) {

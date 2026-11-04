@@ -132,7 +132,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 
 ## Update 1.2 (user's picks from the ideas list)
 Phase A — playbook and trick plays
-- [ ] A1 Trick Plays: Wildcat (direct snap to a back), two-QB set (QB2 as a receiver / passer), fake spike
+- [x] A1 Trick Plays: Wildcat (direct snap to a back), two-QB set (QB2 as a receiver / passer), fake spike
 - [ ] A2 RPOs: run/pass read after the snap (QB reads a defender: handoff or quick throw)
 - [ ] A3 Designed screens: linemen release, a timed window (HB, WR tunnel, TE screens)
 - [ ] A4 Route options: option routes break in/out/sit by the defender's leverage

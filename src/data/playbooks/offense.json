@@ -3872,6 +3872,167 @@
    ],
    "pa": true,
    "boot": 1
+  },
+  {
+   "id": "trick_wildcat_power",
+   "name": "Wildcat Power",
+   "formation": "trick_wildcat",
+   "type": "run",
+   "concept": "Wildcat",
+   "trick": {
+    "type": "wildcat"
+   },
+   "run": {
+    "carrier": "QB",
+    "aim": [
+     1,
+     3.2
+    ],
+    "mesh": [
+     -4.2,
+     0.6
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "Y": "block",
+    "H": "block",
+    "X": "stalk",
+    "Q": "stalk",
+    "RB": "block"
+   }
+  },
+  {
+   "id": "trick_wildcat_sweep",
+   "name": "Wildcat Sweep",
+   "formation": "trick_wildcat",
+   "type": "run",
+   "concept": "Wildcat",
+   "trick": {
+    "type": "wildcat"
+   },
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0,
+     10
+    ],
+    "mesh": [
+     -6,
+     4
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "pitch"
+   },
+   "routes": {
+    "Y": "block",
+    "H": "block",
+    "X": "stalk",
+    "Q": "stalk"
+   }
+  },
+  {
+   "id": "trick_wildcat_pass",
+   "name": "Wildcat Pass",
+   "formation": "trick_wildcat",
+   "type": "pass",
+   "concept": "Wildcat",
+   "dropback": 3,
+   "pa": true,
+   "trick": {
+    "type": "wildcat"
+   },
+   "routes": {
+    "Q": "go",
+    "X": "post",
+    "Y": "seam",
+    "H": "block",
+    "RB": "flat_l"
+   },
+   "read": [
+    "Q",
+    "Y",
+    "X",
+    "RB"
+   ]
+  },
+  {
+   "id": "trick_two_qb_pass",
+   "name": "Two-QB Pass",
+   "formation": "trick_two_qb",
+   "type": "pass",
+   "concept": "Double pass",
+   "dropback": 0,
+   "trick": {
+    "type": "double",
+    "passer": "Q2",
+    "qbRoute": "wheel"
+   },
+   "routes": {
+    "Q2": "throwback",
+    "X": "go",
+    "H": "post",
+    "Y": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "QB",
+    "Y",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "trick_two_qb_slant",
+   "name": "QB2 Slant",
+   "formation": "trick_two_qb",
+   "type": "pass",
+   "concept": "Two QB",
+   "dropback": 3,
+   "trick": {
+    "type": "twoqb"
+   },
+   "routes": {
+    "Q2": "slant",
+    "X": "go",
+    "H": "seam",
+    "Y": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Q2",
+    "H",
+    "Y",
+    "X"
+   ]
+  },
+  {
+   "id": "trick_fake_spike",
+   "name": "Fake Spike",
+   "formation": "trick_spike_look",
+   "type": "pass",
+   "concept": "Fake spike",
+   "dropback": 1,
+   "trick": {
+    "type": "fakespike"
+   },
+   "routes": {
+    "X": "fade",
+    "Z": "slant",
+    "H": "seam",
+    "Y": "block",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Z",
+    "H"
+   ]
   }
  ]
 }

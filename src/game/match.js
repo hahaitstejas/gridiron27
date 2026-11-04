@@ -242,7 +242,7 @@ export class Match {
     // ----- Tries (PAT / 2-point) -----
     if (wasTry) {
       if (r.kickType === 'fg') {
-        if (r.fgGood) { this.addScore(off, 1, 'PAT'); } else this.say('Extra point is no good', 'miss');
+        if (r.fgGood) { this.addScore(off, 1, 'PAT'); } else if (r.touchdown === def) this.addScore(def, 2, 'Blocked extra point returned'); else this.say(r.blocked ? 'Extra point is blocked!' : 'Extra point is no good', 'miss');
       } else if (r.touchdown === off) this.addScore(off, 2, '2-point conversion');
       else if (r.touchdown === def) this.addScore(def, 2, 'Defensive 2-point return');
       else this.say('2-point try fails', 'miss');
@@ -253,6 +253,19 @@ export class Match {
     // ----- Field goals -----
     if (r.kickType === 'fg') {
       const dist = Math.ceil(100 - this.yardLine + 17 - 1e-6);
+      // Blocked: a live ball. Scooped and scored, or the defense's ball where it ended up.
+      if (r.blocked && !r.fgGood) {
+        if (r.touchdown === def) {
+          this.addScore(def, 6, 'Blocked field goal returned for a touchdown');
+          this.setupTry(def);
+          this.possessionChangedForOT(def);
+          return this.afterPlay(true);
+        }
+        this.say(`${dist}-yard field goal is BLOCKED`, 'miss');
+        const yl = r.possTeam === def || r.reason === 'blockedDead' ? this.ylOf(def, r.spotX) : Math.max(20, 100 - (this.yardLine - 7));
+        this.changePossession(def, Math.max(1, Math.min(99, yl)), r.spotZ ?? 0);
+        return this.afterPlay(true);
+      }
       if (r.fgGood) {
         this.addScore(off, 3, `${dist}-yard field goal`);
         this.afterScore(off);
@@ -269,7 +282,7 @@ export class Match {
     if (r.kickType === 'kickoff' || r.kickType === 'punt') {
       const recv = def;
       if (r.touchdown !== null) {
-        this.addScore(r.touchdown, 6, r.touchdown === recv ? `${r.kickType === 'punt' ? 'Punt' : 'Kickoff'} return touchdown` : 'Touchdown');
+        this.addScore(r.touchdown, 6, r.touchdown === recv ? (r.blocked ? 'Blocked punt returned for a touchdown' : `${r.kickType === 'punt' ? 'Punt' : 'Kickoff'} return touchdown`) : 'Touchdown');
         this.setupTry(r.touchdown);
         this.possessionChangedForOT(r.touchdown);
         return this.afterPlay(true);
@@ -277,6 +290,11 @@ export class Match {
       if (r.safety) {
         this.addScore(off, 2, 'Safety');
         this.setupKickoff(recv, 20);
+        return this.afterPlay(true);
+      }
+      if (r.touchdown === null && r.blocked && r.kickType === 'punt' && r.possTeam === off) {
+        // Blocked punt recovered by the punting team behind the line on 4th down: the other team's ball.
+        this.changePossession(recv, Math.max(1, Math.min(99, this.ylOf(recv, r.spotX))), r.spotZ ?? 0);
         return this.afterPlay(true);
       }
       if (r.possTeam === off) {

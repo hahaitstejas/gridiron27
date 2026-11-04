@@ -427,6 +427,14 @@ function updateKickFlight(sim, dt) {
   b.vx += sim.wind.x * WIND_PUSH * dt; b.vz += sim.wind.z * WIND_PUSH * dt;
   b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
   b.spin += dt * 12;
+  // A blocked punt / field goal is a live ball once it comes down: anyone can scoop it (the defense can return it).
+  if (k.blocked && (k.type === 'fg' || k.type === 'punt') && b.y <= 0.3 && b.vy < 0 && b.t > 0.15) {
+    k.resolved = true;
+    b.state = 'loose'; b.y = 0.3; b.vy = Math.abs(b.vy) * 0.3;
+    b.looseFrom = sim.offIdx;
+    sim.emit('looseKick', {});
+    return;
+  }
 
   if ((k.type === 'fg' || k.type === 'punt') && !k.blocked && b.t < 0.4) flightBlock(sim);
   if ((k.type === 'fg' || k.type === 'punt') && !k.blocked && !k.kickerHit && b.t < 0.7) kickerContact(sim);

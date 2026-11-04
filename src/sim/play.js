@@ -634,6 +634,8 @@ export class PlaySim {
     if (best && this.rng.next() < 0.18 + this.R(best, 'awareness') * 0.002) {
       this.stats.recoveredBy = best.id;
       this.emit('recovery', { player: best.id, team: best.team });
+      // A blocked kick fallen on by the kicking team: dead there (behind the line on 4th down = the other team's ball).
+      if (this.kick?.blocked && best.team === this.offIdx) { this.whistle('blockedDead'); return; }
       best.anim = 'catch'; best.animT = 0;
       const td = this.teamDir(best.team);
       best.caughtInEZ = b.x * td <= -GOAL_X;
@@ -970,6 +972,12 @@ export class PlaySim {
       r.kickType = this.kick.type;
       r.turnover = false;
       r.kicker = this.kick.kickerId;
+      r.blocked = !!this.kick.blocked;
+      if (reason === 'blockedDead') {
+        r.possTeam = this.defIdx;
+        r.spotX = clamp(this.ball.x, -GOAL_X, GOAL_X); r.spotZ = this.ball.z;
+        return r;
+      }
       if (reason === 'fg') {
         r.fgGood = !!this.kick.fgGood;
         r.possTeam = this.offIdx;

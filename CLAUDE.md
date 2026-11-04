@@ -455,6 +455,42 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 `rush`, `man`, `zone`, `pursue`, `ball`, …) that the AI modules interpret. Ratings drive everything via
 `sim.R(player, key)` (which also applies difficulty boosts).
 
+### Update 1.0 (see UPDATE_PLAN.md for the log)
+- Decisions (`game/winprob.js`): expected points by down/distance/spot (NFL play-by-play table, conversion rates, ~41-yd
+  net punts) and a drive-level Monte Carlo win probability (seeded from the state) for late in Q4 / OT. Used by
+  `fourthDecision` (playcaller.js; coach `aggr` shifts the margin) and penalty accept/decline (`stateVal` in penalties.js).
+- Clock: between plays the runoff ticks visibly (`session.runoffBudget()`, `realtimePresnap` fast-forwards); the CPU offense
+  waits 5-7.5 s at the line vs a human defense (`cpuSnapAt`). Timeouts send both teams back to the play call; both bumpers
+  held = timeout. No-huddle keeps the same eleven (`lastLineup` → `cfg.keep`), not right after the two-minute warning.
+- Trick plays (`sim/tricks.js`, formation family "Trick Plays"): Hail Mary, flea flicker, hook and ladder, throwback, swap
+  special, reverse; laterals (LB as a carrier, CPU last-gasp `cfg.lastGasp`); defenses don't fall for the same trick twice
+  (`session.tricksRun` → `cfg.trickSeen`). Fakes are read (`fakeKickAssign`: contain, jammers on gunners, spy).
+- QB exploits: coverage holds until the QB crosses the line; `plaster()` sends extra rushers after 4 s; the CPU spies a
+  human who scrambles (`defAdj.spy`); pressure / fading / getting hit ruin throws. FG block: the human is the edge rusher
+  (B8, free outside the wing), X dives across the kick; long kicks get blocked more. Juke = plant + lateral cut
+  (`jukeDefenders` can make the man in front stumble). Hit stick: more whiffs, more fumbles. Tush Push play with a timing
+  bar (`sim.push`). Catch: A secure / X run after / Y aggressive.
+- In-game injuries are "questionable to return" or "out"; the human decides on a return (session state `injury`, risk from
+  `franchise/health.js`), the diagnosis shows after the game (post-game Injuries panel).
+- Menus: no outlines anywhere; Team Select is driven by `screens.custom` with both controllers (each pad moves its own
+  icon; side menu: Ready, Star Players, playbook style, coin toss, uniform); `alphaOrder` sorts every team list; pause and
+  post-game screens with `statRing`; sortable tables (`ui/sortable.js`: ◀▶ column, X sort).
+- Franchise: `nflSchedule.js` (17 games / 18 weeks, NFL formula, byes, kickoff times, prime time, Thanksgiving / Christmas,
+  international games, short weeks), `health.js` (specific injuries, Out/Doubtful/Questionable/IR, practice injuries),
+  `practiceSquad.js` (16, elevations, waivers), `development.js` (growth every two weeks, morale, trade requests),
+  `trades.js` (picks, trade block, offers, compensatory picks), `draftClass.js` (class all season, scouting, CSV import),
+  `honors.js` (All-Pro, Pro Bowl, franchise tag); CPU teams sign free agents in-season; +500 created FAs, 300 UDFAs a year.
+  Hub = four boxes (Season, Team, Front Office, League) → `boxMenu`; more screens in `ui/franchiseMore.js`; around-the-league
+  ticker in franchise games (`session.ticker`).
+- Spreadsheets (`data/extraCSV.js`, also read from public/local/): retired_numbers.csv, coaches.csv (tendencies feed the CPU),
+  uniforms.csv (`data/uniforms.js`, home/away/alt), stadiums.csv (`LEAGUE.sites`: championship venue by year, international
+  venues), schedule.csv (franchise, before week 1). roster.csv gains salary / years / exp. Jersey numbers follow
+  `NUMBER_RULES` (positions.js) and retired numbers.
+- Presentation: end zones (team name / city + conference and league logos; championship: each team's), glossy logos
+  (`logoCanvas` gloss pass), intro with run-out / coach / crowd shots (`render/intro.js`, `Presentation.runout`), fixed TD
+  camera, wide kick camera (phases `kick` / `return`), RT play art pulls the camera back (`art` mode), celebrations
+  (first down, sack, pick; RS wheel after your TD), light show on touchdowns, dusk games darken, holiday leaves / flurries.
+
 ## File layout
 
 ```

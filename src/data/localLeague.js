@@ -1,6 +1,10 @@
 import { parseCSV, importRosterRows, importTeamsRows, importDepthRows } from './csv.js';
 import { importRetired, importCoaches, importUniforms, importStadiums } from './extraCSV.js';
 import { LEAGUE } from './leagueInfo.js';
+import { isLeagueBook, importLeagueBook } from './leagueBook.js';
+
+/** Franchise-only sections of public/local/league.csv (free agents, schedule), read when a franchise starts. */
+export const localBook = { freeAgents: null, schedule: null, loaded: false };
 
 // Browser-only: loads the optional, git-ignored league files from public/local/ at startup.
 //   teams.csv  -> names, colors, logos, which team you play as
@@ -33,8 +37,28 @@ function loadImage(src) {
   });
 }
 
+async function fetchText(path) {
+  if (location.protocol === 'file:') return null;
+  try { const res = await fetch(path, { cache: 'no-store' }); if (!res.ok) return null; const t = await res.text(); return /<html/i.test(t.slice(0, 200)) ? null : t; } catch { return null; }
+}
+
 export async function loadLocalLeague(teams) {
   const summary = { loaded: [], playAs: null, rosterTeams: [], problems: [] };
+  // One file for everything (league.csv, see leagueBook.js): used instead of the separate files when it's there.
+  const book = await fetchText('/local/league.csv');
+  if (book && isLeagueBook(book)) {
+    const r = importLeagueBook(teams, book, { league: LEAGUE });
+    summary.loaded.push(`league.csv (${r.lines.join(', ')})`);
+    summary.playAs = r.playAs;
+    summary.problems.push(...r.problems);
+    await Promise.all(r.logoImages.map(async ({ team, file }) => {
+      const img = await loadImage(`/local/logos/${file}`);
+      if (img) team.logo._img = img; else summary.problems.push(`logo image not found: logos/${file}`);
+    }));
+    Object.assign(localBook, { freeAgents: r.freeAgents, schedule: r.schedule, loaded: true });
+    console.info('[Gridiron 27] Local league book:', summary.loaded.join(', '), summary.problems);
+    return summary;
+  }
   const teamRows = await fetchCSV('/local/teams.csv', 'id');
   if (teamRows) {
     const r = importTeamsRows(teams, teamRows);

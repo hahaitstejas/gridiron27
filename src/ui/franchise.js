@@ -29,8 +29,10 @@ import { setSchedule } from '../franchise/franchise.js';
 import { pickFile, downloadFile } from '../data/storage.js';
 import { injuryReport, practiceSquadScreen, waiversScreen, playerSearch, gamePreview, scoutingScreen } from './franchiseMore.js';
 import { teamMorale } from '../franchise/development.js';
+import { localBook } from '../data/localLeague.js';
 
 async function loadLocalFreeAgents(f) {
+  if (localBook.freeAgents?.length) { setFreeAgents(f, localBook.freeAgents.map((p) => ({ ...p, ratings: { ...p.ratings } }))); return; }
   if (location.protocol === 'file:') return;
   try {
     const res = await fetch('local/free_agents.csv', { cache: 'no-store' });
@@ -44,6 +46,7 @@ async function loadLocalFreeAgents(f) {
 
 /** public/local/schedule.csv (week, away, home[, day, date, time]) replaces the generated first season. */
 async function loadLocalSchedule(f, teams) {
+  if (localBook.schedule) { setSchedule(f, teams, localBook.schedule.map((wk) => wk.map((g) => ({ ...g, score: null })))); return; }
   if (location.protocol === 'file:') return;
   try {
     const res = await fetch('local/schedule.csv', { cache: 'no-store' });

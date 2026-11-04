@@ -4,6 +4,7 @@ import { loadLocalLeague } from '../data/localLeague.js';
 import { downloadFile, pickFile } from '../data/storage.js';
 import { attachLogos } from './league.js';
 import { LEAGUE } from '../data/leagueInfo.js';
+import { isLeagueBook, importLeagueBook, exportLeagueBook } from '../data/leagueBook.js';
 import { extraKind, importRetired, importCoaches, importUniforms, importStadiums, exportRetired, exportCoaches, exportUniforms, exportStadiums } from '../data/extraCSV.js';
 
 /** Which league spreadsheet a set of parsed rows is (by its columns). */
@@ -29,6 +30,8 @@ export function spreadsheetScreen(ctx, report = []) {
     setTimeout(() => downloadFile('depth.csv', exportDepthCSV(teams), 'text/csv'), 600);
   };
   const items = [
+    item('Export everything as one file', 'league.csv: teams, roster, depth, coaches, uniforms, stadiums, retired numbers, free agents, schedule',
+      () => downloadFile('league.csv', exportLeagueBook(teams, { playAs: prefs.home, sites: LEAGUE.sites }), 'text/csv')),
     item('Export all three', 'Download teams.csv, roster.csv and depth.csv', exportAll),
     item('Export teams.csv', 'Names, colors, conferences, logos, your team', () => downloadFile('teams.csv', exportTeamsCSV(teams, prefs.home), 'text/csv')),
     item('Export roster.csv', 'Every player with all ratings', () => downloadFile('roster.csv', exportRosterCSV(teams), 'text/csv')),
@@ -37,7 +40,7 @@ export function spreadsheetScreen(ctx, report = []) {
     item('Export coaches.csv', 'Head coach and coordinators with play-calling tendencies', () => downloadFile('coaches.csv', exportCoaches(teams), 'text/csv')),
     item('Export uniforms.csv', 'Home / away / alternate: jersey, pants, number, outline, helmet', () => downloadFile('uniforms.csv', exportUniforms(teams), 'text/csv')),
     item('Export stadiums.csv', 'Team stadiums plus neutral championship / international sites', () => downloadFile('stadiums.csv', exportStadiums(teams, LEAGUE.sites), 'text/csv')),
-    item('Import a spreadsheet…', 'teams, roster, depth, retired numbers, coaches, uniforms or stadiums (detected by the header row)', async () => {
+    item('Import a spreadsheet…', 'league.csv (everything), or one of teams, roster, depth, retired numbers, coaches, uniforms, stadiums (detected by the header row)', async () => {
       const f = await pickFile('.csv,text/csv');
       if (!f) return;
       spreadsheetScreen(ctx, await importCSV(ctx, f.name, f.data));
@@ -53,7 +56,7 @@ export function spreadsheetScreen(ctx, report = []) {
   screens.frame('menu-screen', el('div.logo-small', { html: 'SPREADSHEETS' }),
     report.length ? el('div.ss-report', {}, report.map((l) => el('div', { text: l }))) : null,
     el('div.menu-list', {}, items),
-    el('div.setup-help', { html: 'Edit the files in Numbers, Excel or Google Sheets and save as CSV. &nbsp; <b class="btn B">B</b> back' }));
+    el('div.setup-help', { html: 'Edit in Numbers, Excel or Google Sheets and save as CSV. league.csv keeps every sheet in one file: each section starts with a [NAME] row. &nbsp; <b class="btn B">B</b> back' }));
   screens.nav.set(items, { onBack: ctx.onBack });
 }
 
@@ -64,6 +67,13 @@ function summarizeProblems(problems) {
 
 async function importCSV(ctx, name, text) {
   const { teams, prefs } = ctx;
+  if (isLeagueBook(text)) {
+    const r = importLeagueBook(teams, text, { league: LEAGUE });
+    if (r.playAs !== null) prefs.home = r.playAs;
+    await attachLogos(teams);
+    ctx.onChange();
+    return [`${name}: the whole league —`, ...r.lines, ...summarizeProblems(r.problems)];
+  }
   let rows;
   try { rows = parseCSV(text); } catch (e) { return [`${name}: couldn't read it (${e.message})`]; }
   const extra = extraKind(rows);

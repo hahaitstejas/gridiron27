@@ -88,3 +88,28 @@ describe('pre-snap movement', () => {
     expect(sim.state === 'dead' || sim.finished).toBe(true);
   });
 });
+
+describe('league book (one spreadsheet)', () => {
+  it('round-trips the league through one file with sections', async () => {
+    const { exportLeagueBook, importLeagueBook, isLeagueBook, splitLeagueBook } = await import('../src/data/leagueBook.js');
+    const { ensureCoaches } = await import('../src/data/extraCSV.js');
+    const a = generateLeagueRosters(defaultTeams(), 21);
+    ensureCoaches(a, 3);
+    a[4].city = 'Harbor Point'; a[4].roster[0].last = 'Testerson'; a[4].roster[0].ratings.speed = 97;
+    a[2].retired = [{ number: 12, player: 'Old Star' }];
+    const text = exportLeagueBook(a, { playAs: 4 });
+    expect(isLeagueBook(text)).toBe(true);
+    expect(Object.keys(splitLeagueBook(text))).toEqual(['TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE']);
+    // Spreadsheet apps pad marker rows with commas and add blank rows: still fine.
+    const padded = text.replace(/^\[(\w+)\]$/gm, '[$1],,,,').replace(/\n\[/g, '\n,,,\n[');
+    const b = generateLeagueRosters(defaultTeams(), 99);
+    const r = importLeagueBook(b, padded);
+    expect(r.playAs).toBe(4);
+    expect(b[4].city).toBe('Harbor Point');
+    expect(b[4].roster.some((p) => p.last === 'Testerson' && p.ratings.speed === 97)).toBe(true);
+    expect(b[2].retired).toEqual([{ number: 12, player: 'Old Star' }]);
+    expect(b[5].coaches.hc.name).toBe(a[5].coaches.hc.name);
+    expect(r.freeAgents).toBe(null);
+    expect(r.problems.filter((p) => !/depth/i.test(p))).toEqual([]);
+  });
+});

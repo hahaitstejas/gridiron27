@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Writes the whole league to editable spreadsheets in public/local/ (git-ignored):
-//   teams.csv, roster.csv, depth.csv
+//   teams.csv, roster.csv, depth.csv, and league.csv (all of them, plus coaches / uniforms / stadiums, in one file)
 // Any edits already in those files are loaded first and kept; the old files are backed up.
 //   npm run export-league
 import fs from 'fs';
 import path from 'path';
 import { defaultTeams } from '../src/data/teams.js';
 import { generateLeagueRosters } from '../src/data/generator.js';
+import { exportLeagueBook, importLeagueBook } from '../src/data/leagueBook.js';
+import { ensureCoaches } from '../src/data/extraCSV.js';
 import { parseCSV, importRosterRows, importTeamsRows, importDepthRows, exportRosterCSV, exportTeamsCSV, exportDepthCSV } from '../src/data/csv.js';
 
 const dir = path.resolve('public/local');
@@ -24,8 +26,14 @@ if (r) {
 }
 const d = read('depth.csv');
 if (d) importDepthRows(teams, d);
+// league.csv edits win over the separate files (it's the newer, all-in-one format).
+if (fs.existsSync(path.join(dir, 'league.csv'))) {
+  const b = importLeagueBook(teams, fs.readFileSync(path.join(dir, 'league.csv'), 'utf8'));
+  if (b.playAs !== null) playAs = b.playAs;
+}
+ensureCoaches(teams, 1);
 
-const existing = ['teams.csv', 'roster.csv', 'depth.csv'].filter((f) => fs.existsSync(path.join(dir, f)));
+const existing = ['teams.csv', 'roster.csv', 'depth.csv', 'league.csv'].filter((f) => fs.existsSync(path.join(dir, f)));
 if (existing.length) {
   const bk = path.join(dir, 'backup-' + new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19));
   fs.mkdirSync(bk);
@@ -35,5 +43,7 @@ if (existing.length) {
 fs.writeFileSync(path.join(dir, 'teams.csv'), exportTeamsCSV(teams, playAs));
 fs.writeFileSync(path.join(dir, 'roster.csv'), exportRosterCSV(teams));
 fs.writeFileSync(path.join(dir, 'depth.csv'), exportDepthCSV(teams));
+fs.writeFileSync(path.join(dir, 'league.csv'), exportLeagueBook(teams, { playAs }));
+console.log('Wrote public/local/league.csv (every sheet in one file; it is loaded instead of the separate files when present)');
 console.log(`Wrote public/local/teams.csv (32 teams), roster.csv (${teams.reduce((a, x) => a + x.roster.length, 0)} players), depth.csv`);
 console.log(playAs !== null ? `You play as: ${teams[playAs].city} ${teams[playAs].name} (play_as column in teams.csv)` : 'Set play_as = Y on a row in teams.csv to choose your team.');

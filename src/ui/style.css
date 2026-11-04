@@ -962,3 +962,14 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 /* Update 1.1: hurt players on the depth chart / injury center */
 .dc-row.hurt .dc-name, .dc-slot.hurt .dc-slot-player { color: #e0605a; }
 .dc-row.hurt.focused .dc-name, .dc-slot.hurt.focused .dc-slot-player { color: #a01810; }
+/* Timeouts (1.1): team-colored banner, the bar that was just used flashes on the scorebug */
+#banner.timeout .big { color: #fff; background: var(--tc, #333); padding: 4px 28px 8px; letter-spacing: 4px; font-style: normal; }
+#banner.timeout .small { font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+.sb3-to.blink i.used { background: #ffd23a; animation: toblink 0.45s steps(2, start) infinite; }
+.sb3-to.blink i.on { background: #111; }
+@keyframes toblink { to { visibility: hidden; } }
+#banner.timeout { z-index: 15; top: 14%; }
+/* Timeout bars sit inside the scorebug under the abbreviation (they used to hang off the bottom of the screen). */
+.sb3-ab { display: inline-flex; flex-direction: column; align-items: stretch; line-height: 1; }
+.sb3-to { position: static; margin-top: 5px; gap: 4px; }
+.sb3-to i { height: 5px; min-width: 12px; background: rgba(0,0,0,0.15); }

@@ -143,7 +143,15 @@ export class Hud {
     else if (k === 'penalty') this.flag(msg.text);
     else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
     else if (k === 'drive') this.pbp('DRIVE', msg.text.replace(/^\w+ drive: /, `${msg.text.split(' ')[0]} · `), 5, true);
-    else if (k === 'injury') this.banner('INJURY', msg.text.replace(/^Injury: /, ''), 2.6, 'miss');
+    else if (k === 'timeout') {
+      // Timeouts are loud: a team-colored banner and that team's timeout bars blink on the scorebug.
+      const t = session.teams[msg.team];
+      this.banner('TIMEOUT', `${t ? `${t.city} ${t.name}` : ''} · ${msg.left} left`, 2.8, 'timeout');
+      const b = this.$('banner');
+      if (t) b.style.setProperty('--tc', t.colors.primary);
+      this.toBlink = { team: msg.team, until: performance.now() + 4000 };
+      this._bugKey = null;
+    } else if (k === 'injury') this.banner('INJURY', msg.text.replace(/^Injury: /, ''), 2.6, 'miss');
     else if (k === 'final') this.banner('FINAL', msg.text, 99, 'final');
     else if (k === 'half' || k === 'twoMinute') {
       // Halftime: a human game gets the full halftime report screen (main.js); CPU-only games get the quick card.
@@ -480,16 +488,18 @@ export class Hud {
     const sim = session.sim;
     const flag = !m.over && (session.state === 'penalty' || ((session.state === 'live') && sim?.fouls?.length > 0));
     const recs = session.records || ['0-0', '0-0'];
-    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs].join('|');
+    const blink = this.toBlink && performance.now() < this.toBlink.until ? this.toBlink.team : -1;
+    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
     // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
     const hasBall = (i) => (m.phase === 'kickoff' ? m.kicker !== i : m.possession === i) && !m.over;
     const logo = (i) => `<div class="sb3-logo" style="--tc:${m.teams[i].colors.primary};--tc2:${m.teams[i].colors.secondary}"><img src="${this.logoFor(m.teams[i])}" alt=""/></div>`;
     const name = (i, side) => {
-      const bars = [0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : ''}"></i>`).join('');
+      // The bar that was just used blinks for a few seconds after a timeout.
+      const bars = [0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('');
       const rec = `<small>(${recs[i]})</small>`;
-      const ab = `<span class="sb3-ab">${m.teams[i].abbr}<span class="sb3-to">${bars}</span></span>`;
+      const ab = `<span class="sb3-ab">${m.teams[i].abbr}<span class="sb3-to${blink === i ? ' blink' : ''}">${bars}</span></span>`;
       const dot = `<span class="sb3-dot${hasBall(i) ? ' on' : ''}">•</span>`;
       return side === 'away' ? `${rec}${ab}${dot}` : `${dot}${ab}${rec}`;
     };

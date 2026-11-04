@@ -98,6 +98,7 @@ export class Presentation {
       return best;
     };
     const ball = sim.ball;
+    if (e.type === 'message' && e.kind === 'timeout') { this.signal(this.refs[0], 'sig_timeout', 2.4); return; }
     if (e.type === 'touchdown') {
       // The two officials nearest the goal line signal it.
       const a = nearest(ball.x, ball.z);

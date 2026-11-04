@@ -889,6 +889,11 @@ function computePose(p, time, sim) {
       pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6;
       pose.arms[1].pitch = (t % 2) < 1 ? 2.9 : 0.4 + Math.sin(t * 7) * 0.9; pose.arms[1].elbow = (t % 2) < 1 ? 1.4 : 0.1; pose.arms[1].out = 0.25;
       break;
+    case 'sig_timeout':
+      // Timeout: both arms overhead, hands crossing back and forth.
+      pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 2.9; pose.arms[0].elbow = pose.arms[1].elbow = 0.15;
+      pose.arms[0].out = pose.arms[1].out = -0.35 + Math.sin(t * 8) * 0.3;
+      break;
     case 'sig_spot':
       // Spotting the ball / waving the play dead.
       pose.lean = 0.1; pose.arms[1].pitch = 2.8; pose.arms[1].elbow = 0.2; pose.arms[1].out = 0.4 + Math.sin(t * 8) * 0.25;

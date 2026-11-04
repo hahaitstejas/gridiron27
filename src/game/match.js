@@ -61,7 +61,7 @@ export class Match {
 
   // Overtime (current NFL rules): 10 minutes in the regular season, full 15-minute periods in the playoffs.
   periodLength() { return this.settings.quarterMinutes * 60 * (this.quarter > 4 && !this.settings.noTies ? 10 / 15 : 1); }
-  say(text, kind = 'info') { this.messages.push({ text, kind, quarter: this.quarter, clock: this.clock }); }
+  say(text, kind = 'info', extra = null) { this.messages.push({ text, kind, quarter: this.quarter, clock: this.clock, ...(extra || {}) }); }
   takeMessages() { const m = this.messages; this.messages = []; return m; }
 
   // ---- geometry ----
@@ -175,8 +175,7 @@ export class Match {
     this.timeouts[team]--;
     this.clockRunning = false;
     this.playClock = 25;
-    return true;
-    this.say(`Timeout, ${this.teams[team].name} (${this.timeouts[team]} left)`, 'timeout');
+    this.say(`Timeout, ${this.teams[team].city} ${this.teams[team].name} (${this.timeouts[team]} left)`, 'timeout', { team, left: this.timeouts[team] });
     return true;
   }
 

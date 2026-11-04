@@ -261,7 +261,7 @@ function startGame(p, opts = {}) {
   snapCam = true;
   lastSim = null;
   speed = opts.speed || 1;
-  for (const e of session.events) onSessionEvent(e);
+  for (const e of session.events.splice(0)) onSessionEvent(e);
   // Pregame intro (not in practice, fast CPU games or when turned off in Settings).
   if (prefs.intro !== false && !opts.practice && speed <= 1 && !opts.noIntro) {
     app = 'intro';
@@ -582,6 +582,7 @@ function onSessionEvent(e) {
     hud.message(e, session);
     if (e.kind === 'half' && /half/i.test(e.text) && session.humanTeam !== null && !session.practice && speed <= 1) showHalftime();
     if (e.kind === 'score') { const w = session.match.lastScore?.what || ''; flashBoard(/touchdown|pick six/i.test(w) ? 'TOUCHDOWN!' : /field goal/i.test(w) ? 'FIELD GOAL' : /safety/i.test(w) ? 'SAFETY' : '', session.match.lastScore?.team ?? 0); if (!boardFlash.text) boardFlash = null; }
+    else if (e.kind === 'timeout') flashBoard('TIMEOUT', e.team ?? 0);
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
   else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); if (session.match.lastPlayText && !session.practice) hud.pbp('PLAY', session.match.lastPlayText); }
@@ -670,9 +671,12 @@ function frameBody(now) {
     const sp = session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed;
     acc += dt * sp;
     let steps = 0;
+    // Events raised between ticks (a timeout from the play-call screen, audibles, the hard count) would otherwise be
+    // wiped by the next tick before anyone saw them: handle them first. Each tick's own events are cleared once read.
+    for (const e of session.events.splice(0)) onSessionEvent(e);
     while (acc >= STEP && steps < 6 * sp) {
       session.tick(STEP, pcOpen ? null : gameInput);
-      for (const e of session.events) onSessionEvent(e);
+      for (const e of session.events.splice(0)) onSessionEvent(e);
       if (!pcOpen) { input.consume(); input2.consume(); }
       acc -= STEP;
       steps++;

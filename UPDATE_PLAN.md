@@ -114,3 +114,18 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - commit 14: celebrations (first-down point, sack, pick, TD wheel on RS: Dance/Flex/Spike/Team), tackle falls away from the tackler, officials stride instead of sliding.
 - commit 15: intro with run-out (teams jog out of the tunnels), head coach close-up, crowd shot (captions), fixed single-angle TD camera, wide kickoff/return camera; every team gets a fictional coaching staff.
 - commit 16: dynamic lighting (touchdown light show, dusk games darken as they go), Thanksgiving leaves and Christmas flurries in franchise holiday games.
+
+## Update 1.1 (user's list) + leftovers from 1.0
+- [ ] E1 No fullback on the roster: the 3rd/4th tight end plays FB (then a back)
+- [ ] E2 More 13-personnel (1 RB, 3 TE) formations and plays (and 12/22 variety)
+- [ ] E3 Timeouts obvious: banner, referee signal, board flash, scorebug timeout bars blink
+- [ ] E4 Post-game screen decluttered
+- [ ] E5 FG block: the user's edge rusher shouldn't get through every time (wing chips him; harder dive)
+- [ ] E6 Post-game injury list shows the player's name; pause → Coaching opens Depth Chart + Injury Center
+- [ ] E7 Practice squad: release players; un-elevate before the game
+- [ ] E8 Moving around pre-snap (human defender can reposition; CPU defense shifts/creeps)
+- [ ] E9 CPU (and the user's) rosters always have a K and a P (sign one; never a back kicking)
+- [ ] E10 Dynamic kickoff: the kicker can't cross midfield before the ball lands; nobody can stop the return early
+- [ ] E11 In-game depth chart shows who's hurt (and why a player isn't playing)
+- [ ] L1 Short-week fatigue + prime-time pressure in played franchise games
+- [ ] L2 Mindless QB scrambles closer to 3-4 yds

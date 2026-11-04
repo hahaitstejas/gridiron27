@@ -108,6 +108,11 @@ export function importStadiums(teams, rows, league = {}) {
   league.sites ||= { championship: {}, international: [] };
   rows.forEach((r, i) => {
     const st = { name: r.name, city: r.city || '', capacity: num(r.capacity), roof: (r.roof || 'open').toLowerCase(), surface: r.surface || '' };
+    // Stadium creator columns (optional): turf color, end zone style, midfield logo, seat color.
+    if (r.turf) st.turf = r.turf.toLowerCase();
+    if (r.endzone) st.endzone = r.endzone.toLowerCase();
+    if (r.mid_logo) st.midLogo = !/^(n|no|off|0|false)$/i.test(r.mid_logo);
+    if (hex(r.seats)) st.seats = hex(r.seats);
     if (!st.name) { skipped.push(`row ${i + 2}: no stadium name`); return; }
     const kind = (r.kind || '').toLowerCase();
     if (r.team && kind !== 'championship' && kind !== 'international') {
@@ -120,10 +125,12 @@ export function importStadiums(teams, rows, league = {}) {
   return { count: rows.length - skipped.length, skipped, sites: league.sites };
 }
 export function exportStadiums(teams, sites = null) {
-  const out = teams.map((t) => ({ team: t.abbr, name: t.stadium?.name || `${t.city} Stadium`, city: t.stadium?.city || t.city, capacity: t.stadium?.capacity ?? '', roof: t.stadium?.roof || 'open', surface: t.stadium?.surface || '', kind: 'home', year: '' }));
+  const out = teams.map((t) => ({ team: t.abbr, name: t.stadium?.name || `${t.city} Stadium`, city: t.stadium?.city || t.city, capacity: t.stadium?.capacity ?? '', roof: t.stadium?.roof || 'open', surface: t.stadium?.surface || '', kind: 'home', year: '',
+    turf: t.stadium?.turf || '', endzone: t.stadium?.endzone || '', mid_logo: t.stadium?.midLogo === false ? 'off' : t.stadium?.midLogo ? 'on' : '', seats: t.stadium?.seats || '' }));
+  const extra = out.some((o) => o.turf || o.endzone || o.mid_logo || o.seats);
   for (const [year, s] of Object.entries(sites?.championship || {})) out.push({ team: '', name: s.name || s.stadium, city: s.city, capacity: s.capacity ?? '', roof: s.roof || '', surface: '', kind: 'championship', year: year === 'any' ? '' : year });
   for (const s of sites?.international || []) out.push({ team: '', name: s.stadium, city: s.city, capacity: '', roof: '', surface: '', kind: 'international', year: '' });
-  return toCSV(out, ['team', 'name', 'city', 'capacity', 'roof', 'surface', 'kind', 'year']);
+  return toCSV(out, ['team', 'name', 'city', 'capacity', 'roof', 'surface', 'kind', 'year', ...(extra ? ['turf', 'endzone', 'mid_logo', 'seats'] : [])]);
 }
 
 /** "20:20" → "8:20 PM" (a 12-hour time like "1:00 PM" is kept as it is). */

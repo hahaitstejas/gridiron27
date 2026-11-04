@@ -238,7 +238,10 @@ function startGame(p, opts = {}) {
   const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : coop ? (cfg.coopSide === 'away' ? 1 : 0) : cfg.side === 'home' ? 0 : 1;
   lastStart = [p, opts]; // pause → Restart
   const seed = opts.seed ?? (Date.now() % 1e9);
-  const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
+  let conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
+  // A dome (or a closed retractable roof in bad weather) keeps the weather out: no rain, snow or wind.
+  const roof = !opts.neutral && cfg.stadium !== 'neutral' ? home.stadium?.roof : null;
+  if (roof === 'dome' || (roof === 'retractable' && conditions.type !== 'clear')) conditions = { ...conditions, type: 'clear', wind: { x: 0, z: 0 } };
   session = new GameSession({
     teams: [home, away],
     settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, coop, gameDay: opts.gameDay || null, playerCam: prefs.careerCam !== 'broadcast',
@@ -261,7 +264,7 @@ function startGame(p, opts = {}) {
   // The championship game: league logo at midfield.
   const f = league.franchise;
   const championship = !!(opts.franchise && f?.phase === 'playoffs' && f.playoffs.rounds.length >= PLAYOFF_ROUND_NAMES.length);
-  renderer.setTeams(home, away, { championship });
+  renderer.setTeams(home, away, { championship, neutral: !!session.settings.neutral });
   renderer.setConditions(conditions);
   hud.ticker(conditionsText(conditions));
   screens.clear();

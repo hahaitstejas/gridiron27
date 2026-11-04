@@ -76,6 +76,22 @@ export function teamEditor(ctx, ti, focus = 0) {
       (v) => { if (v === 'None') uni.stripe = 'none'; else if (v === 'Team default') delete uni.stripe; else if (!uni.stripe || uni.stripe === 'none') uni.stripe = t.colors.secondary; }),
     ...(uni.stripe && uni.stripe !== 'none' ? [colorRow('Helmet stripe color', uni, 'stripe')] : []),
     ...UNIFORM_EXTRAS.filter((k) => k !== 'stripe').map((k) => colorRow(EXTRA_NAMES[k], extrasView(t, uni), k)));
+  // Stadium creator: name, city, capacity, roof (a dome or closed roof keeps the weather out), surface, turf shade,
+  // end zone style, midfield logo, seat color. Saved in the league (team.stadium) and stadiums.csv.
+  const sd = (t.stadium ||= { name: `${t.city} Stadium`, city: t.city });
+  const seatsView = new Proxy(sd, { get: (o, k) => (k === 'seats' ? o.seats || t.colors.primary : o[k]) });
+  const TURFS = { classic: 'Classic green', dark: 'Dark green', bright: 'Bright green', blue: 'Blue', black: 'Black' };
+  const EZ = { color: 'Team color', stripes: 'Team color + stripes', plain: 'Plain turf' };
+  rows.push(el('div.dc-head', { text: 'Stadium' }),
+    textRow('Stadium name', sd, 'name', 32), textRow('Stadium city', sd, 'city', 24),
+    row('Capacity', () => (sd.capacity ? sd.capacity.toLocaleString('en-US') : '—'), (d) => { sd.capacity = Math.max(20000, Math.min(110000, (sd.capacity || 65000) + d * 1000)); }, () => {
+      const v = parseInt(window.prompt('Capacity:', sd.capacity || 65000), 10); if (!(v > 0)) return false; sd.capacity = v; return true; }),
+    choice('Roof', ['open', 'retractable', 'dome'], () => sd.roof || 'open', (v) => { sd.roof = v; }),
+    choice('Surface', ['grass', 'turf'], () => (/turf|artificial/i.test(sd.surface || '') ? 'turf' : 'grass'), (v) => { sd.surface = v; }),
+    choice('Turf color', Object.values(TURFS), () => TURFS[sd.turf || 'classic'], (v) => { sd.turf = Object.keys(TURFS).find((k) => TURFS[k] === v); }),
+    choice('End zones', Object.values(EZ), () => EZ[sd.endzone || 'color'], (v) => { sd.endzone = Object.keys(EZ).find((k) => EZ[k] === v); }),
+    choice('Midfield logo', ['On', 'Off'], () => (sd.midLogo === false ? 'Off' : 'On'), (v) => { sd.midLogo = v === 'On'; }),
+    colorRow('Seat color', seatsView, 'seats'));
   const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
   rows.push(action(`Reset the ${UNIFORM_NAMES[kind].toLowerCase()} uniform to the team colors`, () => { delete t.uniforms[kind]; ctx.onChange(); teamEditor(ctx, ti, screens.nav.index); }));
   rows.push(

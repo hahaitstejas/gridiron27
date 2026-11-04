@@ -371,7 +371,12 @@ export function buildStadium(renderer, home, away) {
     lampMat,
     glow,
     snow,
-    setTeams: (h, a, opts) => { setTeams(h, a, opts); fillCrowdColors(h, a); standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85); },
+    setTeams: (h, a, opts) => {
+      setTeams(h, a, opts); fillCrowdColors(h, a);
+      // Seats: the stadium creator's color, else a dark tint of the home color.
+      if (h.stadium?.seats && !opts?.neutral) standMat.color.set(h.stadium.seats).multiplyScalar(0.85);
+      else standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85);
+    },
     setBoardText,
     setBoardGame,
     update(dt, excitement) {

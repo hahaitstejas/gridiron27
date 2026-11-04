@@ -18,11 +18,15 @@ export function makeFieldCanvas(home, away, opts = {}) {
   const px = (x) => (x + FX) * S;
   const pz = (z) => (z + FZ) * S;
 
+  // Stadium creator (home team's `stadium`): turf shade, end zone style, midfield logo.
+  const sd = (!opts.championship && home.stadium) || {};
+  const TURF = { classic: ['#2f6b2a', '#3f8634', '#33712b'], dark: ['#24521f', '#2f6a27', '#285c22'], bright: ['#3a7d2f', '#4c9a3c', '#41893a'], blue: ['#1d3f7a', '#2a56a3', '#234a8e'], black: ['#1a1a1a', '#262626', '#202020'] };
+  const turf = TURF[sd.turf] || TURF.classic;
   // Surroundings (sideline turf) and the playing field with mowing stripes.
-  g.fillStyle = '#2f6b2a';
+  g.fillStyle = turf[0];
   g.fillRect(0, 0, W, H);
   for (let x = -50; x < 50; x += 5) {
-    g.fillStyle = (Math.floor((x + 50) / 5) % 2) ? '#3f8634' : '#33712b';
+    g.fillStyle = (Math.floor((x + 50) / 5) % 2) ? turf[1] : turf[2];
     g.fillRect(px(x), pz(-HALF_WIDTH), 5 * S, HALF_WIDTH * 2 * S);
   }
   // Turf speckle for texture.
@@ -53,8 +57,19 @@ export function makeFieldCanvas(home, away, opts = {}) {
     return { shape: 'shield', bg: '#1b1b1b', fg: '#ffffff', border: '#ffffff', text: initials };
   };
   const ez = (x0, team, rot, text, side) => {
-    g.fillStyle = team.colors.primary;
-    g.fillRect(px(x0), pz(-HALF_WIDTH), 10 * S, HALF_WIDTH * 2 * S);
+    const style = sd.endzone || 'color';
+    if (style === 'color' || style === 'stripes') {
+      g.fillStyle = team.colors.primary;
+      g.fillRect(px(x0), pz(-HALF_WIDTH), 10 * S, HALF_WIDTH * 2 * S);
+    }
+    if (style === 'stripes') {
+      // Diagonal stripes in the secondary color behind the lettering.
+      g.save();
+      g.beginPath(); g.rect(px(x0), pz(-HALF_WIDTH), 10 * S, HALF_WIDTH * 2 * S); g.clip();
+      g.strokeStyle = team.colors.secondary; g.globalAlpha = 0.35; g.lineWidth = 1.1 * S;
+      for (let z = -HALF_WIDTH - 12; z < HALF_WIDTH + 12; z += 3.2) { g.beginPath(); g.moveTo(px(x0), pz(z)); g.lineTo(px(x0 + 10), pz(z + 10)); g.stroke(); }
+      g.restore();
+    }
     g.save();
     g.translate(px(x0 + 5), pz(0));
     g.rotate(rot);
@@ -136,7 +151,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
     }
   }
   // Midfield: the home team's logo (the league's in the championship game).
-  drawLogo(g, opts.championship ? LEAGUE.logo : home.logo, px(0), pz(0), 4.2 * S);
+  if (opts.championship || sd.midLogo !== false) drawLogo(g, opts.championship ? LEAGUE.logo : home.logo, px(0), pz(0), 4.2 * S);
   // League logo at both 25-yard lines.
   for (const x of [-25, 25]) {
     g.save();

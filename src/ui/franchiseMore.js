@@ -4,13 +4,14 @@ import { el } from './nav.js';
 import { logoCanvas } from '../render/logo.js';
 import { sortHead, sortKeys, sortRows } from './sortable.js';
 import { gameStatus, reinjuryRisk, injuryLine, placeOnIR, canActivate, activateFromIR, activeCount, IR_MIN, IR_RETURNS } from '../franchise/health.js';
-import { PS_MAX, ELEVATE_MAX, ELEVATE_PER_GAME, addToPS, promoteFromPS, elevate, psEligible, isVeteranPS } from '../franchise/practiceSquad.js';
+import { PS_MAX, ELEVATE_MAX, ELEVATE_PER_GAME, addToPS, promoteFromPS, elevate, psEligible, isVeteranPS, unelevate, releaseFromPS } from '../franchise/practiceSquad.js';
 import { standings, rank } from '../franchise/season.js';
 import { gameWhen } from '../franchise/nflSchedule.js';
 import { moraleOf } from '../franchise/development.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { alphaOrder } from './screens.js';
 import { logTransaction } from '../franchise/franchise.js';
+import { addFreeAgent } from '../franchise/freeAgents.js';
 import { ensureDraftClass, scoutInSeason, importDraftClass } from '../franchise/draftClass.js';
 import { scoutView } from '../franchise/extras.js';
 import { pickFile } from '../data/storage.js';
@@ -63,7 +64,7 @@ export function injuryReport(ui, mine = true, sort = { col: null, asc: false, cu
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-/** Practice squad: your 16, A = elevate for this week / sign to the 53; X = add the best young free agent you pick. */
+/** Practice squad: your 16; A = elevate (or undo) / sign to the 53 / release; X = add the best young free agent you pick. */
 export function practiceSquadScreen(ui, mode = 'squad', filter = 0) {
   const { screens } = ui.ctx;
   const f = ui.f, me = ui.teams[f.userTeam];
@@ -94,11 +95,7 @@ export function practiceSquadScreen(ui, mode = 'squad', filter = 0) {
     const r = el(`div.st-row${p.elevated ? '.mine' : ''}`, {}, el('span.st-num', { text: p.pos }), el('span.st-num.wide', { text: `${p.first} ${p.last}` }),
       el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: String(p.age) }),
       el('span.st-num', { text: `${p.elevations || 0}/${ELEVATE_MAX}` }), el('span.st-num', { text: p.elevated ? 'ELEVATED' : '' }));
-    r.activate = () => {
-      // A: elevate for this week's game (2 a game, 3 a season each); Y: sign him to the 53.
-      if (!p.elevated && elevate(me, p)) logTransaction(f, `${me.abbr} elevate ${p.pos} ${p.first} ${p.last} from the practice squad`);
-      ui.save(); practiceSquadScreen(ui);
-    };
+    r.activate = () => psActions(ui, p); // A: what to do with him (elevate / undo, sign to the 53, release)
     r.player = p;
     return r;
   });
@@ -106,7 +103,7 @@ export function practiceSquadScreen(ui, mode = 'squad', filter = 0) {
     el('div.st-team-filter', { text: `${ps.length}/${PS_MAX} players · elevated this week ${elevatedNow}/${ELEVATE_PER_GAME} · each player can be elevated ${ELEVATE_MAX} times a season, then must be signed` }),
     el('div.st-row.st-head', {}, ['POS', 'PLAYER', 'OVR', 'AGE', 'ELEV', ''].map((h, i) => el(`span.st-num${i === 1 ? '.wide' : ''}`, { text: h }))),
     el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'Empty. X adds players from free agency.' })),
-    el('div.setup-help', { html: '<b class="btn A">A</b> Elevate for this game &nbsp; <b class="btn Y">Y</b> Sign to the 53 &nbsp; <b class="btn X">X</b> Add a free agent &nbsp; <b class="btn B">B</b> back' }));
+    el('div.setup-help', { html: '<b class="btn A">A</b> Elevate / undo, sign or release &nbsp; <b class="btn Y">Y</b> Sign to the 53 &nbsp; <b class="btn X">X</b> Add a free agent &nbsp; <b class="btn B">B</b> back' }));
   screens.nav.set(rows.length ? rows : [el('div')], { columns: 1, onBack: () => ui.hub('Team') });
   screens.extraButtons = (fr) => {
     if (fr.pressed.X) { screens.extraButtons = null; practiceSquadScreen(ui, 'add'); return; }
@@ -116,6 +113,32 @@ export function practiceSquadScreen(ui, mode = 'squad', filter = 0) {
       practiceSquadScreen(ui);
     }
   };
+}
+
+/** One practice-squad player's options: elevate for this week's game (or undo it), sign him to the 53, release him. */
+function psActions(ui, p) {
+  const { screens } = ui.ctx;
+  const f = ui.f, me = ui.teams[f.userTeam];
+  screens.extraButtons = null;
+  const back = () => practiceSquadScreen(ui);
+  const done = (msg) => { if (msg) logTransaction(f, msg); ui.save(); back(); };
+  const name = `${p.pos} ${p.first} ${p.last}`;
+  const full = me.roster.filter((q) => q.elevated).length >= ELEVATE_PER_GAME;
+  const opts = [
+    p.elevated
+      ? ['Undo elevation', 'he stays on the practice squad this week (the elevation isn\'t used up)', () => { unelevate(me, p); done(); }]
+      : ['Elevate for this game', (p.elevations || 0) >= ELEVATE_MAX ? 'used all 3 elevations: sign him to play' : full ? `already ${ELEVATE_PER_GAME} elevated: undo one first` : `${ELEVATE_MAX - (p.elevations || 0)} elevations left this season`,
+        () => { if (elevate(me, p)) done(`${me.abbr} elevate ${name} from the practice squad`); }],
+    ['Sign to the 53', me.roster.filter((q) => !q.injury?.ir && !q.elevated).length >= 53 ? 'roster full: release someone first' : 'a regular contract', () => { if (promoteFromPS(me, p)) done(`${me.abbr} sign ${name} off the practice squad`); }],
+    ['Release', 'he becomes a free agent', () => { releaseFromPS(me, p, (q) => addFreeAgent(f, q)); done(`${me.abbr} release ${name} from the practice squad`); }],
+    ['Back', '', back],
+  ];
+  const items = opts.map(([label, note, act]) => { const it = el('div.pz-item', {}, el('span', { text: label }), note ? el('small', { text: note }) : null); it.activate = act; return it; });
+  screens.frame('mono-screen pz-screen', el('h1', { text: `${p.first} ${p.last}` }),
+    el('div.st-team-filter', { text: `${p.pos} · ${p.ovr} OVR · age ${p.age} · ${p.elevated ? 'ELEVATED for this game' : 'practice squad'}` }),
+    el('div.pz-main', {}, el('div.pz-list', {}, items), el('div')),
+    el('div.setup-help.pz-help', { html: '<b class="btn A">A</b> Select &nbsp; <b class="btn B">B</b> Back' }));
+  screens.nav.set(items, { columns: 1, onBack: back });
 }
 
 // ---------------------------------------------------------------------------------------------------------------

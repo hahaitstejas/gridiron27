@@ -65,6 +65,27 @@ export function elevate(team, p) {
   return true;
 }
 
+/** Undo an elevation before the game (it doesn't count against his three). */
+export function unelevate(team, p) {
+  if (!p.elevated) return false;
+  delete p.elevated;
+  p.elevations = Math.max(0, (p.elevations || 1) - 1);
+  team.roster = team.roster.filter((q) => q !== p);
+  for (const slot of Object.keys(team.depth)) team.depth[slot] = team.depth[slot].filter((id) => id !== p.id);
+  return true;
+}
+
+/** Let a practice-squad player go: he's a free agent right away (no waivers for the practice squad). */
+export function releaseFromPS(team, p, toFreeAgency) {
+  if (p.elevated) unelevate(team, p);
+  const i = (team.ps || []).indexOf(p);
+  if (i < 0) return false;
+  team.ps.splice(i, 1);
+  delete p.practiceSquad;
+  toFreeAgency(p);
+  return true;
+}
+
 /** After the game the elevated players revert to the practice squad. */
 export function revertElevations(team) {
   const back = team.roster.filter((p) => p.elevated);

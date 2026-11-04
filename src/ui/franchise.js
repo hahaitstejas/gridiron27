@@ -225,7 +225,7 @@ export class FranchiseUI {
       tile('', 'people', 'Roster', `${me.roster.filter((p) => !p.injury?.ir).length}/53 active`, () => this.ctx.rosterScreen(f.userTeam, () => this.boxMenu('Team', teamTiles))),
       tile('', 'clipboard', 'Depth Chart', 'Starters, rotation', () => this.ctx.depthScreen(f.userTeam, () => this.boxMenu('Team', teamTiles))),
       tile('', 'medkit', 'Injury Report', hurt ? `${hurt} out · ${ir} on IR` : 'All healthy', () => injuryReport(this)),
-      tile('', 'people', 'Practice Squad', `${(me.ps || []).length}/16 · elevate up to 2 a game`, () => practiceSquadScreen(this)),
+      tile('', 'people', 'Practice Squad', `${(me.ps || []).length}/16 · elevate, sign or release`, () => practiceSquadScreen(this)),
       tile('', 'chart', 'Player Development', f.devReport?.length ? `${f.devReport.length} improved recently` : 'Growth every two weeks', () => this.devScreen()),
       tile('', 'money', 'Contracts & Cap', capLine(f, me), () => contractsScreen(this)),
     ].filter(Boolean);

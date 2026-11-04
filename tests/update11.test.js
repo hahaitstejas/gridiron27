@@ -31,3 +31,28 @@ describe('Update 1.1', () => {
     expect(pt.injury?.weeks > 0).toBe(false);
   });
 });
+
+describe('practice squad', () => {
+  it('undoing an elevation gives it back; releasing makes him a free agent', async () => {
+    const { addToPS, elevate, unelevate, releaseFromPS } = await import('../src/franchise/practiceSquad.js');
+    const { generatePlayer } = await import('../src/data/generator.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const teams = generateLeagueRosters(defaultTeams(), 6);
+    const t = teams[0];
+    const p = generatePlayer('WR', new RNG(1), -10, { age: 22 });
+    addToPS(t, p);
+    const n = t.roster.length;
+    expect(elevate(t, p)).toBe(true);
+    expect(t.roster.length).toBe(n + 1);
+    expect(unelevate(t, p)).toBe(true);
+    expect(t.roster.length).toBe(n);
+    expect(p.elevations).toBe(0);
+    expect(Object.values(t.depth).some((ids) => ids.includes(p.id))).toBe(false);
+    const pool = [];
+    elevate(t, p);
+    expect(releaseFromPS(t, p, (q) => pool.push(q))).toBe(true);
+    expect(pool).toEqual([p]);
+    expect(t.ps.includes(p)).toBe(false);
+    expect(t.roster.includes(p)).toBe(false);
+  });
+});

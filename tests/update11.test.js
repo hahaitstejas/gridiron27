@@ -227,3 +227,26 @@ describe('league book: other leagues\' sheets', () => {
     CONFERENCES.splice(0, 2, ...keep.slice(0, 2));
   });
 });
+
+describe('local co-op', () => {
+  it('player 2 runs his own man on the same team (a receiver on offense, a defender on defense)', async () => {
+    const { PlaySim } = await import('../src/sim/play.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const lg = generateLeagueRosters(defaultTeams(), 13);
+    for (const humanTeam of [0, 1]) {
+      const sim = new PlaySim({ rng: new RNG(1), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: getOffPlay('ace_drive'), defPlay: getDefPlay('43_cover3'), humanTeam, coop: true, camDir: humanTeam === 0 ? 1 : -1 });
+      const p2 = sim.players[sim.coopId];
+      expect(p2.team).toBe(humanTeam);
+      expect(p2.id).not.toBe(sim.controlled[humanTeam]);
+      sim.snap();
+      const start = { x: p2.x, z: p2.z };
+      const idle = { lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0, down: {}, pressed: {}, released: {}, held: {}, flick: {} };
+      const f = { ...idle, coop: { ...idle, lx: 1 } }; // player 2 holds the stick sideways
+      for (let k = 0; k < 40; k++) sim.tick(STEP, f);
+      expect(Math.abs(p2.z - start.z)).toBeGreaterThan(1.5);
+      expect(sim.isHumanControlled(p2)).toBe(true);
+    }
+  });
+});

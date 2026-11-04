@@ -236,7 +236,7 @@ export class Screens {
         })));
       }
       const onSide = players().filter((i) => st.cols[i] !== 1);
-      note.textContent = !onSide.length ? 'Watch: CPU vs CPU' : onSide.length === 2 ? 'Two players, head to head' : `P${onSide[0] + 1} plays the ${sideKey(st.cols[onSide[0]])} team`;
+      note.textContent = !onSide.length ? 'Watch: CPU vs CPU' : onSide.length === 2 ? (st.cols[onSide[0]] === st.cols[onSide[1]] ? `Co-op: both players on the ${sideKey(st.cols[onSide[0]])} team (P2 runs a receiver / a defender)` : 'Two players, head to head') : `P${onSide[0] + 1} plays the ${sideKey(st.cols[onSide[0]])} team`;
       pads.append(note);
       menuHost.innerHTML = '';
       if (st.menu) {
@@ -274,7 +274,9 @@ export class Screens {
     };
     const finish = () => {
       const on = players().filter((i) => st.cols[i] !== 1);
-      p.side = !on.length ? 'cpu' : on.length === 2 ? '2p' : sideKey(st.cols[on[0]]);
+      // Both controllers on the same side = co-op (one team, two players); on opposite sides = head to head.
+      p.side = !on.length ? 'cpu' : on.length === 2 ? (st.cols[on[0]] === st.cols[on[1]] ? 'coop' : '2p') : sideKey(st.cols[on[0]]);
+      if (p.side === 'coop') p.coopSide = sideKey(st.cols[on[0]]);
       p.p1Team = st.cols[0] === 2 ? 0 : 1; // 2 players: which game team (0 home / 1 away) player 1 has
       this.custom = null;
       this.gameSettings(teams, p, { onStart, onBack: () => this.playNow(teams, prefs, { onStart, onBack, p2 }, p) });

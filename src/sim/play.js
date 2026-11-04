@@ -95,7 +95,7 @@ export class PlaySim {
   offense() { return this.players.filter((p) => p.team === this.offIdx); }
   defense() { return this.players.filter((p) => p.team === this.defIdx); }
   bySlot(team, slot) { return this.players.find((p) => p.team === team && p.slot === slot); }
-  isHumanControlled(p) { return this.controlled[p.team] === p.id && this.humanTeams.includes(p.team); }
+  isHumanControlled(p) { return (this.controlled[p.team] === p.id && this.humanTeams.includes(p.team)) || (p.id === this.coopId && p.team === this.coopTeam); }
   isHuman(team) { return this.humanTeams.includes(team); }
   /** Gameplay slider for a team as -1..1 (0 = default). */
   sl(team, key) { const v = this.sliders?.[team]?.[key]; return v === undefined ? 0 : (v - 50) / 50; }
@@ -145,6 +145,39 @@ export class PlaySim {
     this.isKick = KICK_PLAYS.has(this.offPlay.type);
     if (this.isKick && this.offPlay.type === 'kickoff') { this.ball.state = 'tee'; this.ball.carrier = -1; this.ball.y = 0.25; }
     for (const t of this.humanTeams) this.withHuman(t, () => this.pickControlled());
+    this.pickCoop();
+  }
+
+  /**
+   * Local co-op (two humans on one team, cfg.coop): player 2 gets his own man. On offense the first read (a receiver
+   * whose route he can freelance; the QB is player 1's), on defense a linebacker / safety away from player 1's man.
+   * Not on kicks.
+   */
+  pickCoop() {
+    this.coopTeam = this.cfg.coop && this.humanTeam !== null ? this.humanTeam : null;
+    this.coopId = -1;
+    if (this.coopTeam === null || this.isKick) return;
+    const t = this.coopTeam, mine = this.controlled[t];
+    if (t === this.offIdx) {
+      const read = (this.offPlay.read || []).map((s) => this.bySlot(t, s)).find((p) => p && p.id !== mine && p.slot !== 'QB');
+      const any = this.offense().find((p) => p.id !== mine && !OL_SLOTS.has(p.slot) && p.slot !== 'QB');
+      this.coopId = (read || any)?.id ?? -1;
+    } else {
+      const order = ['MLB', 'FS', 'SS', 'ROLB', 'LOLB', 'NB'];
+      const p = order.map((s) => this.bySlot(t, s)).find((q) => q && q.id !== mine);
+      this.coopId = p?.id ?? -1;
+    }
+  }
+
+  /** Run fn as player 2 of a co-op team (his controlled player stands in for player 1's for the duration). */
+  withCoop(fn) {
+    const t = this.coopTeam, save = this.controlled[t], prevH = this.humanTeam;
+    this.controlled[t] = this.coopId; this.humanTeam = t;
+    try { fn(); } finally {
+      const now = this.controlled[t];
+      this.coopId = now === save ? this.coopId : now; // a B switch onto player 1's man doesn't take it from him
+      this.controlled[t] = save; this.humanTeam = prevH;
+    }
   }
 
   /** The human's starting player: kicker/returner on kicks, QB on offense, a defender on defense. */
@@ -543,6 +576,7 @@ export class PlaySim {
       runDefenseAI(this, dt);
       if (input?.perTeam) { for (const t of this.humanTeams) { const f = input[t]; if (f) this.withHuman(t, () => applyHuman(this, f, dt)); } }
       else if (this.humanTeam !== null && input) applyHuman(this, input, dt);
+      if (this.coopTeam !== null && this.coopId >= 0 && input?.coop) this.withCoop(() => applyHuman(this, input.coop, dt));
       updateMoves(this, dt);
       updateBlocking(this, dt);
       for (const p of this.players) {
@@ -819,7 +853,10 @@ export class PlaySim {
       this.possTeam = p.team;
       this.emit('turnover', { how, player: p.id });
     }
+    // Co-op: the runner is player 2's man → he keeps him (player 1 stays where he is); else player 1 takes the ball.
+    const coopRuns = this.coopTeam !== null && p.id === this.coopId;
     for (const t of this.humanTeams) this.withHuman(t, () => {
+      if (coopRuns && t === this.coopTeam) return;
       if (p.team === t) this.controlledId = this.lockId >= 0 ? this.lockId : p.id; // career: stay on your player
       else if (!this.players[this.controlledId] || this.players[this.controlledId].team !== t) {
         this.controlledId = this.nearestTo(t, p).id;

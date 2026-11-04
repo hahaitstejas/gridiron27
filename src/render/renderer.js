@@ -180,7 +180,7 @@ export class GameRenderer {
     players.display = pr?.display || null;
     // The sidelines appear on the first presented frame: color them once.
     if (pr?.bench && players.extra !== pr.bench) { players.extra = pr.bench; players.colorsKey = null; players.setColors(sim, session.teams); }
-    players.update(sim, alpha, time, sim.humanTeams?.length ? sim.humanTeams.map((t) => sim.controlled[t] ?? -1) : sim.humanTeam !== null ? sim.controlledId : -1, pr?.refs || null);
+    players.update(sim, alpha, time, sim.coopTeam != null ? [sim.controlled[sim.coopTeam] ?? -1, sim.coopId ?? -1] : sim.humanTeams?.length ? sim.humanTeams.map((t) => sim.controlled[t] ?? -1) : sim.humanTeam !== null ? sim.controlledId : -1, pr?.refs || null);
     // Ball
     const b = sim.ball;
     const bm = this.ball;

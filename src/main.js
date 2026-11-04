@@ -225,7 +225,7 @@ function startGame(p, opts = {}) {
   if (!opts.franchise) savePrefs(prefs);
   const home = teams[cfg.home], away = teams[cfg.away];
   // Local 2-player needs a second controller: ask player 2 to press A first.
-  if (cfg.side === '2p' && !input2.connected) {
+  if ((cfg.side === '2p' || cfg.side === 'coop') && !input2.connected) {
     input2.claiming = true;
     screens.frame('mono-screen', el('h1', { text: '2 Players' }),
       el('div.league-status', { text: 'Player 2: press A on the second controller' }));
@@ -233,14 +233,16 @@ function startGame(p, opts = {}) {
     p2Wait = () => startGame(p, opts);
     return;
   }
-  const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : cfg.side === 'home' ? 0 : 1;
+  // Co-op: both controllers on one team (Team Select: both icons on the same side).
+  const coop = cfg.side === 'coop' && !opts.franchise;
+  const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : coop ? (cfg.coopSide === 'away' ? 1 : 0) : cfg.side === 'home' ? 0 : 1;
   lastStart = [p, opts]; // pause → Restart
   const seed = opts.seed ?? (Date.now() % 1e9);
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, gameDay: opts.gameDay || null, playerCam: prefs.careerCam !== 'broadcast',
-      styles: !opts.franchise && cfg.styles ? [...cfg.styles] : null, coin: !opts.franchise ? cfg.coin || null : null, coinTeam: cfg.side === '2p' ? 'any' : cfg.side === 'home' ? 0 : cfg.side === 'away' ? 1 : null },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, coop, gameDay: opts.gameDay || null, playerCam: prefs.careerCam !== 'broadcast',
+      styles: !opts.franchise && cfg.styles ? [...cfg.styles] : null, coin: !opts.franchise ? cfg.coin || null : null, coinTeam: cfg.side === '2p' ? 'any' : coop ? humanTeam : cfg.side === 'home' ? 0 : cfg.side === 'away' ? 1 : null },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
@@ -665,7 +667,7 @@ function frameBody(now) {
     consumed = true;
   } else if (app === 'game' && session) {
     const two = session.twoPlayer;
-    if (f.pressed.Menu || (two && input2.frame.pressed.Menu)) { pause(); input.consume(); input2.consume(); requestAnimationFrame(frame); return; }
+    if (f.pressed.Menu || ((two || session.settings.coop) && input2.frame.pressed.Menu)) { pause(); input.consume(); input2.consume(); requestAnimationFrame(frame); return; }
     // Automatic replay of a big play once the play-call screen is up.
     if (autoReplayPending && session.state === 'playcall' && session.lastReplay) {
       autoReplayPending = false;
@@ -689,7 +691,8 @@ function frameBody(now) {
     // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
     const p1 = session.p1Team ?? 0; // 2 players: the game team player 1 has (0 home, 1 away)
     if (pcOpen) { playcall.update(two && session.humanTeam !== p1 ? input2.frame : f, dt); }
-    const gameInput = two ? { perTeam: true, [p1]: f, [1 - p1]: input2.frame } : f;
+    // Co-op: player 2's frame rides along (PlaySim runs his man with it, sim.withCoop).
+    const gameInput = two ? { perTeam: true, [p1]: f, [1 - p1]: input2.frame } : session.settings.coop && input2.connected ? { ...f, coop: input2.frame } : f;
     // Career: snaps your player sits out run at 4x (the next one he's in comes up quickly).
     const sp = session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed;
     acc += dt * sp;

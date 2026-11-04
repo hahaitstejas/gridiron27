@@ -146,7 +146,8 @@ export class PlaySim {
         this.kickAim = 0;
         this.controlledId = this.bySlot(this.offIdx, this.offPlay.type === 'punt' ? 'P' : 'K')?.id ?? -1;
       } else if (this.humanTeam === this.defIdx) {
-        this.controlledId = (this.bySlot(this.defIdx, 'KR') || this.bySlot(this.defIdx, 'PR') || this.bySlot(this.defIdx, 'B9') || this.defense()[0]).id;
+        // Field goals: you're the edge rusher coming off the end of the line (B8), diving (X) across the kick.
+        this.controlledId = (this.bySlot(this.defIdx, 'KR') || this.bySlot(this.defIdx, 'PR') || this.bySlot(this.defIdx, 'B8') || this.bySlot(this.defIdx, 'B9') || this.defense()[0]).id;
       }
     } else if (this.humanTeam === this.offIdx) this.controlledId = this.bySlot(this.offIdx, 'QB')?.id ?? -1;
     else if (this.humanTeam === this.defIdx) this.controlledId = this.defaultDefender();

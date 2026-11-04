@@ -316,7 +316,7 @@ function resolveCatch(sim, reach, late = false) {
   else if (ct === 'rac') contest *= 1.35;
   const sure = has(r, 'sureHands') ? contest * 0.4 : 0; // Sure Hands: traffic matters much less
   contest -= sure;
-  let pCatch = 0.57 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
+  let pCatch = 0.545 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
   if (b.tipped) pCatch -= 0.2;

@@ -12,8 +12,8 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] A5 Clock display ticks smoothly (no 8:26 → 8:14 jumps), runoff visible
 - [x] A6 Fake punts/FGs harder (defense reads them, contain)
 - [x] A7 Hail Mary + trick plays folder (flea flicker, philly special-style, hook and ladder, laterals at end of game)
-- [ ] A8 FG block: MLB no free middle, longer kicks block more often, user edge rusher with X dive
-- [ ] A9 Juke rework (lateral cut, no backward loss, actually beats the defender)
+- [x] A8 FG block: MLB no free middle, longer kicks block more often, user edge rusher with X dive
+- [x] A9 Juke rework (lateral cut, no backward loss, actually beats the defender)
 - [ ] A10 QB: no infinite scramble/hold (pressure collapses, sack), no guaranteed 5-yd QB runs, pressure hurts accuracy
 - [ ] A11 Defender jumping the QB at the LOS (cheese 5-yd passes) — keep man coverage on the receiver
 - [ ] A12 Deep zones out of bounds inside the 10 (clamp landmarks to the field of play)
@@ -74,3 +74,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   sim/tricks.js: laterals (LB as a carrier, CPU last-gasp), Hail Mary, flea flicker, hook and ladder, throwback,
   swap special (QB catches), WR reverse in a "Trick Plays" folder; defenses don't fall for the same trick twice;
   suggestions skip runs in a no-timeout drill; Recent tab; catch buttons A secure / X run after / Y aggressive.
+- A8, A9 (commit 3): FG block: you're the edge rusher (B8, comes free outside the wing), X dives across the kick
+  (~6% blocked with good timing), long kicks get blocked more, the interior wall holds; juke = plant + lateral cut
+  that never loses ground and can make the man in front stumble; CPU jukes no longer step backward. Retune: tackle
+  base 0.80, catch base 0.545 → ~26.5 pts, 373 yds, 4.4 ypc.

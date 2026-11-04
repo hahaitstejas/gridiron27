@@ -69,7 +69,7 @@ function aiMoves(sim, p) {
     if (!sim.rng.chance(0.3)) return;
     const agi = sim.R(p, 'agility'), str = sim.R(p, 'strength'), btk = sim.R(p, 'breakTackle');
     const choice = sim.rng.weighted(
-      [['juke', agi], ['spin', agi * 0.6], ['stiffarm', str * 0.8], ['truck', (str + btk) / 2 * (0.4 + p.bulk)]],
+      [['juke', agi * 0.7], ['spin', agi * 0.6], ['stiffarm', str * 0.8], ['truck', (str + btk) / 2 * (0.4 + p.bulk)]],
       (c) => c[1] - 40,
     )[0];
     const side = Math.sign(-fz * dx + fx * dz) || 1; // which side the defender is on

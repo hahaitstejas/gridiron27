@@ -20,7 +20,7 @@ function run(name, { human = null, meter = null, rush = null, yl = 25 }) {
     const sim = new PlaySim({ rng: new RNG(7000 + i), teams: [teams[i % 32], teams[(i + 5) % 32]], offIdx: 0, dir: 1, losX, ballZ: 0,
       offPlay: getOffPlay('st_fg'), defPlay: getDefPlay('st_fg_block'), humanTeam: human, camDir: 1 });
     let me = null;
-    if (rush) {
+    if (rush && !rush.edge) {
       const rs = sim.players.filter((p) => p.team === 1 && p.task?.type !== 'returner');
       me = rs[i % rs.length];
       sim.controlledId = me.id;
@@ -41,7 +41,17 @@ function run(name, { human = null, meter = null, rush = null, yl = 25 }) {
         const kk = sim.players[sim.kick?.kickerId];
         const h = sim.bySlot(0, 'H');
         const tgt = h || kk;
-        if (tgt && me) {
+        if (rush.edge && tgt && me) {
+          // Edge rusher: run at a spot ~2 yds in front of the holder and dive across the kick.
+          const ml = sim.toLocal(me.x, me.z), hl = sim.toLocal(tgt.x, tgt.z);
+          // Around the edge first (outside the wing), then bend in at the kick point.
+          const spot = ml.down > hl.down + 4.5 && Math.abs(ml.lat) < 6.2 ? sim.toWorld(ml.down - 2.5, Math.sign(ml.lat) * 6.3) : sim.toWorld(hl.down + 2.2, hl.lat);
+          const dx = spot.x - me.x, dz = spot.z - me.z, l = Math.hypot(dx, dz) || 1;
+          f.ly = -dx / l; f.lx = dz / l; f.rt = 1;
+          if (l < 2.5 && !sim.kick?.launched) near = true;
+          if (rush.swat && (rush.early ? Math.abs(sim.toLocal(me.x, me.z).lat) < 3.6 && !sim.kick?.launched : sim.kick?.launched) && pressed < 1) { f.pressed[rush.swat] = true; pressed++; }
+          
+        } else if (tgt && me) {
           const dx = tgt.x + 1.2 - me.x, dz = tgt.z - me.z, l = Math.hypot(dx, dz) || 1;
           f.ly = -dx / l; f.lx = dz / l; f.rt = 1;
           if (l < 2.5 && !sim.kick?.launched) near = true;
@@ -64,3 +74,7 @@ run('human kick fast meter', { human: 0, meter: { power: 0.85, accWait: 0, err: 
 run('human kick slow meter', { human: 0, meter: { power: 0.98, accWait: 0.5, err: -0.05 } });
 run('human rusher, stick only', { human: 1, rush: {} });
 run('human rusher + A swat', { human: 1, rush: { swat: 'A' } });
+run('human edge 35yd, X dive', { human: 1, rush: { edge: true, swat: 'X' }, yl: 18 });
+run('human edge 50yd, X dive', { human: 1, rush: { edge: true, swat: 'X' }, yl: 33 });
+run('human edge 50yd, early X', { human: 1, rush: { edge: true, swat: 'X', early: true }, yl: 33 });
+run('human edge 50yd, no dive', { human: 1, rush: { edge: true }, yl: 33 });

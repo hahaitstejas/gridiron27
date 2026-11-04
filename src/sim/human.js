@@ -44,7 +44,15 @@ export function applyHuman(sim, inp, dt) {
   if (p.task?.type === 'kicker' || p.task?.type === 'kneel' || p.task?.type === 'spike') { p.userActive = false; return; }
   // Rushing a field goal or punt: A jumps with the hands up, X lays out (both reach higher for the block).
   if (sim.kick && sim.kick.type !== 'kickoff' && p.team !== sim.offIdx && !p.engagement && (inp.pressed.A || inp.pressed.X) && (!sim.kick.launched || sim.ball.t < 0.4)) {
-    p.blockJump = sim.t; p.anim = 'swat'; p.animT = 0;
+    p.blockJump = sim.t; p.blockDive = !!inp.pressed.X; p.anim = 'swat'; p.animT = 0;
+    // X: lay out across the front of the kick (a lunge at the spot ~2.5 yds in front of the holder).
+    if (inp.pressed.X) {
+      const h = sim.players[sim.kick.kickerId];
+      const hl = h ? sim.toLocal(h.x, h.z) : { down: -7, lat: 0 };
+      const spot = sim.toWorld(hl.down + 2.4, 0);
+      p.facing = Math.atan2(spot.z - p.z, spot.x - p.x);
+      startMove(sim, p, 'tackle_dive');
+    }
   }
   // Returner while the kick is in the air: Y = fair catch (punts), X = kneel it in the end zone.
   if (sim.kick && p.task?.type === 'returner' && sim.ball.state === 'kick') {

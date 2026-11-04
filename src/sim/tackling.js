@@ -31,6 +31,29 @@ export function startMove(sim, p, type, dir = 0) {
   return true;
 }
 
+/**
+ * The cut of a juke: defenders squared up in front of the runner may bite the wrong way (agility vs. their agility
+ * and awareness): they stumble for a beat, which is what makes the juke beat the man instead of just moving.
+ */
+function jukeDefenders(sim, p, m) {
+  const td = sim.teamDir(p.team);
+  const agi = sim.R(p, 'agility');
+  for (const d of sim.players) {
+    if (d.team === p.team || d.state !== 'active' || d.engagement) continue;
+    const dx = d.x - p.x, dz = d.z - p.z, dist = Math.hypot(dx, dz);
+    if (dist > 3.2 || dist < 0.7 || dx * td < -0.5) continue;
+    let chance = (sim.isHumanControlled(p) ? 0.34 : 0.02) + (agi - (sim.R(d, 'agility') + sim.R(d, 'awareness')) / 2) * 0.01;
+    if (dist < 1.3) chance -= 0.15; // too close: he's already got a hand on you
+    if (sim.isHumanControlled(d)) chance -= 0.1;
+    if (sim.rng.next() < clamp(chance, 0.06, 0.7)) {
+      d.state = 'stumble'; d.stumbleT = 0.36; d.speedCap = 0.4;
+      d.vx *= 0.4; d.vz = d.vz * 0.4 - m.sideZ * 1.5; // leaning the wrong way
+      d.anim = 'stumble'; d.animT = 0;
+      sim.emit('juked', { player: d.id, by: p.id });
+    }
+  }
+}
+
 export function updateMoves(sim, dt) {
   for (const p of sim.players) {
     const m = p.move;
@@ -39,14 +62,36 @@ export function updateMoves(sim, dt) {
     const fx = Math.cos(p.facing), fz = Math.sin(p.facing);
     switch (m.type) {
       case 'juke': {
-        // Burst sideways early in the move.
-        if (m.t < 0.25) {
-          const sx = -fz * m.dir, sz = fx * m.dir;
-          const s = p.maxSpeed * (0.75 + sim.R(p, 'agility') * 0.002);
-          p.desired.x = sx * s + fx * s * 0.45;
-          p.desired.z = sz * s + fz * s * 0.45;
-          p.vx += (p.desired.x - p.vx) * Math.min(1, dt * 14);
-          p.vz += (p.desired.z - p.vz) * Math.min(1, dt * 14);
+        const td = sim.teamDir(p.team);
+        if (!sim.isHumanControlled(p)) {
+          // CPU runners: a quick sidestep away from the tackler (never backward).
+          if (m.t < 0.25) {
+            const sx = -fz * m.dir, sz = fx * m.dir;
+            const s = p.maxSpeed * (0.75 + sim.R(p, 'agility') * 0.002);
+            p.desired.x = sx * s + fx * s * 0.45;
+            p.desired.z = sz * s + fz * s * 0.45;
+            if (p.desired.x * td < 0) p.desired.x = 0;
+            p.vx += (p.desired.x - p.vx) * Math.min(1, dt * 14);
+            p.vz += (p.desired.z - p.vz) * Math.min(1, dt * 14);
+          }
+          break;
+        }
+        // The human's juke: plant (a short stutter) then a hard lateral cut that keeps moving downfield. It never
+        // gives ground, and the man in front may bite the wrong way.
+        if (m.sideZ === undefined) {
+          const sz0 = fx * m.dir;
+          m.sideZ = Math.abs(sz0) > 0.25 ? Math.sign(sz0) : (m.dir || 1);
+        }
+        const s = p.maxSpeed * (0.7 + sim.R(p, 'agility') * 0.0018);
+        if (m.t < 0.1) {
+          p.desired.x = p.vx * 0.55; p.desired.z = p.vz * 0.55;
+          if ((p.desired.x * td) < 0) p.desired.x = 0;
+        } else if (m.t < 0.32) {
+          p.desired.x = td * s * 0.3;
+          p.desired.z = m.sideZ * s * 0.86;
+          p.vx += (p.desired.x - p.vx) * Math.min(1, dt * 16);
+          p.vz += (p.desired.z - p.vz) * Math.min(1, dt * 16);
+          if (!m.fooled) { m.fooled = true; jukeDefenders(sim, p, m); }
         }
         break;
       }
@@ -118,7 +163,7 @@ export function attemptTackle(sim, d, c, air) {
   d.tackleCd = 1.0;
   const tak = sim.R(d, 'tackling');
   const btk = sim.R(c, 'breakTackle');
-  let p = 0.72 + (tak - btk) * 0.006;
+  let p = 0.8 + (tak - btk) * 0.006;
   // Approach angle: hits from the side/behind are harder to escape.
   const fx = Math.cos(c.facing), fz = Math.sin(c.facing);
   let rx = d.x - c.x, rz = d.z - c.z;
@@ -136,7 +181,8 @@ export function attemptTackle(sim, d, c, air) {
   let knockDown = false;
   let bigHit = false;
   const brokenBy = c.move?.type;
-  if (moveActive(c, 'juke') && front > -0.1) p *= 1 - (0.22 + sim.R(c, 'agility') * 0.0025) + sim.R(d, 'awareness') * 0.001;
+  // A juke only helps once he's cut (planted in front of a tackler he's a sitting duck).
+  if (moveActive(c, 'juke') && front > -0.1 && c.move.t >= 0.1) p *= 1 - (0.22 + sim.R(c, 'agility') * 0.0025) + sim.R(d, 'awareness') * 0.001;
   else if (moveActive(c, 'spin') && front > -0.4) p *= 1 - (0.15 + sim.R(c, 'agility') * 0.0025);
   else if (moveActive(c, 'stiffarm') && front > -0.3) {
     p *= 1 - clamp(0.15 + (sim.R(c, 'strength') * 0.5 + btk * 0.5 - tak * 0.4) * 0.004, 0.1, 0.55);

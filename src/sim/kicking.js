@@ -67,11 +67,17 @@ export function protectionWall(sim) {
   for (const p of sim.players) {
     if (p.team === sim.offIdx || p.engagement || p.state !== 'active') continue;
     let wall = 1;
-    if (!k.launched) {
+    // Coming off the edge, outside the wing: nobody to wade through (the long way round, though).
+    const lat = Math.abs(sim.toLocal(p.x, p.z).lat);
+    let edgeLat = 0;
+    for (const o of sim.players) if (o.team === sim.offIdx && o.task?.type === 'pass_block') edgeLat = Math.max(edgeLat, Math.abs(sim.toLocal(o.x, o.z).lat));
+    if (!k.launched && lat < edgeLat + 0.5) {
       for (const o of sim.players) {
         if (o.team !== sim.offIdx || o.task?.type !== 'pass_block') continue;
         const dd = Math.hypot(o.x - p.x, o.z - p.z);
-        if (dd < WALL_R) wall = Math.min(wall, WALL_MIN + (dd / WALL_R) * (1 - WALL_MIN));
+        // The interior (center, guards) is shoulder to shoulder: nobody walks through the A gaps.
+        const mid = Math.abs(sim.toLocal(o.x, o.z).lat) < 2.2 ? 0.45 : 1;
+        if (dd < WALL_R) wall = Math.min(wall, WALL_MIN * mid + (dd / WALL_R) * (1 - WALL_MIN * mid));
       }
     }
     // A human kicker who is slow on the meter shouldn't hand the CPU rush extra time: once the kick is due
@@ -93,7 +99,8 @@ const WALL_R = 1.5, WALL_MIN = 0.5;
 
 function blockCheck(sim, kicker, type, range) {
   const kl = sim.toLocal(kicker.x, kicker.z);
-  const low = type === 'fg' ? 0.6 + Math.max(0, range - 38) / 30 : 0.45;
+  // Long field goals come off the foot lower (and the kicker swings harder): far more of them get blocked.
+  const low = type === 'fg' ? 0.4 + Math.max(0, range - 30) / 18 : 0.45;
   const k = sim.kick, lateOK = k.dueAt && sim.t - k.dueT < LATE_GRACE;
   for (const d of sim.players) {
     if (d.team === kicker.team || d.state !== 'active' || d.engagement) continue;
@@ -124,16 +131,20 @@ function blockCheck(sim, kicker, type, range) {
 function flightBlock(sim) {
   const b = sim.ball, k = sim.kick;
   k.flightTried ||= new Set();
+  // Longer kicks fly lower for longer.
+  const dist = k.type === 'fg' ? Math.abs(sim.dir * 50 - sim.losX) + 17 : 40;
+  const longF = k.type === 'fg' ? 0.6 + Math.max(0, dist - 30) / 25 : 1;
   for (const d of sim.players) {
-    if (d.team === sim.offIdx || d.state !== 'active' || d.engagement || k.flightTried.has(d.id)) continue;
-    const off = Math.hypot(d.x - b.x, d.z - b.z);
-    if (off > 0.9) continue;
+    if (d.team === sim.offIdx || (d.state !== 'active' && !(d.blockDive && sim.t - d.blockJump < 0.7)) || d.engagement || k.flightTried.has(d.id)) continue;
     const human = sim.isHumanControlled(d);
     const jumped = human && d.blockJump != null && sim.t - d.blockJump < 0.6;
-    const reach = 2.25 + (jumped ? 0.65 : 0) + (d.pos === 'DE' || d.pos === 'DT' ? 0.15 : 0);
+    const dove = jumped && d.blockDive;
+    const off = Math.hypot(d.x - b.x, d.z - b.z);
+    if (off > (dove ? 2.4 : 0.9)) continue; // laid out, arms extended: about a body length of reach
+    const reach = (dove ? 2.45 : 2.25) + (jumped && !dove ? 0.65 : 0) + (d.pos === 'DE' || d.pos === 'DT' ? 0.15 : 0);
     if (b.y > reach) continue;
     k.flightTried.add(d.id);
-    const chance = (human ? (jumped ? 0.5 : 0.2) : 0.025) * (1 - off / 1.4);
+    const chance = (human ? (dove ? 0.85 : jumped ? 0.5 : 0.2) : 0.025) * (1 - off / (dove ? 3.2 : 1.4)) * longF;
     if (sim.rng.next() < chance) {
       b.vx = b.vx * 0.12 + sim.rng.gauss(0, 1.5); b.vz = b.vz * 0.12 + sim.rng.gauss(0, 2); b.vy = sim.rng.range(2, 5);
       b.target = { x: b.x + b.vx * 0.8, z: b.z + b.vz * 0.8 };

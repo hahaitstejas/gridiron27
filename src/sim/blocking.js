@@ -12,6 +12,8 @@ export function canBlock(sim, b) {
 }
 
 export function canBeBlocked(sim, d) {
+  // Field goal protection blocks inside-out: the human's end man outside the wing (B1/B8) comes free, the long way round.
+  if (sim.kick?.type === 'fg' && !sim.kick.launched && (d.slot === 'B1' || d.slot === 'B8') && sim.isHumanControlled(d)) return false;
   return d.team !== sim.possTeam && d.state === 'active' && !d.engagement && d.noEngageT <= 0;
 }
 

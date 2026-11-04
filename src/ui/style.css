@@ -975,7 +975,7 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .sb3-to i { height: 5px; min-width: 12px; background: rgba(0,0,0,0.15); }
 
 /* Post-game, decluttered (1.1): the scorebug and ticker step aside; one compact score row; one side panel (LB/RB). */
-body:has(.pg-screen) #scorebug, body:has(.pg-screen) #scoreticker, body:has(.pg-screen) #pbp { display: none !important; }
+body:has(.pg-screen:not(.hidden)) #scorebug, body:has(.pg-screen:not(.hidden)) #scoreticker, body:has(.pg-screen:not(.hidden)) #pbp { display: none !important; }
 .screen.pg-screen { bottom: 0; padding: 64px 2.5vw 56px; overflow: auto; }
 .pg-main { gap: 2.5vw; }
 .pg-main > .pz-list { width: 230px; }

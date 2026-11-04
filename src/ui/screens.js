@@ -127,7 +127,8 @@ export class Screens {
     this.nav = nav;
   }
 
-  clear() { this.root.innerHTML = ''; this.root.classList.add('hidden'); this.nav.clear(); }
+  // Reset the class too: a closed screen's class (e.g. pg-screen, which hides the scorebug) must not linger.
+  clear() { this.root.innerHTML = ''; this.root.className = 'screen hidden'; this.nav.clear(); }
 
   frame(cls, ...kids) {
     this.root.innerHTML = '';

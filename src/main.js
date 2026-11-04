@@ -183,7 +183,8 @@ applyCamera();
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
 let celWheel = null; // the touchdown celebration picker (RS)
-let artView = false; // RT play art: the camera pulls back over the whole field
+let artView = false;
+let artSim = null, artReleased = false; // RT play art needs a fresh press at the line (see the render loop) // RT play art: the camera pulls back over the whole field
 let autoReplayPending = false; // a big play just happened: show it once the play is over
 let session = null;
 let speed = 1;
@@ -752,8 +753,12 @@ function frameBody(now) {
     const losX = sim ? sim.losX : m.xOf(m.possession, m.yardLine);
     renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null, scrim ? m.down : null);
     renderer.setAim(sim);
-    // One player: hold RT at the line to see your play drawn on the field.
-    const showArt = sim && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
+    // One player: hold RT at the line to see your play drawn on the field. It takes a fresh press at the line: a
+    // trigger still held from the last play (sprinting) or one that never reads as released doesn't pull the camera.
+    const rtNow = input.frame.rt || 0;
+    if (sim !== artSim) { artSim = sim; artReleased = false; }
+    if (rtNow < 0.25) artReleased = true;
+    const showArt = sim && artReleased && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
       && session.humanTeam !== null && session.humanTeam !== undefined && (input.frame.rt || 0) > 0.5 && !SPECIAL_ART.has(sim.offPlay.type);
     renderer.playArt.update(showArt ? playArt(sim, session.humanTeam) : null, dt);
     hud.readout(showArt && session.humanSide === 'offense' ? coverageRead(sim) : null);

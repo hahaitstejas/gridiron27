@@ -229,7 +229,7 @@ export function chooseTry(m, team) {
 /** Defensive call for the situation. */
 export function chooseDefense(m, team, rng, blitzRate = 0.2) {
   if (m.phase === 'kickoff') return getDefPlay('st_kick_return');
-  const all = listDefPlays();
+  const all = listDefPlays().filter((p) => !p.custom); // the user's own defenses are only for the user
   const s = m.situation();
   const off = s.possession;
   // Special teams looks.

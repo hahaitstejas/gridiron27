@@ -4,7 +4,8 @@ import { getOffFormation, listOffPlays, setCustomPlays } from './playbook.js';
 import { ROUTES } from './routes.js';
 
 const OL = new Set(['LT', 'LG', 'C', 'RG', 'RT']);
-export const ROUTE_CHOICES = ['block', ...Object.keys(ROUTES)];
+// A function: custom routes (customDesign.js) join ROUTES at runtime.
+export const routeChoices = () => ['block', ...Object.keys(ROUTES)];
 export const RUN_GAPS = { inside: [1, 1.2], 'off tackle': [1, 3], outside: [0.5, 5.5] };
 
 /** Offensive formations a custom play can use (no special teams, no flipped copies). */
@@ -61,7 +62,8 @@ export function buildPlay(spec) {
   play.type = 'pass';
   play.dropback = spec.dropback || 5;
   play.routes = {};
-  for (const e of elig) play.routes[e.slot] = ROUTE_CHOICES.includes(spec.routes[e.slot]) ? spec.routes[e.slot] : 'block';
+  const choices = routeChoices();
+  for (const e of elig) play.routes[e.slot] = choices.includes(spec.routes[e.slot]) ? spec.routes[e.slot] : 'block';
   const runners = elig.map((e) => e.slot).filter((s) => play.routes[s] !== 'block');
   // Read order: the primary first, then deeper routes before checkdowns.
   const depth = (s) => Math.max(...(ROUTES[play.routes[s]]?.pts || [[0, 0]]).map((p) => p[0]));

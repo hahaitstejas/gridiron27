@@ -32,6 +32,12 @@ export function setCustomPlays(plays) {
   offPlays.push(...plays);
 }
 
+/** The user's defensive plays (Playbook → Defensive Plays). */
+export function setCustomDefPlays(plays) {
+  for (let i = defPlays.length - 1; i >= 0; i--) if (defPlays[i].custom) defPlays.splice(i, 1);
+  defPlays.push(...plays);
+}
+
 const swapSide = (r) => (r.endsWith('_l') ? r.slice(0, -2) + '_r' : r.endsWith('_r') ? r.slice(0, -2) + '_l' : r);
 
 /** Mirror an offensive play left/right ("flip" on the play-call screen). */

@@ -81,10 +81,12 @@ export class PlayCallScreen {
     } else {
       tabs.push({ name: 'Suggested', plays: this.suggestions() });
       const fams = new Map();
+      if (listDefPlays().some((p) => p.custom)) fams.set('My Plays', new Map()); // the user's defenses first
       for (const p of listDefPlays()) {
         const f = getDefFormation(p.formation);
-        if (!fams.has(f.family)) fams.set(f.family, new Map());
-        const fm = fams.get(f.family);
+        const fam = p.custom ? 'My Plays' : f.family;
+        if (!fams.has(fam)) fams.set(fam, new Map());
+        const fm = fams.get(fam);
         if (!fm.has(p.formation)) fm.set(p.formation, []);
         fm.get(p.formation).push(p);
       }

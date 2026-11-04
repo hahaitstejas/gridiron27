@@ -265,3 +265,41 @@ describe('uniform creator', () => {
     expect(b[3].uniforms.home).toMatchObject({ jersey: '#123456', sleeves: '#abcdef', stripe: '#ff0000', socks: '#00ff00' });
   });
 });
+
+describe('play designer', () => {
+  it('custom routes, custom defenses and share codes', async () => {
+    const D = await import('../src/data/customDesign.js');
+    const { buildPlay, newSpec } = await import('../src/data/customPlays.js');
+    const { listDefPlays, getDefPlay } = await import('../src/data/playbook.js');
+    const { testPlay } = await import('../src/game/playtest.js');
+    const { chooseDefense } = await import('../src/ai/playcaller.js');
+    const { Match } = await import('../src/game/match.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const lg = generateLeagueRosters(defaultTeams(), 50);
+    // A drawn route: out 8, then up the sideline.
+    const route = { id: 'cr_test', name: 'Out and up', pts: [[8, 0], [9, 6], [25, 7]], end: 'continue' };
+    D.registerCustomRoutes([route]);
+    const spec = newSpec('my_test');
+    const slot = Object.keys(spec.routes).find((s) => spec.routes[s] !== 'block');
+    spec.routes[slot] = 'cr_test';
+    const play = buildPlay(spec);
+    expect(play.routes[slot]).toBe('cr_test');
+    expect(testPlay(play, lg, 2).ok).toBe(true);
+    // Share code round-trip carries the route along.
+    const code = D.shareCode('off', spec, [route]);
+    const back = D.readShareCode(code);
+    expect(back.spec.routes[slot]).toBe('cr_test');
+    expect(back.routes[0].pts).toEqual(route.pts);
+    // A custom defense: all-out blitz from the base 4-3.
+    const ds = D.newDefSpec('mydef_test', '43_base');
+    for (const s of ['MLB', 'LOLB', 'ROLB']) ds.assign[s] = 'blitz';
+    D.registerCustomDefPlays([ds]);
+    expect(listDefPlays().some((p) => p.id === 'mydef_test' && p.custom)).toBe(true);
+    expect(getDefPlay('mydef_test').assign.MLB).toBe('blitz');
+    // The CPU never calls it.
+    const m = new Match({ teams: [lg[0], lg[1]], settings: { quarterMinutes: 5 }, rng: new RNG(1) });
+    m.newPossession(0, 30, 0);
+    for (let i = 0; i < 200; i++) expect(chooseDefense(m, 1, new RNG(i)).custom).toBeFalsy();
+    D.registerCustomDefPlays([]); D.registerCustomRoutes([]);
+  });
+});

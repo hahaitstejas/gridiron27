@@ -56,7 +56,7 @@ export function offenseAudibles(play) {
 export function defenseAudibles(play) {
   const mine = packageOptions('def', play.formation, play, (p) => p, listDefPlays());
   if (mine) return mine;
-  const same = listDefPlays().filter((p) => p.formation === play.formation && p.id !== play.id);
+  const same = listDefPlays().filter((p) => !p.custom && p.formation === play.formation && p.id !== play.id);
   const blitz = (p) => /blitz|fire|cover0|double_a/i.test(p.id);
   const deep = (p) => /cover4|quarters|cover6|prevent|tampa|cover2(?!_man)/i.test(p.id);
   const taken = new Set();
@@ -176,7 +176,7 @@ export function defHotRoute(play, slot, key, lat = 0) {
 
 /** Default audible picks for a formation (what the menu shows without a package): { A, B, X, Y } play ids. */
 export function defaultPackage(side, formation) {
-  const play = side === 'off' ? listOffPlays().find((p) => p.formation === formation && !p.custom) : listDefPlays().find((p) => p.formation === formation);
+  const play = side === 'off' ? listOffPlays().find((p) => p.formation === formation && !p.custom) : listDefPlays().find((p) => p.formation === formation && !p.custom);
   if (!play) return {};
   const saved = PACKAGES[side][formation];
   delete PACKAGES[side][formation];

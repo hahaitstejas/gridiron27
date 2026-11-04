@@ -6,7 +6,7 @@ import { listDefPlays } from '../data/playbook.js';
 
 /** Returns { ok, error, reps, avgYds, cmpPct (pass plays) }. */
 export function testPlay(play, teams, reps = 12, seed = 1) {
-  const defs = listDefPlays().filter((d) => !/^st_/.test(d.id));
+  const defs = listDefPlays().filter((d) => !d.custom && !/^st_/.test(d.id));
   let yds = 0, att = 0, cmp = 0;
   try {
     for (let i = 0; i < reps; i++) {

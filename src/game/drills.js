@@ -6,9 +6,9 @@ import { listOffPlays, listDefPlays, getOffPlay, getDefPlay } from '../data/play
 
 const passPlays = () => listOffPlays().filter((p) => p.type === 'pass' && !p.custom && !/screen/.test(p.id));
 const runPlays = () => listOffPlays().filter((p) => p.type === 'run' && !p.custom && (p.run?.carrier || 'RB') !== 'QB');
-const zoneDefs = () => listDefPlays().filter((p) => p.coverage === 'zone' && !/blitz|fire|cover0/i.test(p.id));
-const manDefs = () => listDefPlays().filter((p) => p.coverage === 'man');
-const baseDefs = () => listDefPlays().filter((p) => !/goal|gl_/i.test(p.id));
+const zoneDefs = () => listDefPlays().filter((p) => !p.custom && p.coverage === 'zone' && !/blitz|fire|cover0/i.test(p.id));
+const manDefs = () => listDefPlays().filter((p) => !p.custom && p.coverage === 'man');
+const baseDefs = () => listDefPlays().filter((p) => !p.custom && !/goal|gl_/i.test(p.id));
 const pick = (list, i) => list[(i * 7 + 3) % list.length];
 
 export const DRILLS = {

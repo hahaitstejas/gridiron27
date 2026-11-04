@@ -26,9 +26,12 @@ import { offseasonScreen } from './ui/offseason.js';
 import { unavailableFor, gameConditions, recordOf, simOthers, currentGames } from './franchise/franchise.js';
 import { PLAYOFF_ROUND_NAMES } from './franchise/season.js';
 import { makeConditions, conditionsText } from './game/weather.js';
-import { introShot, INTRO_T } from './render/intro.js';
+import { introShot, INTRO_T, SHOTS, shotAt } from './render/intro.js';
 import { TRAITS } from './data/traits.js';
 import { RNG } from './core/rng.js';
+import { ensureCoaches } from './data/extraCSV.js';
+import { getOffPlay, getDefPlay } from './data/playbook.js';
+import { PlaySim } from './sim/play.js';
 import { InputManager } from './input/input.js';
 import { GameRenderer } from './render/renderer.js';
 import { GameSession } from './game/session.js';
@@ -74,6 +77,7 @@ if (saved) {
 if (local?.playAs !== null && local?.playAs !== undefined) prefs.home = local.playAs;
 else if (local?.rosterTeams?.length === 1) prefs.home = teams.findIndex((t) => t.abbr === local.rosterTeams[0]);
 if (prefs.away === prefs.home) prefs.away = (prefs.home + 8) % 32;
+ensureCoaches(teams, 11); // a fictional staff for any team without one (coaches.csv overrides)
 
 let input2 = null;
 /** A final score split into four quarters (touchdowns and field goals), for the ticker. */
@@ -261,7 +265,7 @@ function startGame(p, opts = {}) {
   // Pregame intro (not in practice, fast CPU games or when turned off in Settings).
   if (prefs.intro !== false && !opts.practice && speed <= 1 && !opts.noIntro) {
     app = 'intro';
-    intro = { t: 0 };
+    intro = { t: 0, sim: introLineup(session) };
     hud.hideAll();
     const lg = championship ? `${LEAGUE.championship}` : opts.franchise && league.franchise ? `${LEAGUE.name} · ${league.franchise.year} season` : LEAGUE.name;
     hud.intro({ title: lg.toUpperCase(), home, away, recs: session.records, sub: conditionsText(conditions) });
@@ -273,8 +277,24 @@ function updateIntro(f, dt) {
   intro.t += dt;
   if (intro.t >= INTRO_T || f.pressed.A || f.pressed.B || f.pressed.Menu || f.pressed.X) endIntro();
 }
+/**
+ * The teams for the intro's run-out: the opening kickoff lined up (a display-only PlaySim; the real one is built when
+ * the play is called, so nothing about the game changes).
+ */
+function introLineup(s) {
+  try {
+    const m = s.match;
+    const off = s.choice?.off || getOffPlay('st_kickoff');
+    const def = getDefPlay('st_kick_return');
+    const cfg = m.playConfig({ offPlay: off, defPlay: def });
+    return new PlaySim({ ...cfg, rng: new RNG(5), teams: s.teams, humanTeam: null, humanTeams: [], camDir: m.dirOf(m.possession) });
+  } catch { return null; }
+}
+
 function endIntro() {
   intro = null;
+  renderer.presentation.introT = null;
+  hud.introCaption(null);
   hud.intro(null);
   app = 'game';
   snapCam = false; // the game camera eases in from the last intro shot
@@ -674,10 +694,21 @@ function frameBody(now) {
   const alpha = Math.min(1, acc / STEP);
   if (app === 'intro' && intro && session) {
     const m = session.match;
-    if (sim) renderer.drawSim(sim, alpha, time, session); else renderer.hidePlayers();
+    const isim = sim || intro.sim;
+    if (isim && isim !== lastSim) { renderer.players.setColors(isim, session.teams); lastSim = isim; }
+    if (isim) renderer.drawSim(isim, alpha, time, session); else renderer.hidePlayers();
     renderer.lines.set(null, null);
     renderer.setAim(null);
-    const sh = introShot(intro.t, sim ? sim.losX : m.xOf(m.possession, 35), m.dirOf(m.possession));
+    renderer.presentation.introT = intro.t;
+    const coach = renderer.presentation.bench?.find((b) => b.coach && b.team === 0) || null;
+    const sh = introShot(intro.t, isim ? isim.losX : m.xOf(m.possession, 35), m.dirOf(m.possession), coach);
+    const shot = shotAt(intro.t);
+    if (shot !== intro.shot) {
+      intro.shot = shot;
+      const h = session.teams[0];
+      const cap = SHOTS[shot]?.caption;
+      hud.introCaption(cap === 'runout' ? `Here come the ${h.name}` : cap === 'coach' ? `Head coach ${h.coaches?.hc?.name || 'of the ' + h.name}` : cap === 'crowd' ? `${h.stadium?.name || `${h.city} Stadium`} is rocking` : null);
+    }
     renderer.renderShot(dt, sh.pos, sh.look, 0.6);
   } else if (app === 'replay' && replay) {
     renderer.drawSim(replay.player.ghost, replay.alpha ?? 0, time);
@@ -701,7 +732,10 @@ function frameBody(now) {
     artView = !!showArt;
     const b = renderer.ball.position;
     const live = sim && sim.state !== 'presnap';
-    const phase = !live || session.state === 'playcall' ? 'presnap' : sim.ball.state === 'air' || sim.ball.state === 'kick' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
+    // Kicks get a wide camera: the whole field while the ball is in the air, pulled back during the return.
+    const kickOn = live && sim.isKick && sim.offPlay.type !== 'fg';
+    const phase = !live || session.state === 'playcall' ? 'presnap' : kickOn && sim.ball.state === 'kick' ? 'kick' : kickOn && sim.ballLiveRun && sim.state === 'live' ? 'return'
+      : sim.ball.state === 'air' || sim.ball.state === 'kick' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
     let focus;
     if (session.state === 'playcall' || session.state === 'post' || (session.state === 'penalty' && !sim)) focus = { x: m.xOf(m.possession, m.yardLine), z: m.phase === 'scrimmage' ? m.ballZ : 0 };
     else if (!live) focus = { x: losX, z: sim.ballZ };

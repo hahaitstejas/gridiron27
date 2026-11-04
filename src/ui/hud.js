@@ -113,6 +113,15 @@ export class Hud {
     el.classList.remove('hidden');
   }
 
+  /** Lower-third line during the intro shots (run-out, coach, crowd). */
+  introCaption(text) {
+    const el = this.$('intro');
+    let c = el.querySelector('.in-cap');
+    if (!c) { c = document.createElement('div'); c.className = 'in-cap'; el.appendChild(c); }
+    c.textContent = text || '';
+    c.style.display = text ? 'block' : 'none';
+  }
+
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
   hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 

@@ -48,8 +48,8 @@ export class CameraRig {
         break;
       default: {
         // Broadcast: high behind the offense, pulling back when the ball is in the air.
-        const back = phase === 'presnap' ? 15 : phase === 'air' ? 18 : 15;
-        const height = phase === 'presnap' ? 7.2 : phase === 'air' ? 9.5 : 7.8;
+        const back = phase === 'presnap' ? 15 : phase === 'kick' ? 34 : phase === 'return' ? 22 : phase === 'air' ? 18 : 15;
+        const height = phase === 'presnap' ? 7.2 : phase === 'kick' ? 24 : phase === 'return' ? 13 : phase === 'air' ? 9.5 : 7.8;
         p.set(focus.x - dir * back * this.zoom, height * this.zoom, fz * 0.85);
         l.set(focus.x + dir * (phase === 'presnap' ? 8 : 6), 0.5, fz * 0.95);
       }

@@ -151,7 +151,8 @@ export class Presentation {
     if (this.cel && mode === 'huddle') this.cel.t += dt;
     if (this.moment && mode !== 'huddle') this.moment = null;
     if (this.cel && (this.cel.t > CEL_T || (mode !== 'huddle' && sim.state === 'presnap'))) this.cel = null;
-    if (mode === 'huddle') display = this.huddle(sim, m, dir, losX, ballZ, dt);
+    if (this.introT !== null && this.introT !== undefined) display = this.runout(sim, this.introT);
+    else if (mode === 'huddle') display = this.huddle(sim, m, dir, losX, ballZ, dt);
     else if (mode === 'lineup') display = this.lineup(sim, session.presnapT, dt);
     else if (!mode && sim.state === 'presnap') this.spots.clear();
 
@@ -177,7 +178,10 @@ export class Presentation {
     const c = this.cel;
     if (!c || c.t > CEL_T - 0.3) return null;
     const d = this.disp[c.idx];
-    return d ? { x: d.x, z: d.z, facing: d.facing, t: c.t } : null;
+    if (!d) return null;
+    // One fixed angle on the scorer for the whole celebration (he turns to face the field; the camera doesn't swing).
+    c.camAt ||= { x: d.x, z: d.z, facing: c.dir > 0 ? Math.PI : 0 };
+    return { x: c.camAt.x, z: c.camAt.z, facing: c.camAt.facing, t: c.t };
   }
 
   /** Touchdown: the scorer celebrates facing the field; teammates run over and celebrate around him. */
@@ -216,6 +220,36 @@ export class Presentation {
       const d = (this.disp[i] = proxyOf(p));
       if (p.state === 'down' || p.state === 'tackled') { d.anim = 'down'; d.down = true; }
     });
+  }
+
+  /**
+   * Pregame run-out (intro.js): each team comes out of the tunnel at its end line — home at -x, away at +x — in a
+   * stream, and jogs to its kickoff spot. t = intro time; before 3 s they wait in the tunnel (off the field).
+   */
+  runout(sim, t) {
+    this.disp ||= sim.players.map((p) => ({ ...p }));
+    const out = [];
+    sim.players.forEach((p, i) => {
+      const d = (this.disp[i] ||= { ...p });
+      d.px = d.x; d.pz = d.z; d.pfacing = d.facing;
+      const end = p.team === 0 ? -1 : 1;
+      const k = sim.players.filter((q, j) => q.team === p.team && j < i).length;
+      const start = 3.0 + (p.team === 0 ? 0 : 0.6) + k * 0.16;
+      const run = Math.max(0, Math.min(1, (t - start) / 4.2));
+      const sx = end * 61, sz = (k % 3 - 1) * 1.2;
+      const tx = p.x, tz = p.z;
+      const x = sx + (tx - sx) * run, z = sz + (tz - sz) * run;
+      d.vx = (x - d.x) * 60; d.vz = (z - d.z) * 60;
+      const moving = run > 0 && run < 1;
+      d.x = x; d.z = z;
+      d.facing = moving ? Math.atan2(tz - sz, tx - sx) : p.facing;
+      d.anim = moving ? 'run' : t > start ? 'idle' : 'idle';
+      d.cycle = (d.cycle || 0) + (moving ? 0.25 : 0);
+      d.animT = (d.animT || 0) + 1 / 60;
+      d.state = 'active';
+      out.push(d);
+    });
+    return out;
   }
 
   /** Where player k of a team stands in its huddle (a ring facing the middle). */

@@ -57,7 +57,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 ## Phase D — presentation
 - [x] D1 End zones: team name / city, conference + league logos; championship end zones
 - [x] D2 Glossy 3D logos
-- [ ] D3 Cutscenes: coaches, fans, tunnel run-out (skippable); TD camera locks on the scorer; kickoff camera
+- [x] D3 Cutscenes: coaches, fans, tunnel run-out (skippable); TD camera locks on the scorer; kickoff camera
 - [x] D4 Celebrations (TD, sack, INT, first down) incl. RS celebration wheel
 - [x] D5 Tackle falls in the right direction, referees run, animations
 - [ ] D6 Dynamic lighting, holiday decorations (Thanksgiving leaves, Christmas)
@@ -112,3 +112,4 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - commit 12: end zones (team name / city, conference + league logos; championship: each team's name and logo), glossy 3D logos in menus and the HUD.
 - commit 13: RT play art pulls the camera up and back over the whole formation; Tush Push play with a timing bar (A in the green) that sets the surge.
 - commit 14: celebrations (first-down point, sack, pick, TD wheel on RS: Dance/Flex/Spike/Team), tackle falls away from the tackler, officials stride instead of sliding.
+- commit 15: intro with run-out (teams jog out of the tunnels), head coach close-up, crowd shot (captions), fixed single-angle TD camera, wide kickoff/return camera; every team gets a fictional coaching staff.

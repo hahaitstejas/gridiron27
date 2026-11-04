@@ -35,9 +35,8 @@ await page.keyboard.press('Enter'); await page.waitForTimeout(600);
 await page.screenshot({ path: `${out}/menu.png` });
 await page.keyboard.press('KeyJ'); await page.waitForTimeout(1800); // Play Now (Team Select is slow to build under software GL)
 await page.screenshot({ path: `${out}/setup.png` });
-await page.keyboard.press('KeyJ'); await page.waitForTimeout(700); // Team Select: open your side's menu
-await page.keyboard.press('KeyJ'); await page.waitForTimeout(900); // READY -> Game Settings
-await page.keyboard.press('KeyJ'); await page.waitForTimeout(1500); // Start Game
+// Team Select (side menu → READY) → Game Settings (Start Game). Software GL is slow: keep pressing A until the game starts.
+for (let i = 0; i < 8 && (await state(page)).app === 'menu'; i++) { await page.keyboard.press('KeyJ'); await page.waitForTimeout(1100); }
 await page.screenshot({ path: `${out}/intro.png` });
 for (let i = 0; i < 10 && (await state(page)).app === 'intro'; i++) { await page.keyboard.press('KeyJ'); await page.waitForTimeout(600); } // skip the pregame intro
 for (let i = 0; i < 40; i++) {

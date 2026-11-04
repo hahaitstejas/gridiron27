@@ -129,3 +129,43 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] E11 In-game depth chart shows who's hurt (and why a player isn't playing)
 - [x] L1 Short-week fatigue + prime-time pressure in played franchise games
 - [x] L2 Mindless QB scrambles closer to 3-4 yds
+
+## Update 1.2 (user's picks from the ideas list)
+Phase A — playbook and trick plays
+- [ ] A1 Trick Plays: Wildcat (direct snap to a back), two-QB set (QB2 as a receiver / passer), fake spike
+- [ ] A2 RPOs: run/pass read after the snap (QB reads a defender: handoff or quick throw)
+- [ ] A3 Designed screens: linemen release, a timed window (HB, WR tunnel, TE screens)
+- [ ] A4 Route options: option routes break in/out/sit by the defender's leverage
+- [ ] A5 Audible packages live in the playbook: pick your audibles per formation (editable; the in-game audible menu uses them)
+Phase B — QB play and reads
+- [ ] B1 Pocket movement: step up / slide / climb on the stick in the pocket; pocket-presence feel (awareness)
+- [ ] B2 Pre-snap reads: hold a button to see the likely coverage (shell, man/zone) with confidence by QB awareness
+Phase C — defense
+- [ ] C1 Bracket coverage (double the best receiver; CPU brackets your star)
+- [ ] C2 Press-bail (show press, bail at the snap)
+- [ ] C3 Simulated pressure / creepers: show 6-8 at the line, an unknown number actually come
+- [ ] C4 Pick-six / turnover returns: the defense turns into blockers with a convoy
+Phase D — special teams
+- [ ] D1 Aim kickoffs and punts before the snap (direction + coffin corner / pooch)
+- [ ] D2 Return schemes: kick return left / right / middle wall; punt return Block / Return / Safe
+- [ ] D3 Scoop and score on blocked punts / FGs (live ball, defense can return it)
+- [ ] D4 Kickoff out of bounds: receiving team chooses the ball at the 40 or a re-kick from 5 yards back
+Phase E — physics and realism (as much as possible)
+- [ ] E1 Gang tackles / pile pushes (forward progress by the pile)
+- [ ] E2 Stiff-arm contest, hurdles, pylon dives, ball-security arm (carry in the outside arm, switch with RS)
+- [ ] E3 Tipped passes at the line (rushers' hands up), deflections into the air, more realistic ball physics
+- [ ] E4 Footing: slips on hard cuts in rain/snow, field surface (grass / turf) affecting speed and injuries
+- [ ] E5 Sideline toe-tap / drag-feet catches, momentum carries runners out of bounds, diving catches
+- [ ] E6 Momentum & mass in collisions (bigger players move smaller ones, trucks, stumbles after contact)
+- [ ] E7 Fatigue visuals (hands on knees), muddy / grass-stained uniforms over the game
+Phase F — presentation
+- [ ] F1 Win-probability graph (post-game panel, plus key-plays list)
+- [ ] F2 Broadcast camera packages: All-22, skycam, end zone, sideline cable cam (Settings + in-game cycle)
+Phase G — modes and customization
+- [ ] G1 Local co-op on the same team (2 humans on offense or defense together)
+- [ ] G2 Uniform creator (jersey / pants / helmet / stripes / numbers; home / away / alt)
+- [ ] G3 Stadium creator (seat colors, roof, end zone art, field logo, name)
+- [ ] G4 Play designer upgrades: drag routes visually, option routes, defensive play designer, share-codes
+- [ ] G5 Face / body options for created players; mod packs (JSON formations / plays / rules / uniforms)
+- [ ] G6 One combined league spreadsheet: every CSV (teams, roster, depth, coaches, uniforms, stadiums, retired,
+      schedule, free agents) in a single file with sections; import / export / public/local/league.csv

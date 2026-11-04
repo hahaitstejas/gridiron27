@@ -2,6 +2,7 @@ import { RATINGS, POSITION_TEMPLATES, ROSTER_COUNTS, overall } from './positions
 import { generatePlayer } from './generator.js';
 import { buildDepthChart } from './depthChart.js';
 import { RNG } from '../core/rng.js';
+import { CONFERENCES } from './teams.js';
 
 // CSV helpers + roster import/export. Format is documented in CLAUDE.md ("Roster CSV").
 
@@ -123,7 +124,8 @@ export function importRosterRows(teams, rows, seed = 77) {
     // A requested number wins: bump any generated player wearing it.
     const clash = team.roster.find((q) => q.number === p.number);
     if (clash && !isFull) clash.number = firstFree(new Set([...used, p.number]));
-    if (clash && isFull) summary.skipped.push(`row ${i + 2}: ${team.abbr} number ${p.number} is used twice`);
+    const side = (pos) => (['QB', 'HB', 'FB', 'WR', 'TE', 'T', 'G', 'C'].includes(pos) ? 'O' : ['K', 'P'].includes(pos) ? 'S' : 'D');
+    if (clash && isFull && side(clash.pos) === side(p.pos)) summary.skipped.push(`row ${i + 2}: ${team.abbr} number ${p.number} is used twice (${clash.pos} ${clash.last} / ${p.pos} ${p.last})`);
     team.roster.push(p);
     summary.imported++;
   });
@@ -142,7 +144,8 @@ export function exportRosterCSV(teams) {
   const rows = [];
   for (const t of teams) for (const p of t.roster) {
     const o = { team: t.abbr, first: p.first, last: p.last, pos: p.pos, number: p.number, age: p.age, height: p.height, weight: p.weight, college: p.college,
-      salary: p.salary ?? '', years: p.years ?? '', exp: p.proYears ?? '' };
+      // Salary in whole dollars (60000000), like a real cap sheet; imports take dollars or $M.
+      salary: p.salary ? Math.round(p.salary * 1e6) : '', years: p.years ?? '', exp: p.proYears ?? '' };
     for (const [key, code] of RATINGS) o[code] = p.ratings[key];
     o.OVR = overall(p);
     rows.push(o);
@@ -160,7 +163,7 @@ export function exportTeamsCSV(teams, playAsId = null) {
   return toCSV(teams.map((t) => ({
     id: t.id, city: t.city, name: t.name, abbr: t.abbr,
     primary: t.colors.primary, secondary: t.colors.secondary, accent: t.colors.accent,
-    conference: CONFS[t.conference], division: DIVS[t.division],
+    conference: CONFERENCES[t.conference] || CONFS[t.conference], division: DIVS[t.division],
     logo_shape: t.logo.shape, logo_text: t.logo.text, logo_image: t.logo.image || '', play_as: t.id === playAsId ? 'Y' : '',
   })), TEAM_HEADER);
 }
@@ -168,6 +171,12 @@ export function exportTeamsCSV(teams, playAsId = null) {
 /** Update teams by id. Returns { playAs: teamId | null, logoImages: [{team, file}] }. */
 export function importTeamsRows(teams, rows) {
   const out = { playAs: null, logoImages: [], skipped: [] };
+  // Conference names: the league's current ones (or the defaults) match directly; any other two names in the file
+  // (your own league's) become the conference names, in the order they first appear.
+  const known = (v) => [...CONFERENCES, ...CONFS].findIndex((c) => c.toLowerCase() === (v || '').toLowerCase()) % 2;
+  const names = [...new Set(rows.map((r) => (r.conference || '').trim()).filter(Boolean))];
+  const custom = names.length === 2 && names.some((n) => known(n) < 0) ? names : null;
+  if (custom) { CONFERENCES[0] = custom[0]; CONFERENCES[1] = custom[1]; out.conferences = custom; }
   rows.forEach((r, i) => {
     const t = teams[parseInt(r.id, 10)];
     if (!t) { out.skipped.push(`teams row ${i + 2}: unknown id "${r.id}"`); return; }
@@ -176,7 +185,7 @@ export function importTeamsRows(teams, rows) {
     if (r.name) t.name = r.name;
     if (r.abbr) { t.abbr = r.abbr.toUpperCase().slice(0, 4); }
     t.colors = { primary: color(r.primary, t.colors.primary), secondary: color(r.secondary, t.colors.secondary), accent: color(r.accent, t.colors.accent) };
-    const ci = CONFS.findIndex((c) => c.toLowerCase() === (r.conference || '').toLowerCase());
+    const ci = custom ? custom.indexOf((r.conference || '').trim()) : known(r.conference);
     const di = DIVS.findIndex((d) => d.toLowerCase() === (r.division || '').toLowerCase());
     if (ci >= 0) t.conference = ci;
     if (di >= 0) t.division = di;

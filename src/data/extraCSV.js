@@ -79,8 +79,8 @@ export function exportCoaches(teams) {
 export function importUniforms(teams, rows) {
   const idx = byAbbr(teams), skipped = [];
   rows.forEach((r, i) => {
-    const ti = idx.get((r.team || '').toUpperCase()), kind = (r.kind || '').toLowerCase().replace('alternate', 'alt').replace('rivalry', 'alt');
-    if (ti === undefined || !UNIFORM_KINDS.includes(kind)) { skipped.push(`row ${i + 2}: team "${r.team}" / kind "${r.kind}" (home, away, alt)`); return; }
+    const ti = idx.get((r.team || '').toUpperCase()), kind = (r.kind || '').toLowerCase().trim().replace(/\s+/g, '_').replace('alternate', 'alt').replace('rivalry', 'alt').replace(/^colou?r_?rush$/, 'color_rush');
+    if (ti === undefined || !UNIFORM_KINDS.includes(kind)) { skipped.push(`row ${i + 2}: team "${r.team}" / kind "${r.kind}" (${UNIFORM_KINDS.join(', ')})`); return; }
     const u = {};
     for (const [col, key] of [['jersey', 'jersey'], ['pants', 'pants'], ['number', 'number'], ['number_outline', 'outline'], ['helmet', 'helmet']]) { const v = hex(r[col]); if (v) u[key] = v; }
     ((teams[ti].uniforms ||= {})[kind] = u);
@@ -114,10 +114,18 @@ export function importStadiums(teams, rows, league = {}) {
   return { count: rows.length - skipped.length, skipped, sites: league.sites };
 }
 export function exportStadiums(teams, sites = null) {
-  const out = teams.map((t) => ({ team: t.abbr, name: t.stadium?.name || `${t.city} Stadium`, city: t.stadium?.city || t.city, capacity: t.stadium?.capacity ?? '', roof: t.stadium?.roof || 'open', surface: t.stadium?.surface || '', kind: '', year: '' }));
+  const out = teams.map((t) => ({ team: t.abbr, name: t.stadium?.name || `${t.city} Stadium`, city: t.stadium?.city || t.city, capacity: t.stadium?.capacity ?? '', roof: t.stadium?.roof || 'open', surface: t.stadium?.surface || '', kind: 'home', year: '' }));
   for (const [year, s] of Object.entries(sites?.championship || {})) out.push({ team: '', name: s.name || s.stadium, city: s.city, capacity: s.capacity ?? '', roof: s.roof || '', surface: '', kind: 'championship', year: year === 'any' ? '' : year });
   for (const s of sites?.international || []) out.push({ team: '', name: s.stadium, city: s.city, capacity: '', roof: '', surface: '', kind: 'international', year: '' });
   return toCSV(out, ['team', 'name', 'city', 'capacity', 'roof', 'surface', 'kind', 'year']);
+}
+
+/** "20:20" → "8:20 PM" (a 12-hour time like "1:00 PM" is kept as it is). */
+function clockTime(v) {
+  const m = /^\s*(\d{1,2}):(\d{2})\s*$/.exec(v || '');
+  if (!m) return v.trim();
+  const h = +m[1];
+  return `${h % 12 || 12}:${m[2]} ${h >= 12 ? 'PM' : 'AM'}`;
 }
 
 /** A franchise schedule from a CSV: weeks of { home, away, day?, date?, time? }; null with problems if unusable. */
@@ -127,7 +135,7 @@ export function scheduleFromRows(teams, rows) {
   rows.forEach((r, i) => {
     const w = parseInt(r.week, 10), h = idx.get((r.home || '').toUpperCase()), a = idx.get((r.away || '').toUpperCase());
     if (!(w >= 1 && w <= 22) || h === undefined || a === undefined || h === a) { skipped.push(`row ${i + 2}: week "${r.week}", ${r.away} @ ${r.home}`); return; }
-    (weeks[w - 1] ||= []).push({ home: h, away: a, score: null, ...(r.day ? { day: r.day } : {}), ...(r.date ? { date: r.date } : {}), ...(r.time ? { time: r.time } : {}) });
+    (weeks[w - 1] ||= []).push({ home: h, away: a, score: null, ...(r.day ? { day: r.day } : {}), ...(r.date ? { date: r.date } : {}), ...(r.time ? { time: clockTime(r.time) } : {}) });
   });
   for (let k = 0; k < weeks.length; k++) weeks[k] ||= [];
   // Nobody plays twice in a week.

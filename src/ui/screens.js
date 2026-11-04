@@ -1,4 +1,5 @@
 import { injuryLine } from '../franchise/health.js';
+import { UNIFORM_NAMES } from '../data/uniforms.js';
 import { passerRating } from '../game/boxscore.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
@@ -259,7 +260,7 @@ export class Screens {
     const STYLES = ['balanced', 'power', 'spread', 'westcoast', 'airraid'];
     const STYLE_NAMES = { balanced: 'Balanced', power: 'Power run', spread: 'Spread', westcoast: 'West Coast', airraid: 'Air Raid' };
     const COIN = { receive: 'Receive', defer: 'Defer (kick, ball 2nd half)', kick: 'Kick' };
-    const UNI = { home: 'Home', away: 'Away', alt: 'Alternate' };
+    const UNI = UNIFORM_NAMES;
     const sideMenu = (player) => {
       const ti = sideIdx(player), key = sideKey(st.cols[player]);
       return [

@@ -202,3 +202,28 @@ describe('kickoff out of bounds', () => {
     }
   });
 });
+
+describe('league book: other leagues\' sheets', () => {
+  it('takes custom conference names, extra uniform sets, 24-hour kickoffs and salaries in dollars', async () => {
+    const { importLeagueBook } = await import('../src/data/leagueBook.js');
+    const { CONFERENCES } = await import('../src/data/teams.js');
+    const { uniformFor } = await import('../src/data/uniforms.js');
+    const keep = [...CONFERENCES];
+    const lg = generateLeagueRosters(defaultTeams(), 30);
+    const t0 = lg[0].abbr, t1 = lg[1].abbr;
+    const rows = lg.map((t, i) => `${i},${t.city},${t.name},${t.abbr},#112233,#445566,#ffffff,${i < 16 ? 'East Conf' : 'West Conf'},North,circle,${t.abbr},,`).join('\n');
+    const text = `[TEAMS]\nid,city,name,abbr,primary,secondary,accent,conference,division,logo_shape,logo_text,logo_image,play_as\n${rows}\n\n`
+      + `[ROSTER]\nteam,first,last,pos,number,salary,years\n${t0},Test,Passer,QB,9,42000000,3\n\n`
+      + `[UNIFORMS]\nteam,kind,jersey,pants,number,number_outline,helmet\n${t0},throwback,#aa0000,#ffffff,#ffffff,#000000,#ffffff\n${t0},Color Rush,#00aa00,#00aa00,#ffffff,#000000,#00aa00\n\n`
+      + `[SCHEDULE]\nweek,away,home,day,date,time\n1,${t1},${t0},Thu,2027-09-09,20:20\n`;
+    const r = importLeagueBook(lg, text);
+    expect(r.problems).toEqual([]);
+    expect(CONFERENCES.slice(0, 2)).toEqual(['East Conf', 'West Conf']);
+    expect(lg[20].conference).toBe(1);
+    expect(lg[0].roster.find((p) => p.last === 'Passer').salary).toBe(42);
+    expect(uniformFor(lg[0], 'throwback').jersey).toBe('#aa0000');
+    expect(uniformFor(lg[0], 'color_rush').jersey).toBe('#00aa00');
+    expect(r.schedule[0][0].time).toBe('8:20 PM');
+    CONFERENCES.splice(0, 2, ...keep.slice(0, 2));
+  });
+});

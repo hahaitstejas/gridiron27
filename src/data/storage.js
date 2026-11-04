@@ -120,6 +120,9 @@ export function loadImage(src) {
   return new Promise((resolve) => {
     if (!src) { resolve(null); return; }
     const img = new Image();
+    // Logos from the web (a URL in teams.csv / league.csv): ask for CORS so they can be drawn into textures; a site
+    // that doesn't allow it just falls back to the generated logo.
+    if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;

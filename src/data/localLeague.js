@@ -31,6 +31,7 @@ async function fetchCSV(path, firstCol) {
 function loadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();
+    if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous'; // a web URL in logo_image (see storage.js loadImage)
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = src;
@@ -52,7 +53,7 @@ export async function loadLocalLeague(teams) {
     summary.playAs = r.playAs;
     summary.problems.push(...r.problems);
     await Promise.all(r.logoImages.map(async ({ team, file }) => {
-      const img = await loadImage(`/local/logos/${file}`);
+      const img = await loadImage(/^(https?:|data:)/i.test(file) ? file : `/local/logos/${file}`);
       if (img) team.logo._img = img; else summary.problems.push(`logo image not found: logos/${file}`);
     }));
     Object.assign(localBook, { freeAgents: r.freeAgents, schedule: r.schedule, loaded: true });
@@ -66,7 +67,7 @@ export async function loadLocalLeague(teams) {
     summary.playAs = r.playAs;
     summary.problems.push(...r.skipped);
     await Promise.all(r.logoImages.map(async ({ team, file }) => {
-      const img = await loadImage(`/local/logos/${file}`);
+      const img = await loadImage(/^(https?:|data:)/i.test(file) ? file : `/local/logos/${file}`);
       if (img) team.logo._img = img; else summary.problems.push(`logo image not found: logos/${file}`);
     }));
   }

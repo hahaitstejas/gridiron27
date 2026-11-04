@@ -646,6 +646,10 @@ see the IP rule at the top.**
   RETIRED_NUMBERS, FREE_AGENTS, SCHEDULE, each starting with a `[NAME]` marker row followed by that sheet's own header and
   rows (padding commas and blank rows are fine). Loaded instead of the separate files when present; FREE_AGENTS / SCHEDULE
   are used when a franchise starts (`localBook`). League → Spreadsheets exports / imports it; `npm run export-league` writes it.
+  Imports also take other leagues' sheets: any two conference names (become `CONFERENCES`), web URLs in `logo_image`
+  (loaded with CORS, else the generated logo), extra uniform kinds `throwback` / `color_rush`, salaries in dollars or $M,
+  24-hour kickoff times (`20:20` → `8:20 PM`), duplicate numbers across offense / defense. Exports write salaries in dollars
+  and team stadiums with kind `home`.
 Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a partial roster file > default.
 
 ## Phase status

@@ -636,6 +636,11 @@ export class GameSession {
         const c = sim.motionCandidates().filter((p) => p.task?.type !== 'run_path' && p.pos !== 'HB' && p.pos !== 'FB');
         if (c.length) sim.startMotion(this.rng.pick(c).id, this.rng.next() < 0.7);
       }
+      // A human offense holding the ball at the line: the CPU's blitzers creep up (most of the time; sometimes they wait).
+      if (humanOff && !this.isHuman(def) && !sim.isKick && !sim.creepRolled && this.presnapT > LINEUP_T + 2.2) {
+        sim.creepRolled = true;
+        if (this.rng.next() < 0.7) sim.creep = true;
+      }
       // CPU offense snaps after a short beat at the line (instantly in fast mode).
       if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? Math.max(LINEUP_T + 0.3, this.cpuSnapAt ?? 1.6) : LINEUP_T + 0.2)) { this.snap(); return; }
       sim.tick(dt, input);

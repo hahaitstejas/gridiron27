@@ -123,7 +123,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] E5 FG block: the user's edge rusher shouldn't get through every time (wing chips him; harder dive)
 - [x] E6 Post-game injury list shows the player's name; pause → Coaching opens Depth Chart + Injury Center
 - [x] E7 Practice squad: release players; un-elevate before the game
-- [ ] E8 Moving around pre-snap (human defender can reposition; CPU defense shifts/creeps)
+- [x] E8 Moving around pre-snap (human defender can reposition; CPU defense shifts/creeps)
 - [x] E9 CPU (and the user's) rosters always have a K and a P (sign one; never a back kicking)
 - [x] E10 Dynamic kickoff: the kicker can't cross midfield before the ball lands; nobody can stop the return early
 - [x] E11 In-game depth chart shows who's hurt (and why a player isn't playing)

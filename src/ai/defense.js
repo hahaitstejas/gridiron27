@@ -72,7 +72,7 @@ export function alignMan(sim, walk = 0) {
   sim.manMatch = m;
   for (const d of sim.defense()) {
     const r = sim.players[m.get(d.id)?.id];
-    if (!r || (walk && d.disguised)) continue;
+    if (!r || (walk && (d.disguised || d.userMoved))) continue;
     const rl = sim.toLocal(r.x, r.z);
     const back = rl.down < -2.5;
     const isCB = CB_SLOTS.has(d.slot);

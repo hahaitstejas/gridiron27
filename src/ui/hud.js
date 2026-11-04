@@ -56,7 +56,7 @@ export class Hud {
 
   buildHelp() {
     const pad = [
-      ['Pre-snap', 'A snap · X audible · Y hot route (receiver button, then stick) · RB motion (receiver button, then stick) · View timeout · (defense) B switch player, X audible, LB coverage (press / off / shade)'],
+      ['Pre-snap', 'A snap · X audible · Y hot route (receiver button, then stick) · RB motion (receiver button, then stick) · View timeout · (defense) LS walk your player around, B switch player, X audible, LB coverage (press / off / shade)'],
       ['Play call', 'LB/RB tabs · A select · B back · X flip play · View timeout'],
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · hold LB high / LT low · left stick leads · LS click pump fake · RS click throw away'],
       ['Pass rush (engaged with a blocker)', 'A bull rush (strength) · X swim · Y spin · RS↓ rip (finesse: pass rush, agility) · hold the stick toward the ball for leverage'],

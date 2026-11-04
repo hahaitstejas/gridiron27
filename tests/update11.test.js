@@ -66,3 +66,25 @@ describe('names', () => {
     expect(FIRST_NAMES.length * LAST_NAMES.length).toBeGreaterThan(1000);
   });
 });
+
+describe('pre-snap movement', () => {
+  it('a human defender walks around before the snap but never into the neutral zone', async () => {
+    const { PlaySim } = await import('../src/sim/play.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+    const lg = generateLeagueRosters(defaultTeams(), 3);
+    const sim = new PlaySim({ rng: new RNG(2), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -10, ballZ: 0, offPlay: getOffPlay('ace_inside_zone'), defPlay: getDefPlay('43_cover3'), humanTeam: 1, camDir: -1 });
+    const me = sim.players[sim.controlledId];
+    expect(me.team).toBe(1);
+    const x0 = me.x, z0 = me.z;
+    // Stick "up" for the defense's camera = toward the offense; hold it for 4 seconds.
+    const f = { lx: 0.4, ly: -1, rx: 0, ry: 0, lt: 0, rt: 0, down: {}, pressed: {}, released: {}, held: {}, flick: {} };
+    for (let k = 0; k < 240; k++) sim.tick(STEP, f);
+    expect(Math.hypot(me.x - x0, me.z - z0)).toBeGreaterThan(1);
+    expect(sim.toLocal(me.x, me.z).down).toBeGreaterThanOrEqual(0.9);
+    sim.snap();
+    for (let k = 0; k < 600 && !sim.finished; k++) sim.tick(STEP, null);
+    expect(sim.state === 'dead' || sim.finished).toBe(true);
+  });
+});

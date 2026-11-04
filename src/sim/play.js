@@ -300,6 +300,52 @@ export class PlaySim {
     return true;
   }
 
+  /**
+   * Before the snap a human defender can walk around (left stick): walk up, bail, slide over a gap or a receiver.
+   * He stays on the defense's side of the neutral zone and inside the field; his new spot becomes his alignment.
+   */
+  presnapMove(input, dt) {
+    if (!input || this.isKick) return;
+    for (const t of this.humanTeams) {
+      if (t === this.offIdx) continue;
+      const f = input.perTeam ? input[t] : t === this.humanTeam ? input : null;
+      const p = this.players[this.controlled[t]];
+      if (!f || !p || p.team !== t) continue;
+      const mag = Math.min(1, Math.hypot(f.lx || 0, f.ly || 0));
+      if (mag < 0.25) { if (p.userMoved && p.anim === 'shuffle') { p.vx = p.vz = 0; p.anim = stanceFor(p); } continue; }
+      const cam = this.camDir;
+      const sx = -f.ly * cam, sz = f.lx * cam;
+      const v = (f.rt > 0.5 ? 4.2 : 3) * mag;
+      let nx = p.x + (sx / mag) * v * dt, nz = p.z + (sz / mag) * v * dt;
+      const loc = this.toLocal(nx, nz);
+      // Defense side of the ball: at least a yard off it (no encroaching), not past 25 yds deep.
+      const down = Math.max(0.95, Math.min(25, loc.down));
+      const w = this.toWorld(down, loc.lat);
+      nx = w.x; nz = clamp(w.z, -HALF_WIDTH + 1, HALF_WIDTH - 1);
+      p.vx = (nx - p.x) / dt; p.vz = (nz - p.z) / dt;
+      p.x = nx; p.z = nz;
+      p.alignX = nx; p.alignZ = nz;
+      p.userMoved = true;
+      p.anim = 'shuffle';
+      p.facing = this.dir > 0 ? Math.PI : 0; // keep facing the offense
+    }
+  }
+
+  /** CPU defense, late in a long count: the blitzers creep toward the line (a tell, a step closer to the QB). */
+  updateCreep(dt) {
+    if (!this.creep || this.isKick) return;
+    for (const d of this.defense()) {
+      if (this.humanTeams.includes(d.team) || this.defPlay.assign?.[d.slot] !== 'blitz') continue;
+      const l = this.toLocal(d.x, d.z);
+      d.creepTo ??= Math.max(1.3, l.down - 2.2);
+      if (l.down <= d.creepTo + 0.02) { if (d.anim === 'shuffle') { d.vx = d.vz = 0; d.anim = stanceFor(d); } continue; }
+      const w = this.toWorld(Math.max(d.creepTo, l.down - 1.4 * dt), l.lat);
+      d.vx = (w.x - d.x) / dt; d.vz = (w.z - d.z) / dt;
+      d.x = w.x; d.z = w.z; d.alignX = w.x; d.alignZ = w.z;
+      d.anim = 'shuffle';
+    }
+  }
+
   updateMotion(dt) {
     const mo = this.motion;
     if (!mo) return;
@@ -418,6 +464,8 @@ export class PlaySim {
     const b = this.ball;
     b.px = b.x; b.py = b.y; b.pz = b.z;
     if (this.state === 'presnap') {
+      this.presnapMove(input, dt);
+      this.updateCreep(dt);
       this.updateMotion(dt);
       updateAnimations(this, dt);
       return;

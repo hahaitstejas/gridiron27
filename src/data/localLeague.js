@@ -1,4 +1,6 @@
 import { parseCSV, importRosterRows, importTeamsRows, importDepthRows } from './csv.js';
+import { importRetired, importCoaches, importUniforms, importStadiums } from './extraCSV.js';
+import { LEAGUE } from './leagueInfo.js';
 
 // Browser-only: loads the optional, git-ignored league files from public/local/ at startup.
 //   teams.csv  -> names, colors, logos, which team you play as
@@ -55,6 +57,12 @@ export async function loadLocalLeague(teams) {
   if (depthRows) {
     summary.problems.push(...importDepthRows(teams, depthRows));
     summary.loaded.push('depth charts');
+  }
+  // The extra spreadsheets (extraCSV.js), if they're there.
+  for (const [file, first, fn, label] of [['retired_numbers.csv', 'team', importRetired, 'retired numbers'], ['coaches.csv', 'team', importCoaches, 'coaches'],
+    ['uniforms.csv', 'team', importUniforms, 'uniforms'], ['stadiums.csv', 'team', (t, r) => importStadiums(t, r, LEAGUE), 'stadiums']]) {
+    const rows = await fetchCSV(`/local/${file}`, first);
+    if (rows) { const r = fn(teams, rows); summary.loaded.push(label); summary.problems.push(...r.skipped); }
   }
   if (!summary.loaded.length) return null;
   console.info('[Gridiron 27] Local league files:', summary.loaded.join(', '), summary.problems);

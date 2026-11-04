@@ -236,7 +236,7 @@ export class GameSession {
     const m = this.match;
     if (m.phase === 'kickoff') return offPlay ? defenseForSpecial(offPlay) || getDefPlay('st_kick_return') : getDefPlay('st_kick_return');
     if (offPlay) { const st = defenseForSpecial(offPlay); if (st) return st; }
-    const blitz = (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).blitz;
+    const blitz = Math.max(0.03, (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).blitz + (this.teams[this.defTeam].coach?.blitz || 0) * 0.08);
     return chooseDefense(m, this.defTeam, this.rng, blitz);
   }
 

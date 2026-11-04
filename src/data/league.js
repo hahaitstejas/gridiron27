@@ -1,7 +1,8 @@
+import { applyCoachTendencies } from './extraCSV.js';
 // League save format (pure logic): the whole league — teams, colors, logos, rosters, depth charts —
 // as plain JSON, plus which team the player uses. Browser storage lives in storage.js.
 import { setNextPlayerId } from './generator.js';
-import { overall } from './positions.js';
+import { numberAllowed, NUMBER_RULES, overall } from './positions.js';
 import { buildDepthChart } from './depthChart.js';
 import { setLeagueInfo, leagueInfoJSON } from './leagueInfo.js';
 
@@ -58,15 +59,19 @@ export function deserializeLeague(data) {
     const ps = (t.ps || []).map((p) => { const q = { ...p, ratings: { ...p.ratings } }; q.ovr = overall(q); maxId = Math.max(maxId, q.id || 0); return q; });
     return { ...t, id: t.id ?? i, colors: { ...t.colors }, logo: { ...t.logo }, roster, depth, ps };
   });
+  for (const t of teams) if (t.coaches) applyCoachTendencies(t);
   setNextPlayerId(maxId + 1);
   setLeagueInfo(data.info || null);
   return { teams, playAs: data.playAs ?? null, name: data.name || 'My League', franchise: data.franchise || null };
 }
 
 /** Next free jersey number on a team (keeps `prefer` if it's free). */
-export function freeNumber(team, prefer) {
-  const used = new Set(team.roster.map((p) => p.number));
-  if (prefer !== undefined && prefer >= 0 && prefer <= 99 && !used.has(prefer)) return prefer;
+export function freeNumber(team, prefer, pos = null) {
+  // Taken numbers, the team's retired numbers and (with a position) the NFL's position number rules.
+  const used = new Set([...team.roster.map((p) => p.number), ...(team.retired || []).map((r) => (typeof r === 'object' ? +r.number : +r))]);
+  const ok = (n) => !used.has(n) && (!pos || numberAllowed(pos, n));
+  if (prefer !== undefined && prefer >= 0 && prefer <= 99 && ok(prefer)) return prefer;
+  for (const [a, b] of pos ? (NUMBER_RULES[pos] || [[1, 99]]) : [[1, 99]]) for (let n = Math.max(a, 1); n <= b; n++) if (ok(n)) return n;
   for (let n = 1; n <= 99; n++) if (!used.has(n)) return n;
   return 0;
 }

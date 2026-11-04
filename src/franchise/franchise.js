@@ -18,6 +18,8 @@ import { revertElevations, cpuElevations, release as releaseToWaivers, processWa
 import { cpuSignFreeAgents, addFreeAgent } from './freeAgents.js';
 import { fits } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
+import { ensureDraftClass, weeklyScouting } from './draftClass.js';
+import { ensureCoaches } from '../data/extraCSV.js';
 import { awardCareerGame } from './career.js';
 
 export const FRANCHISE_VERSION = 1;
@@ -35,16 +37,18 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
     history: [], // past seasons: { year, champion, record, playoffs }
     seed: seed * 104729 + year,
     offseason: null,
-    cap: setupMoney(teams, seed * 13 + year), // salary cap ($M), see contracts.js
+    cap: setupMoney(teams, seed * 13 + year, year), // salary cap ($M), see contracts.js
     transactions: [], // newest first: { year, week, text }
     news: [], // headlines, newest first (extras.js)
     records: { game: {}, season: {} },
     recordsSince: year, // the first season sets the marks; later ones can break them
     awards: {}, // year -> [{ award, name, pos, team, line }]
   };
+  ensureCoaches(teams, seed);
   f.schedule = seasonSchedule(f, teams, seed * 7919 + year);
   f.weeks = f.schedule.length;
   ensurePicks(f, teams);
+  ensureDraftClass(f);
   seedFreeAgents(f, seed * 17 + year); // in-season free agents (freeAgents.js)
   return f;
 }
@@ -59,8 +63,36 @@ export function seasonSchedule(f, teams, seed) {
   const idx = Math.max(0, f.year - (f.firstYear ?? f.year));
   const sched = nflSchedule(teams, idx, seed, f.lastPlace || null) || makeSchedule(teams, 17, seed);
   const strength = teams.map((t, i) => 0.55 * (f.lastPct?.[i] ?? 0.5) + 0.45 * Math.max(0, Math.min(1, (teamRatings(t).ovr - 65) / 25)));
-  assignSlots(sched, teams, { year: f.year, seed, strength, champion: f.history?.length ? f.history[f.history.length - 1].champion : null, venues: f.venues || undefined });
+  const intl = LEAGUE.sites?.international?.length ? LEAGUE.sites.international : undefined;
+  assignSlots(sched, teams, { year: f.year, seed, strength, champion: f.history?.length ? f.history[f.history.length - 1].champion : null, venues: intl });
   return sched;
+}
+
+const NEUTRAL_SITES = [
+  { stadium: 'Pacific Crest Stadium', city: 'Los Angeles' }, { stadium: 'Desert Sky Dome', city: 'Phoenix' }, { stadium: 'Bayou Dome', city: 'New Orleans' },
+  { stadium: 'Sunshine Park', city: 'Miami' }, { stadium: 'Lone Star Field', city: 'Dallas' }, { stadium: 'Silver State Stadium', city: 'Las Vegas' },
+  { stadium: 'Peachtree Dome', city: 'Atlanta' }, { stadium: 'Gulf Coast Stadium', city: 'Tampa' },
+];
+export function championshipVenue(f) {
+  const s = LEAGUE.sites?.championship || {};
+  const v = s[f.year] || s[String(f.year)] || s.any;
+  if (v) return { stadium: v.stadium || v.name, city: v.city || '' };
+  return NEUTRAL_SITES[(f.year * 7 + (f.seed % 5)) % NEUTRAL_SITES.length];
+}
+
+/**
+ * Use an imported schedule (schedule.csv) for this season — only before any game is played. Games without a day/time
+ * get them from the usual slotting.
+ */
+export function setSchedule(f, teams, weeks) {
+  if (f.phase !== 'regular' || f.schedule.some((wk) => wk.some((g) => g.score))) return false;
+  const given = weeks.map((wk) => wk.map((g) => ({ day: g.day, date: g.date, time: g.time })));
+  assignSlots(weeks, teams, { year: f.year, seed: f.seed });
+  weeks.forEach((wk, k) => wk.forEach((g, i) => { const o = given[k][i]; if (o?.time) { g.time = o.time; g.day = o.day || g.day; g.date = o.date || g.date; } }));
+  f.schedule = weeks;
+  f.weeks = weeks.length;
+  f.week = 0;
+  return true;
 }
 
 /** Remember last season's division finishes and win % (next season's schedule uses them). */
@@ -83,7 +115,7 @@ export function upgradeFranchise(f, teams) {
   f.recordsSince ??= f.year;
   f.awards ||= {};
   if (!f.freeAgents) seedFreeAgents(f, f.seed);
-  if (f.phase !== 'offseason') ensurePicks(f, teams);
+  if (f.phase !== 'offseason') { ensurePicks(f, teams); ensureDraftClass(f); }
 }
 
 /** A team released a player: young players go on waivers for a week, vested veterans straight to free agency. */
@@ -198,6 +230,7 @@ export function weekInBetween(f, teams) {
     const n = weeklyOffers(f, teams, rng).length;
     if (n) addNews(f, `Trade offers: ${n} for your players (Front Office → Trade Offers)`, 'trade');
   }
+  weeklyScouting(f);
   if (f.week % 2 === 1) {
     const changes = developmentTick(f, teams, rng, f.recentLines || {});
     f.recentLines = {};
@@ -271,7 +304,12 @@ export function advance(f, teams) {
   }
   if (f.phase === 'playoffs') {
     const next = nextPlayoffRound(f.playoffs);
-    if (next) { f.playoffs.rounds.push(next); return true; }
+    if (next) {
+      // The championship is at a neutral site that changes every year (stadiums.csv can name it by season).
+      if (next.length === 1 && next[0].neutral) next[0].venue = championshipVenue(f);
+      f.playoffs.rounds.push(next);
+      return true;
+    }
     const champ = championOf(f.playoffs);
     archiveSeason(f, champ); // careers and rings (legacy.js)
     const rec = standings(teams, f.schedule).find((r) => r.team === f.userTeam);
@@ -302,6 +340,7 @@ export function startNextSeason(f, teams) {
   f.schedule = seasonSchedule(f, teams, f.seed * 31 + f.year);
   f.weeks = f.schedule.length;
   ensurePicks(f, teams);
+  ensureDraftClass(f);
   f.stats = {};
   f.playoffs = null;
   resetPSSeason(teams);

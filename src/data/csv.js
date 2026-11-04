@@ -36,7 +36,7 @@ export function toCSV(objs, header) {
   return [header.join(','), ...objs.map((o) => header.map((h) => esc(o[h])).join(','))].join('\n') + '\n';
 }
 
-const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR'];
+const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp'];
 const POS_ALIAS = { RB: 'HB', LB: 'OLB', ILB: 'MLB', NB: 'CB', S: 'FS', OT: 'T', OG: 'G', EDGE: 'DE', NT: 'DT', PK: 'K',
   // Depth-chart slot names work as positions too.
   LT: 'T', RT: 'T', LG: 'G', RG: 'G', LE: 'DE', RE: 'DE', LOLB: 'OLB', ROLB: 'OLB', SAM: 'OLB', WILL: 'OLB', MIKE: 'MLB' };
@@ -61,6 +61,15 @@ function playerFromRow(row, pos, rng) {
   if (row.college) p.college = row.college;
   const num = parseInt(row.number, 10);
   if (Number.isFinite(num) && num >= 0 && num <= 99) p.number = num;
+  // Contract columns (so year-one free agency is right): salary in $M, years left, or the year the deal expires.
+  const sal = parseFloat(row.salary ?? row.SALARY ?? row.cap_hit);
+  if (Number.isFinite(sal) && sal > 0) p.salary = sal > 1000 ? Math.round(sal / 1e4) / 100 : sal; // dollars or $M
+  const yrs = parseInt(row.years ?? row.contract_years ?? row.YRS, 10);
+  if (Number.isFinite(yrs) && yrs >= 0) p.years = yrs;
+  const exp = parseInt(row.expires ?? row.contract_expires ?? row.EXP, 10);
+  if (Number.isFinite(exp) && exp > 1990) p.contractExpires = exp;
+  const pro = parseInt(row.exp ?? row.experience ?? row.pro_years, 10);
+  if (Number.isFinite(pro) && pro >= 0) p.proYears = pro;
   // Optional OVR column: show that overall (kept as an offset from the computed one).
   const ovr = parseInt(row.OVR ?? row.ovr, 10);
   delete p.ovrAdj;
@@ -132,7 +141,8 @@ function firstFree(used) { for (let n = 1; n <= 99; n++) if (!used.has(n)) retur
 export function exportRosterCSV(teams) {
   const rows = [];
   for (const t of teams) for (const p of t.roster) {
-    const o = { team: t.abbr, first: p.first, last: p.last, pos: p.pos, number: p.number, age: p.age, height: p.height, weight: p.weight, college: p.college };
+    const o = { team: t.abbr, first: p.first, last: p.last, pos: p.pos, number: p.number, age: p.age, height: p.height, weight: p.weight, college: p.college,
+      salary: p.salary ?? '', years: p.years ?? '', exp: p.proYears ?? '' };
     for (const [key, code] of RATINGS) o[code] = p.ratings[key];
     o.OVR = overall(p);
     rows.push(o);

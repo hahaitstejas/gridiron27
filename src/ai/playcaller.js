@@ -46,6 +46,7 @@ export function fgZone(team, m = null, kickTeam = null) {
     const dir = kickTeam !== null && m.dirOf ? m.dirOf(kickTeam) : 0;
     comfort += (w.wind?.x || 0) * dir * 1.2; // wind along the kick (yd/s): + tailwind, - headwind
   }
+  comfort += (team.coach?.longFG || 0) * 3; // a head coach who likes long field goals sends the kicker out from further
   comfort = Math.max(38, Math.min(60, comfort));
   return { comfort: Math.round(comfort), max: Math.round(Math.min(64, comfort + 4)) };
 }
@@ -118,6 +119,9 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   if (drill) run = m.timeouts[team] === 0 ? 0.02 : 0.1;
   if (q4 && lead > 0 && m.clock < 360) run = 0.75;
   if (q4 && lead < -8 && m.clock < 480) run *= 0.5;
+  // The offensive coordinator's run/pass lean (coaches.csv run_pct; 45 = league average).
+  const oc = m.teams?.[team]?.coach;
+  if (oc?.runPct !== null && oc?.runPct !== undefined) run += (oc.runPct - 45) / 100;
   // Playbook style (Team Select → Advanced: power runs more, spread and air raid throw more and quicker / deeper).
   const style = m.settings?.styles?.[team];
   if (style === 'power') run += 0.12; else if (style === 'spread') run -= 0.08; else if (style === 'airraid') run -= 0.14; else if (style === 'westcoast') run -= 0.04;

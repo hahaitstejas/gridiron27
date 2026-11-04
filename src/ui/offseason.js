@@ -1,4 +1,7 @@
 import { el } from './nav.js';
+import { draftDayOffers, executeDeal, dealText } from '../franchise/trades.js';
+import { RNG } from '../core/rng.js';
+import { needsPanel } from './franchiseMore.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { POSITIONS } from '../data/positions.js';
 import { startNextSeason } from '../franchise/franchise.js';
@@ -131,7 +134,8 @@ function draft(ctx, ui, f, focus = 0) {
       r.scout = () => { if (scoutProspect(f, p.id)) { save(ctx); draft(ctx, ui, f, rows.indexOf(r)); } };
       return r;
     });
-    buttons = [button('Auto-pick', () => { makePick(f, teams); save(ctx); draft(ctx, ui, f); }, '.secondary')];
+    buttons = [button('Auto-pick', () => { makePick(f, teams); save(ctx); draft(ctx, ui, f); }, '.secondary'),
+      button('Trade this pick', () => pickOffers(ctx, ui, f), '.secondary')];
   } else {
     buttons = [
       button('Sim to my next pick', () => { simToUserPick(f, teams); save(ctx); draft(ctx, ui, f); }),
@@ -141,11 +145,32 @@ function draft(ctx, ui, f, focus = 0) {
   ctx.screens.frame('stats-screen', el('h1', { text: `Draft · Round ${pick.round}, Pick ${pick.pick}` }),
     el('div.league-status', { text: mine ? `You are on the clock: A drafts a player · X scouts him (${d.scoutLeft ?? 0} scouting points left) to see his real overall and potential` : `${teams[pick.team].city} ${teams[pick.team].name} on the clock` }),
     el('div.fr-sched', {}, el('div.st-table', {}, mine ? rows : myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' })),
-      el('div.fr-week', {}, el('div.dc-head', { text: 'Latest picks' }), recent)),
+      el('div.fr-week', {}, el('div.dc-head', { text: 'Your roster' }), needsPanel(teams[f.userTeam]), el('div.dc-head', { text: 'Latest picks' }), recent)),
     el('div.over-buttons', {}, buttons),
     el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; <b class="btn X">X</b> scout &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
   ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit, index: focus });
   ctx.screens.extraButtons = mine ? (fr) => { if (fr.pressed.X) ctx.screens.nav.items[ctx.screens.nav.index]?.scout?.(); } : null;
+}
+
+/** Draft day: teams behind you offer their pick plus more to move up into your spot. */
+function pickOffers(ctx, ui, f) {
+  const teams = ctx.teams;
+  const offers = draftDayOffers(f, teams, new RNG(f.seed + f.offseason.draft.at));
+  const rows = offers.map((o) => {
+    const r = row([el('span.st-team', { text: teams[o.from].abbr }), el('span.st-name', { text: `Your pick for ${dealText(teams, o.give)}` })]);
+    r.activate = () => {
+      executeDeal(f, teams, f.userTeam, { players: [], picks: [o.gets] }, o.from, o.give);
+      logTransaction(f, `${teams[f.userTeam].abbr} trade down with ${teams[o.from].abbr}: get ${dealText(teams, o.give)}`);
+      save(ctx); draft(ctx, ui, f);
+    };
+    return r;
+  });
+  const back = button('Keep the pick', () => draft(ctx, ui, f), '.secondary');
+  ctx.screens.frame('stats-screen', el('h1', { text: 'Trade Down Offers' }),
+    el('div.league-status', { text: rows.length ? 'Teams picking later want your spot. A accepts.' : 'Nobody wants to move up right now.' }),
+    el('div.st-table', {}, rows), el('div.over-buttons', {}, back),
+    el('div.setup-help', { html: '<b class="btn A">A</b> accept &nbsp; <b class="btn B">B</b> back' }));
+  ctx.screens.nav.set([...rows, back], { columns: 1, onBack: () => draft(ctx, ui, f) });
 }
 
 function cutdown(ctx, ui, f) {

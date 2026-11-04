@@ -3,6 +3,8 @@ import { parseCSV, importRosterRows, importTeamsRows, importDepthRows, exportRos
 import { loadLocalLeague } from '../data/localLeague.js';
 import { downloadFile, pickFile } from '../data/storage.js';
 import { attachLogos } from './league.js';
+import { LEAGUE } from '../data/leagueInfo.js';
+import { extraKind, importRetired, importCoaches, importUniforms, importStadiums, exportRetired, exportCoaches, exportUniforms, exportStadiums } from '../data/extraCSV.js';
 
 /** Which league spreadsheet a set of parsed rows is (by its columns). */
 export function csvKind(rows) {
@@ -31,7 +33,11 @@ export function spreadsheetScreen(ctx, report = []) {
     item('Export teams.csv', 'Names, colors, conferences, logos, your team', () => downloadFile('teams.csv', exportTeamsCSV(teams, prefs.home), 'text/csv')),
     item('Export roster.csv', 'Every player with all ratings', () => downloadFile('roster.csv', exportRosterCSV(teams), 'text/csv')),
     item('Export depth.csv', 'Depth charts by jersey number', () => downloadFile('depth.csv', exportDepthCSV(teams), 'text/csv')),
-    item('Import a spreadsheet…', 'teams.csv, roster.csv or depth.csv (import teams → roster → depth)', async () => {
+    item('Export retired_numbers.csv', 'team, number, player', () => downloadFile('retired_numbers.csv', exportRetired(teams), 'text/csv')),
+    item('Export coaches.csv', 'Head coach and coordinators with play-calling tendencies', () => downloadFile('coaches.csv', exportCoaches(teams), 'text/csv')),
+    item('Export uniforms.csv', 'Home / away / alternate: jersey, pants, number, outline, helmet', () => downloadFile('uniforms.csv', exportUniforms(teams), 'text/csv')),
+    item('Export stadiums.csv', 'Team stadiums plus neutral championship / international sites', () => downloadFile('stadiums.csv', exportStadiums(teams, LEAGUE.sites), 'text/csv')),
+    item('Import a spreadsheet…', 'teams, roster, depth, retired numbers, coaches, uniforms or stadiums (detected by the header row)', async () => {
       const f = await pickFile('.csv,text/csv');
       if (!f) return;
       spreadsheetScreen(ctx, await importCSV(ctx, f.name, f.data));
@@ -60,8 +66,16 @@ async function importCSV(ctx, name, text) {
   const { teams, prefs } = ctx;
   let rows;
   try { rows = parseCSV(text); } catch (e) { return [`${name}: couldn't read it (${e.message})`]; }
+  const extra = extraKind(rows);
+  if (extra && extra !== 'schedule') {
+    const fn = { retired: importRetired, coaches: importCoaches, uniforms: importUniforms, stadiums: (t, r) => importStadiums(t, r, LEAGUE) }[extra];
+    const r = fn(teams, rows);
+    ctx.onChange();
+    return [`${name}: ${extra} — ${r.count} rows applied.`, ...summarizeProblems(r.skipped)];
+  }
+  if (extra === 'schedule') return [`${name}: a schedule — import it from the franchise (Season → Schedule & Results, Y) before week 1.`];
   const kind = csvKind(rows);
-  if (!kind) return [`${name}: not a teams, roster or depth spreadsheet (check the header row).`];
+  if (!kind) return [`${name}: not a league spreadsheet (check the header row).`];
   const lines = [];
   if (kind === 'teams') {
     const r = importTeamsRows(teams, rows);

@@ -1,4 +1,5 @@
 import { traitsOf, TRAITS } from '../data/traits.js';
+import { numberAllowed } from '../data/positions.js';
 import { el } from './nav.js';
 import { RATINGS, POSITIONS, overall } from '../data/positions.js';
 import { generatePlayer } from '../data/generator.js';
@@ -101,10 +102,13 @@ export function playerCard(ctx, ti, id, focus = 0) {
     text('First name', 'first'),
     text('Last name', 'last'),
     row('Number', () => String(p.number), (d, v) => {
-      const used = new Set(team.roster.filter((q) => q !== p).map((q) => q.number));
+      // Taken, retired and position-illegal numbers (QB 0-19, OL 50-79, ...) are skipped.
+      const used = new Set([...team.roster.filter((q) => q !== p).map((q) => q.number), ...(team.retired || []).map((r) => (typeof r === 'object' ? +r.number : +r))]);
+      const bad = (x) => used.has(x) || !numberAllowed(p.pos, x);
       let n = v !== undefined ? clampInt(parseInt(v, 10) || p.number, 0, 99) : p.number;
-      if (v === undefined) { do { n = (n + d + 100) % 100; } while (used.has(n)); }
-      if (!used.has(n)) p.number = n;
+      if (v === undefined) { let k = 0; do { n = (n + d + 100) % 100; } while (bad(n) && ++k < 100); }
+      if (!bad(n)) p.number = n;
+      else if (v !== undefined) window.alert(`#${n} isn't available for a ${p.pos} (taken, retired, or outside the position's numbers).`);
     }, 'num'),
     row('Position', () => p.pos, (d, v) => {
       let pos = v !== undefined ? v.trim().toUpperCase() : POSITIONS[(POSITIONS.indexOf(p.pos) + d + POSITIONS.length) % POSITIONS.length];

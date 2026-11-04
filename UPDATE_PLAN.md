@@ -46,13 +46,13 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] C4 Weekly progression (in-season growth), morale (temporary rating effect), trade demands
 - [x] C5 CPU signs free agents; +500 generated FAs option; 300 UDFAs each season
 - [x] C6 Trades: fix one-sided trade bug, trade block + offers, draft-pick trading, view roster/depth during trades/draft/resign
-- [ ] C7 Draft: better screen, draft class CSV import, scouting all year, compensatory picks
+- [x] C7 Draft: better screen, draft class CSV import, scouting all year, compensatory picks
 - [ ] C8 Franchise tag, Pro Bowl / All-Pro teams (raise asks), league-wide player search, leaders highlight my players
-- [ ] C9 Roster CSV contract columns (salary, years); retired numbers CSV; position number rules everywhere
-- [ ] C10 Coaches CSV (HC/OC/DC with tendencies) feeding the CPU play caller; game preview screen from coordinators
+- [x] C9 Roster CSV contract columns (salary, years); retired numbers CSV; position number rules everywhere
+- [x] C10 Coaches CSV (HC/OC/DC with tendencies) feeding the CPU play caller; game preview screen from coordinators
 - [ ] C11 Score ticker banner (other games by quarter)
 - [ ] C12 Uniform editor + uniforms CSV (home/away/rivalry: jersey, pants, number, number outline)
-- [ ] C13 Stadiums CSV (fictional defaults), neutral championship venue each year
+- [x] C13 Stadiums CSV (fictional defaults), neutral championship venue each year
 
 ## Phase D — presentation
 - [ ] D1 End zones: team name / city, conference + league logos; championship end zones
@@ -99,3 +99,9 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   screen's Trade opens the real trade screen (no more one-way gifts), trade block + weekly offers (accept/decline), CPU
   contenders buy veterans with picks, compensatory picks (rounds 3-7), team pickers alphabetical. TODO: draft-day
   trade-up offers in the draft screen (draftDayOffers exists), viewing roster/depth from re-sign/draft/trade screens.
+- commit 9: draft class all season (draftClass.js: 3 scouting points a week, CSV import with POT, leftover points carry
+  into the draft), draft board shows your roster needs, trade-down offers on the clock; jersey number rules + retired
+  numbers; roster.csv salary/years/expires/exp columns (rookies get 4-year deals); extraCSV.js: retired_numbers,
+  coaches (tendencies feed the CPU: run %, 4th downs, long FGs, blitz), uniforms, stadiums (neutral championship site by
+  year, international venues), schedule.csv import/export; fictional coaching staffs by default; championship venue
+  rotates. Also loaded from public/local/ at startup.

@@ -18,7 +18,7 @@ function dropFromDepth(team, id, keep = () => false) {
 
 /** Add a player to a team (end of the depth chart at his position), fixing a clashing number. */
 export function addPlayer(team, p) {
-  p.number = freeNumber(team, p.number);
+  p.number = freeNumber(team, p.number, p.pos);
   p.ovr = overall(p);
   team.roster.push(p);
   for (const slot of homeSlots(p.pos)) (team.depth[slot] ||= []).push(p.id);

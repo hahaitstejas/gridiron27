@@ -193,11 +193,13 @@ describe('franchise extras', () => {
     expect(f.news.some((n) => /Championship/.test(n.text))).toBe(true);
     O.progressPlayers(f, lg); O.finishResigning(f, lg); O.cpuFreeAgency(f, lg); O.makeDraft(f, lg);
     const d = f.offseason.draft;
-    const p = d.cls[0];
+    const left0 = d.scoutLeft; // draft points + whatever was left from in-season scouting
+    expect(left0).toBeGreaterThanOrEqual(X.SCOUT_POINTS);
+    const p = d.cls.find((q) => !q.scouted);
     expect(X.scoutView(p).pot).toBe('?');
     expect(X.scoutProspect(f, p.id)).toBe(true);
     expect(X.scoutView(p)).toMatchObject({ ovr: String(p.ovr), scouted: true });
-    expect(d.scoutLeft).toBe(X.SCOUT_POINTS - 1);
+    expect(d.scoutLeft).toBe(left0 - 1);
     O.finishDraft(f, lg); O.cpuCutDowns(f, lg); O.cutDown(lg[2], 53, f.cap); O.fillRoster(f, lg[2], 46);
     startNextSeason(f, lg);
     season();

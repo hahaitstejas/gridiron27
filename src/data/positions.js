@@ -71,6 +71,14 @@ export function overall(player) {
   return Math.max(25, Math.min(99, Math.round(s / t + (player.ovrAdj || 0))));
 }
 
+/** Allowed jersey numbers by position (current NFL rules). */
+export const NUMBER_RULES = {
+  QB: [[0, 19]], K: [[0, 49], [90, 99]], P: [[0, 49], [90, 99]], HB: [[0, 49], [80, 89]], FB: [[0, 49], [80, 89]],
+  WR: [[0, 49], [80, 89]], TE: [[0, 49], [80, 89]], CB: [[0, 49]], FS: [[0, 49]], SS: [[0, 49]],
+  OLB: [[0, 59], [90, 99]], MLB: [[0, 59], [90, 99]], T: [[50, 79]], G: [[50, 79]], C: [[50, 79]], DE: [[50, 79], [90, 99]], DT: [[50, 79], [90, 99]],
+};
+export const numberAllowed = (pos, n) => (NUMBER_RULES[pos] || [[0, 99]]).some(([a, b]) => n >= a && n <= b);
+
 export const JERSEY_RANGES = {
   QB: [[1, 19]], HB: [[20, 49], [1, 9]], FB: [[30, 49]], WR: [[10, 19], [80, 89], [1, 9]], TE: [[80, 89], [40, 49]],
   T: [[60, 79]], G: [[60, 79]], C: [[50, 79]], DE: [[90, 99], [50, 59]], DT: [[90, 99], [60, 79]],

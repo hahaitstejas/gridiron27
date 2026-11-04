@@ -32,11 +32,13 @@ export function rookieSalary(overallPick) {
  * set from the league's median payroll (so it fits any league's ratings), and teams over the cap have
  * their starting deals scaled down to fit. Returns the cap.
  */
-export function setupMoney(teams, seed = 1) {
+export function setupMoney(teams, seed = 1, year = null) {
   const rng = new RNG(seed);
   for (const t of teams) for (const p of t.roster) {
     if (p.salary === undefined) p.salary = round05(Math.max(MIN_SALARY, marketValue(p) * rng.range(0.75, 1.15)));
-    if (p.years === undefined) p.years = rng.int(1, 4);
+    // Years left: from the CSV (years, or the year it expires), else by age: rookies are on 4-year deals.
+    if (p.years === undefined && p.contractExpires && year) p.years = Math.max(1, p.contractExpires - year + 1);
+    if (p.years === undefined) p.years = (p.age ?? 26) <= 22 ? 4 : (p.age ?? 26) <= 24 ? rng.int(2, 4) : rng.int(1, 4);
   }
   const pays = teams.map(payroll).sort((a, b) => a - b);
   const cap = Math.max(120, Math.round(pays[Math.floor(pays.length / 2)] * 1.12 / 5) * 5);

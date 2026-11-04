@@ -1,3 +1,4 @@
+import { generateClass } from './draftClass.js';
 import { compPicks, noteFreeAgentMove } from './trades.js';
 import { generatePool } from './freeAgents.js';
 // Franchise offseason (pure logic): progression and retirements, contracts, free agency, the draft and
@@ -166,21 +167,14 @@ export function makeDraft(f, teams) {
     comp.filter((c) => c.round === round + 1).sort((a, b) => b.ovr - a.ovr).forEach((c, k) => picks.push({ round: round + 1, pick: ordered.length + k + 1, team: c.team, orig: c.team, comp: true, player: null }));
   }
   delete f.teamsRef;
-  // Rookie class: a few blue-chippers, lots of depth; young with growth ahead of them.
-  const positions = Object.entries(ROSTER_COUNTS).flatMap(([pos, n]) => Array(n).fill(pos));
-  const cls = [];
-  for (let i = 0; i < picks.length + 32; i++) {
-    const pos = rng.pick(positions);
-    const tier = i < 12 ? rng.gauss(2, 3) : i < 64 ? rng.gauss(-4, 3) : rng.gauss(-10, 4);
-    const p = generatePlayer(pos, rng, tier);
-    p.age = rng.int(21, 23);
-    p.pot = Math.max(0, Math.min(1, rng.gauss(0.65, 0.2)));
-    p.years = 4;
-    p.rookie = true;
-    cls.push(p);
-  }
+  // The class you've been scouting all season (draftClass.js; imported from a CSV or generated), topped up if short.
+  const cls = f.draftClass?.year === year ? [...f.draftClass.players] : generateClass(f.seed * 13 + f.year);
+  if (cls.length < picks.length + 32) cls.push(...generateClass(f.seed * 19 + f.year, picks.length + 32 - cls.length));
   f.offseason.draft = { picks, at: 0, cls: cls.sort((a, b) => b.ovr - a.ovr) };
   setupScouting(f, rng);
+  f.offseason.draft.scoutLeft += f.scoutPoints || 0; // unspent season points carry into the draft
+  f.scoutPoints = 0;
+  f.draftClass = null;
   f.offseason.step = 'draft';
 }
 

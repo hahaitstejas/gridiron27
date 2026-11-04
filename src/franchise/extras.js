@@ -123,7 +123,7 @@ export const SCOUT_POINTS = 10; // prospects the user can fully scout per draft
 export function setupScouting(f, rng) {
   const d = f.offseason.draft;
   d.scoutLeft = SCOUT_POINTS;
-  for (const p of d.cls) p.scoutErr = Math.round(rng.gauss(0, 4.5));
+  for (const p of d.cls) if (p.scoutErr === undefined) p.scoutErr = Math.round(rng.gauss(0, 4.5));
 }
 
 /** What the user sees for a prospect: { ovr: 'xx' | 'lo-hi', pot: 'High'|'Avg'|'Low'|'?' , scouted }. */

@@ -11,6 +11,10 @@ import { moraleOf } from '../franchise/development.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { alphaOrder } from './screens.js';
 import { logTransaction } from '../franchise/franchise.js';
+import { ensureDraftClass, scoutInSeason, importDraftClass } from '../franchise/draftClass.js';
+import { scoutView } from '../franchise/extras.js';
+import { pickFile } from '../data/storage.js';
+import { parseCSV, freeAgentsFromRows } from '../data/csv.js';
 
 const POS_FILTERS = [['All', null], ['QB', ['QB']], ['RB', ['HB', 'FB']], ['WR', ['WR']], ['TE', ['TE']], ['OL', ['T', 'G', 'C']],
   ['DL', ['DE', 'DT']], ['LB', ['OLB', 'MLB']], ['DB', ['CB', 'FS', 'SS']], ['K/P', ['K', 'P']]];
@@ -234,4 +238,54 @@ export function gamePreview(ui, g) {
     el('div.pv-grid', {}, dc, oc, starsCard), start,
     el('div.setup-help', { html: '<b class="btn A">A</b> Play &nbsp; <b class="btn B">B</b> back' }));
   screens.nav.set([start], { onBack: () => ui.hub() });
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+/**
+ * Draft scouting all season: next year's class (generated, or imported from a CSV with Y), sorted by what your scouts
+ * think. X spends a scouting point (3 a week) to see a prospect's real overall and potential.
+ */
+export function scoutingScreen(ui, filter = 0, focus = 0) {
+  const { screens } = ui.ctx;
+  const f = ui.f;
+  const dc = ensureDraftClass(f);
+  const [fname, positions] = POS_FILTERS[filter];
+  const list = dc.players.filter((p) => !positions || positions.includes(p.pos)).map((p) => ({ p, v: scoutView(p) })).sort((a, b) => b.v.sort - a.v.sort).slice(0, 80);
+  const rows = list.map(({ p, v }, i) => {
+    const r = el(`div.st-row${v.scouted ? '.mine' : ''}`, {}, el('span.st-num', { text: String(i + 1) }), el('span.st-num', { text: p.pos }), el('span.st-num.wide', { text: `${p.first} ${p.last}` }),
+      el('span.st-num', { text: p.college || '' }), el('span.st-num', { text: String(p.age) }), el('span.st-num', { text: v.ovr }), el('span.st-num', { text: v.pot }));
+    r.scout = () => { if (scoutInSeason(f, p.id)) { ui.save(); scoutingScreen(ui, filter, i); } };
+    r.activate = r.scout;
+    return r;
+  });
+  screens.frame('stats-screen', el('h1', { text: `${dc.year} Draft Class` }),
+    el('div.pc-tabs', {}, POS_FILTERS.map(([n], i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: n }))),
+    el('div.st-team-filter', { text: `${f.scoutPoints ?? 0} scouting points (3 more each week; the rest carry into the draft) · ${dc.imported ? 'imported class' : 'generated class'}` }),
+    el('div.st-row.st-head', {}, ['RK', 'POS', 'PROSPECT', 'SCHOOL', 'AGE', 'OVR', 'POT'].map((h, i) => el(`span.st-num${i === 2 ? '.wide' : ''}`, { text: h }))),
+    el('div.st-table', {}, rows),
+    el('div.setup-help', { html: `<b class="btn A">A</b>/<b class="btn X">X</b> scout &nbsp; <b class="btn Y">Y</b> import a draft class (CSV) &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> ${fname} &nbsp; <b class="btn B">B</b> back` }));
+  screens.nav.set(rows, { columns: 1, index: Math.min(focus, rows.length - 1), onBack: () => ui.hub('Season'), onTab: (d) => scoutingScreen(ui, (filter + d + POS_FILTERS.length) % POS_FILTERS.length) });
+  screens.extraButtons = async (fr) => {
+    if (fr.pressed.X) screens.nav.items[screens.nav.index]?.scout?.();
+    if (fr.pressed.Y) {
+      screens.extraButtons = null;
+      const file = await pickFile('.csv,text/csv');
+      if (file) {
+        const rowsCSV = parseCSV(file.data);
+        const { players } = freeAgentsFromRows(rowsCSV);
+        if (players.length) { importDraftClass(f, players, rowsCSV); ui.save(); window.alert(`Imported ${players.length} prospects for the ${f.year + 1} draft.`); }
+        else window.alert('No prospects found (roster.csv format: first, last, pos, ratings...; optional POT column).');
+      }
+      scoutingScreen(ui, filter);
+    }
+  };
+}
+
+/** Your roster by position against what a 53-man roster usually carries (for the draft / re-signing / trades). */
+export function needsPanel(team) {
+  const TARGET = { QB: 3, HB: 4, FB: 1, WR: 6, TE: 3, T: 4, G: 4, C: 2, DE: 4, DT: 4, OLB: 4, MLB: 3, CB: 6, FS: 2, SS: 2, K: 1, P: 1 };
+  const have = {}, best = {};
+  for (const p of team.roster) { have[p.pos] = (have[p.pos] || 0) + 1; best[p.pos] = Math.max(best[p.pos] || 0, p.ovr); }
+  return el('div.fd-needs', {}, Object.entries(TARGET).map(([pos, n]) => el(`div${(have[pos] || 0) >= n ? '.ok' : (have[pos] || 0) === 0 ? '.none' : ''}`, {},
+    el('span', { text: pos }), el('b', { text: `${have[pos] || 0}/${n}` }), el('small', { text: best[pos] ? ` top ${best[pos]}` : '' }))));
 }

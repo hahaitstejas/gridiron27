@@ -24,7 +24,10 @@ import { setFreeAgents } from '../franchise/freeAgents.js';
 import { parseCSV, freeAgentsFromRows } from '../data/csv.js';
 import { startFantasyDraft } from '../franchise/fantasy.js';
 import { careerPlayer } from '../franchise/career.js';
-import { injuryReport, practiceSquadScreen, waiversScreen, playerSearch, gamePreview } from './franchiseMore.js';
+import { scheduleFromRows, exportSchedule } from '../data/extraCSV.js';
+import { setSchedule } from '../franchise/franchise.js';
+import { pickFile, downloadFile } from '../data/storage.js';
+import { injuryReport, practiceSquadScreen, waiversScreen, playerSearch, gamePreview, scoutingScreen } from './franchiseMore.js';
 import { teamMorale } from '../franchise/development.js';
 
 async function loadLocalFreeAgents(f) {
@@ -36,6 +39,19 @@ async function loadLocalFreeAgents(f) {
     if (/<html/i.test(text)) return; // the dev server's fallback page, not a CSV
     const { players } = freeAgentsFromRows(parseCSV(text));
     if (players.length) setFreeAgents(f, players);
+  } catch { /* no file */ }
+}
+
+/** public/local/schedule.csv (week, away, home[, day, date, time]) replaces the generated first season. */
+async function loadLocalSchedule(f, teams) {
+  if (location.protocol === 'file:') return;
+  try {
+    const res = await fetch('local/schedule.csv', { cache: 'no-store' });
+    if (!res.ok) return;
+    const text = await res.text();
+    if (!/^\s*week\s*,/i.test(text)) return;
+    const { weeks } = scheduleFromRows(teams, parseCSV(text));
+    if (weeks) setSchedule(f, teams, weeks);
   } catch { /* no file */ }
 }
 
@@ -124,6 +140,7 @@ export class FranchiseUI {
       if (opts.rosters === 'fantasy') startFantasyDraft(L.franchise, this.teams, seed);
       // Your own list of current free agents (public/local/free_agents.csv, roster format) replaces the generated pool.
       await loadLocalFreeAgents(L.franchise);
+      await loadLocalSchedule(L.franchise, this.teams);
       // Depth for everyone: 500 created (mostly fringe) players on top of the free-agent list, and practice squads.
       if (opts.extraFA !== false) addGeneratedFreeAgents(L.franchise, 500, seed * 3);
       for (const t of this.teams) cpuFillPS(t, L.franchise.freeAgents);
@@ -201,6 +218,7 @@ export class FranchiseUI {
       f.phase === 'playoffs' ? tile('', 'bracket', 'Bracket', 'Seeds and results', () => this.bracketScreen()) : null,
       tile('', 'chart', 'Team Stats', 'Season totals, sortable', () => this.teamStatsScreen()),
       tile('', 'trophy', 'League Leaders', 'Your players highlighted', () => this.leadersScreen()),
+      tile('', 'star', 'Draft Scouting', `${f.year + 1} class · ${f.scoutPoints ?? 0} points`, () => scoutingScreen(this)),
     ].filter(Boolean);
     const teamTiles = () => [
       cp ? tile('', 'user', 'My Player', `${cp.pos} · ${cp.ovr} OVR · ${f.career.points} pts`, () => careerScreen(this)) : null,
@@ -398,8 +416,21 @@ export class FranchiseUI {
     const results = (f.schedule[week] || []).map((g) => el('div.fr-score', {}, el('span', { text: score(g) }), el('small', { text: ` ${gameWhen(g)}${g.slot ? ` · ${slotName(g)}` : ''}` })));
     screens.frame('stats-screen', el('h1', { text: 'Schedule & Results' }),
       el('div.fr-sched', {}, el('div.st-table', {}, mine), el('div.fr-week', {}, el('div.dc-head', { text: `Week ${week + 1} around the league` }), results)),
-      el('div.setup-help', { html: '<b class="btn A">A</b> show that week &nbsp; <b class="btn B">B</b> back' }));
-    screens.nav.set(mine, { columns: 1, index: week, onBack: () => this.hub() });
+      el('div.setup-help', { html: `<b class="btn A">A</b> show that week &nbsp; <b class="btn X">X</b> export schedule.csv${f.week === 0 && f.phase === 'regular' ? ' &nbsp; <b class="btn Y">Y</b> import a schedule (CSV)' : ''} &nbsp; <b class="btn B">B</b> back` }));
+    screens.nav.set(mine, { columns: 1, index: week, onBack: () => this.hub('Season') });
+    screens.extraButtons = async (fr) => {
+      if (fr.pressed.X) downloadFile(`schedule_${f.year}.csv`, exportSchedule(teams, f.schedule), 'text/csv');
+      if (fr.pressed.Y && f.week === 0) {
+        screens.extraButtons = null;
+        const file = await pickFile('.csv,text/csv');
+        if (file) {
+          const { weeks, skipped } = scheduleFromRows(teams, parseCSV(file.data));
+          if (weeks && setSchedule(f, teams, weeks)) { this.save(); window.alert(`Schedule imported: ${weeks.length} weeks${skipped.length ? ` (${skipped.length} rows skipped: ${skipped[0]})` : ''}.`); }
+          else window.alert(`Couldn't use that schedule${skipped.length ? `: ${skipped[0]}` : ''}. Columns: week, away, home (team abbreviations).`);
+        }
+        this.scheduleScreen(0);
+      }
+    };
   }
 
   bracketScreen() {

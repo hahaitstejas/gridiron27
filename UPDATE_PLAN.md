@@ -151,13 +151,13 @@ Phase D — special teams
 - [x] D3 Scoop and score on blocked punts / FGs (live ball, defense can return it)
 - [x] D4 Kickoff out of bounds: receiving team chooses the ball at the 40 or a re-kick from 5 yards back
 Phase E — physics and realism (as much as possible)
-- [ ] E1 Gang tackles / pile pushes (forward progress by the pile)
-- [ ] E2 Stiff-arm contest, hurdles, pylon dives, ball-security arm (carry in the outside arm, switch with RS)
-- [ ] E3 Tipped passes at the line (rushers' hands up), deflections into the air, more realistic ball physics
-- [ ] E4 Footing: slips on hard cuts in rain/snow, field surface (grass / turf) affecting speed and injuries
-- [ ] E5 Sideline toe-tap / drag-feet catches, momentum carries runners out of bounds, diving catches
-- [ ] E6 Momentum & mass in collisions (bigger players move smaller ones, trucks, stumbles after contact)
-- [ ] E7 Fatigue visuals (hands on knees), muddy / grass-stained uniforms over the game
+- [x] E1 Gang tackles / pile pushes (forward progress by the pile)
+- [x] E2 Stiff-arm contest, hurdles, pylon dives, ball-security arm (carry in the outside arm, switch with RS)
+- [x] E3 Tipped passes at the line (rushers' hands up), deflections into the air, more realistic ball physics
+- [x] E4 Footing: slips on hard cuts in rain/snow, field surface (grass / turf) affecting speed and injuries
+- [x] E5 Sideline toe-tap / drag-feet catches, momentum carries runners out of bounds, diving catches
+- [x] E6 Momentum & mass in collisions (bigger players move smaller ones, trucks, stumbles after contact)
+- [x] E7 Fatigue visuals (hands on knees), muddy / grass-stained uniforms over the game
 Phase F — presentation
 - [ ] F1 Win-probability graph (post-game panel, plus key-plays list)
 - [ ] F2 Broadcast camera packages: All-22, skycam, end zone, sideline cable cam (Settings + in-game cycle)

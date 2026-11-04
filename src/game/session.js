@@ -323,6 +323,7 @@ export class GameSession {
       unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t && i.status !== 'returned').map((i) => i.rid)]),
       defAdj: this.defAdj,
       weather: this.settings.weather || null,
+      surface: /turf|artificial|synthetic/i.test(this.teams[0]?.stadium?.surface || '') ? 'turf' : 'grass',
       iced: !!this.iced,
       keep: this.hurry && this.lastLineup?.poss === m.possession ? this.lastLineup.slots : null,
       // Trick plays and fakes work once: a defense that has seen this one today reads it.

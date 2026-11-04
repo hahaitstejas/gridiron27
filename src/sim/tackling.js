@@ -145,6 +145,11 @@ export function updateTackles(sim, dt) {
   const c = sim.carrier();
   if (!c || c.state === 'tackled' || c.state === 'down') return;
   const air = moveActive(c, 'hurdle') && c.move.t > 0.1 && c.move.t < 0.45;
+  // Ball security: carry it in the outside arm (away from the field's traffic) unless the human switched it (RS).
+  if (!c.armLocked) {
+    const rightIsOutside = Math.cos(c.facing) * Math.sign(c.z || 1) > 0; // right-hand side points to the near sideline
+    c.ballArm = rightIsOutside ? 1 : -1;
+  }
   for (const d of sim.players) {
     if (d.team === c.team || d.state === 'down' || d.state === 'tackled' || d.tackleCd > 0) continue;
     const dist = Math.hypot(d.x - c.x, d.z - c.z);
@@ -235,12 +240,36 @@ export function attemptTackle(sim, d, c, air) {
     const vx = (c.vx * mc + d.vx * md) / (mc + md), vz = (c.vz * mc + d.vz * md) / (mc + md);
     const keep = bigHit ? 0.75 : 0.6;
     c.vx = vx * keep; c.vz = vz * keep;
+    // Pile push: a runner stopped in a crowd gets surged by the bodies around him (his blockers and backs pushing
+    // forward, defenders driving him back): strength in numbers moves the pile a yard or two.
+    if (front > 0.2 && Math.hypot(vx, vz) < 5) {
+      const cl = sim.toLocal(c.x, c.z);
+      let push = 0;
+      for (const o of sim.players) {
+        if (o === c || o === d || o.state === 'down') continue;
+        const dd = Math.hypot(o.x - c.x, o.z - c.z);
+        if (dd > 2.2) continue;
+        const ol = sim.toLocal(o.x, o.z);
+        const behind = (ol.down - cl.down) * sim.teamDir(c.team) * sim.dir < 0.6; // teammates behind / beside him push
+        const w = (0.6 + o.bulk * 0.6 + sim.R(o, 'strength') / 200) * (1 - dd / 2.6);
+        if (o.team === c.team && behind) push += w; else if (o.team !== c.team) push -= w * 0.9;
+      }
+      const surge = clamp(push * 0.55 - 0.15, -1.5, 1.6);
+      if (Math.abs(surge) > 0.2) {
+        const td = sim.teamDir(c.team);
+        c.vx += td * surge * 1.2;
+        sim.emit('pileSurge', { player: c.id, yards: surge });
+      }
+    }
     d.vx = c.vx * 0.9 + (c.x - d.x) * 1.5; d.vz = c.vz * 0.9 + (c.z - d.z) * 1.5; // ...and lands on him
     if (bigHit) sim.emit('bigHit', { player: c.id, tackler: d.id });
     // Fumble? More likely on big hits and strip attempts, less when protecting the ball.
     let pf = 0.008 + (sim.R(d, 'hitPower') - sim.R(c, 'carrying')) * 0.0005 + (bigHit ? 0.05 : 0) + (stick ? 0.1 + sim.R(d, 'hitPower') * 0.0008 : 0) + (moveActive(d, 'strip') ? 0.12 : 0);
     if (front < -0.2) pf += 0.01;
     if (c.protect) pf *= 0.3;
+    // Ball security: hit on the side he carries it = likelier to come out; on the other side, his body shields it.
+    const right = -Math.sin(c.facing) * rx + Math.cos(c.facing) * rz; // > 0: the tackler is on his right
+    if (Math.abs(right) > 0.3) pf *= Math.sign(right) === (c.ballArm || 1) ? 1.45 : 0.7;
     pf *= 1 + 0.8 * sim.sl(c.team, 'fumbles');
     if (sim.difficulty) pf *= c.team === sim.humanTeam ? (sim.difficulty.humanFumble ?? 1) : (sim.difficulty.cpuFumble ?? 1);
     const fumbled = sim.rng.next() < Math.max(0.002, pf);

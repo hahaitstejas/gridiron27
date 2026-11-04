@@ -141,6 +141,8 @@ function handlePassing(sim, qb, inp) {
 
 function handleCarrier(sim, p, inp, cam) {
   p.protect = !!inp.down.RB;
+  // RS click: switch the ball to the other arm (keep it away from the closest defender).
+  if (inp.pressed.RS) { p.ballArm = -(p.ballArm || 1); p.armLocked = true; sim.emit('switchArm', { player: p.id, arm: p.ballArm }); }
   if (p.task?.option && inp.pressed.LB && sim.pitchOption()) return; // speed option pitch
   // LB: lateral to the best teammate level with or behind you (last-gasp plays, hook and ladders).
   if (inp.pressed.LB && !p.task?.option) { const to = lateralTarget(sim, p); if (to && lateral(sim, p, to, 'run')) return; }

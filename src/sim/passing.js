@@ -185,6 +185,8 @@ export function updateBallFlight(sim, dt) {
     if (b.y <= 0.15 || Math.abs(b.z) > HALF_WIDTH + 0.5) incomplete(sim, 'throwaway');
     return;
   }
+  // Batted at the line: a rusher in the throwing lane right in front of the QB gets his hands up on it (once each).
+  if (b.t < 0.32 && !b.tipped && b.kind !== 'throwaway') batAtLine(sim, b);
   // Primary resolution when the ball reaches catch height at the target.
   if (!b.resolved && b.t >= b.T - dt * 0.5) {
     b.resolved = true;
@@ -197,6 +199,31 @@ export function updateBallFlight(sim, dt) {
     if (b.state !== 'air') return;
   }
   if (b.y <= 0.12) incomplete(sim, 'ground');
+}
+
+function batAtLine(sim, b) {
+  const qb = sim.players[b.thrower];
+  if (!qb) return;
+  b.batTried ||= new Set();
+  for (const d of sim.players) {
+    if (d.team === qb.team || d.state !== 'active' || b.batTried.has(d.id)) continue;
+    const t = d.task?.type;
+    if (t !== 'rush' && !(d.engagement && d.engagement.d === d)) continue;
+    // Close to the ball's path, still low enough to reach (taller players reach higher; hands up when engaged).
+    const off = Math.hypot(d.x - b.x, d.z - b.z);
+    const reach = 2.35 + ((d.height || 2.06) * 36 - 74) * 0.025 + (d.engagement ? 0.15 : 0);
+    if (off > 0.95 || b.y > reach) continue;
+    b.batTried.add(d.id);
+    // Lobs go over the line, bullets on a line get batted more; the closer to his hands, the likelier.
+    const chance = (b.kind === 'lob' ? 0.18 : 0.42) * (1 - off / 1.1) + sim.R(d, 'passRush') * 0.0012;
+    if (sim.rng.next() < chance) {
+      deflect(sim, d, 0.7);
+      b.batted = true;
+      d.anim = 'swat'; d.animT = 0;
+      sim.emit('batted', { player: d.id });
+      return;
+    }
+  }
 }
 
 // Bodies can't overlap (2 × PLAYER_RADIUS = 0.84 yd apart), so "in contact" at the catch is within a yard.
@@ -219,6 +246,11 @@ function resolveCatch(sim, reach, late = false) {
     const isRec = p.team === sim.possTeam;
     const r = reach + (isRec ? (p.id === b.intended ? 0.45 : 0.2) : 0) + (!isRec && swatBonus(sim, p) ? 0.6 : 0) + (p.move?.type === 'dive' ? 0.6 : 0);
     if (d <= r) cands.push({ p, d });
+    // Just out of reach: the intended receiver lays out for it (a diving catch, harder to hold on to).
+    else if (!late && p.id === b.intended && isRec && p.state === 'active' && !p.move && d <= r + 0.95) {
+      p.anim = 'dive'; p.animT = 0; p.diving = true;
+      cands.push({ p, d: d - 0.95, dive: true });
+    }
   }
   if (!cands.length) return;
   cands.sort((a, c) => a.d - c.d);
@@ -330,6 +362,7 @@ function resolveCatch(sim, reach, late = false) {
   let pCatch = 0.545 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);
   if (b.kind === 'bullet' && b.T < 0.45) pCatch -= 0.05;
   if (late) pCatch -= 0.15;
+  if (rc.dive) pCatch -= 0.16 - sim.R(r, 'catching') * 0.0006; // a diving grab
   if (b.tipped) pCatch -= 0.2;
   if (b.place) pCatch -= 0.05; // harder to catch away from the body
   pCatch -= Math.max(0, b.T - 1.3) * 0.12; // long balls: more time for the defense to get a hand in
@@ -338,11 +371,20 @@ function resolveCatch(sim, reach, late = false) {
   else if (ct === 'aggressive' && contest > 0.15) pCatch += 0.03;
   pCatch = clamp(pCatch, 0.1, 0.97);
   // A possession catch gets the feet down along the sideline.
-  if (Math.abs(r.z) > HALF_WIDTH - (ct === 'possession' ? -0.3 : 0.15)) {
-    // Caught out of bounds.
-    sim.emit('oobCatch', { player: r.id });
-    incomplete(sim, 'oob');
-    return;
+  const edge = Math.abs(r.z) - HALF_WIDTH; // > 0: his body is over the line
+  if (edge > (ct === 'possession' ? 0.3 : -0.15)) {
+    // At the sideline: a toe-tap / drag of the feet keeps it in (awareness, a possession catch helps); else out.
+    const tap = 0.25 + sim.R(r, 'awareness') * 0.0035 + (ct === 'possession' ? 0.25 : 0) - Math.max(0, edge) * 0.6;
+    if (edge < 0.6 && sim.rng.next() < tap) {
+      r.z = Math.sign(r.z) * (HALF_WIDTH - 0.1);
+      r.anim = 'catch'; r.animT = 0;
+      sim.emit('toeTap', { player: r.id });
+    } else {
+      // Caught out of bounds.
+      sim.emit('oobCatch', { player: r.id });
+      incomplete(sim, 'oob');
+      return;
+    }
   }
   const catchRoll = rng.next();
   if (catchRoll < pCatch) {
@@ -359,6 +401,8 @@ function resolveCatch(sim, reach, late = false) {
     if (ct === 'aggressive' || ct === 'possession') { r.speedCap = Math.min(r.speedCap, ct === 'aggressive' ? 0.3 : 0.4); r.recoverAt = sim.t + 0.65; }
     else if (ct === 'rac') { r.speedCap = 0.95; r.recoverAt = sim.t + 0.1; }
     sim.setRunner(r, 'catch');
+    // A diving catch ends on the ground (down where he lands, a little past the catch).
+    if (rc.dive) { sim.emit('divingCatch', { player: r.id }); sim.tackleCarrier(r, null, 0.2); return; }
     // A defender closing on the catch gets a shot at him as the ball arrives.
     let hitter = null, hd = 2.2;
     for (const d of sim.players) {

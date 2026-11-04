@@ -277,9 +277,10 @@ export class Presentation {
         d.vx = d.vz = 0; d.down = false;
         if (this.moment.dir) d.facing = turn(d.facing, this.moment.dir > 0 ? 0 : Math.PI, dt * 6);
         if (d.anim !== this.moment.style) { d.anim = this.moment.style; d.animT = 0; }
-      } else if (this.modeT < HUDDLE_DELAY) {
-        // A beat after the whistle: whoever is down stays down for a moment, the rest stand.
-        if (!d.down) { d.anim = 'idle'; d.vx = d.vz = 0; }
+      } else if (this.modeT < HUDDLE_DELAY || (!d.down && (p.energy ?? 1) < 0.66 && this.modeT < HUDDLE_DELAY + 1.1)) {
+        // A beat after the whistle: whoever is down stays down for a moment, the rest stand; a gassed player
+        // bends over with his hands on his knees before he jogs back.
+        if (!d.down) { const a = (p.energy ?? 1) < 0.66 ? 'tired' : 'idle'; if (d.anim !== a) { d.anim = a; d.animT = 0; } d.vx = d.vz = 0; }
       } else if (d.down && d.anim === 'down') { d.anim = 'getup'; d.animT = 0; }
       else if (d.anim === 'getup' && d.animT < 0.6) { /* getting up */ }
       else {

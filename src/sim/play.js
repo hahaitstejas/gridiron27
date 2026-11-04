@@ -61,6 +61,10 @@ export class PlaySim {
     this.weather = cfg.weather || null; // { type, wind: {x, z}, time } (game/weather.js)
     this.wx = WEATHER_MODS[this.weather?.type] || {};
     this.wind = this.weather?.wind || { x: 0, z: 0 };
+    // Field: 'turf' is a step faster; rain and snow make it slick (snow on grass the worst).
+    this.surface = cfg.surface || 'grass';
+    const wet = this.weather?.type === 'rain' ? 1 : this.weather?.type === 'snow' ? 1.6 : 0;
+    this.slick = wet * (this.surface === 'turf' ? 0.7 : 1);
 
     this.t = 0;
     this.state = 'presnap';
@@ -190,6 +194,7 @@ export class PlaySim {
       if (!rp) rp = team.roster.find((p) => !used.has(p.id));
       used.add(rp.id);
       const sp = makeSimPlayer(this.players.length, rp, teamIdx, side, fp.s);
+      if (this.surface === 'turf') sp.maxSpeed *= 1.012; // fast track
       if (this.energy) {
         // Tired legs: a step slower, and weaker at the point of attack.
         const e = energyOf(this.energy, teamIdx, rp.id);
@@ -345,6 +350,24 @@ export class PlaySim {
       const k = styles.indexOf(this.kickStyle || 'normal');
       const step = f.pressed?.Up || f.flick?.up ? 1 : f.pressed?.Down || f.flick?.down ? -1 : 0;
       if (step) { this.kickStyle = styles[(k + step + 3) % 3]; this.emit('kickStyle', { style: this.kickStyle }); }
+    }
+  }
+
+  /**
+   * Footing on a wet or snowy field: a hard cut at speed can go out from under you (agility helps; grass in snow
+   * is worst). A slip costs a step; a ball carrier who slips in traffic may go down.
+   */
+  footing(p, pvx, pvz, dt) {
+    if (p.state !== 'active' || p.move) return;
+    const sp = Math.hypot(p.vx, p.vz);
+    if (sp < 6) return;
+    const turn = Math.abs(pvx * p.vz - pvz * p.vx) / (Math.hypot(pvx, pvz) * sp + 1e-6); // sin of the angle turned this tick
+    const cut = turn / dt; // radians per second, roughly
+    if (cut < 2.2) return;
+    const chance = this.slick * (cut - 2.2) * 0.02 * (1.3 - this.R(p, 'agility') / 100) * dt * 60;
+    if (this.rng.next() < chance) {
+      p.state = 'stumble'; p.stumbleT = 0.4; p.speedCap = 0.35; p.anim = 'stumble'; p.animT = 0;
+      this.emit('slip', { player: p.id });
     }
   }
 
@@ -529,7 +552,9 @@ export class PlaySim {
         if (this.ball.state === 'loose') this.chaseLooseBall(p);
         // Running with the ball costs a little top speed, so equal-speed pursuers can close.
         if (this.ballLiveRun && b.state === 'held' && b.carrier === p.id) { p.desired.x *= 0.95; p.desired.z *= 0.95; }
+        const pvx = p.vx, pvz = p.vz;
         integrate(p, dt);
+        if (this.slick) this.footing(p, pvx, pvz, dt);
       }
       resolveCollisions(this.players);
       updateTackles(this, dt);

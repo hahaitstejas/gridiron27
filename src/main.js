@@ -600,6 +600,12 @@ function onSessionEvent(e) {
   else if (e.type === 'push') hud.ticker(e.quality >= 1 ? 'Perfect push!' : e.quality >= 0.6 ? 'Good push' : e.quality > 0 ? 'Late push' : 'Missed the push');
   else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');
   else if (e.type === 'drillRep') hud.banner(`${e.pts > 0 ? '+' : ''}${e.pts}`, e.text, 1.6, e.pts > 0 ? 'score' : 'miss');
+  else if (e.type === 'batted' && session?.humanTeam !== null) hud.banner('BATTED DOWN', 'Got a hand on it at the line', 1.4, 'miss');
+  else if (e.type === 'toeTap' && session?.humanTeam !== null) hud.ticker('Toe tap! Both feet in');
+  else if (e.type === 'divingCatch' && session?.humanTeam !== null) hud.ticker('Diving catch!');
+  else if (e.type === 'slip' && session?.sim?.players[e.player] && session.isHuman(session.sim.players[e.player].team)) hud.ticker('Lost his footing');
+  else if (e.type === 'switchArm') hud.ticker(`Ball in the ${e.arm < 0 ? 'left' : 'right'} arm`);
+  else if (e.type === 'pileSurge' && Math.abs(e.yards) > 0.8 && session?.humanTeam !== null) hud.ticker(e.yards > 0 ? 'The pile moves forward!' : 'Driven back');
   else if (e.type === 'kickStyle') hud.ticker(`Punt: ${{ normal: 'normal', coffin: 'coffin corner (out of bounds deep)', pooch: 'pooch (high and short)' }[e.style]}`);
   else if (e.type === 'rpoPull' && session?.humanTeam !== null) hud.ticker('RPO: pulled it, throwing');
   else if (e.type === 'fakeSpike' && session?.humanTeam !== null) hud.ticker('Fake spike!');
@@ -701,7 +707,14 @@ function frameBody(now) {
 
   // ---- Render ----
   const sim = session?.sim || null;
-  if (app !== 'replay' && sim !== lastSim) { if (sim) renderer.players.setColors(sim, session.teams); lastSim = sim; }
+  if (app !== 'replay' && sim !== lastSim) {
+    // Uniforms get dirty over the game: mud in rain / snow, grass stains otherwise (repainted once per play).
+    const m = session.match, wt = session.settings.weather?.type;
+    const prog = Math.min(1, ((Math.min(m.quarter, 4) - 1) + (1 - m.clock / Math.max(1, m.quarterLength || 300))) / 4);
+    renderer.players.dirt = session.practice ? 0 : prog * (wt === 'rain' ? 0.9 : wt === 'snow' ? 0.6 : 0.25);
+    if (sim) renderer.players.setColors(sim, session.teams);
+    lastSim = sim;
+  }
   const alpha = Math.min(1, acc / STEP);
   if (app === 'intro' && intro && session) {
     const m = session.match;

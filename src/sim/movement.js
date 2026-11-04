@@ -59,6 +59,9 @@ export function moveDir(p, dx, dz, speedFrac = 1) {
 export function stop(p) { p.desired.x = 0; p.desired.z = 0; }
 
 /** Push overlapping players apart. Heavier/stronger players move less. */
+// Blocking / rushing contact is handled by the engagement system; ball carriers and passers by tackling.js.
+const OPEN_FIELD_EXEMPT = new Set(['carrier', 'qb_pass', 'returner', 'kicker', 'pass_block', 'run_block', 'rush', 'kr_block', 'st_rush', 'screen_wall', 'stalk']);
+
 export function resolveCollisions(players) {
   const minD = PLAYER_RADIUS * 2;
   for (let i = 0; i < players.length; i++) {
@@ -82,6 +85,18 @@ export function resolveCollisions(players) {
       const nx = dx / d, nz = dz / d;
       a.x -= nx * overlap * fa; a.z -= nz * overlap * fa;
       b.x += nx * overlap * fb; b.z += nz * overlap * fb;
+      // Momentum: a much bigger body running hard into a smaller opponent knocks him off balance (not blockers in
+      // an engagement, not the ball carrier: tackling.js handles those).
+      if (a.team !== b.team && !a.engagement && !b.engagement && a.state === 'active' && b.state === 'active') {
+        const closing = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz; // > 0: a is running into b
+        if (Math.abs(closing) > 5.5) {
+          const [big, small, mBig, mSmall] = closing > 0 ? [a, b, ma, mb] : [b, a, mb, ma];
+          if (mBig > mSmall * 1.45 && !OPEN_FIELD_EXEMPT.has(small.task?.type) && !OPEN_FIELD_EXEMPT.has(big.task?.type)) {
+            small.state = 'stumble'; small.stumbleT = 0.35; small.speedCap = 0.4; small.anim = 'stumble'; small.animT = 0;
+            small.vx += (big.vx - small.vx) * 0.4; small.vz += (big.vz - small.vz) * 0.4;
+          }
+        }
+      }
     }
   }
 }

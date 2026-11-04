@@ -6,6 +6,7 @@ import { drawLogo } from './logo.js';
 // players). Poses are computed procedurally from the sim's animation state every frame.
 
 const SKIN = ['#f1c9a5', '#e0ac85', '#c68a62', '#a0663f', '#7a4a2c', '#53321e'];
+const MUD = new THREE.Color('#4a3a28'); // muddy / grass-stained uniforms (setColors, this.dirt)
 const MAX = 56; // 22 players + 7 officials + 22 on the sidelines (+ spare)
 
 // Base proportions for a 6'2" player, in yards.
@@ -267,9 +268,11 @@ export class PlayerRenderer {
       const pants = uni.pants;
       const numColor = uni.number;
       const skin = SKIN[p.skin % SKIN.length];
-      P.torso.setColorAt(i, c.set(jersey));
-      P.pads.setColorAt(i, c.set(jersey).offsetHSL(0, 0, -0.03));
-      P.pelvis.setColorAt(i, c.set(pants));
+      // Mud / grass stains build up over the game (this.dirt 0..1, set from the weather and the clock).
+      const mud = (col) => c.set(col).lerp(MUD, (this.dirt || 0) * (p.id % 3 === 0 ? 0.42 : 0.28));
+      P.torso.setColorAt(i, mud(jersey));
+      P.pads.setColorAt(i, mud(jersey).offsetHSL(0, 0, -0.03));
+      P.pelvis.setColorAt(i, mud(pants));
       P.neck.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
       P.stripe.setColorAt(i, c.set(u.helmetStripe ? team.colors.secondary : helmet));
@@ -285,7 +288,7 @@ export class PlayerRenderer {
       }
       for (let k = 0; k < 2; k++) {
         const j = i * 2 + k;
-        P.thigh.setColorAt(j, c.set(pants));
+        P.thigh.setColorAt(j, c.set(pants).lerp(MUD, (this.dirt || 0) * 0.4));
         P.shin.setColorAt(j, c.set(!isDark(pants) ? team.colors.primary : '#f2f2f2'));
         P.shoe.setColorAt(j, c.set(i % 3 ? '#151515' : '#f0f0f0'));
         P.upper.setColorAt(j, c.set(jersey));
@@ -521,8 +524,9 @@ export class PlayerRenderer {
       if (h) return out.copy(h);
     }
     if (p.state === 'down' || p.state === 'tackled') return out.set(x + Math.cos(f) * 0.3, 0.25, z + Math.sin(f) * 0.3);
-    // Tucked under the right arm.
-    const rx = -Math.sin(f), rz = Math.cos(f); // right-hand side vector
+    // Tucked under the carrying arm (right unless he switched it: p.ballArm = -1).
+    const arm = p.ballArm === -1 ? -1 : 1;
+    const rx = -Math.sin(f) * arm, rz = Math.cos(f) * arm; // the carrying side
     return out.set(x + Math.cos(f) * 0.12 + rx * 0.2 * sc, 1.25 * sc, z + Math.sin(f) * 0.12 + rz * 0.2 * sc);
   }
 }
@@ -889,6 +893,12 @@ function computePose(p, time, sim) {
       pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6;
       pose.arms[1].pitch = (t % 2) < 1 ? 2.9 : 0.4 + Math.sin(t * 7) * 0.9; pose.arms[1].elbow = (t % 2) < 1 ? 1.4 : 0.1; pose.arms[1].out = 0.25;
       break;
+    case 'tired':
+      // Hands on knees, breathing hard.
+      pose.crouch = 0.22; pose.lean = 0.75 + Math.sin(t * 5) * 0.04; pose.head = -0.3;
+      pose.arms[0].pitch = pose.arms[1].pitch = 1.05; pose.arms[0].elbow = pose.arms[1].elbow = 0.25;
+      pose.arms[0].out = pose.arms[1].out = 0.12;
+      break;
     case 'sig_timeout':
       // Timeout: both arms overhead, hands crossing back and forth.
       pose.lean = 0; pose.arms[0].pitch = pose.arms[1].pitch = 2.9; pose.arms[0].elbow = pose.arms[1].elbow = 0.15;
@@ -904,9 +914,10 @@ function computePose(p, time, sim) {
   // A ball carrier cradles it in the right arm (both arms when protecting it) instead of pumping that arm.
   const b = sim?.ball;
   if (b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
-    const a = pose.arms[1];
+    const left = p.ballArm === -1;
+    const a = pose.arms[left ? 0 : 1];
     a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;
-    if (p.protect) { const l = pose.arms[0]; l.pitch = 0.75; l.elbow = 1.9; l.out = -0.35; }
+    if (p.protect) { const l = pose.arms[left ? 1 : 0]; l.pitch = 0.75; l.elbow = 1.9; l.out = -0.35; }
   }
   return pose;
 }

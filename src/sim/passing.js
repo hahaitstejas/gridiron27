@@ -86,8 +86,13 @@ function release(sim, qb, rec, kind, lead, place = null) {
     const pressure = pressureOn(sim, qb);
     const moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
     // Traits: Pocket Poise halves the pressure penalty, Cannon keeps deep balls tighter.
-    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22 * (has(qb, 'cannon') ? 0.6 : 1)) * (1 + pressure * 0.9 * (has(qb, 'pocketPoise') ? 0.5 : 1) + moving * 0.6);
+    let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22 * (has(qb, 'cannon') ? 0.6 : 1)) * (1 + pressure * 1.5 * (has(qb, 'pocketPoise') ? 0.5 : 1) + moving * 0.7);
     if (kind === 'bullet') sd *= 1.1;
+    // Throwing while backing up or fading away (off his platform): the ball sails.
+    const back = -(qb.vx * sim.dir);
+    if (back > 1.5) sd *= 1 + Math.min(0.6, (back - 1.5) * 0.15);
+    // Hit as he throws: a wounded duck.
+    if (pressure > 0.85 && rng.next() < 0.35) sd *= 2.2;
     if (sim.difficulty) sd *= qb.team !== sim.humanTeam ? sim.difficulty.cpuAccuracy ?? 1 : sim.difficulty.humanAccuracy ?? 1;
     sd *= 1 - 0.45 * sim.sl(qb.team, 'qbAccuracy');
     // Wind: deep balls wander and drift with it.

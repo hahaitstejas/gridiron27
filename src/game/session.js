@@ -190,7 +190,13 @@ export class GameSession {
       const hurry = this.tempoTarget < 20;
       this.cpuSnapAt = hurry ? 2.6 + this.rng.next() * 0.8 : 5 + this.rng.next() * 2.5;
     }
-    if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng, m); }
+    if (!this.calls(def)) {
+      this.choice.def = this.cpuDefenseFor(this.choice.off);
+      this.defAdj = cpuCoverageCall(this.choice.def, this.rng, m);
+      // The CPU adjusts to a quarterback who keeps taking off: a spy on most snaps once he's done it a few times.
+      const runs = this.qbScrambles?.[off] || 0;
+      if (runs >= 2 && this.rng.next() < Math.min(0.85, 0.3 + runs * 0.12)) this.defAdj = { ...(this.defAdj || {}), spy: true };
+    }
     // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
     if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && m.phase === 'scrimmage' && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
     // The human's special-teams unit comes on automatically (kick return, punt return, FG block). (This used to be an
@@ -615,7 +621,10 @@ export class GameSession {
       sim.tick(dt, humanInvolved ? input : null);
       if (this.drill) drillWatch(sim, this.drill, sim.events);
       if (!this.fast) this.recorder.capture(sim);
-      for (const e of sim.events) this.events.push(e);
+      for (const e of sim.events) {
+        this.events.push(e);
+        if (e.type === 'scramble' && this.isHuman(sim.offIdx)) (this.qbScrambles ||= {})[sim.offIdx] = (this.qbScrambles[sim.offIdx] || 0) + 1;
+      }
       // Game clock runs during live plays (not during tries, or while a kick is in the air before it's touched).
       const kickInAir = sim.isKick && (sim.ball.state === 'kick' || sim.ball.state === 'tee' || sim.ball.state === 'snap');
       if (!this.practice && m.phase !== 'try' && sim.state === 'live' && !kickInAir) m.tickClock(dt);

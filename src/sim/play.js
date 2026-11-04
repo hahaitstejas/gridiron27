@@ -119,6 +119,11 @@ export class PlaySim {
     alignMan(this);
     disguiseAlign(this);
     frontAlign(this);
+    // Whatever the alignment rules said, nobody lines up behind his own end line.
+    for (const d of this.defense()) {
+      const l = this.toLocal(d.x, d.z);
+      if (l.down > this.roomDeep()) { const w = this.toWorld(Math.max(1, this.roomDeep()), l.lat); d.x = w.x; d.z = w.z; }
+    }
     const oFace = this.dir > 0 ? 0 : Math.PI;
     for (const p of this.players) {
       p.facing = p.pfacing = p.side === 'O' ? oFace : oFace + Math.PI;
@@ -194,6 +199,10 @@ export class PlaySim {
       if (side === 'O') {
         const room = (this.losX * this.dir + END_X - 0.8); // yards from the LOS back to the end line
         if (-down > room) down = -room;
+      } else {
+        // Defense near its own goal: deep players line up inside the end zone, not past the end line.
+        const room = END_X - this.losX * this.dir - 1.5;
+        if (down > room) down = Math.max(1, room);
       }
       const w = this.toWorld(down, fp.at[1]);
       sp.x = w.x;
@@ -596,6 +605,9 @@ export class PlaySim {
     }
   }
 
+  /** Yards from the line of scrimmage to the defense's end line (deep zones and alignments stay inside it). */
+  roomDeep() { return END_X - this.losX * this.dir - 1.5; }
+
   /** QB-only plays: kneel downs, spikes and designed QB runs. */
   updateQBSpecial() {
     const qb = this.bySlot(this.offIdx, 'QB');
@@ -706,7 +718,9 @@ export class PlaySim {
       } else {
         // Defenders right on top of the catch/handoff react almost instantly.
         const near = Math.hypot(q.x - p.x, q.z - p.z) < 4 ? 0.2 : 1;
-        q.task = { type: 'pursue', at: this.t + reactionDelay(this, q) * near * (how === 'handoff' ? 1.3 : 1) };
+        // A QB crossing the line is in front of the zone defenders' eyes (they were reading him): quick reaction.
+        const qbRun = how === 'scramble' && q.task?.type !== 'man' ? 0.45 : 1;
+        q.task = { type: 'pursue', at: this.t + reactionDelay(this, q) * near * qbRun * (how === 'handoff' ? 1.3 : 1) };
         // Kick coverage keeps its lanes while closing so the returner can't find a seam.
         if (this.kick && q.team === this.offIdx) q.task.lane = (q.alignZ - this.ballZ) * 0.35;
       }
@@ -800,12 +814,15 @@ export class PlaySim {
         c.vx * this.dir > 2.5 && l.down > -2.5) {
       this.scramble = true;
       this.emit('scramble', { player: c.id });
+      // He can still throw until he crosses the line: man defenders stay on their men, and only a zone defender with
+      // nobody to cover nearby comes up for him (the rest of the coverage holds: no free 5-yard dump-offs).
       for (const d of this.players) {
-        if (d.team === c.team || d.engagement || d.task?.type === 'rush') continue;
+        if (d.team === c.team || d.engagement || d.task?.type !== 'zone') continue;
         const dl = this.toLocal(d.x, d.z);
-        const deep = d.task?.type === 'zone' && dl.down > 11;
-        const manDeep = d.task?.type === 'man' && Math.hypot(d.x - c.x, d.z - c.z) > 12;
-        if (deep || manDeep) continue;
+        if (dl.down > 11) continue;
+        let near = 99;
+        for (const r of this.players) if (r.team === c.team && (r.task?.type === 'route' || r.task?.type === 'catch')) near = Math.min(near, Math.hypot(r.x - d.x, r.z - d.z));
+        if (near < 5.5 || Math.hypot(d.x - c.x, d.z - c.z) > 9) continue;
         d.task = { type: 'pursue', at: this.t + reactionDelay(this, d) };
       }
     }

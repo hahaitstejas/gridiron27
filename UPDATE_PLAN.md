@@ -14,9 +14,9 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] A7 Hail Mary + trick plays folder (flea flicker, philly special-style, hook and ladder, laterals at end of game)
 - [x] A8 FG block: MLB no free middle, longer kicks block more often, user edge rusher with X dive
 - [x] A9 Juke rework (lateral cut, no backward loss, actually beats the defender)
-- [ ] A10 QB: no infinite scramble/hold (pressure collapses, sack), no guaranteed 5-yd QB runs, pressure hurts accuracy
-- [ ] A11 Defender jumping the QB at the LOS (cheese 5-yd passes) — keep man coverage on the receiver
-- [ ] A12 Deep zones out of bounds inside the 10 (clamp landmarks to the field of play)
+- [x] A10 QB: no infinite scramble/hold (pressure collapses, sack), no guaranteed 5-yd QB runs, pressure hurts accuracy
+- [x] A11 Defender jumping the QB at the LOS (cheese 5-yd passes) — keep man coverage on the receiver
+- [x] A12 Deep zones out of bounds inside the 10 (clamp landmarks to the field of play)
 - [ ] A13 Kickoff: nobody moves early, offsides rule checked
 - [x] A14 No huddle: same personnel; no huddle not allowed right after the two-minute warning
 - [x] A15 CPU snaps too fast after a huddle (give the human time)
@@ -78,3 +78,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   (~6% blocked with good timing), long kicks get blocked more, the interior wall holds; juke = plant + lateral cut
   that never loses ground and can make the man in front stumble; CPU jukes no longer step backward. Retune: tackle
   base 0.80, catch base 0.545 → ~26.5 pts, 373 yds, 4.4 ypc.
+- A10-A12 (commit 4): coverage holds until the QB crosses the line (only a free zone defender comes up); after 4 s
+  the defense plasters and sends extra rushers (hold-the-ball sack ~5 s); zone defenders react fast to a QB crossing;
+  the CPU puts a spy on a human QB who keeps scrambling; pressure / fading away / getting hit ruin throws; nobody lines
+  up past his own end line.

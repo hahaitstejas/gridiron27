@@ -246,10 +246,40 @@ export function assignDefense(sim) {
     else if (a === 'spy') d.task = { type: 'spy' };
     else d.task = { type: 'zone', zone: 'hook_middle' };
   }
+  // A spy on the quarterback (the CPU's answer to a scrambler): the middle linebacker if he isn't rushing.
+  if (sim.defAdj?.spy) {
+    const lb = sim.defense().filter((d) => /MLB|OLB/.test(d.slot) && d.task?.type !== 'rush').sort((a, b) => (a.slot === 'MLB' ? -1 : 0) - (b.slot === 'MLB' ? -1 : 0))[0];
+    if (lb) lb.task = { type: 'spy' };
+  }
   pressJams(sim);
 }
 
+/**
+ * The QB is holding it forever (behind the line, no throw yet): the coverage "plasters" its men and the underneath
+ * defenders with nobody near them come after him, more of them the longer he waits.
+ */
+function plaster(sim) {
+  const qb = sim.carrier();
+  if (!qb || qb.slot !== 'QB' || qb.team !== sim.offIdx || sim.passThrown || sim.qbCrossed || sim.ballLiveRun || sim.offPlay.type !== 'pass') return;
+  if (sim.t < 4.0) return;
+  const want = sim.t > 6 ? 3 : sim.t > 5 ? 2 : 1;
+  let have = 0;
+  for (const d of sim.players) if (d.team !== qb.team && d.task?.plaster) have++;
+  if (have >= want) return;
+  let best = null, bs = 1e9;
+  for (const d of sim.players) {
+    if (d.team === qb.team || d.engagement || d.state !== 'active' || d.task?.type !== 'zone' || ZONES[d.task.zone]?.deep) continue;
+    let near = 99;
+    for (const r of sim.players) if (r.team === qb.team && (r.task?.type === 'route' || r.task?.type === 'catch')) near = Math.min(near, Math.hypot(r.x - d.x, r.z - d.z));
+    if (near < 4) continue;
+    const s = Math.hypot(d.x - qb.x, d.z - qb.z) - near * 0.3;
+    if (s < bs) { bs = s; best = d; }
+  }
+  if (best) best.task = { type: 'rush', blitz: true, plaster: true };
+}
+
 export function runDefenseAI(sim, dt) {
+  if ((sim._plasterT = (sim._plasterT || 0) - dt) <= 0) { sim._plasterT = 0.25; plaster(sim); }
   for (const p of sim.players) {
     if (!p.task || !DEF_TASKS.has(p.task.type)) continue;
     if (p.state !== 'active' || p.engagement || p.move) continue;
@@ -423,6 +453,8 @@ function zone(sim, p) {
     }
     if (v) { tDown = Math.min(v.down - 2.5, home.down + 9); tLat = home.lat + (v.lat - home.lat) * 0.8; }
   }
+  // Backed up to the goal line: the zone shrinks into the end zone (nobody stands past the end line).
+  tDown = Math.min(tDown, sim.roomDeep ? sim.roomDeep() : tDown);
   const w = sim.toWorld(tDown, tLat);
   const qb = sim.bySlot(sim.offIdx, 'QB');
   const d = seek(p, w.x, w.z, z.deep ? 0.95 : 0.85, 1.2);

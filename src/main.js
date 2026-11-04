@@ -23,7 +23,7 @@ import { TournamentUI } from './ui/tournament.js';
 import { addFreeAgent } from './franchise/freeAgents.js';
 import { FranchiseUI } from './ui/franchise.js';
 import { offseasonScreen } from './ui/offseason.js';
-import { unavailableFor, gameConditions, recordOf } from './franchise/franchise.js';
+import { unavailableFor, gameConditions, recordOf, simOthers, currentGames } from './franchise/franchise.js';
 import { PLAYOFF_ROUND_NAMES } from './franchise/season.js';
 import { makeConditions, conditionsText } from './game/weather.js';
 import { introShot, INTRO_T } from './render/intro.js';
@@ -76,6 +76,14 @@ else if (local?.rosterTeams?.length === 1) prefs.home = teams.findIndex((t) => t
 if (prefs.away === prefs.home) prefs.away = (prefs.home + 8) % 32;
 
 let input2 = null;
+/** A final score split into four quarters (touchdowns and field goals), for the ticker. */
+function splitQuarters(pts, seed) {
+  const q = [0, 0, 0, 0];
+  let left = pts, k = seed;
+  const rnd = () => { k = (k * 16807 + 11) % 2147483647; return k / 2147483647; };
+  while (left > 0) { const v = left >= 7 && rnd() < 0.7 ? 7 : left >= 3 ? 3 : left; q[Math.floor(rnd() * 4)] += v; left -= v; }
+  return q;
+}
 /** Either controller's input as one frame (menus in a 2-player game: whoever paused can work them). */
 function mergeFrames(a, b) {
   const big = (x, y) => (Math.abs(x) >= Math.abs(y) ? x : y);
@@ -134,8 +142,13 @@ const franchiseUI = new FranchiseUI({
   onExit: () => toMenu(),
   playGame: (g) => {
     const f = league.franchise;
+    // The rest of the week is decided now (quick sims); the ticker reveals those scores quarter by quarter.
+    simOthers(f, teams);
+    const others = currentGames(f).filter((x) => x !== g && x.score);
+    const tick = others.map((x, i) => ({ away: teams[x.away].abbr, home: teams[x.home].abbr, final: x.score, q: x.score.map((pts, k) => splitQuarters(pts, f.seed + i * 7 + k)).reverse() }));
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
       quarterMinutes: f.settings.quarterMinutes }, { franchise: g, noTies: f.phase === 'playoffs', unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null });
+    if (session) session.ticker = tick;
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back, onRelease: (p) => league.franchise && releasedPlayer(league.franchise, teams, teams[ti], p),
     onTrade: (p, from) => (from === league.franchise.userTeam ? tradeScreen(franchiseUI, { give: [p.id] }) : tradeScreen(franchiseUI, { team: from, get: [p.id] })) }, ti),

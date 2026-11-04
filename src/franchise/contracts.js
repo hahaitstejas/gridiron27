@@ -19,6 +19,11 @@ export function marketValue(p) {
   let v = MIN_SALARY + Math.pow(x, 2.4) * 28 * (POS_PAY[p.pos] ?? 0.8);
   const age = p.age || 26;
   if (age > 30) v *= Math.pow(0.85, age - 30); // teams won't pay for decline
+  // Recent Pro Bowls and All-Pro nods: he wants to be paid like it (franchise/honors.js).
+  if (p.honors?.length) {
+    const last = Math.max(...p.honors.map((x) => x.year));
+    for (const x of p.honors) if (x.year >= last - 2) v *= x.h === 'All-Pro' ? 1.12 : x.h === 'All-Pro 2nd team' ? 1.07 : 1.04;
+  }
   return round05(Math.max(MIN_SALARY, v));
 }
 

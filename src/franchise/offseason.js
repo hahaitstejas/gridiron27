@@ -1,3 +1,4 @@
+import { tagSalary } from './honors.js';
 import { generateClass } from './draftClass.js';
 import { compPicks, noteFreeAgentMove } from './trades.js';
 import { generatePool } from './freeAgents.js';
@@ -95,6 +96,11 @@ export function finishResigning(f, teams) {
   teams.forEach((t, ti) => {
     // CPU teams keep their best expiring players while the money fits.
     let pay = payroll(t) - expiring(t).reduce((s, p) => s + (p.salary || 0), 0);
+    // CPU teams franchise-tag a star they can't afford to lose.
+    if (ti !== f.userTeam) {
+      const star = expiring(t).filter((p) => p.ovr >= 84 && p.age <= 30 && !p.career).sort((a, b) => b.ovr - a.ovr)[0];
+      if (star && pay + tagSalary(teams, star) <= capOf(f) * 0.97 && rng.chance(0.7)) { star.salary = tagSalary(teams, star); star.years = 1; star.tagged = f.year; pay += star.salary; }
+    }
     for (const p of expiring(t).sort((a, b) => b.ovr - a.ovr)) {
       const ask = askingSalary(p);
       const keep = ti !== f.userTeam && p.ovr >= 66 && p.age < 33 && pay + ask <= capOf(f) * 0.97 && rng.chance(0.75);

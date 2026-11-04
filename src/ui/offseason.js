@@ -2,6 +2,7 @@ import { el } from './nav.js';
 import { draftDayOffers, executeDeal, dealText } from '../franchise/trades.js';
 import { RNG } from '../core/rng.js';
 import { needsPanel } from './franchiseMore.js';
+import { applyTag, tagSalary } from '../franchise/honors.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { POSITIONS } from '../data/positions.js';
 import { startNextSeason } from '../franchise/franchise.js';
@@ -78,8 +79,20 @@ function resignStep(ctx, ui, f, focus = 0) {
     save(ctx);
     offseasonScreen(ctx, ui);
   });
-  frame(ctx, 'Re-sign Players', list.length ? `${list.length} contracts expired · next season's payroll ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (over the cap!)' : ''}` : 'No contracts expired this year',
-    el('div.st-table', {}, rows), [done], 'Salary now → asking price. &nbsp; <b class="btn A">A</b> re-sign / let go', { rows, index: focus });
+  frame(ctx, 'Re-sign Players', list.length ? `${list.length} contracts expired · next season's payroll ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (over the cap!)' : ''}${f.tagUsed === f.year ? ' · franchise tag used' : ''}` : 'No contracts expired this year',
+    el('div.fr-sched', {}, el('div.st-table', {}, rows), el('div.fr-week', {}, el('div.dc-head', { text: 'Your roster (under contract)' }), needsPanel({ roster: team.roster.filter((p) => p.years > 0 || keep[p.id]) }))),
+    [done], `Salary now → asking price. &nbsp; <b class="btn A">A</b> re-sign / let go &nbsp; <b class="btn Y">Y</b> franchise tag (1 year, top-5 average at his position)`, { rows, index: focus });
+  ctx.screens.extraButtons = (fr) => {
+    if (!fr.pressed.Y) return;
+    const p = list[ctx.screens.nav.index];
+    if (!p) return;
+    const price = tagSalary(ctx.teams, p);
+    if (!window.confirm(`Franchise tag ${who(p)} for one year at ${money(price)}?`)) return;
+    const r = applyTag(f, ctx.teams, team, p);
+    if (!r.ok) { window.alert(r.reason); return; }
+    logTransaction(f, `${team.abbr} use the franchise tag on ${p.pos} ${who(p)} (${money(r.salary)})`);
+    save(ctx); resignStep(ctx, ui, f);
+  };
 }
 
 function freeagency(ctx, ui, f, filter = 0) {
@@ -108,7 +121,8 @@ function freeagency(ctx, ui, f, filter = 0) {
   ctx.screens.frame('stats-screen', el('h1', { text: 'Free Agency' }),
     el('div.league-status', { text: `Your roster: ${team.roster.length} players · ${capLine(f, team)} · A signs a player at his asking price` }),
     el('div.pc-tabs', {}, tabs.map((t, i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: t }))),
-    el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'Nobody available at this position.' })),
+    el('div.fr-sched', {}, el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'Nobody available at this position.' })),
+      el('div.fr-week', {}, el('div.dc-head', { text: 'Your roster' }), needsPanel(team))),
     el('div.over-buttons', {}, done),
     el('div.setup-help', { html: '<b class="btn A">A</b> sign &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> position &nbsp; ▲▼ scroll' }));
   ctx.screens.nav.set([...rows, done], { columns: 1, onBack: ctx.onExit, onTab: (d) => freeagency(ctx, ui, f, (filter + d + tabs.length) % tabs.length) });

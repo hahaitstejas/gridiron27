@@ -20,6 +20,7 @@ import { fits } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
 import { ensureDraftClass, weeklyScouting } from './draftClass.js';
 import { ensureCoaches } from '../data/extraCSV.js';
+import { selectHonors } from './honors.js';
 import { awardCareerGame } from './career.js';
 
 export const FRANCHISE_VERSION = 1;
@@ -298,6 +299,7 @@ export function advance(f, teams) {
     if (f.week >= f.weeks) {
       checkSeasonRecords(f);
       giveAwards(f, teams);
+      selectHonors(f, teams);
       startPlayoffs(f, teams);
     }
     return true;

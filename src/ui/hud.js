@@ -15,6 +15,7 @@ export class Hud {
     this.root = root;
     root.innerHTML = `
       <div id="scorebug" class="hidden"></div>
+      <div id="scoreticker" class="hidden"><div class="stk-label">AROUND THE LEAGUE</div><div class="stk-track"><div class="stk-run"></div></div></div>
       <div id="playname" class="hidden"></div>
       <div id="hint" class="hidden"></div>
       <div id="icons"></div>
@@ -111,7 +112,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -237,6 +238,7 @@ export class Hud {
     const m = session.match;
     const sim = session.sim;
     this.renderBug(session);
+    this.renderTicker(session);
     if ((this.bannerT -= dt) <= 0) this.$('banner').classList.add('hidden');
     if ((this.flagT -= dt) <= 0) this.$('flagbox').classList.add('hidden');
     this.pbpDrive = Math.max(0, (this.pbpDrive || 0) - dt);
@@ -422,6 +424,33 @@ export class Hud {
       this.$('fps').textContent = this.fpsShow ? `${fps.toFixed(0)} fps · ${renderer.renderer.info.render.calls} draws · px ${renderer.pixelRatio.toFixed(2)}` : '';
       this.fpsAcc = 0; this.fpsN = 0;
     }
+  }
+
+  /**
+   * Scores from around the league (franchise games): the other games this week, revealed quarter by quarter as yours
+   * goes on (session.ticker = [{ away, home, q: [[a1..a4], [h1..h4]], final }]).
+   */
+  renderTicker(session) {
+    const tk = this.$('scoreticker');
+    const list = session.ticker;
+    const show = !!list?.length && !session.practice;
+    tk.classList.toggle('hidden', !show);
+    this.root.classList.toggle('with-ticker', show);
+    if (!show) return;
+    const m = session.match;
+    const q = m.over ? 5 : Math.min(5, m.quarter);
+    const key = `${q}`;
+    if (tk.dataset.key === key) return;
+    tk.dataset.key = key;
+    const sum = (arr, n) => arr.slice(0, n).reduce((a, b) => a + b, 0);
+    const items = list.map((g) => {
+      const done = q >= 5;
+      const a = done ? g.final[1] : sum(g.q[0], q - 1), h = done ? g.final[0] : sum(g.q[1], q - 1);
+      const st = done ? 'FINAL' : q === 1 ? 'Q1' : `END Q${q - 1}`;
+      return `<span class="stk-g"><b>${g.away}</b> ${a} <b>${g.home}</b> ${h} <em>${st}</em></span>`;
+    }).join('');
+    tk.querySelector('.stk-run').innerHTML = items + items; // twice for a seamless loop
+    tk.querySelector('.stk-run').style.animationDuration = `${Math.max(20, list.length * 5)}s`;
   }
 
   renderBug(session) {

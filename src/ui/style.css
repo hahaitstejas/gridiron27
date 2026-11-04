@@ -933,3 +933,14 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .fr-boxnews { width: 100%; display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: #bbb; }
 .fr-boxnews div { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .hub-tile.box > .ht-text { order: 1; } .hub-tile.box > .fr-mini, .hub-tile.box > .fr-boxlines, .hub-tile.box > .fr-boxnews { order: 2; margin-top: 10px; }
+/* Your players in league-wide tables (leaders, search, honors): grey rows. */
+.screen .st-row.mine:not(.focused) { background: rgba(255, 255, 255, 0.2) !important; }
+.screen .st-row.mine:not(.focused) b, .screen .st-row.mine:not(.focused) span { color: #fff; }
+/* Around-the-league ticker above the scorebug (franchise games). */
+#scoreticker { position: absolute; left: 0; right: 0; bottom: 58px; height: 28px; display: flex; align-items: center; background: rgba(0,0,0,0.85); font: 600 15px var(--fd); color: #ddd; overflow: hidden; z-index: 3; }
+#scoreticker .stk-label { flex: none; padding: 0 14px; height: 100%; display: flex; align-items: center; background: #fff; color: #000; font-style: italic; font-weight: 800; letter-spacing: 1px; }
+#scoreticker .stk-track { flex: 1; overflow: hidden; height: 100%; display: flex; align-items: center; }
+#scoreticker .stk-run { display: inline-flex; white-space: nowrap; animation: stk-scroll 60s linear infinite; }
+#scoreticker .stk-g { padding: 0 22px; border-right: 1px solid rgba(255,255,255,0.15); } #scoreticker .stk-g b { color: #fff; margin: 0 4px; } #scoreticker em { color: #999; font-style: normal; margin-left: 6px; font-size: 12px; }
+@keyframes stk-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.with-ticker #pbp { transform: translate(-50%, -28px); }

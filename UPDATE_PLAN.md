@@ -47,10 +47,10 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] C5 CPU signs free agents; +500 generated FAs option; 300 UDFAs each season
 - [x] C6 Trades: fix one-sided trade bug, trade block + offers, draft-pick trading, view roster/depth during trades/draft/resign
 - [x] C7 Draft: better screen, draft class CSV import, scouting all year, compensatory picks
-- [ ] C8 Franchise tag, Pro Bowl / All-Pro teams (raise asks), league-wide player search, leaders highlight my players
+- [x] C8 Franchise tag, Pro Bowl / All-Pro teams (raise asks), league-wide player search, leaders highlight my players
 - [x] C9 Roster CSV contract columns (salary, years); retired numbers CSV; position number rules everywhere
 - [x] C10 Coaches CSV (HC/OC/DC with tendencies) feeding the CPU play caller; game preview screen from coordinators
-- [ ] C11 Score ticker banner (other games by quarter)
+- [x] C11 Score ticker banner (other games by quarter)
 - [ ] C12 Uniform editor + uniforms CSV (home/away/rivalry: jersey, pants, number, number outline)
 - [x] C13 Stadiums CSV (fictional defaults), neutral championship venue each year
 
@@ -105,3 +105,6 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   coaches (tendencies feed the CPU: run %, 4th downs, long FGs, blitz), uniforms, stadiums (neutral championship site by
   year, international venues), schedule.csv import/export; fictional coaching staffs by default; championship venue
   rotates. Also loaded from public/local/ at startup.
+- commit 10: honors.js (All-Pro 1st/2nd teams, Pro Bowl per conference; honors raise asking prices), franchise tag (Y on
+  the re-sign screen, CPU tags stars), roster needs on re-sign/free-agency screens, your players highlighted grey,
+  around-the-league score ticker in franchise games.

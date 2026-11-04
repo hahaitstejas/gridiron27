@@ -69,8 +69,18 @@ export function applyHuman(sim, inp, dt) {
     if (t === 'cover' || t === 'cover_wait' || t === 'kr_block') { p.userActive = false; p.desired.x = 0; p.desired.z = 0; return; }
   }
 
-  // Movement.
-  if (p.userActive && !p.engagement && !(p.move && ['juke', 'dive', 'slide', 'tackle_dive', 'hitstick'].includes(p.move.type) && p.move.t < 0.3)) {
+  // Pocket movement: a QB with the ball, in the pocket and not sprinting, steps up / slides / climbs at a controlled
+  // pace, shoulders square to the field, ready to throw (passing.js: little accuracy cost). RT breaks the pocket.
+  const inPocket = p.task?.type === 'qb_pass' && !sim.passThrown && !sim.qbCrossed && sim.ball.carrier === p.id && sim.ball.state === 'held'
+    && !sprint && Math.abs(sim.toLocal(p.x, p.z).lat) < 5.5 && sim.toLocal(p.x, p.z).down < -1;
+  p.pocketStep = false;
+  if (inPocket && p.userActive && !p.engagement && !p.move) {
+    const pace = (2.9 + sim.R(p, 'awareness') * 0.009) * Math.max(0.35, mag);
+    p.desired.x = (sx / (mag || 1)) * pace; p.desired.z = (sz / (mag || 1)) * pace;
+    p.face = { x: p.x + sim.dir * 20, z: p.z };
+    p.task.phase = 'user';
+    p.pocketStep = true;
+  } else if (p.userActive && !p.engagement && !(p.move && ['juke', 'dive', 'slide', 'tackle_dive', 'hitstick'].includes(p.move.type) && p.move.t < 0.3)) {
     const max = p.maxSpeed * p.speedCap * (sprint ? 1 : 0.86) * Math.max(0.35, mag);
     p.desired.x = (sx / (mag || 1)) * max * (mag > 0 ? 1 : 0);
     p.desired.z = (sz / (mag || 1)) * max * (mag > 0 ? 1 : 0);

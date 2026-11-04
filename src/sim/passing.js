@@ -84,7 +84,9 @@ function release(sim, qb, rec, kind, lead, place = null) {
     // Accuracy: worse under pressure, on the move, and with distance.
     const dist = Math.hypot(tx - qb.x, tz - qb.z);
     const pressure = pressureOn(sim, qb);
-    const moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
+    let moving = Math.min(1, Math.hypot(qb.vx, qb.vz) / 5);
+    // Pocket steps keep the platform: stepping up into the throw costs almost nothing, sliding a little.
+    if (qb.pocketStep) moving *= qb.vx * sim.dir >= -0.3 ? 0.25 : 0.55;
     // Traits: Pocket Poise halves the pressure penalty, Cannon keeps deep balls tighter.
     let sd = (0.06 + (100 - tha) * 0.014) * (0.45 + dist / 30 + Math.max(0, dist - 18) / 22 * (has(qb, 'cannon') ? 0.6 : 1)) * (1 + pressure * 1.5 * (has(qb, 'pocketPoise') ? 0.5 : 1) + moving * 0.7);
     if (kind === 'bullet') sd *= 1.1;

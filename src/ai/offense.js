@@ -71,6 +71,7 @@ function qbPass(sim, p, dt) {
 }
 
 function pocketMove(sim, p, t) {
+  p.pocketStep = false;
   // Slide away from the nearest free rusher but stay in the pocket.
   let tx = 0, tz = 0, threat = 0;
   for (const d of sim.players) {
@@ -79,6 +80,24 @@ function pocketMove(sim, p, t) {
     const dist = Math.hypot(dx, dz);
     if (dist < 4.5) { const w = (4.5 - dist) / 4.5; tx += (dx / dist) * w; tz += (dz / dist) * w; threat = Math.max(threat, w); }
   }
+  // Pocket presence: pressure off the edges with the middle clean → step up into the pocket (aware QBs do it more).
+  if (threat > 0.05 && !t.steppedUp) {
+    let edge = 0, front = 0;
+    for (const d of sim.players) {
+      if (d.team === p.team || d.engagement || d.state !== 'active') continue;
+      const l = sim.toLocal(d.x, d.z), q = sim.toLocal(p.x, p.z);
+      const dd = Math.hypot(d.x - p.x, d.z - p.z);
+      if (dd > 5) continue;
+      if (Math.abs(l.lat - q.lat) > 2 && l.down < q.down + 1) edge++;
+      else if (l.down > q.down) front++;
+    }
+    if (edge && !front && sim.rng.next() < 0.3 + sim.R(p, 'awareness') * 0.006) {
+      t.steppedUp = true;
+      const q = sim.toLocal(p.x, p.z);
+      t.dropTo = sim.toWorld(Math.min(-2.5, q.down + 1.8), q.lat);
+    }
+  }
+  if (t.steppedUp && Math.hypot(t.dropTo.x - p.x, t.dropTo.z - p.z) > 0.4 && threat < 0.6) { seek(p, t.dropTo.x, t.dropTo.z, 0.5, 0.3); p.pocketStep = true; return; }
   if (threat > 0.05) {
     const base = t.dropTo;
     let nx = clamp(p.x + tx * 2, base.x - 2, base.x + 2);

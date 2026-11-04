@@ -1,3 +1,5 @@
+import { addGeneratedFreeAgents } from '../franchise/freeAgents.js';
+import { cpuFillPS } from '../franchise/practiceSquad.js';
 import { el } from './nav.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { ICONS } from './screens.js';
@@ -7,7 +9,11 @@ import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
 import { contractsScreen, tradeScreen, transactionsScreen, capLine } from './franchiseMoney.js';
 import { newsScreen, awardsScreen, latestHeadline, hallScreen } from './franchiseExtras.js';
-import { standings, rank, seeds, leaders, SEASON_LENGTHS, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
+import { standings, rank, seeds, leaders, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
+import { gameWhen } from '../franchise/nflSchedule.js';
+
+const SLOT_NAMES = { TNF: 'Thursday Night', SNF: 'Sunday Night', MNF: 'Monday Night', Opener: 'Kickoff Opener', Thanksgiving: 'Thanksgiving', Christmas: 'Christmas Day', International: 'International' };
+export const slotName = (g) => (g.slot === 'International' && g.venue ? `${g.venue.city} game` : SLOT_NAMES[g.slot] || '');
 import { STAT_TABS } from '../game/boxscore.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
 import { deserializeLeague } from '../data/league.js';
@@ -85,6 +91,7 @@ export class FranchiseUI {
     const { screens, prefs } = this.ctx;
     const opts = preset || { userTeam: prefs.home, weeks: mode === 'season' ? 10 : 17, difficulty: prefs.difficulty, quarterMinutes: prefs.quarterMinutes, rosters: 'current' };
     opts.rosters ||= 'current';
+    opts.extraFA ??= true;
     const option = (label, values, key, fmt) => {
       const row = el('div.opt-row');
       const draw = () => { row.innerHTML = ''; row.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ ${fmt(opts[key])} ▶` })); };
@@ -96,10 +103,10 @@ export class FranchiseUI {
     const teamIdx = this.teams.map((_, i) => i);
     const rows = [
       option('Your team', teamIdx, 'userTeam', (i) => `${this.teams[i].city} ${this.teams[i].name}`),
-      option('Season length', SEASON_LENGTHS, 'weeks', (w) => `${w} games`),
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length (games you play)', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`),
       option('Rosters', ['current', 'fantasy'], 'rosters', (v) => (v === 'fantasy' ? 'Fantasy draft: every team drafts from scratch' : 'Keep the current rosters')),
+      option('Extra free agents', [true, false], 'extraFA', (v) => (v ? 'Add 500 created players to the pool' : 'Only the pool / your CSV')),
     ];
     const start = el('div.start-btn', { text: mode === 'season' ? 'Start Season' : 'Start Franchise' });
     start.activate = async () => {
@@ -115,6 +122,9 @@ export class FranchiseUI {
       if (opts.rosters === 'fantasy') startFantasyDraft(L.franchise, this.teams, seed);
       // Your own list of current free agents (public/local/free_agents.csv, roster format) replaces the generated pool.
       await loadLocalFreeAgents(L.franchise);
+      // Depth for everyone: 500 created (mostly fringe) players on top of the free-agent list, and practice squads.
+      if (opts.extraFA !== false) addGeneratedFreeAgents(L.franchise, 500, seed * 3);
+      for (const [ti, t] of this.teams.entries()) if (ti !== L.franchise.userTeam) cpuFillPS(t, L.franchise.freeAgents);
       L.name = L.franchise.name;
       L.slot = null;
       await L.saveNow();
@@ -157,10 +167,11 @@ export class FranchiseUI {
       const side = (t, r) => el('div.htm-team', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 96), el('b', { text: t.abbr }), el('small', { text: recText(r) }));
       const matchup = el('div.ht-matchup', {}, side(teams[g.away], recordOf(f, teams, g.away)), el('div.htm-at', { text: '@' }), side(teams[g.home], recordOf(f, teams, g.home)));
       hero.push(tile('feature.fr-play', 'play', f.phase === 'playoffs' ? 'Play Playoff Game' : 'Play Game',
-        `${home ? 'vs' : 'at'} ${opp.city} ${opp.name} (${recText(recordOf(f, teams, oi))}) · ${stage} · ${f.settings.quarterMinutes}-min quarters`, () => this.ctx.playGame(g), matchup));
+        `${home ? 'vs' : 'at'} ${opp.city} ${opp.name} (${recText(recordOf(f, teams, oi))}) · ${stage}${g.date ? ` · ${gameWhen(g)}${g.slot ? ` · ${slotName(g)}` : ''}` : ''}`, () => this.ctx.playGame(g), matchup));
       hero.push(tile('small', 'fast', 'Sim Game', 'Quick result, stats count', () => { simGame(f, teams, g); this.afterUserGame(); }));
     } else {
-      const done = g && g.score ? `Final: ${teams[g.away].abbr} ${g.score[1]} – ${g.score[0]} ${teams[g.home].abbr}` : 'Your season is over: watch the rest of the playoffs';
+      const bye = f.phase === 'regular' && !g;
+      const done = g && g.score ? `Final: ${teams[g.away].abbr} ${g.score[1]} – ${g.score[0]} ${teams[g.home].abbr}` : bye ? `Bye week: your team rests (${stage})` : 'Your season is over: watch the rest of the playoffs';
       hero.push(tile('feature.fr-play', 'fast', f.phase === 'regular' ? 'Finish the Week' : 'Finish the Round', `${done} · ${allDone ? 'move on' : 'quick-sim the other games'}`, advance1));
     }
     if (f.phase === 'regular') hero.push(tile('small', 'calendar', 'Sim to Playoffs', 'The rest of the regular season', () => {
@@ -310,16 +321,22 @@ export class FranchiseUI {
     const score = (g) => (g.score ? `${teams[g.away].abbr} ${g.score[1]} – ${g.score[0]} ${teams[g.home].abbr}` : `${teams[g.away].abbr} @ ${teams[g.home].abbr}`);
     const mine = f.schedule.map((wk, i) => {
       const g = wk.find((x) => x.home === f.userTeam || x.away === f.userTeam);
+      if (!g) {
+        const row = el(`div.st-row${i === week ? '.mine' : ''}`, {}, el('span.st-team', { text: `Wk ${i + 1}` }), el('span.st-name', { text: 'BYE' }), el('span.st-when', { text: '' }), el('span.st-num', { text: '' }));
+        row.activate = () => this.scheduleScreen(i);
+        return row;
+      }
       const home = g.home === f.userTeam;
       const opp = teams[home ? g.away : g.home];
       let res = '';
       if (g.score) { const [a, b] = home ? g.score : [g.score[1], g.score[0]]; res = `${a > b ? 'W' : a < b ? 'L' : 'T'} ${a}-${b}`; }
       const row = el(`div.st-row${i === week ? '.mine' : ''}`, {}, el('span.st-team', { text: `Wk ${i + 1}` }),
-        el('span.st-name', { text: `${home ? 'vs' : '@'} ${opp.city} ${opp.name}` }), el('span.st-num', { text: res || '—' }));
+        el('span.st-name', { text: `${g.venue ? 'vs' : home ? 'vs' : '@'} ${opp.city} ${opp.name}${g.venue ? ` (${g.venue.city})` : ''}` }),
+        el('span.st-when', { text: `${gameWhen(g)}${g.slot ? ` · ${slotName(g)}` : ''}` }), el('span.st-num', { text: res || '—' }));
       row.activate = () => this.scheduleScreen(i);
       return row;
     });
-    const results = (f.schedule[week] || []).map((g) => el('div.fr-score', { text: score(g) }));
+    const results = (f.schedule[week] || []).map((g) => el('div.fr-score', {}, el('span', { text: score(g) }), el('small', { text: ` ${gameWhen(g)}${g.slot ? ` · ${slotName(g)}` : ''}` })));
     screens.frame('stats-screen', el('h1', { text: 'Schedule & Results' }),
       el('div.fr-sched', {}, el('div.st-table', {}, mine), el('div.fr-week', {}, el('div.dc-head', { text: `Week ${week + 1} around the league` }), results)),
       el('div.setup-help', { html: '<b class="btn A">A</b> show that week &nbsp; <b class="btn B">B</b> back' }));

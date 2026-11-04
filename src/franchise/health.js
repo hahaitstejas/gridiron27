@@ -114,13 +114,13 @@ export const activeCount = (team) => team.roster.filter((p) => !p.injury?.ir && 
 
 /** Players who can't play this week (Out / IR; Doubtful players sit 75% of the time). */
 export function unavailableIds(team, rng = null) {
-  return team.roster.filter((p) => p.practiceSquad && !p.elevated || p.injury && (p.injury.ir || p.injury.weeks >= 2 || (p.injury.weeks === 1 && (!rng || rng.chance(0.75))))).map((p) => p.id);
+  return team.roster.filter((p) => p.injury && (p.injury.ir || p.injury.sit || p.injury.weeks >= 2 || (p.injury.weeks === 1 && (!rng || rng.chance(0.75))))).map((p) => p.id);
 }
 
 /** The CPU puts long-term injuries on IR (keeping the roster at 53 active). */
 export function cpuInjuredReserve(team) {
   let n = 0;
-  for (const p of team.roster) if (p.injury && !p.injury.ir && (p.injury.weeks >= 6 || p.injury.severe) && !p.career) { if (placeOnIR(team, p)) n++; }
+  for (const p of team.roster) if (p.injury && !p.injury.ir && (p.injury.weeks >= IR_MIN || p.injury.severe) && !p.career) { if (placeOnIR(team, p)) n++; }
   return n;
 }
 

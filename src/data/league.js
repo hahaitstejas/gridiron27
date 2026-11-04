@@ -22,6 +22,12 @@ export function serializeLeague(teams, { name = 'My League', playAs = null, fran
         id: t.id, city: t.city, name: t.name, abbr: t.abbr, conference: t.conference, division: t.division,
         colors: { ...t.colors }, uniform: t.uniform ? { ...t.uniform } : undefined, logo,
         roster: t.roster.map((p) => { const { _tmp, ...q } = p; return { ...q, ratings: { ...p.ratings } }; }),
+        ps: (t.ps || []).map((p) => ({ ...p, ratings: { ...p.ratings } })), // practice squad
+        uniforms: t.uniforms ? JSON.parse(JSON.stringify(t.uniforms)) : undefined,
+        coaches: t.coaches ? JSON.parse(JSON.stringify(t.coaches)) : undefined,
+        stadium: t.stadium ? { ...t.stadium } : undefined,
+        retired: t.retired ? [...t.retired] : undefined,
+        irReturns: t.irReturns || 0,
         depth: Object.fromEntries(Object.entries(t.depth || {}).map(([k, v]) => [k, [...v]])),
       };
     }),
@@ -49,7 +55,8 @@ export function deserializeLeague(data) {
       const saved = (t.depth?.[slot] || []).filter((id) => ids.has(id));
       depth[slot] = saved.length ? saved : auto[slot];
     }
-    return { ...t, id: t.id ?? i, colors: { ...t.colors }, logo: { ...t.logo }, roster, depth };
+    const ps = (t.ps || []).map((p) => { const q = { ...p, ratings: { ...p.ratings } }; q.ovr = overall(q); maxId = Math.max(maxId, q.id || 0); return q; });
+    return { ...t, id: t.id ?? i, colors: { ...t.colors }, logo: { ...t.logo }, roster, depth, ps };
   });
   setNextPlayerId(maxId + 1);
   setLeagueInfo(data.info || null);

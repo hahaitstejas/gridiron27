@@ -63,7 +63,7 @@ describe('franchise season', () => {
     const champ = f.history[0].champion;
     expect(f.playoffs.seeds.flat()).toContain(champ);
     const rows = rank(standings(teams, f.schedule));
-    expect(rows[0].w + rows[0].l + rows[0].t).toBe(6);
+    expect(rows[0].w + rows[0].l + rows[0].t).toBe(17);
     expect(leaders(f, 'passYds', 5)).toHaveLength(5);
     expect(leaders(f, 'passYds', 1)[0].value).toBeGreaterThan(700);
   });
@@ -368,8 +368,8 @@ describe('in-season free agents', async () => {
     const O = await import('../src/franchise/offseason.js');
     const lg = generateLeagueRosters(defaultTeams(), 43);
     const f = createFranchise(lg, { userTeam: 0, weeks: 6, seed: 4 });
-    const marker = f.freeAgents[0];
     while (f.phase !== 'offseason') { simOthers(f, lg); const g = userGame(f); if (g && !g.score) simGame(f, lg, g); advance(f, lg); }
+    const marker = f.freeAgents[0]; // still unsigned at the end of the season (CPU teams sign free agents in-season)
     O.progressPlayers(f, lg);
     O.finishResigning(f, lg);
     expect(f.offseason.pool).toContain(marker);
@@ -379,4 +379,31 @@ describe('in-season free agents', async () => {
     startNextSeason(f, lg);
     expect(f.freeAgents.length).toBeGreaterThan(10);
   }, 60000);
+});
+
+describe('NFL schedule', () => {
+  it('17 games, 6 in the division, one bye, every team once a week', async () => {
+    const { defaultTeams } = await import('../src/data/teams.js');
+    const { nflSchedule, assignSlots } = await import('../src/franchise/nflSchedule.js');
+    const teams = defaultTeams();
+    for (let y = 0; y < 3; y++) {
+      const s = nflSchedule(teams, y, 11 + y);
+      expect(s).toHaveLength(18);
+      const games = new Array(32).fill(0), div = new Array(32).fill(0);
+      for (const wk of s) {
+        const seen = new Set();
+        for (const g of wk) {
+          expect(seen.has(g.home) || seen.has(g.away)).toBe(false);
+          seen.add(g.home); seen.add(g.away);
+          games[g.home]++; games[g.away]++;
+          if (teams[g.home].conference === teams[g.away].conference && teams[g.home].division === teams[g.away].division) { div[g.home]++; div[g.away]++; }
+        }
+      }
+      expect(Math.min(...games)).toBe(17); expect(Math.max(...games)).toBe(17);
+      expect(Math.min(...div)).toBe(6); expect(Math.max(...div)).toBe(6);
+      assignSlots(s, teams, { year: 2026 + y, seed: 3 });
+      expect(s.flat().every((g) => g.date && g.time)).toBe(true);
+      expect(s.flat().some((g) => g.slot === 'Thanksgiving')).toBe(true);
+    }
+  });
 });

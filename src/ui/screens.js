@@ -1,3 +1,4 @@
+import { injuryLine } from '../franchise/health.js';
 import { passerRating } from '../game/boxscore.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
@@ -667,7 +668,12 @@ export class Screens {
       el('div.pg-scoring', {}, ...(m.scoring || []).map((sc) => el('div.pg-sc', {}, el('small', { text: `${sc.q <= 4 ? `Q${sc.q}` : 'OT'} ${clockShort(sc.clock)}` }),
         el('b', { text: m.teams[sc.team].abbr }), el('span', { text: sc.what }), el('em', { text: `${sc.score[1]}-${sc.score[0]}` }))),
         !(m.scoring || []).length ? el('div.st-empty', { text: 'No points scored.' }) : null));
-    const right = panel === 'team' ? teamStats() : panel === 'summary' ? summary() : quarters();
+    // Injuries: the diagnosis is known now (during the game it was only "questionable" or "out").
+    const injuries = () => el('div.pg-panel', {}, el('div.pg-ptitle', { text: halftime ? 'INJURIES' : 'INJURY REPORT' }),
+      el('div.pg-scoring', {}, ...(session.injuries || []).map((i) => el('div.pg-sc', {}, el('small', { text: m.teams[i.team].abbr }), el('b', { text: i.pos }),
+        el('span', { text: `${i.name}: ${halftime ? (i.status === 'out' ? 'out' : i.status === 'returned' ? 'returned' : 'questionable') : injuryLine({ name: i.type || i.name, weeks: i.weeks, severe: i.severe })}${i.setback ? ' (aggravated)' : ''}` }), el('em', { text: '' }))),
+        !(session.injuries || []).length ? el('div.st-empty', { text: 'No injuries.' }) : null));
+    const right = panel === 'team' ? teamStats() : panel === 'summary' ? summary() : panel === 'injuries' ? injuries() : quarters();
     const redo = (p) => this.gameOver(session, { onDone, onStats, onHighlights, onRestart, doneLabel, halftime }, p);
     const item = (label, act) => { const it = el(`div.pz-item${act ? '' : '.disabled'}`, {}, el('span', { text: label })); it.activate = act || (() => {}); return it; };
     const items = [
@@ -677,6 +683,7 @@ export class Screens {
       item('Team Stats', () => redo('team')),
       item('Score Summary', () => redo('summary')),
       item('Score by Quarter', () => redo('quarters')),
+      item('Injuries', () => redo('injuries')),
       halftime ? null : item('Restart', onRestart),
     ].filter(Boolean);
     this.frame(`mono-screen pg-screen${halftime ? ' halftime-screen' : ''}`, el('h1', { text: halftime ? 'Halftime' : 'Post Game' }),
@@ -692,7 +699,7 @@ export class Screens {
           el('div.pg-leadrow', {}, leaders(1), leaders(0))),
         right),
       el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn A">A</b> Select' + (halftime ? '' : ' &nbsp; <b class="btn B">B</b> Finish') }));
-    const idx = panel === 'team' ? 3 : panel === 'summary' ? 4 : 0;
+    const idx = panel === 'team' ? 3 : panel === 'summary' ? 4 : panel === 'injuries' ? 6 : 0;
     this.nav.set(items, { columns: 1, onBack: halftime ? () => {} : onDone, index: halftime ? Math.max(0, idx - 1) : idx });
   }
 }

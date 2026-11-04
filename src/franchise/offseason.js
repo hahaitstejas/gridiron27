@@ -1,3 +1,4 @@
+import { generatePool } from './freeAgents.js';
 // Franchise offseason (pure logic): progression and retirements, contracts, free agency, the draft and
 // cut-downs. Steps run in order; f.offseason.step says where the user is:
 //   summary -> progression -> resign -> freeagency -> draft -> cutdown -> (next season)
@@ -35,9 +36,12 @@ export function progressPlayers(f, teams) {
       ensureContract(p, rng);
       const before = overall(p);
       p.age = (p.age || 25) + 1;
+      p.proYears = (p.proYears ?? Math.max(0, p.age - 23)) + 1; // accrued seasons (waivers, practice-squad eligibility)
+      delete p.tradeRequest; p.morale = Math.round(((p.morale ?? 70) + 70) / 2);
       const age = p.age;
-      // Skill growth by age; young players with high potential grow most.
-      const skill = age <= 23 ? rng.gauss(2.5 + p.pot * 3, 1.5) : age <= 26 ? rng.gauss(1 + p.pot * 1.5, 1.3) : age <= 29 ? rng.gauss(0, 1)
+      // Skill growth by age; young players with high potential grow most. (About half of it now happens during the
+      // season, two weeks at a time: development.js.)
+      const skill = age <= 23 ? rng.gauss(1.2 + p.pot * 1.5, 1.3) : age <= 26 ? rng.gauss(0.5 + p.pot * 0.8, 1.1) : age <= 29 ? rng.gauss(0, 1)
         : age <= 32 ? -rng.gauss(1.5, 1) : -rng.gauss(3, 1.4);
       // The career player grows through the points he earns (franchise/career.js), not by chance: only age fades him.
       const mine = p.career;
@@ -205,6 +209,8 @@ export function simToUserPick(f, teams) {
 export function finishDraft(f, teams) {
   while (f.offseason.draft.at < f.offseason.draft.picks.length) makePick(f, teams);
   for (const p of f.offseason.draft.cls.slice(0, 30)) { p.salary = MIN_SALARY; p.years = 2; f.offseason.pool.push(p); }
+  // Undrafted free agents: 300 more rookies join the pool every year (practice-squad and camp bodies).
+  for (const p of generatePool(300, f.seed * 7 + f.year, { udfa: true })) { p.salary = MIN_SALARY; p.years = 2; f.offseason.pool.push(p); }
   f.offseason.step = 'cutdown';
 }
 

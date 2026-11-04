@@ -14,7 +14,7 @@ import { newDrill, drillSpot, drillPlays, drillControl, drillWatch, drillScore, 
 import { closeCall, boothReviews, canChallenge, cpuChallenges, settleReview, CHALLENGE_T, REVIEW_T } from './review.js';
 import { offenseAudibles, defenseAudibles, hotRoute, HOT_ROUTES, COVERAGE_CALLS, cpuCoverageCall, DEF_HOT, defHotRoute, PROTECTION_CALLS, protectCall, FRONT_CALLS } from './audibles.js';
 import { ReplayRecorder } from '../replay/replay.js';
-import { injuryText } from '../sim/injuries.js';
+import { reinjuryRisk, RISK_CHANCE } from '../franchise/health.js';
 import { enforce, rollPresnapFoul, PENALTIES, describeChoice, KICK_FOULS, crowdNoise } from './penalties.js';
 import { chooseOffense, chooseDefense, defenseForSpecial, cpuTempo, cpuTimeout, wantsIce } from '../ai/playcaller.js';
 import { difficultyConfig, DIFFICULTY } from '../ai/difficulty.js';
@@ -143,6 +143,7 @@ export class GameSession {
       if (!this.choice.def) return this.defTeam;
     }
     if (this.state === 'penalty' && this.pendingPenalty) return 1 - this.pendingPenalty.outcome.team;
+    if (this.state === 'injury' && this.pendingInjury) return this.pendingInjury.team;
     return this.offTeam;
   }
   /** One human's controller frame from `input` (a frame for one player, { perTeam, 0, 1 } for two). */
@@ -167,8 +168,33 @@ export class GameSession {
 
   emit(type, data = {}) { this.events.push({ type, ...data }); }
 
+  /**
+   * A questionable player has been checked out on the sideline: back in or not? The CPU sends him back when the
+   * re-injury risk is low (or medium for a starter); a human chooses (state 'injury': A return him, X keep him out).
+   */
+  injuryCheck() {
+    if (this.fast || this.practice) return false;
+    for (const inj of this.injuries) {
+      if (inj.status !== 'questionable' || this.plays < inj.returnAfter) continue;
+      inj.risk = reinjuryRisk({ weeks: inj.weeks, part: inj.part });
+      if (this.isHuman(inj.team)) { this.pendingInjury = inj; this.state = 'injury'; this.emit('injuryChoice', { team: inj.team }); return true; }
+      const starter = this.teams[inj.team].depth[inj.pos === 'HB' ? 'HB' : inj.pos]?.[0] === inj.rid;
+      this.resolveInjury(inj, inj.risk === 'low' || (inj.risk === 'medium' && starter));
+    }
+    return false;
+  }
+
+  resolveInjury(inj, back) {
+    inj.status = back ? 'returned' : 'out';
+    // Coming back carries the risk of a setback (decided now, revealed after the game).
+    if (back && this.rng.next() < RISK_CHANCE[inj.risk || 'low']) { inj.setback = true; inj.weeks = Math.max(inj.weeks, 0) + this.rng.int(1, 3); }
+    this.match.say(`${this.teams[inj.team].abbr} ${inj.pos} ${inj.name} ${back ? 'returns to the game' : 'will not return'}`, 'injury');
+    this.flushMessages();
+  }
+
   enterPlaycall() {
     const m = this.match;
+    if (!m.over && this.state !== 'injury' && this.injuryCheck()) return;
     this.audible = null;
     this.state = m.over ? 'over' : 'playcall';
     if (m.over) { this.flushMessages(); this.emit('gameOver', { winner: m.winner }); return; }
@@ -290,7 +316,7 @@ export class GameSession {
       penaltyRate: m.phase === 'scrimmage' ? this.penaltyRate() : 0,
       sliders: [0, 1].map((t) => this.slidersFor(t)),
       injuryRate: this.practice ? 0 : (this.settings.sliders?.injuries ?? 50) / 50,
-      unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t).map((i) => i.rid)]),
+      unavailable: [0, 1].map((t) => [...(this.settings.unavailable?.[t] || []), ...this.injuries.filter((i) => i.team === t && i.status !== 'returned').map((i) => i.rid)]),
       defAdj: this.defAdj,
       weather: this.settings.weather || null,
       iced: !!this.iced,
@@ -642,6 +668,13 @@ export class GameSession {
 
     if (this.state === 'review') { this.updateReview(dt, input); return; }
 
+    if (this.state === 'injury') {
+      const inj = this.pendingInjury;
+      const f = this.inputFor(input, inj.team);
+      if (f?.pressed.A || f?.pressed.X) { this.pendingInjury = null; this.resolveInjury(inj, !!f.pressed.A); this.state = 'post'; this.enterPlaycall(); }
+      return;
+    }
+
     if (this.state === 'post') {
       this.wait -= dt;
       if (this.wait <= 0) this.enterPlaycall();
@@ -793,8 +826,11 @@ export class GameSession {
     const sim = this.sim;
     const r = sim.result;
     for (const inj of sim.injuries) {
-      this.injuries.push({ team: inj.team, rid: inj.rid, name: inj.name, pos: inj.pos, number: inj.number, type: inj.type, weeks: inj.weeks });
-      m.say(`Injury: ${this.teams[inj.team].abbr} ${inj.pos} #${inj.number} ${inj.name} (${inj.type}), ${injuryText(inj.weeks)}`, 'injury');
+      // Game-day ruling only (the diagnosis comes after the game): minor ones are questionable to return.
+      const quest = inj.weeks <= 0 || (inj.weeks === 1 && this.rng.next() < 0.4);
+      this.injuries.push({ team: inj.team, rid: inj.rid, name: inj.name, pos: inj.pos, number: inj.number, type: inj.type, weeks: inj.weeks, part: inj.part, severe: inj.severe,
+        status: quest ? 'questionable' : 'out', returnAfter: this.plays + 6 });
+      m.say(`Injury: ${this.teams[inj.team].abbr} ${inj.pos} #${inj.number} ${inj.name} (${inj.part || 'injury'}) is ${quest ? 'questionable to return' : 'out for the game'}`, 'injury');
     }
     if (outcome && outcome.accepted && !outcome.offsetting) {
       m.stats.team[outcome.team].penalties++;

@@ -3,14 +3,14 @@
 // (same field names as Match stats). Pure logic, seeded.
 import { RNG } from '../core/rng.js';
 import { teamRatings } from '../data/positions.js';
-import { rollInjury } from '../sim/injuries.js';
+import { rollSpecific, injuryWeight } from './health.js';
 
 const healthy = (t, id) => !(t.roster.find((p) => p.id === id)?.injury?.weeks > 0);
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
 /** Simulate home vs away. Returns { score: [home, away], lines: { rid: statLine } }. */
-export function quickSim(home, away, seed, { neutral = false, noTies = false, injuryRate = 1 } = {}) {
+export function quickSim(home, away, seed, { neutral = false, noTies = false, injuryRate = 1, short = [], idx = null } = {}) {
   const rng = new RNG(seed);
   const rh = teamRatings(home), ra = teamRatings(away);
   const lines = {};
@@ -18,6 +18,9 @@ export function quickSim(home, away, seed, { neutral = false, noTies = false, in
     { team: home, opp: away, off: rh.off, def: ra.def, hfa: neutral ? 0 : 1.5 },
     { team: away, opp: home, off: ra.off, def: rh.def, hfa: 0 },
   ];
+  // A short week (Thursday after Sunday) costs a little: tired legs, less preparation. Morale shades it too.
+  if (idx && short.length) sides.forEach((sd, i) => { if (short.includes(idx[i])) sd.hfa -= 1.2; });
+  sides.forEach((sd) => { sd.hfa += moraleEdge(sd.team) - moraleEdge(sd.opp) * 0.5; });
   const scores = sides.map((s) => scoreFor(rng, s.off - s.def + s.hfa));
   if (scores[0].pts === scores[1].pts && (noTies || rng.chance(0.85))) {
     // Overtime: the better team usually gets the last field goal.
@@ -25,18 +28,39 @@ export function quickSim(home, away, seed, { neutral = false, noTies = false, in
     scores[w].fgs++; scores[w].pts += 3;
   }
   sides.forEach((s, i) => teamLines(rng, s, scores[i], scores[1 - i], lines));
-  // Injuries that cost games (minor knocks don't show up in a quick sim).
+  // Injuries: about 2 a team a game that cost game time (NFL-like), more often to starters and to backs, linemen
+  // and defenders; the type and how long come from franchise/health.js.
   const injuries = [];
   for (const t of [home, away]) {
-    if (!rng.chance(0.45 * injuryRate)) continue;
-    const pool = [...new Set(Object.values(t.depth).flatMap((ids) => ids.slice(0, 2)))].filter((id) => healthy(t, id));
-    const inj = rollInjury(rng);
-    if (pool.length && inj.weeks > 0) injuries.push({ rid: rng.pick(pool), ...inj });
+    const starters = new Set(Object.values(t.depth).flatMap((ids) => ids.slice(0, 1)));
+    const pool = [...new Set(Object.values(t.depth).flatMap((ids) => ids.slice(0, 2)))].filter((id) => healthy(t, id)).map((id) => t.roster.find((p) => p.id === id)).filter(Boolean);
+    const n = poisson(rng, 2.1 * injuryRate);
+    for (let k = 0; k < n && pool.length; k++) {
+      const p = rng.weighted(pool, (q) => injuryWeight(q, starters.has(q.id)));
+      pool.splice(pool.indexOf(p), 1);
+      const inj = rollSpecific(rng);
+      injuries.push({ rid: p.id, ...inj, type: inj.name });
+    }
   }
   return { score: [scores[0].pts, scores[1].pts], lines, injuries };
 }
 
 /** Points as touchdowns and field goals (expected ~22, better offense vs worse defense scores more). */
+function poisson(rng, lambda) {
+  let k = 0, p = Math.exp(-lambda), sum = p;
+  const u = rng.next();
+  while (u > sum && k < 8) { k++; p *= lambda / k; sum += p; }
+  return k;
+}
+
+/** Team mood as points of edge (-1..+0.8). */
+function moraleEdge(team) {
+  const r = team.roster;
+  if (!r.length) return 0;
+  const m = r.reduce((a, p) => a + (p.morale ?? 70), 0) / r.length;
+  return Math.max(-1, Math.min(0.8, (m - 70) / 20));
+}
+
 function scoreFor(rng, edge) {
   const pts = clamp(Math.round(rng.gauss(22 + edge * 0.6, 8.5)), 0, 63);
   const tds = clamp(Math.round((pts - rng.range(0, 6)) / 7), 0, 9);

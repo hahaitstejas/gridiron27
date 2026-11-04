@@ -63,6 +63,10 @@ function playerFromRow(row, pos, rng) {
   // Optional face photo: a file in public/local/faces/, a web link or a data URL (ui/faces.js).
   const face = (row.face ?? row.photo ?? row.headshot ?? row.FACE ?? '').trim();
   if (face) p.face = face;
+  // Optional skin column: 1-6 (the presets) or a #hex color; otherwise a face photo sets it in the game.
+  const sk = String(row.skin ?? row.skin_tone ?? '').trim();
+  if (/^#?[0-9a-f]{6}$/i.test(sk)) { p.skinColor = sk.startsWith('#') ? sk : `#${sk}`; p.skinManual = true; }
+  else if (/^[1-6]$/.test(sk)) { p.skin = +sk - 1; p.skinManual = true; }
   const num = parseInt(row.number, 10);
   if (Number.isFinite(num) && num >= 0 && num <= 99) p.number = num;
   // Contract columns (so year-one free agency is right): salary in $M, years left, or the year the deal expires.

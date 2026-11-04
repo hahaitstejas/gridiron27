@@ -3,12 +3,13 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
 import { Gait } from './gait.js';
+import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
 import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION } from './body.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
 // players). Poses are computed procedurally from the sim's animation state every frame.
 
-const SKIN = ['#f1c9a5', '#e0ac85', '#c68a62', '#a0663f', '#7a4a2c', '#53321e'];
+const SKIN = SKIN_TONES;
 const WHITE = new THREE.Color('#ffffff');
 const MUD = new THREE.Color('#4a3a28'); // muddy / grass-stained uniforms (setColors, this.dirt)
 const MAX = 56; // 22 players + 7 officials + 22 on the sidelines (+ spare)
@@ -117,7 +118,7 @@ export class PlayerRenderer {
       body: this.body,
       shoe: part(cleatGeometry(), mat(0.45, 0, 0.8), MAX * 2),
       helmet: part(helmetGeometry(), helmetMat, MAX),
-      face: part(new THREE.SphereGeometry(0.085, 10, 8).scale(0.95, 1.15, 1), mat(0.55), MAX, false),
+      face: part(new THREE.SphereGeometry(0.085, 18, 14).scale(0.95, 1.15, 1), this.faceMaterial(mat(0.55)), MAX, false),
       stripe: part(helmetStripeGeometry(), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false),
       mask: part(facemaskGeometry(), mat(0.35, 0.6, 1), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
@@ -125,6 +126,7 @@ export class PlayerRenderer {
       visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), mat(0.1, 0.3, 1.2), MAX, false),
       towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
     };
+    this.parts.face.geometry.setAttribute('aFace', this.faceAttr);
     this.pairs = new Set([this.parts.decal, this.parts.shoe]);
     for (const p of Object.values(this.parts)) scene.add(p);
 
@@ -164,6 +166,44 @@ export class PlayerRenderer {
     this.handPos = [];
   }
 
+  /**
+   * The face inside the helmet: skin colored (instance color), or the player's photo (ui/faces.js) from an 8 × 8 atlas
+   * (cell = instance), projected onto the front and faded into the skin tone toward the edges so the background of
+   * the picture never shows.
+   */
+  faceMaterial(m) {
+    this.faceCanvas = document.createElement('canvas');
+    this.faceCanvas.width = this.faceCanvas.height = 1024;
+    this.faceTex = new THREE.CanvasTexture(this.faceCanvas);
+    this.faceTex.colorSpace = THREE.SRGBColorSpace;
+    this.faceAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
+    this.faceRev = 0; this.faceCells = [];
+    const tex = this.faceTex;
+    m.onBeforeCompile = (sh) => {
+      sh.uniforms.tFace = { value: tex };
+      sh.vertexShader = 'attribute float aFace;\nvarying float vFace;\nvarying vec3 vObj;\nflat varying float vCell;\n' + sh.vertexShader
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFace = aFace; vObj = position; vCell = float(gl_InstanceID);');
+      sh.fragmentShader = 'uniform sampler2D tFace;\nvarying float vFace;\nvarying vec3 vObj;\nflat varying float vCell;\n' + sh.fragmentShader
+        .replace('#include <color_fragment>', `#include <color_fragment>
+        if (vFace > 0.5 && vObj.z > 0.0) {
+          vec2 q = vObj.xy / vec2(0.0808, 0.0978);
+          vec2 cell = vec2(mod(vCell, 8.0), floor(vCell / 8.0));
+          vec2 st = q * 0.42 + 0.5;
+          vec3 photo = texture2D(tFace, vec2((cell.x + st.x) / 8.0, 1.0 - (cell.y + 1.0 - st.y) / 8.0)).rgb;
+          float k = smoothstep(1.0, 0.55, length(q)) * smoothstep(0.0, 0.035, vObj.z);
+          diffuseColor.rgb = mix(diffuseColor.rgb, photo, k);
+        }`);
+    };
+    return m;
+  }
+
+  /** Paint player i's photo into his atlas cell (square crop from the top-middle, like the menus). */
+  paintFace(i, img) {
+    const g = this.faceCanvas.getContext('2d');
+    const x = (i % 8) * 128, y = Math.floor(i / 8) * 128, s = Math.min(img.width, img.height);
+    g.drawImage(img, (img.width - s) / 2, Math.max(0, (img.height - s) * 0.2), s, s, x, y, 128, 128);
+  }
+
   /** Body texel helpers: region color, number, flags (row i of the bone texture). */
   texel(i, col, x, y, z, w) { const o = (i * TEX_W + col) * 4, d = this.boneData; d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = w; }
   region(i, r, color) { const c = this._col.set(color); this.texel(i, COL_COLORS + r, c.r, c.g, c.b, 1); }
@@ -178,7 +218,7 @@ export class PlayerRenderer {
   setColors(sim, teams) {
     const wear = this.wear || ['home', 'away'];
     const unis = teams.map((t, k) => uniformFor(t, wear[k]));
-    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}:${p.look?.sleeves || ''}`).join(',') + JSON.stringify(unis) + ':' + (this.extra?.length || 0) + ':' + Math.round((this.dirt || 0) * 10);
+    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}:${p.skinColor || ''}:${p.photo ? p.photo.length + p.photo.slice(-24) : ''}:${p.look?.sleeves || ''}`).join(',') + ':f' + this.faceRev + JSON.stringify(unis) + ':' + (this.extra?.length || 0) + ':' + Math.round((this.dirt || 0) * 10);
     if (key === this.colorsKey) return;
     this.colorsKey = key;
     const P = this.parts;
@@ -211,7 +251,16 @@ export class PlayerRenderer {
       const jersey = uni.jersey;
       const helmet = uni.helmet || pick(team, u.helmet);
       const pants = uni.pants;
-      const skin = SKIN[p.skin % SKIN.length];
+      // A face photo: on the 3D face, and (once) the source of his skin tone (kept on the roster player too).
+      const img = p.photo ? faceImage({ face: p.photo }, () => { this.faceRev++; }) : null;
+      if (img && !p.skinColor) {
+        const tone = skinToneFromImage(img);
+        const rp = tone && teams[p.team]?.roster?.find((q) => q.id === p.rid);
+        if (tone) { p.skinColor = tone; if (rp && !rp.skinManual && !rp.skinColor) { rp.skinColor = tone; rp.skin = nearestSkin(tone); } }
+      }
+      this.faceAttr.setX(i, img ? 1 : 0);
+      if (img) this.paintFace(i, img);
+      const skin = p.skinColor || SKIN[p.skin % SKIN.length];
       // Mud / grass stains build up over the game (this.dirt 0..1, set from the weather and the clock).
       const dirt = (this.dirt || 0) * (p.id % 3 === 0 ? 0.42 : 0.28);
       const mud = (col, k = 1) => c.set(col).lerp(MUD, dirt * k);
@@ -276,6 +325,9 @@ export class PlayerRenderer {
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
       for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); P.shoe.setColorAt(i * 2 + s2, c.set('#151515')); }
     });
+    for (let i = sim.players.length; i < MAX; i++) this.faceAttr.setX(i, 0);
+    this.faceAttr.needsUpdate = true;
+    this.faceTex.needsUpdate = true;
     this.decalAttr.needsUpdate = true;
     this.boneTex.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;

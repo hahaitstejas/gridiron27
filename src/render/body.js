@@ -122,7 +122,7 @@ export function buildBodyGeometry() {
     return { a: BONE.hips, b: BONE.chest, w, region };
   };
   const numberUv = (y, a) => [a, (y - 1.06) / (1.64 - 1.06)];
-  tube(out, 0, torsoRings, 40, torsoW, KIND_CHEST, { exp: 2.5, capBottom: true, capTop: false, bodyUv: numberUv });
+  tube(out, 0, torsoRings, 40, torsoW, KIND_CHEST, { exp: 2.5, capBottom: true, capTop: true, bodyUv: numberUv });
   // Neck: chest to head.
   tube(out, 0, [{ y: top - 0.06, rx: 0.088, rz: 0.088, cz: 0.0 }, { y: top + 0.04, rx: 0.08, rz: 0.08, cz: 0.012 }, { y: top + 0.13, rx: 0.075, rz: 0.075, cz: 0.02 }], 12,
     (y) => ({ a: BONE.chest, b: BONE.head, w: 1 - smooth(top + 0.0, top + 0.12, y), region: REGION.skin }), KIND_LIMB, { capBottom: false });

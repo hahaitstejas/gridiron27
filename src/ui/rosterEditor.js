@@ -1,7 +1,7 @@
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { numberAllowed } from '../data/positions.js';
 import { el } from './nav.js';
-import { faceImg, shrinkFace } from './faces.js';
+import { faceImg, shrinkFace, skinToneFromImage, nearestSkin, deriveSkin } from './faces.js';
 import { pickFile, loadImage } from '../data/storage.js';
 import { RATINGS, POSITIONS, overall } from '../data/positions.js';
 import { generatePlayer } from '../data/generator.js';
@@ -128,6 +128,8 @@ export function playerCard(ctx, ti, id, focus = 0) {
     row('Face photo', () => (!p.face ? 'none' : /^data:/i.test(p.face) ? 'uploaded' : p.face.length > 22 ? `${p.face.slice(0, 20)}…` : p.face), (d, v) => {
       if (v !== undefined) { if (v.trim()) p.face = v.trim(); else delete p.face; }
       else if (d) delete p.face;
+      // A new photo gives a new skin tone (unless the tone was picked by hand).
+      if (!p.skinManual) { delete p.skinColor; deriveSkin(p, () => { ctx.onChange(); playerCard(ctx, ti, id, screens.nav.index); }); }
       setTimeout(() => playerCard(ctx, ti, id, screens.nav.index), 0);
     }),
     action('Upload a face photo…', async () => {
@@ -136,11 +138,18 @@ export function playerCard(ctx, ti, id, focus = 0) {
       const img = await loadImage(f.data);
       if (!img) { window.alert("That file couldn't be read as an image."); return; }
       p.face = shrinkFace(img);
+      // Skin tone from the photo, for the 3D player (the "Skin tone" row below follows it; spinning it overrides).
+      const tone = skinToneFromImage(img);
+      if (tone && !p.skinManual) { p.skinColor = tone; p.skin = nearestSkin(tone); }
       ctx.onChange();
       playerCard(ctx, ti, id, screens.nav.index);
     }),
     // Appearance (the 3D player): skin tone, visor, towel, arm sleeves.
-    row('Skin tone', () => `${(p.skin ?? 2) + 1} of 6`, (d) => { p.skin = ((p.skin ?? 2) + d + 6) % 6; }),
+    row('Skin tone', () => (p.skinColor && !p.skinManual ? 'from photo' : `${(p.skin ?? 2) + 1} of 6`), (d) => {
+      // Picking a tone by hand wins over the photo's (and stays that way); from the photo again: clear the photo and re-add it.
+      if (!d) return;
+      p.skin = ((p.skin ?? 2) + d + 6) % 6; p.skinManual = true; delete p.skinColor;
+    }),
     ...[['Visor', 'visor', ['auto', 'none', 'dark', 'gold', 'clear']], ['Towel', 'towel', ['auto', 'yes', 'no']], ['Arm sleeves', 'sleeves', ['none', 'white', 'black', 'team']]]
       .map(([label, key, opts]) => row(label, () => (p.look?.[key] || opts[0]).replace(/^./, (c) => c.toUpperCase()), (d) => { const cur = p.look?.[key] || opts[0]; (p.look ||= {})[key] = opts[(opts.indexOf(cur) + d + opts.length) % opts.length]; })),
     ...RATINGS.map(([key]) => row(RATING_NAMES[key], () => String(p.ratings[key]), (d, v) => {

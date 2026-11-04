@@ -25,6 +25,7 @@ export function canBeBlocked(sim, d) {
     }
     if (!k.edgeChip) return false;
   }
+  if (sim.kick?.type === 'punt' && !sim.kick.launched && d.task?.free) return false; // the overload man comes clean
   return d.team !== sim.possTeam && d.state === 'active' && !d.engagement && d.noEngageT <= 0;
 }
 

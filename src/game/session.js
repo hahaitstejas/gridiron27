@@ -332,6 +332,17 @@ export class GameSession {
     });
     if (this.lock !== null) this.lockOn(this.sim);
     if (this.drill) drillControl(this.sim, this.drill);
+    // Return schemes (kickoffs: wall left / middle / right; punts: block / return / safe). The CPU picks by situation;
+    // a human receiving team changes it at the line (X / Y / B).
+    if (this.sim.isKick && this.sim.offPlay.type !== 'fg') {
+      const kt = this.sim.offPlay.type, recv = this.defTeam;
+      if (this.isHuman(recv)) Object.assign(this.sim, this.returnCall || {});
+      else if (kt === 'kickoff') this.sim.returnSide = [-1, 0, 0, 1][Math.floor(this.rng.next() * 4)];
+      else {
+        const late = m.quarter >= 4 && m.clock < 300 && m.score[recv] < m.score[1 - recv];
+        this.sim.returnScheme = m.toGo <= 3 && m.yardLine >= 35 && m.yardLine <= 70 && this.rng.next() < 0.45 ? 'safe' : late && this.rng.next() < 0.5 ? 'block' : 'return';
+      }
+    }
     this.state = 'presnap';
     this.presnapT = 0;
     this.jetWait = false;
@@ -629,6 +640,19 @@ export class GameSession {
         }
       }
       for (const [team, f] of [[off, offIn], [def, defIn]]) if (f?.pressed.View) this.callTimeout(team);
+      // Receiving a kick: pick the return.
+      if (sim.isKick && sim.offPlay.type !== 'fg' && defIn && this.calls(def)) {
+        const kt = sim.offPlay.type, cam = sim.camDir;
+        let call = null;
+        if (kt === 'kickoff' && sim.offPlay.kick !== 'onside') call = defIn.pressed.X ? { returnSide: -cam, label: 'Return left' } : defIn.pressed.B ? { returnSide: cam, label: 'Return right' } : defIn.pressed.Y ? { returnSide: 0, label: 'Return middle' } : null;
+        else if (kt === 'punt') call = defIn.pressed.X ? { returnScheme: 'block', label: 'Punt block' } : defIn.pressed.B ? { returnScheme: 'safe', label: 'Safe (stop the fake)' } : defIn.pressed.Y ? { returnScheme: 'return', label: 'Punt return' } : null;
+        if (call) {
+          const { label, ...set } = call;
+          this.returnCall = { ...(this.returnCall || {}), ...set };
+          Object.assign(this.sim, set); // assignments are handed out at the snap (kicking.js setupSpecialSnap)
+          this.emit('audible', { label, play: 'Return', side: 'defense' });
+        }
+      }
       if (offIn?.pressed.B && this.calls(off) && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       const lineup = this.fast || sim.isKick ? 0 : LINEUP_T; // players still running to the line: wait for them
       if (offIn?.pressed.LT && this.presnapT >= lineup && this.calls(off) && !this.audible) { this.hardCount(); if (this.state !== 'presnap') { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; } }

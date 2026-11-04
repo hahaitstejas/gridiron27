@@ -45,6 +45,8 @@ export function carrierAI(sim, p, dt) {
       if (Math.abs(pz) > HALF_WIDTH - 1) s -= 1.5 + (Math.abs(pz) - HALF_WIDTH + 1);
     }
     if (t.lastA !== undefined) s -= Math.abs(a - t.lastA) * 0.25;
+    // A called return (left / right): early on, the returner heads for that side's lane.
+    if (sim.returnSide && sim.kick && (p.slot === 'KR' || p.slot === 'PR') && Math.abs(p.z - (t.retZ ??= p.z)) < 12) s += dz * sim.returnSide * 0.35;
     if (s > bestS) { bestS = s; bestA = a; }
   }
   t.lastA = bestA;

@@ -296,7 +296,7 @@ export class Hud {
     } else if (pre && session.humanSide === 'offense') {
       h = sim.isKick ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${sim.offPlay.type === 'pass' && session.match.phase === 'scrimmage' ? `<b class="btn LB">LB</b> Protection${protTag(sim.offPlay)} &nbsp; ` : ''}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art + read &nbsp; '}<b class="btn view">View</b> Timeout`;
-    } else if (pre && session.humanSide === 'defense') h = `${fgTag(session, sim)}<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${sim.isKick && sim.offPlay.type !== 'kickoff' ? (sim.offPlay.type === 'fg' ? 'Edge rush: come off the end, <b class="btn X">X</b> dive across the kick as it\'s struck (<b class="btn A">A</b> jump) &nbsp; ' : 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ') : ''}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
+    } else if (pre && session.humanSide === 'defense') h = `${fgTag(session, sim)}<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${retTag(sim)}${sim.isKick && sim.offPlay.type !== 'kickoff' ? (sim.offPlay.type === 'fg' ? 'Edge rush: come off the end, <b class="btn X">X</b> dive across the kick as it\'s struck (<b class="btn A">A</b> jump) &nbsp; ' : 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ') : ''}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.state === 'live' && session.humanSide === 'defense' && sim.players[sim.controlledId]?.engagement?.d === sim.players[sim.controlledId]) h = '<b class="btn A">A</b> Bull rush &nbsp; <b class="btn X">X</b> Swim &nbsp; <b class="btn Y">Y</b> Spin &nbsp; RS ↓ Rip';
     else if (sim && sim.state === 'live' && sim.ball.state === 'air' && !sim.kick && session.humanSide === 'offense' && sim.ball.intended === sim.controlledId) {
@@ -544,6 +544,20 @@ function coverageTag(adj) {
 
 /** Wind for the kicker: speed and an arrow as seen from the camera. */
 /** "53-yard attempt" before a field goal (whole yards, rounded up). */
+/** Receiving a kickoff / punt: the return call buttons and what's called now. */
+function retTag(sim) {
+  if (!sim.isKick || sim.offPlay.type === 'fg') return '';
+  if (sim.offPlay.type === 'punt') {
+    const s = sim.returnScheme || 'return';
+    const b = (btn, key, label) => `<b class="btn ${btn}">${btn}</b> ${s === key ? `<u>${label}</u>` : label}`;
+    return `${b('X', 'block', 'Block')} &nbsp; ${b('Y', 'return', 'Return')} &nbsp; ${b('B', 'safe', 'Safe')} &nbsp; `;
+  }
+  if (sim.offPlay.kick === 'onside') return '';
+  const side = sim.returnSide ? (sim.returnSide === -sim.camDir ? 'left' : 'right') : 'middle';
+  const b = (btn, key, label) => `<b class="btn ${btn}">${btn}</b> ${side === key ? `<u>${label}</u>` : label}`;
+  return `Return: ${b('X', 'left', 'Left')} &nbsp; ${b('Y', 'middle', 'Middle')} &nbsp; ${b('B', 'right', 'Right')} &nbsp; `;
+}
+
 function fgTag(session, sim) {
   if (!sim.isKick || sim.offPlay.type !== 'fg') return '';
   const m = session.match;

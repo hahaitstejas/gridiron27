@@ -4,7 +4,7 @@ import { GOAL_X, END_X, HALF_WIDTH, GRAVITY } from '../core/constants.js';
 
 const WIND_PUSH = 0.12; // wind acceleration on a kicked ball, per yd/s of wind
 import { clamp } from '../core/math.js';
-import { seek, stop } from './movement.js';
+import { seek, stop, moveDir } from './movement.js';
 
 // Special teams: kick meter, kick physics, field goals, kickoffs/punts and their returns.
 // The kicking team is the PlaySim "offense" (sim.offIdx, attacking sim.dir).
@@ -84,6 +84,8 @@ export function protectionWall(sim) {
     // A human kicker who is slow on the meter shouldn't hand the CPU rush extra time: once the kick is due
     // (when a CPU kicker would have launched) the protection holds for up to a second more.
     if (!k.launched && k.dueT != null && sim.t - k.dueT < LATE_GRACE && !sim.isHumanControlled(p)) wall = Math.min(wall, 0.12);
+    // An all-out punt block (everybody comes, nobody sets up the return): the shield can't hold them all.
+    if (k.type === 'punt' && p.task?.free && !k.launched) wall = 1;
     p.speedCap = wall;
   }
 }
@@ -108,8 +110,10 @@ function blockCheck(sim, kicker, type, range) {
     let dist = Math.hypot(d.x - kicker.x, d.z - kicker.z);
     // A late human kick is judged from where the CPU rush was when the kick was due (momentum carries them in).
     if (lateOK && !sim.isHumanControlled(d) && k.dueAt[d.id] != null) dist = Math.max(dist, k.dueAt[d.id]);
-    if (dist > 2.6 || sim.toLocal(d.x, d.z).down < kl.down + 0.4) continue;
-    const reach = Math.pow((2.6 - dist) / 2.6, 1.5) * 0.38 * low;
+    // A free punt-block rusher lays out at the kick from further away.
+    const lay = type === 'punt' && d.task?.free ? 4.2 : 2.6;
+    if (dist > lay || sim.toLocal(d.x, d.z).down < kl.down + 0.4) continue;
+    const reach = Math.pow((lay - dist) / lay, 1.5) * (lay > 2.6 ? 0.6 : 0.38) * low;
     if (sim.rng.next() < reach) {
       const b = sim.ball;
       // The ball pops up and dies short of the line.
@@ -287,12 +291,24 @@ export function setupSpecialSnap(sim) {
       else p.task = { type: 'pass_block', releaseAt: type === 'punt' && p.slot !== 'C' ? 1.0 : 99 };
     } else {
       if (p.slot === 'KR' || p.slot === 'PR') p.task = { type: 'returner' };
-      else if (type === 'punt' && /^V/.test(p.slot)) {
+      else if (type === 'punt' && sim.returnScheme === 'safe' && !/^V/.test(p.slot)) {
+        // Safe: the hands team stays home against a fake: everybody but the jammers covers someone or sits short.
+        const l = sim.toLocal(p.x, p.z);
+        p.task = Math.abs(l.lat) < 6 ? { type: 'st_hold', spot: sim.toWorld(Math.max(2, l.down + 3), l.lat) } : { type: 'st_rush', soft: true };
+      } else if (type === 'punt' && /^V/.test(p.slot) && sim.returnScheme === 'block') {
+        p.task = { type: 'st_rush', block: true }; // all-out block: the jammers come too
+      } else if (type === 'punt' && /^V/.test(p.slot)) {
         const g = sim.bySlot(sim.offIdx, p.slot[1] === 'L' ? 'GL' : 'GR');
         p.task = { type: 'kr_block', target: g ? g.id : undefined, drive: { x: -sim.dir, z: 0 } };
       } else if (type === 'kickoff') p.task = { type: 'kr_block', drive: { x: -sim.dir, z: 0 } };
-      else p.task = { type: 'st_rush' };
+      else p.task = { type: 'st_rush', block: sim.returnScheme === 'block' };
     }
+  }
+  // All-out punt block: the two rushers lined up closest to the snapper come free (an overload the shield can't fit).
+  if (type === 'punt' && sim.returnScheme === 'block') {
+    // The two end rushers of the front come off the edges, outside the wings, where nobody can fit them.
+    const r = sim.players.filter((p) => p.team !== sim.offIdx && p.task?.type === 'st_rush' && Math.abs(sim.toLocal(p.x, p.z).lat) < 8).sort((a, b) => Math.abs(sim.toLocal(b.x, b.z).lat) - Math.abs(sim.toLocal(a.x, a.z).lat));
+    for (const p of r.slice(0, 2)) { p.task.free = true; p.task.side = Math.sign(sim.toLocal(p.x, p.z).lat) || 1; }
   }
   // Long snap to the punter / holder.
   if (type === 'punt' || type === 'fg') {
@@ -370,10 +386,11 @@ export function updateSpecial(sim, dt, input) {
     } else if (k.type === 'punt') {
       if (b.state === 'held' && b.carrier === kicker.id) {
         k.heldT = (k.heldT || 0) + dt;
-        stop(kicker);
+        // The punter's two steps into the kick (a real operation is ~2.0-2.2 s snap to kick).
+        if (k.heldT < 0.9) moveDir(kicker, sim.dir, 0, 0.22); else stop(kicker);
         kicker.face = { x: kicker.x + sim.dir * 10, z: kicker.z };
-        if (k.heldT > 0.85 && k.dueT == null) markDue(sim, kicker);
-        if (ready && k.heldT > (humanKicks ? 0.35 : 0.85)) { kicker.anim = 'kick'; kicker.animT = 0; launchKick(sim, kicker, params()); }
+        if (k.heldT > 1.1 && k.dueT == null) markDue(sim, kicker);
+        if (ready && k.heldT > (humanKicks ? 0.35 : 1.1)) { kicker.anim = 'kick'; kicker.animT = 0; launchKick(sim, kicker, params()); }
       } else stop(kicker);
     } else if (k.type === 'fg') {
       const holder = sim.bySlot(sim.offIdx, 'H');
@@ -672,7 +689,9 @@ function runSpecialAI(sim, dt) {
         }
         const lat0 = sim.toLocal(p.alignX, p.alignZ).lat;
         const wallX = tgt.x - sim.dir * 12;
-        const wallZ = clamp(tgt.z + sim.dir * lat0 * 0.35, -HALF_WIDTH + 2, HALF_WIDTH - 2);
+        // Return scheme (kickoffs): the wall sets up toward the called side (world z), opening a lane there.
+        const shift = (sim.returnSide || 0) * 9;
+        const wallZ = clamp(tgt.z + sim.dir * lat0 * 0.35 - shift * 0.6, -HALF_WIDTH + 2, HALF_WIDTH - 2);
         let threat = null, td = 9;
         for (const q of sim.players) {
           if (q.team !== sim.offIdx || q.engagement || q.state !== 'active') continue;
@@ -683,9 +702,20 @@ function runSpecialAI(sim, dt) {
         else seek(p, wallX, wallZ, 0.95, 1);
         break;
       }
+      case 'st_hold': {
+        // Safe punt return: hold the spot (a fake has to beat them), then drop back and block once it's kicked.
+        if (!k.launched) { seek(p, p.task.spot.x, p.task.spot.z, 0.6, 0.5); break; }
+        if (b.state === 'kick' && b.target) seek(p, b.target.x - sim.dir * 14, clamp(p.z, -20, 20), 0.8, 1);
+        else p.task = { type: 'kr_block', drive: { x: -sim.dir, z: 0 } };
+        break;
+      }
       case 'st_rush': {
         const kicker = sim.players[k.kickerId];
-        if (!k.launched && kicker) seek(p, kicker.x, kicker.z, 1, 0.1);
+        if (!k.launched && kicker && p.task.soft) { const l = sim.toLocal(p.x, p.z); const w = sim.toWorld(Math.max(0.8, l.down - 0.5), l.lat); seek(p, w.x, w.z, 0.5, 0.5); break; }
+        if (!k.launched && kicker && p.task.free && sim.toLocal(p.x, p.z).down > -4.2) {
+          const w = sim.toWorld(-4.6, p.task.side * 5.4); // around the wing first
+          seek(p, w.x, w.z, 1, 0.1);
+        } else if (!k.launched && kicker) seek(p, kicker.x, kicker.z, 1, 0.1);
         else if (b.state === 'kick' && b.target) {
           // Turn and set up blocks for the return.
           seek(p, b.target.x - sim.dir * 15, clamp(p.z, -20, 20), 0.8, 1);

@@ -13,7 +13,7 @@ import { SCENARIOS } from '../game/scenarios.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
-  nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', sliders: null,
+  nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
 
 // Gameplay sliders (0..100, 50 = default); `user` applies to human teams, `cpu` to the CPU's.
@@ -563,6 +563,7 @@ export class Screens {
       option('Accelerated clock', [0, 10, 15, 20, 25], 'accelClock', (v) => (v ? `run to ${v}s` : 'Off')),
       option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off')),
       option('Camera', Object.keys(CAMERAS), 'camera', (k) => CAMERAS[k]),
+      option('Graphics', ['high', 'medium', 'low'], 'graphics', (v) => ({ high: 'High (bloom, grade)', medium: 'Medium (grade)', low: 'Low (fastest)' })[v]),
       option('Name tags', [true, false], 'nameTags', (v) => (v ? 'On' : 'Off')),
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),

@@ -20,7 +20,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
 
   // Stadium creator (home team's `stadium`): turf shade, end zone style, midfield logo.
   const sd = (!opts.championship && home.stadium) || {};
-  const TURF = { classic: ['#2f6b2a', '#3f8634', '#33712b'], dark: ['#24521f', '#2f6a27', '#285c22'], bright: ['#3a7d2f', '#4c9a3c', '#41893a'], blue: ['#1d3f7a', '#2a56a3', '#234a8e'], black: ['#1a1a1a', '#262626', '#202020'] };
+  const TURF = { classic: ['#30582a', '#43733a', '#3a6731'], dark: ['#24521f', '#2f6a27', '#285c22'], bright: ['#3a7d2f', '#4c9a3c', '#41893a'], blue: ['#1d3f7a', '#2a56a3', '#234a8e'], black: ['#1a1a1a', '#262626', '#202020'] };
   const turf = TURF[sd.turf] || TURF.classic;
   // Surroundings (sideline turf) and the playing field with mowing stripes.
   g.fillStyle = turf[0];

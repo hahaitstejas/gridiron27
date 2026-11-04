@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { PlayArtOverlay } from './playArt.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { buildStadium } from './stadium.js';
@@ -27,7 +32,7 @@ export class GameRenderer {
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFShadowMap;
+    r.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(r.domElement);
     this.renderer = r;
 
@@ -94,6 +99,7 @@ export class GameRenderer {
 
     this.rig = new CameraRig(container.clientWidth / container.clientHeight);
     this.container = container;
+    this.setupPost();
     window.addEventListener('resize', () => this.resize());
     this.frameTimes = [];
     this._v = new THREE.Vector3();
@@ -145,7 +151,56 @@ export class GameRenderer {
   resize() {
     const w = this.container.clientWidth, h = this.container.clientHeight;
     this.renderer.setSize(w, h);
+    if (this.composer) { this.composer.setPixelRatio(this.pixelRatio); this.composer.setSize(w, h); }
     this.rig.resize(w / h);
+  }
+
+  /**
+   * Broadcast look (Settings → Graphics): an HDR render target with MSAA, a soft bloom on the stadium lights, glossy
+   * helmets and white paint, then tone mapping and a grade (a little contrast and saturation, a gentle vignette).
+   * 'low' skips all of it and draws straight to the screen.
+   */
+  setupPost() {
+    const r = this.renderer, w = this.container.clientWidth, h = this.container.clientHeight;
+    const rt = new THREE.WebGLRenderTarget(w * this.pixelRatio, h * this.pixelRatio, { type: THREE.HalfFloatType, samples: 4 });
+    const c = new EffectComposer(r, rt);
+    c.setPixelRatio(this.pixelRatio);
+    c.setSize(w, h);
+    this.renderPass = new RenderPass(this.scene, this.rig.camera);
+    c.addPass(this.renderPass);
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(w, h), 0.22, 0.5, 1.6);
+    c.addPass(this.bloom);
+    c.addPass(new OutputPass());
+    this.grade = new ShaderPass({
+      uniforms: { tDiffuse: { value: null }, uVig: { value: 0.32 }, uSat: { value: 1.08 }, uCon: { value: 1.06 } },
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform sampler2D tDiffuse; uniform float uVig, uSat, uCon; varying vec2 vUv;
+        void main(){
+          vec3 c = texture2D(tDiffuse, vUv).rgb;
+          float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          c = mix(vec3(l), c, uSat);
+          c = (c - 0.5) * uCon + 0.5;
+          vec2 d = vUv - 0.5;
+          c *= 1.0 - uVig * smoothstep(0.35, 0.85, length(d * vec2(1.25, 1.0)));
+          gl_FragColor = vec4(clamp(c, 0.0, 1.0), 1.0);
+        }`,
+    });
+    c.addPass(this.grade);
+    this.composer = c;
+  }
+
+  /** Graphics quality: 'high' (post + bloom), 'medium' (post, no bloom), 'low' (no post, lower pixel ratio cap). */
+  setQuality(q) {
+    this.quality = q;
+    this.bloom.enabled = q === 'high';
+    if (q === 'low' && this.pixelRatio > 1) { this.pixelRatio = 1; this.renderer.setPixelRatio(1); this.resize(); }
+  }
+
+  /** Draw the scene through the post chain (or straight to the screen on low). */
+  draw(cam) {
+    if (this.quality === 'low' || !this.composer) { this.renderer.render(this.scene, cam); return; }
+    this.renderPass.camera = cam;
+    this.composer.render();
   }
 
   setTeams(home, away, opts) { this.stadium.setTeams(home, away, opts); }
@@ -257,7 +312,7 @@ export class GameRenderer {
     f.x += (focus.x - f.x) * k; f.y += (focus.y - f.y) * k; f.z += (focus.z - f.z) * k;
     cam.position.set(f.x + Math.cos(yaw) * Math.cos(pitch) * dist, f.y + Math.sin(pitch) * dist, f.z + Math.sin(yaw) * Math.cos(pitch) * dist);
     cam.lookAt(f.x, f.y, f.z);
-    this.renderer.render(this.scene, cam);
+    this.draw(cam);
   }
 
   /** A scripted camera shot (pregame intro): pos/look arrays. Also parks the game camera there for a smooth hand-off. */
@@ -269,7 +324,7 @@ export class GameRenderer {
     cam.lookAt(...look);
     this.rig.pos.copy(cam.position);
     this.rig.look.set(...look);
-    this.renderer.render(this.scene, cam);
+    this.draw(cam);
   }
 
   /** Slow orbit over the empty stadium for menus. */
@@ -279,7 +334,7 @@ export class GameRenderer {
     const cam = this.rig.camera;
     cam.position.set(Math.cos(t) * 70, 28, Math.sin(t) * 45);
     cam.lookAt(0, 0, 0);
-    this.renderer.render(this.scene, cam);
+    this.draw(cam);
   }
 
   render(dt, focus, dir, phase, snap, excitement = 0.2) {
@@ -287,7 +342,7 @@ export class GameRenderer {
     if (this.flagT > 0 && (this.flagT -= dt) <= 0) this.flag.visible = false;
     this.stadium.update(dt, excitement);
     this.rig.update(dt, focus, dir, phase, snap, { shot: this.presentation.celebration() });
-    this.renderer.render(this.scene, this.rig.camera);
+    this.draw(this.rig.camera);
   }
 
   /** Project a world point to screen pixels (for DOM overlays like receiver icons). */

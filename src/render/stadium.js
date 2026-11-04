@@ -34,6 +34,22 @@ function grassDetailCanvas() {
   return c;
 }
 
+/** A tangent-space normal map from a grey height canvas (Sobel), tiling like its source. */
+function normalFromHeight(src, strength = 2) {
+  const N = src.width, g = src.getContext('2d'), h = g.getImageData(0, 0, N, N).data;
+  const c = document.createElement('canvas');
+  c.width = c.height = N;
+  const og = c.getContext('2d'), out = og.createImageData(N, N);
+  const H = (x, y) => h[(((y + N) % N) * N + ((x + N) % N)) * 4] / 255;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const dx = (H(x + 1, y) - H(x - 1, y)) * strength, dy = (H(x, y + 1) - H(x, y - 1)) * strength;
+    const l = Math.hypot(dx, dy, 1), i = (y * N + x) * 4;
+    out.data[i] = (-dx / l * 0.5 + 0.5) * 255; out.data[i + 1] = (-dy / l * 0.5 + 0.5) * 255; out.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; out.data[i + 3] = 255;
+  }
+  og.putImageData(out, 0, 0);
+  return c;
+}
+
 export function buildStadium(renderer, home, away) {
   const group = new THREE.Group();
 
@@ -68,8 +84,14 @@ export function buildStadium(renderer, home, away) {
 
   // The field. A tiled blade-detail texture adds grain up close, and the mowing stripes catch the light
   // depending on which way you look along the field (cut grass leans one way per stripe).
-  const fieldMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-  const detail = new THREE.CanvasTexture(grassDetailCanvas());
+  const detailCanvas = grassDetailCanvas();
+  // Blade relief as a normal map (from the same tile), so the grass picks up the stadium lights and player shadows.
+  const nrm = new THREE.CanvasTexture(normalFromHeight(detailCanvas, 2.2));
+  nrm.wrapS = nrm.wrapT = THREE.RepeatWrapping;
+  nrm.repeat.set(FX * 2 * 0.45, FZ * 2 * 0.45);
+  nrm.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  const fieldMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0, normalMap: nrm, normalScale: new THREE.Vector2(0.55, 0.55) });
+  const detail = new THREE.CanvasTexture(detailCanvas);
   detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
   detail.anisotropy = renderer.capabilities.getMaxAnisotropy();
   fieldMat.onBeforeCompile = (sh) => {
@@ -85,7 +107,10 @@ export function buildStadium(renderer, home, away) {
         float look = clamp((cameraPosition.x - vGW.x) / 25.0, -1.0, 1.0);
         float sheen = 1.0 + band * look * 0.1 * onGrass;
         float grainK = mix(0.35, 1.0, step(0.32, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.8)); // less on paint
-        diffuseColor.rgb *= sheen * mix(1.0, 0.76 + dGrain * 0.44, grainK);`);
+        // Patchy color over a few yards (real grass is never one flat green): darker clumps, lighter dry spots.
+        float macro = texture2D(tDetail, vGW.xz * 0.018 + 0.11).r * 0.6 + texture2D(tDetail, vGW.xz * 0.043 + 0.53).r * 0.4;
+        float gPatch = mix(1.0, 0.86 + macro * 0.3, grainK * onGrass);
+        diffuseColor.rgb *= sheen * gPatch * mix(1.0, 0.76 + dGrain * 0.44, grainK);`);
   };
   const field = new THREE.Mesh(new THREE.PlaneGeometry(FX * 2, FZ * 2), fieldMat);
   field.rotation.x = -Math.PI / 2;

@@ -182,6 +182,7 @@ const camMode = () => CAM_MODE[prefs.camera] || 'broadcast';
 const applyCamera = () => {
   renderer.rig.mode = camMode();
   renderer.rig.zoom = { wide: 1.3, tight: 0.8 }[prefs.camera] || 1;
+  renderer.setQuality(prefs.graphics || 'high');
 };
 applyCamera();
 

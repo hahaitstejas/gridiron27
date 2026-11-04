@@ -113,3 +113,28 @@ describe('league book (one spreadsheet)', () => {
     expect(r.problems.filter((p) => !/depth/i.test(p))).toEqual([]);
   });
 });
+
+describe('RPO', () => {
+  it('the CPU QB both hands off and pulls; a human holding LT always pulls and can throw', async () => {
+    const { PlaySim } = await import('../src/sim/play.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const { getOffPlay, listDefPlays } = await import('../src/data/playbook.js');
+    const lg = generateLeagueRosters(defaultTeams(), 8);
+    let pulls = 0, gives = 0;
+    for (let i = 0; i < 40; i++) {
+      const sim = new PlaySim({ rng: new RNG(50 + i), teams: [lg[i % 32], lg[(i + 3) % 32]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: getOffPlay('rpo_iz_slant'), defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: null });
+      sim.snap();
+      for (let k = 0; k < 900 && !sim.finished; k++) { sim.tick(STEP, null); if (sim.events.some((e) => e.type === 'rpoPull')) pulls++; if (sim.events.some((e) => e.type === 'handoff')) gives++; }
+    }
+    expect(pulls).toBeGreaterThan(3);
+    expect(gives).toBeGreaterThan(3);
+    const sim = new PlaySim({ rng: new RNG(5), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: getOffPlay('rpo_iz_slant'), defPlay: listDefPlays()[0], humanTeam: 0 });
+    sim.snap();
+    const f = { lx: 0, ly: 0, rx: 0, ry: 0, lt: 1, rt: 0, down: {}, pressed: {}, released: {}, held: {}, flick: {} };
+    let pulled = false;
+    for (let k = 0; k < 60; k++) { sim.tick(STEP, f); if (sim.events.some((e) => e.type === 'rpoPull')) pulled = true; }
+    expect(pulled).toBe(true);
+    expect(sim.offPlay.type).toBe('pass');
+  });
+});

@@ -101,6 +101,11 @@ function qbHandoff(sim, p) {
     }
     return;
   }
+  // RPO: at the mesh the QB reads the conflict defender; if he plays the run, pull it and throw the quick route.
+  if (play.rpo && p.task.rpo === undefined && sim.t > 0.32 && sim.ball.carrier === p.id && sim.ball.state === 'held') {
+    p.task.rpo = sim.isHumanControlled(p) ? !!p.task.forceKeep : rpoRead(sim, p);
+    if (p.task.rpo) { rpoPull(sim, p, rb); return; }
+  }
   const mesh = play.run.mesh ? sim.toWorld(play.run.mesh[0] + 0.6, play.run.mesh[1] - (play.run.side || 1) * 0.9) : { x: p.x - sim.dir, z: p.z };
   // Read option: at the mesh the QB reads the backside end: if he crashes on the back, the QB keeps.
   if (play.run.style === 'read' && rb && p.task.read === undefined && sim.t > 0.62 && sim.ball.carrier === p.id && sim.ball.state === 'held' && Math.hypot(rb.x - p.x, rb.z - p.z) < 1.6) {
@@ -141,6 +146,40 @@ function runPath(sim, p) {
   } else {
     seek(p, aim.x, aim.z, 0.55, 0.1);
   }
+}
+
+/**
+ * RPO read (CPU QB): the conflict defender is the underneath defender nearest the target's window. If he's stepping
+ * up for the run (or is far from the window) and the target has room, the QB pulls it; better QBs read it better.
+ */
+function rpoRead(sim, qb) {
+  const tgt = sim.bySlot(sim.offIdx, sim.offPlay.rpo.target);
+  if (!tgt || tgt.state !== 'active') return false;
+  const tl = sim.toLocal(tgt.x, tgt.z);
+  const win = sim.toWorld(Math.max(3, tl.down + 3), tl.lat * 0.75); // where the quick throw goes
+  let key = null, kd = 99, open = 99;
+  for (const d of sim.players) {
+    if (d.team === sim.offIdx || d.state !== 'active' || d.engagement) continue;
+    const dd = Math.hypot(d.x - win.x, d.z - win.z);
+    open = Math.min(open, dd);
+    const l = sim.toLocal(d.x, d.z);
+    if (l.down > 1 && l.down < 10 && dd < kd) { kd = dd; key = d; }
+  }
+  if (!key) return true;
+  const downhill = -(key.vx * sim.dir) > 1.2; // moving toward the line of scrimmage
+  const aw = sim.R(qb, 'awareness');
+  const right = (downhill || kd > 6) && open > 2.2;
+  // A misread now and then (fewer for aware QBs).
+  return sim.rng.next() < (aw - 40) / 70 ? right : sim.rng.next() < 0.35;
+}
+
+/** Pull: the play becomes a quick pass to the RPO target (the back carries out the fake, the line was run blocking). */
+function rpoPull(sim, qb, rb) {
+  const play = sim.offPlay;
+  sim.offPlay = { ...play, type: 'pass', dropback: 0, read: [play.rpo.target, ...(play.rpo.also || [])], rpoPulled: true };
+  qb.task = { type: 'qb_pass', drop: 0, phase: 'set', start: { x: qb.x, z: qb.z }, dropTo: { x: qb.x - sim.dir * 0.6, z: qb.z }, setT: sim.t };
+  if (rb && rb.task?.type === 'run_path') rb.task = { type: 'pa_fake', to: sim.toWorld(sim.toLocal(rb.x, rb.z).down + 2.5, sim.toLocal(rb.x, rb.z).lat - (play.run.side || 1) * 2) };
+  sim.emit('rpoPull', { qb: qb.id, target: play.rpo.target });
 }
 
 /** The read on a zone read: the unblocked backside end crashing down on the back means keep. */

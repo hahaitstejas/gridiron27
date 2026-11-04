@@ -4033,6 +4033,128 @@
     "Z",
     "H"
    ]
+  },
+  {
+   "id": "rpo_iz_slant",
+   "name": "RPO Zone Slant",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "RPO",
+   "rpo": {
+    "target": "Y"
+   },
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.2
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Y": "slant",
+    "Z": "go"
+   }
+  },
+  {
+   "id": "rpo_iz_bubble",
+   "name": "RPO Zone Bubble",
+   "formation": "gun_trips_wr",
+   "type": "run",
+   "concept": "RPO",
+   "rpo": {
+    "target": "Y"
+   },
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Z": "stalk",
+    "H": "stalk",
+    "Y": "screen"
+   }
+  },
+  {
+   "id": "rpo_power_glance",
+   "name": "RPO Power Glance",
+   "formation": "gun_doubles",
+   "type": "run",
+   "concept": "RPO",
+   "rpo": {
+    "target": "Z",
+    "also": [
+     "Y"
+    ]
+   },
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3
+    ],
+    "mesh": [
+     -4.8,
+     0.4
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "H": "stalk",
+    "Y": "stick",
+    "Z": "skinny_post"
+   }
+  },
+  {
+   "id": "rpo_pistol_slant",
+   "name": "RPO Pistol Slant",
+   "formation": "pistol_ace",
+   "type": "run",
+   "concept": "RPO",
+   "rpo": {
+    "target": "Z"
+   },
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -1.5
+    ],
+    "mesh": [
+     -4.6,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": -1
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "Z": "slant"
+   }
   }
  ]
 }

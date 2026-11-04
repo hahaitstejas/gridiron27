@@ -598,6 +598,8 @@ function onSessionEvent(e) {
   else if (e.type === 'push') hud.ticker(e.quality >= 1 ? 'Perfect push!' : e.quality >= 0.6 ? 'Good push' : e.quality > 0 ? 'Late push' : 'Missed the push');
   else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');
   else if (e.type === 'drillRep') hud.banner(`${e.pts > 0 ? '+' : ''}${e.pts}`, e.text, 1.6, e.pts > 0 ? 'score' : 'miss');
+  else if (e.type === 'rpoPull' && session?.humanTeam !== null) hud.ticker('RPO: pulled it, throwing');
+  else if (e.type === 'fakeSpike' && session?.humanTeam !== null) hud.ticker('Fake spike!');
   else if (e.type === 'fairCatchSignal') hud.banner('FAIR CATCH', 'The returner waves for a fair catch', 1.6, 'info');
   else if (e.type === 'juked' && session.isHuman?.(session.sim?.players[e.by]?.team)) hud.ticker('Juked him!');
   else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');

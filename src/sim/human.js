@@ -37,7 +37,7 @@ export function applyHuman(sim, inp, dt) {
   // Handoffs are automatic (no QB keepers on straight runs): the QB is locked until the mesh.
   if (p.task?.type === 'qb_handoff') {
     // Read option: hold LT through the mesh to keep it yourself.
-    if (inp.lt > 0.5 && sim.offPlay.run?.style === 'read') p.task.forceKeep = true;
+    if (inp.lt > 0.5 && (sim.offPlay.run?.style === 'read' || sim.offPlay.rpo)) p.task.forceKeep = true; // RPO: LT pulls it to throw
     p.userActive = false;
     return;
   }

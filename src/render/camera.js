@@ -24,7 +24,8 @@ export class CameraRig {
     const fz = focus.z;
     // A presentation shot (touchdown celebration) overrides the mode: low, in front of the subject.
     const shot = extra.shot;
-    if (shot) {
+    if (this.debug) { p.set(...this.debug.p); l.set(...this.debug.l); } // dev screenshots (window.__g27.renderer.rig.debug)
+    else if (shot) {
       const fx = Math.cos(shot.facing), fz2 = Math.sin(shot.facing);
       p.set(shot.x + fx * 8 + fz2 * 2.5, 4.2, shot.z + fz2 * 8 - fx * 2.5);
       l.set(shot.x, 1.1, shot.z);

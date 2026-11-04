@@ -1,6 +1,8 @@
 import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
+import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION } from './body.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
 // players). Poses are computed procedurally from the sim's animation state every frame.
@@ -12,7 +14,7 @@ const MAX = 56; // 22 players + 7 officials + 22 on the sidelines (+ spare)
 
 // Base proportions for a 6'2" player, in yards.
 const B = {
-  hipH: 1.0, hipX: 0.11, thigh: 0.48, shin: 0.47,
+  hipH: 1.0, hipX: 0.125, thigh: 0.48, shin: 0.47,
   torso: 0.66, torsoW: 0.44, torsoD: 0.27, padW: 0.64, padD: 0.36,
   shX: 0.27, upper: 0.34, fore: 0.32,
 };
@@ -64,52 +66,8 @@ export class PlayerRenderer {
     this.scene = scene;
     // Physically based materials (lit by the scene's environment map): matte jerseys, glossy helmets.
     const mat = (roughness = 0.75, metalness = 0, env = 0.3) => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness, metalness, envMap, envMapIntensity: env });
-    const lam = () => mat();
     const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-    // Limbs are capsules (unit length along y, scaled per bone) so arms and legs read as round, not blocky.
-    const limbGeo = (r) => { const g = new THREE.CapsuleGeometry(r, 1 - 2 * r, 2, 7); return g; };
-    // Torso: a tapered lathe (wide chest, narrower waist) instead of a plain cylinder.
-    const torsoGeo = new THREE.LatheGeometry([[0.36, -0.5], [0.4, -0.3], [0.47, 0.05], [0.52, 0.35], [0.5, 0.5]].map(([x, y]) => new THREE.Vector2(x, y)), 10);
-    const padGeo = new THREE.CylinderGeometry(0.5, 0.42, 1, 8);
-    padGeo.scale(1, 1, 1);
-    const helmetGeo = new THREE.SphereGeometry(0.5, 10, 8);
-    helmetGeo.scale(0.95, 0.95, 1.08);
-    const maskGeo = new THREE.TorusGeometry(0.42, 0.07, 4, 10, Math.PI);
-    maskGeo.rotateZ(Math.PI);
-    // Facemask bars across the front of the helmet, and rounded shoulder-pad caps.
-    const barGeo = new THREE.CylinderGeometry(0.012, 0.012, 1, 5);
-    barGeo.rotateZ(Math.PI / 2);
-    const capGeo = new THREE.SphereGeometry(0.5, 8, 6, 0, Math.PI * 2, 0, Math.PI / 2);
-    const numGeo = new THREE.PlaneGeometry(1, 1);
-    const cellAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 4 * 2), 2);
-    cellAttr.setUsage(THREE.DynamicDrawUsage);
-    numGeo.setAttribute('aCell', cellAttr);
-    this.cellAttr = cellAttr;
-    const numMat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: numberAtlas() } },
-      transparent: true,
-      depthWrite: true,
-      vertexShader: `attribute vec2 aCell; varying vec2 vUv; varying vec3 vCol;
-        void main(){
-          vUv = (uv + aCell) / 10.0;
-          vUv.y = 1.0 - ((1.0 - uv.y) + aCell.y) / 10.0;
-          #ifdef USE_INSTANCING_COLOR
-          vCol = instanceColor;
-          #else
-          vCol = vec3(1.0);
-          #endif
-          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
-        }`,
-      fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying vec3 vCol;
-        void main(){
-          vec4 t = texture2D(map, vUv);
-          if (t.a < 0.4) discard;
-          // White atlas pixels take the number color; the dark outline stays dark.
-          vec3 c = mix(vCol * 0.15, vCol, t.r);
-          gl_FragColor = vec4(c * 0.92, 1.0);
-          #include <colorspace_fragment>
-        }`,
-    });
+    const numAtlas = numberAtlas();
 
     // Helmet decals: a patch bent onto the helmet shell (same local space as helmetGeo), the team's logo from a
     // two-cell atlas (home | away) picked per instance; aDecal = (cell, flip) so both sides read the right way.
@@ -142,59 +100,31 @@ export class PlayerRenderer {
     this.nameCanvas.width = 512; this.nameCanvas.height = MAX * 32;
     this.nameTex = new THREE.CanvasTexture(this.nameCanvas);
     this.nameTex.colorSpace = THREE.SRGBColorSpace; this.nameTex.anisotropy = 4;
-    const nobGeo = new THREE.PlaneGeometry(1, 1);
-    const rowAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
-    nobGeo.setAttribute('aRow', rowAttr);
-    this.rowAttr = rowAttr;
-    const nobMat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: this.nameTex }, rows: { value: MAX } },
-      transparent: true,
-      vertexShader: `attribute float aRow; uniform float rows; varying vec2 vUv; varying vec3 vCol;
-        void main(){
-          vUv = vec2(uv.x, 1.0 - (aRow + 1.0 - uv.y) / rows);
-          #ifdef USE_INSTANCING_COLOR
-          vCol = instanceColor;
-          #else
-          vCol = vec3(1.0);
-          #endif
-          gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
-        }`,
-      fragmentShader: `uniform sampler2D map; varying vec2 vUv; varying vec3 vCol;
-        void main(){
-          vec4 t = texture2D(map, vUv);
-          if (t.a < 0.45) discard;
-          gl_FragColor = vec4(vCol * 0.92, 1.0);
-          #include <colorspace_fragment>
-        }`,
-    });
-
-    const torsoMat = mat(0.8), upperMat = mat(0.8);
-    const upperGeo = limbGeo(0.07);
-    this.stripeAttrs = [striped(torsoMat, MAX, torsoGeo), striped(upperMat, MAX * 2, upperGeo)];
+    // The body: one skinned, instanced mesh (render/body.js); bones, colors and numbers live in boneTex.
+    this.boneData = new Float32Array(TEX_W * MAX * 4);
+    this.boneTex = new THREE.DataTexture(this.boneData, TEX_W, MAX, THREE.RGBAFormat, THREE.FloatType);
+    this.boneTex.needsUpdate = true;
+    BODY_UNIFORMS.boneTex.value = this.boneTex;
+    BODY_UNIFORMS.numTex.value = numAtlas;
+    BODY_UNIFORMS.nameTex.value = this.nameTex;
+    BODY_UNIFORMS.nameRows.value = MAX;
+    this.body = part(buildBodyGeometry(), bodyMaterial(envMap, fabricNormal()), MAX);
+    this.body.customDepthMaterial = bodyDepthMaterial();
+    this.body.receiveShadow = true;
+    const helmetMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08, envMap, envMapIntensity: 0.9 });
     this.parts = {
-      torso: part(torsoGeo, torsoMat, MAX),
-      pads: part(padGeo, mat(0.8), MAX),
-      pelvis: part(new THREE.CapsuleGeometry(0.15, 0.12, 2, 8).rotateZ(Math.PI / 2).scale(1.05, 1, 0.95), mat(0.7), MAX),
-      thigh: part(limbGeo(0.095), mat(0.7), MAX * 2),
-      shin: part(limbGeo(0.07), mat(0.8), MAX * 2),
-      shoe: part(new THREE.CapsuleGeometry(0.065, 0.17, 2, 6).rotateX(Math.PI / 2).scale(1, 0.75, 1), mat(0.45, 0, 0.8), MAX * 2),
-      upper: part(upperGeo, upperMat, MAX * 2),
-      fore: part(limbGeo(0.055), mat(0.6, 0, 0.4), MAX * 2),
-      hand: part(new THREE.SphereGeometry(0.06, 7, 5).scale(1, 1.1, 0.85), mat(0.6), MAX * 2),
-      neck: part(new THREE.CylinderGeometry(0.07, 0.08, 0.14, 6), mat(0.6, 0, 0.4), MAX),
-      helmet: part(helmetGeo, mat(0.25, 0.2, 0.7), MAX),
-      stripe: part(box(0.06, 0.03, 0.36), lam(), MAX, false),
-      mask: part(maskGeo, mat(0.35, 0.6, 1), MAX, false),
+      body: this.body,
+      shoe: part(cleatGeometry(), mat(0.45, 0, 0.8), MAX * 2),
+      helmet: part(helmetGeometry(), helmetMat, MAX),
+      face: part(new THREE.SphereGeometry(0.085, 10, 8).scale(0.95, 1.15, 1), mat(0.55), MAX, false),
+      stripe: part(helmetStripeGeometry(), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false),
+      mask: part(facemaskGeometry(), mat(0.35, 0.6, 1), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
       // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
       visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), mat(0.1, 0.3, 1.2), MAX, false),
       towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
-      bar: part(barGeo, mat(0.35, 0.6, 1), MAX * 2, false),
-      cap: part(capGeo, mat(0.8), MAX * 2),
-      num: part(numGeo, numMat, MAX * 4, false),
-      nob: part(nobGeo, nobMat, MAX, false),
     };
-    this.pairs = new Set([this.parts.decal, this.parts.thigh, this.parts.shin, this.parts.shoe, this.parts.upper, this.parts.fore, this.parts.hand, this.parts.bar, this.parts.cap]);
+    this.pairs = new Set([this.parts.decal, this.parts.shoe]);
     for (const p of Object.values(this.parts)) scene.add(p);
 
     // Ring under the user-controlled player.
@@ -227,15 +157,26 @@ export class PlayerRenderer {
     this._t = new THREE.Matrix4();
     this._s = new THREE.Matrix4();
     this._col = new THREE.Color();
+    this._v = new THREE.Vector3();
     this.colorsKey = '';
     this.handPos = [];
+  }
+
+  /** Body texel helpers: region color, number, flags (row i of the bone texture). */
+  texel(i, col, x, y, z, w) { const o = (i * TEX_W + col) * 4, d = this.boneData; d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = w; }
+  region(i, r, color) { const c = this._col.set(color); this.texel(i, COL_COLORS + r, c.r, c.g, c.b, 1); }
+  regionC(i, r, c) { this.texel(i, COL_COLORS + r, c.r, c.g, c.b, 1); }
+  number(i, n, color, nameRow = -1) {
+    const show = n !== null && n !== undefined && n >= 0;
+    this.texel(i, COL_NUMBER, show ? n % 10 : 0, show ? Math.floor(n / 10) : 0, nameRow, show ? 1 : 0);
+    const c = this._col.set(color || '#ffffff'); this.texel(i, COL_NUMCOL, c.r, c.g, c.b, 1);
   }
 
   /** Assign per-instance colors from team uniforms (once per play setup). */
   setColors(sim, teams) {
     const wear = this.wear || ['home', 'away'];
     const unis = teams.map((t, k) => uniformFor(t, wear[k]));
-    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}`).join(',') + JSON.stringify(unis) + ':' + (this.extra?.length || 0);
+    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}:${p.look?.sleeves || ''}`).join(',') + JSON.stringify(unis) + ':' + (this.extra?.length || 0) + ':' + Math.round((this.dirt || 0) * 10);
     if (key === this.colorsKey) return;
     this.colorsKey = key;
     const P = this.parts;
@@ -249,16 +190,17 @@ export class PlayerRenderer {
     ng.clearRect(0, 0, 512, MAX * 32);
     ng.font = '700 26px "Saira Condensed", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
     const paintName = (i, name) => {
-      if (i >= MAX || !name) return;
+      if (i >= MAX || !name) return false;
       const last = name.replace(/^\S+\.\s*/, '').toUpperCase();
-      // The plane is 6:1 but a row is 16:1, so stretch the text ~2.7x across (less for long names, to fit).
-      const sx = Math.min(16 / 6, 496 / Math.max(1, ng.measureText(last).width));
+      // The name patch is ~4.5:1 but a row is 16:1, so stretch the text across (less for long names, to fit).
+      const sx = Math.min(16 / 4.5, 496 / Math.max(1, ng.measureText(last).width));
       ng.save(); ng.translate(256, i * 32 + 17); ng.scale(sx, 1); ng.fillText(last, 0, 0); ng.restore();
-      this.rowAttr.setX(i, i);
+      return true;
     };
-    sim.players.forEach((p, i) => paintName(i, p.name));
+    const named = sim.players.map((p, i) => paintName(i, p.name));
     this.nameTex.needsUpdate = true;
     const pick = (team, which) => (which === 'white' ? '#f4f4f4' : which === 'secondary' ? team.colors.secondary : which === 'accent' ? team.colors.accent : team.colors.primary);
+    const flags = (i, stripes) => this.texel(i, COL_FLAGS, stripes ? 1 : 0, 0, 0, 0);
     sim.players.forEach((p, i) => {
       const team = teams[p.team];
       const u = team.uniform;
@@ -267,61 +209,49 @@ export class PlayerRenderer {
       const jersey = uni.jersey;
       const helmet = uni.helmet || pick(team, u.helmet);
       const pants = uni.pants;
-      const numColor = uni.number;
       const skin = SKIN[p.skin % SKIN.length];
       // Mud / grass stains build up over the game (this.dirt 0..1, set from the weather and the clock).
-      const mud = (col) => c.set(col).lerp(MUD, (this.dirt || 0) * (p.id % 3 === 0 ? 0.42 : 0.28));
-      P.torso.setColorAt(i, mud(jersey));
-      P.pads.setColorAt(i, mud(jersey).offsetHSL(0, 0, -0.03));
-      P.pelvis.setColorAt(i, mud(pants));
-      P.neck.setColorAt(i, c.set(skin));
+      const dirt = (this.dirt || 0) * (p.id % 3 === 0 ? 0.42 : 0.28);
+      const mud = (col, k = 1) => c.set(col).lerp(MUD, dirt * k);
+      this.regionC(i, REGION.jersey, mud(jersey));
+      this.regionC(i, REGION.sleeve, mud(uni.sleeves || uni.shoulders || jersey));
+      this.regionC(i, REGION.pants, mud(pants, 1.4));
+      const stripe = uni.stripe === 'none' ? pants : (uni.stripe || (isDark(pants) ? team.colors.secondary : team.colors.primary));
+      this.regionC(i, REGION.stripe, mud(stripe, 1.2));
+      this.region(i, REGION.socks, uni.socks || (!isDark(pants) ? team.colors.primary : '#f2f2f2'));
+      this.region(i, REGION.skin, skin);
+      // Arm sleeves (roster editor): white / black / team color, else bare forearms.
+      const sl = p.look?.sleeves;
+      this.region(i, REGION.forearm, sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin);
+      this.regionC(i, REGION.gloves, uni.gloves ? c.set(uni.gloves) : c.set(team.colors.secondary).lerp(WHITE, 0.2));
+      this.number(i, p.number, uni.number, named[i] ? i : -1);
+      flags(i, false);
+      P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
-      const stripe = uni.stripe === 'none' ? helmet : uni.stripe || (u.helmetStripe ? team.colors.secondary : helmet);
+      const hstripe = uni.stripe === 'none' ? helmet : uni.stripe || (u.helmetStripe ? team.colors.secondary : helmet);
       const facemask = uni.facemask || (isDark(helmet) ? '#cfcfcf' : '#333333');
-      P.stripe.setColorAt(i, c.set(stripe));
+      P.stripe.setColorAt(i, c.set(hstripe));
       P.mask.setColorAt(i, c.set(facemask));
       const vl = p.look?.visor;
       P.visor.setColorAt(i, c.set(VISOR_COLORS[vl] || (p.number % 3 ? VISOR_COLORS.dark : VISOR_COLORS.gold)));
       P.towel.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);
-        P.bar.setColorAt(i * 2 + k, c.set(facemask));
-        P.cap.setColorAt(i * 2 + k, uni.shoulders ? c.set(uni.shoulders) : c.set(jersey).offsetHSL(0, 0, -0.04));
-        P.num.setColorAt(i * 4 + 2 + k, c.set(numColor));
-        this.cellAttr.setXY(i * 4 + 2 + k, p.number % 10, Math.floor(p.number / 10));
+        P.shoe.setColorAt(i * 2 + k, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
       }
-      for (let k = 0; k < 2; k++) {
-        const j = i * 2 + k;
-        P.thigh.setColorAt(j, c.set(pants).lerp(MUD, (this.dirt || 0) * 0.4));
-        P.shin.setColorAt(j, c.set(uni.socks || (!isDark(pants) ? team.colors.primary : '#f2f2f2')));
-        P.shoe.setColorAt(j, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
-        P.upper.setColorAt(j, mud(uni.sleeves || jersey));
-        // Arm sleeves (roster editor): white / black / team color, else bare forearms.
-        const sl = p.look?.sleeves;
-        P.fore.setColorAt(j, c.set(sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin));
-        P.hand.setColorAt(j, uni.gloves ? c.set(uni.gloves) : c.set(team.colors.secondary).lerp(WHITE, 0.2));
-        P.num.setColorAt(i * 4 + k, c.set(numColor));
-        this.cellAttr.setXY(i * 4 + k, p.number % 10, Math.floor(p.number / 10));
-      }
-      P.nob.setColorAt(i, c.set(numColor));
     });
     // Officials after the players: striped shirt, black pants, black cap (the referee wears white).
-    const [sT, sU] = this.stripeAttrs;
-    for (let i = 0; i < MAX; i++) { const ref = i >= sim.players.length && i < sim.players.length + 7; sT.setX(i, ref ? 1 : 0); sU.setX(i * 2, ref ? 1 : 0); sU.setX(i * 2 + 1, ref ? 1 : 0); }
-    sT.needsUpdate = sU.needsUpdate = true;
     for (let r = 0; r < 7; r++) {
       const i = sim.players.length + r;
-      const cap = r === 0 ? '#f4f4f4' : '#141414';
-      P.torso.setColorAt(i, c.set('#f2f2f2')); P.pads.setColorAt(i, c.set('#f2f2f2')); P.pelvis.setColorAt(i, c.set('#1a1a1a'));
-      P.neck.setColorAt(i, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.helmet.setColorAt(i, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
-      for (let k = 0; k < 2; k++) {
-        const j = i * 2 + k;
-        P.thigh.setColorAt(j, c.set('#1a1a1a')); P.shin.setColorAt(j, c.set('#1a1a1a')); P.shoe.setColorAt(j, c.set('#0e0e0e'));
-        P.upper.setColorAt(j, c.set('#f2f2f2')); P.fore.setColorAt(j, c.set(SKIN[(r * 2 + 1) % SKIN.length])); P.hand.setColorAt(j, c.set(SKIN[(r * 2 + 1) % SKIN.length]));
-        P.bar.setColorAt(j, c.set(cap)); P.cap.setColorAt(j, c.set('#f2f2f2'));
-        P.num.setColorAt(i * 4 + k, c.set('#111111')); this.cellAttr.setXY(i * 4 + k, (r * 13 + 7) % 10, ((r * 13 + 7) / 10 | 0) % 10);
-        P.num.setColorAt(i * 4 + 2 + k, c.set('#f2f2f2'));
-      }
+      if (i >= MAX) break;
+      const cap = r === 0 ? '#f4f4f4' : '#141414', skin = SKIN[(r * 2 + 1) % SKIN.length];
+      this.region(i, REGION.jersey, '#f2f2f2'); this.region(i, REGION.sleeve, '#f2f2f2');
+      for (const g of [REGION.pants, REGION.stripe, REGION.socks]) this.region(i, g, '#1a1a1a');
+      this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, skin);
+      this.number(i, (r * 13 + 7) % 100, '#111111');
+      flags(i, true);
+      P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
+      for (let k = 0; k < 2; k++) P.shoe.setColorAt(i * 2 + k, c.set('#0e0e0e'));
     }
     // Sideline players and coaches (Presentation.bench) after the officials.
     const base = sim.players.length + 7;
@@ -333,26 +263,19 @@ export class PlayerRenderer {
       const skin = SKIN[b.skin % SKIN.length];
       const top = b.coach ? team.colors.primary : jersey, bottom = b.coach ? '#b9a77c' : pants;
       const numColor = isDark(top) ? (isDark(team.colors.secondary) ? '#ffffff' : team.colors.secondary) : (isDark(team.colors.primary) ? team.colors.primary : '#111111');
-      P.torso.setColorAt(i, c.set(top)); P.pads.setColorAt(i, c.set(top)); P.pelvis.setColorAt(i, c.set(bottom)); P.neck.setColorAt(i, c.set(skin));
+      this.region(i, REGION.jersey, top); this.region(i, REGION.sleeve, top); this.region(i, REGION.pants, bottom); this.region(i, REGION.stripe, bottom);
+      this.region(i, REGION.socks, b.coach ? '#b9a77c' : u.pants === 'white' ? team.colors.primary : '#f2f2f2');
+      this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, b.coach ? skin : team.colors.secondary);
+      this.number(i, b.coach ? -1 : b.number, numColor);
+      flags(i, false);
+      P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
       P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
-      for (let s2 = 0; s2 < 2; s2++) {
-        const j = i * 2 + s2;
-        this.decalAttr.setXY(j, b.team, s2);
-        P.thigh.setColorAt(j, c.set(bottom)); P.shin.setColorAt(j, c.set(b.coach ? '#b9a77c' : u.pants === 'white' ? team.colors.primary : '#f2f2f2'));
-        P.shoe.setColorAt(j, c.set('#151515')); P.upper.setColorAt(j, c.set(top)); P.fore.setColorAt(j, c.set(skin));
-        P.hand.setColorAt(j, c.set(b.coach ? skin : team.colors.secondary)); P.bar.setColorAt(j, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
-        P.cap.setColorAt(j, c.set(top));
-        P.num.setColorAt(i * 4 + s2, c.set(numColor)); P.num.setColorAt(i * 4 + 2 + s2, c.set(numColor));
-        this.cellAttr.setXY(i * 4 + s2, b.number % 10, Math.floor(b.number / 10)); this.cellAttr.setXY(i * 4 + 2 + s2, b.number % 10, Math.floor(b.number / 10));
-      }
-      sT.setX(i, 0); sU.setX(i * 2, 0); sU.setX(i * 2 + 1, 0);
+      for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); P.shoe.setColorAt(i * 2 + s2, c.set('#151515')); }
     });
-    sT.needsUpdate = sU.needsUpdate = true;
-    this.cellAttr.needsUpdate = true;
     this.decalAttr.needsUpdate = true;
-    this.rowAttr.needsUpdate = true;
+    this.boneTex.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }
 
@@ -360,7 +283,7 @@ export class PlayerRenderer {
   update(sim, alpha, time, controlledId, refs = null) {
     const P = this.parts;
     const n = Math.min(MAX, sim.players.length + (refs ? refs.length : 0));
-    for (const m of Object.values(P)) m.count = m === P.num ? n * 4 : this.pairs.has(m) ? n * 2 : n;
+    for (const m of Object.values(P)) m.count = this.pairs.has(m) ? n * 2 : n;
     // A new play: poses start fresh (no crossfade from the last play's players).
     if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; this.fallAnim.length = 0; }
     const dt = Math.min(0.1, Math.max(0, time - (this.lastTime ?? time)));
@@ -377,6 +300,7 @@ export class PlayerRenderer {
       this.pulse.material.opacity = Math.max(0, 0.95 * (1 - k));
     } else this.pulse.material.opacity = 0;
     for (const m of Object.values(P)) m.instanceMatrix.needsUpdate = true;
+    this.boneTex.needsUpdate = true;
     const ids = Array.isArray(controlledId) ? controlledId : [controlledId];
     [this.ring, this.ring2].forEach((ring, i) => {
       const cp = (ids[i] >= 0 && this.display?.[ids[i]]) || sim.players[ids[i]];
@@ -430,68 +354,67 @@ export class PlayerRenderer {
     if (pose.rootYaw) root.multiply(rotY(pose.rootYaw));
     root.multiply(scaleM(sc, sc, sc));
 
-    // Pelvis/upper body frame.
-    const pel = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0)).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
-    P.pelvis.setMatrixAt(i, cl(pel).multiply(scaleM(wide, 1, wide)));
-    P.torso.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso * 0.45, p.bulk * 0.02)).multiply(scaleM(B.torsoW * wide, B.torso * 0.85, B.torsoD * wide * (1 + p.bulk * 0.25))));
-    P.pads.setMatrixAt(i, official ? ZERO : cl(pel).multiply(trans(0, B.torso * 0.86, 0)).multiply(scaleM(B.padW * wide, 0.2, B.padD * wide)));
-    P.neck.setMatrixAt(i, cl(pel).multiply(trans(0, B.torso + 0.04, 0.01)));
+    // Bones (render/body.js): hips (upright), chest (leans and twists through the waist), head, arms, legs.
+    const w = official ? 1 : wide;
+    const hips = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0));
+    const pel = cl(hips).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
     const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotX(pose.head));
+    this.bone(i, BONE.hips, hips, w);
+    this.bone(i, BONE.chest, pel, w);
+    this.bone(i, BONE.head, head, w);
+    // Build: width, limb thickness, chest depth (linemen are deep through the chest), shoulder pads (none on officials).
+    this.texel(i, COL_PARAMS, w, official ? 0.92 : limb, w * (official ? 0.95 : 1 + p.bulk * 0.22), official ? 0.72 : 1);
     if (official) {
       // Officials and coaches: a bare head (the helmet part, skin-colored) under a cap: the towel part is the
       // crown, the helmet stripe the brim.
       P.helmet.setMatrixAt(i, cl(head).multiply(trans(0, 0.01, 0.01)).multiply(scaleM(0.23, 0.27, 0.25)));
       P.towel.setMatrixAt(i, cl(head).multiply(trans(0, 0.185, 0)).multiply(scaleM(2.3, 0.33, 16.5)));
-      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.105, 0.15)).multiply(scaleM(2.5, 0.6, 0.42)));
-      P.mask.setMatrixAt(i, ZERO); P.bar.setMatrixAt(i * 2, ZERO); P.bar.setMatrixAt(i * 2 + 1, ZERO);
+      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.07, 0.07)).multiply(scaleM(0.5, 0.2, 0.3)));
+      P.mask.setMatrixAt(i, ZERO); P.face.setMatrixAt(i, ZERO);
       P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
       P.visor.setMatrixAt(i, ZERO);
     } else {
       P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.face.setMatrixAt(i, cl(head).multiply(trans(0, -0.04, 0.075)));
       const g = gearOf(p);
       P.visor.setMatrixAt(i, g.visor ? cl(head).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
-      P.towel.setMatrixAt(i, g.towel ? cl(pel).multiply(trans(-0.07, -0.02, (B.torsoD * wide) / 2 + 0.01)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
+      P.towel.setMatrixAt(i, g.towel ? cl(hips).multiply(trans(-0.07, 0.03, 0.15 * wide)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
       P.decal.setMatrixAt(i * 2, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
       P.decal.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
-      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.165, -0.01)));
-      P.mask.setMatrixAt(i, cl(head).multiply(trans(0, -0.03, 0.16)).multiply(scaleM(0.32, 0.28, 0.3)));
-      P.bar.setMatrixAt(i * 2, cl(head).multiply(trans(0, -0.035, 0.205)).multiply(scaleM(0.2, 1, 1)));
-      P.bar.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, -0.085, 0.195)).multiply(scaleM(0.16, 1, 1)));
+      P.stripe.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.mask.setMatrixAt(i, head);
     }
-    // Numbers front and back.
-    P.num.setMatrixAt(i * 4, cl(pel).multiply(trans(0, B.torso * 0.5, -(B.torsoD * wide) / 2 - 0.035)).multiply(rotY(Math.PI)).multiply(scaleM(0.3 * wide, 0.3, 1)));
-    P.num.setMatrixAt(i * 4 + 1, cl(pel).multiply(trans(0, B.torso * 0.58, (B.torsoD * wide) / 2 + 0.04)).multiply(rotX(-0.12)).multiply(scaleM(0.2 * wide, 0.2, 1)));
-    // Name across the shoulders on the back (players only; officials and the sideline go without).
-    P.nob.setMatrixAt(i, official || i >= sim.players.length ? ZERO : cl(pel).multiply(trans(0, B.torso * 0.5 + 0.2, -(B.torsoD * wide) / 2 - 0.045)).multiply(rotY(Math.PI)).multiply(scaleM(0.36 * wide, 0.06, 1)));
 
     // Arms.
     for (let s = 0; s < 2; s++) {
       const side = s === 0 ? -1 : 1; // -1 = left
       const a = pose.arms[s];
-      // Shoulder-pad cap with a small number on top (like a real jersey's sleeve numbers).
-      const capM = cl(pel).multiply(trans(side * B.shX * wide * 1.02, B.torso * 0.9, 0)).multiply(rotZ(-side * 0.35));
-      P.cap.setMatrixAt(i * 2 + s, official ? ZERO : cl(capM).multiply(scaleM(0.2 * wide, 0.16, 0.24 * wide)));
-      if (official) P.num.setMatrixAt(i * 4 + 2 + s, ZERO); else P.num.setMatrixAt(i * 4 + 2 + s, cl(capM).multiply(trans(side * 0.005, 0.03, 0)).multiply(rotZ(side * 0.25)).multiply(rotY(side * Math.PI / 2)).multiply(scaleM(0.12, 0.12, 1)));
-      const sh = cl(pel).multiply(trans(side * B.shX * wide, B.torso * 0.84, 0)).multiply(rotX(-a.pitch)).multiply(rotZ(side * a.out)).multiply(rotY(side * (a.twist || 0)));
-      P.upper.setMatrixAt(i * 2 + s, cl(sh).multiply(trans(0, -B.upper / 2, 0)).multiply(scaleM(limb, B.upper, limb)));
+      const sh = cl(pel).multiply(trans(side * B.shX * w, B.torso * 0.84, 0)).multiply(rotX(-a.pitch)).multiply(rotZ(side * a.out)).multiply(rotY(side * (a.twist || 0)));
       const el = cl(sh).multiply(trans(0, -B.upper, 0)).multiply(rotX(-a.elbow));
-      P.fore.setMatrixAt(i * 2 + s, cl(el).multiply(trans(0, -B.fore / 2, 0)).multiply(scaleM(limb, B.fore, limb)));
-      const hand = cl(el).multiply(trans(0, -B.fore - 0.05, 0));
-      P.hand.setMatrixAt(i * 2 + s, hand);
-      if (s === 1) (this.handPos[i] ||= new THREE.Vector3()).setFromMatrixPosition(hand);
+      this.bone(i, s ? BONE.shR : BONE.shL, sh, w);
+      this.bone(i, s ? BONE.elR : BONE.elL, el, w);
+      if (s === 1) (this.handPos[i] ||= new THREE.Vector3()).setFromMatrixPosition(cl(el).multiply(trans(0, -B.fore - 0.05, 0)));
     }
     // Legs.
     for (let s = 0; s < 2; s++) {
       const side = s === 0 ? -1 : 1;
       const l = pose.legs[s];
-      const hip = cl(root).multiply(trans(side * B.hipX * wide, B.hipH + pose.crouch, 0)).multiply(rotX(-l.hip)).multiply(rotZ(side * (l.out || 0)));
-      P.thigh.setMatrixAt(i * 2 + s, cl(hip).multiply(trans(0, -B.thigh / 2, 0)).multiply(scaleM(limb * 1.05, B.thigh, limb * 1.05)));
+      const hip = cl(root).multiply(trans(side * B.hipX * w, B.hipH + pose.crouch, 0)).multiply(rotX(-l.hip)).multiply(rotZ(side * (l.out || 0)));
       const knee = cl(hip).multiply(trans(0, -B.thigh, 0)).multiply(rotX(l.knee));
-      P.shin.setMatrixAt(i * 2 + s, cl(knee).multiply(trans(0, -B.shin / 2, 0)).multiply(scaleM(1, B.shin, 1)));
-      const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(-l.knee + l.hip * 0.6));
+      const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(-l.knee + l.hip * 0.6 + (l.ankle || 0)));
+      this.bone(i, s ? BONE.hipR : BONE.hipL, hip, w);
+      this.bone(i, s ? BONE.kneeR : BONE.kneeL, knee, w);
+      this.bone(i, s ? BONE.footR : BONE.footL, foot, w);
       P.shoe.setMatrixAt(i * 2 + s, foot);
     }
+  }
+
+  /** Write bone b of instance i: the posed frame times the inverse bind (a translation back to the origin). */
+  bone(i, b, m, w) {
+    const o = bindOrigin(b, w, this._v);
+    const k = this._s.copy(m).multiply(this._t.makeTranslation(-o.x, -o.y, -o.z)).elements;
+    this.boneData.set(k, (i * TEX_W + b * 4) * 4);
   }
 
   /**
@@ -965,4 +888,98 @@ function angDiff(a, b) {
 function isDark(hex) {
   const c = new THREE.Color(hex);
   return c.r * 0.299 + c.g * 0.587 + c.b * 0.114 < 0.45;
+}
+
+// ---------- gear geometry ----------
+/**
+ * Helmet shell in the old unit-sphere space (radius 0.5, scaled 0.33 per player so the decal still sits on it): a
+ * rounded crown, jaw flaps that come down and forward at the sides, a lower back, and an open face below the brow.
+ */
+function helmetGeometry() {
+  const NU = 36, NV = 20;
+  const pos = [], idx = [];
+  for (let j = 0; j <= NV; j++) {
+    const v = (j / NV) * Math.PI * 0.86;
+    for (let k = 0; k <= NU; k++) {
+      const u = (k / NU) * Math.PI * 2;
+      const f = Math.cos(u), sd = Math.sin(u);
+      // A slightly longer crown front to back, a flared rim at the bottom.
+      const r = 0.5 * (1 + Math.max(0, v - Math.PI * 0.6) * 0.12);
+      let x = Math.sin(v) * sd * r * 0.95, y = Math.cos(v) * r * 0.95, z = Math.sin(v) * f * r * 1.08;
+      // Jaw flaps pull forward along the cheeks.
+      if (v > Math.PI * 0.55 && Math.abs(sd) > 0.5 && f > -0.2) z += (v - Math.PI * 0.55) * 0.18 * Math.abs(sd);
+      pos.push(x, y, z);
+    }
+  }
+  const keep = (u, v) => {
+    const f = Math.cos(u), a = Math.abs(f + 0.05);
+    if (f > 0.42) return v < Math.PI * 0.44; // the face opening below the brow
+    if (f < -0.55) return v < Math.PI * 0.72; // the back sits above the neck
+    return v < Math.PI * (0.86 - a * 0.1);
+  };
+  for (let j = 0; j < NV; j++) for (let k = 0; k < NU; k++) {
+    const u = ((k + 0.5) / NU) * Math.PI * 2, v = ((j + 0.5) / NV) * Math.PI * 0.86;
+    if (!keep(u, v)) continue;
+    const a = j * (NU + 1) + k, b = a + 1, c = a + NU + 1, d = c + 1;
+    idx.push(a, c, b, b, c, d);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+/** Facemask cage in head space (yards): three bars across the face and two uprights, joined to the shell at the sides. */
+function facemaskGeometry() {
+  const geos = [];
+  const bar = (pts, r = 0.0075) => geos.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z))), 16, r, 5, false));
+  const arc = (y, rad, a0, a1, fwd = 0) => {
+    const pts = [];
+    for (let k = 0; k <= 8; k++) { const a = a0 + (a1 - a0) * (k / 8); pts.push([Math.sin(a) * rad, y, Math.cos(a) * rad * 1.05 + fwd]); }
+    return pts;
+  };
+  bar(arc(-0.02, 0.172, -1.25, 1.25));
+  bar(arc(-0.075, 0.19, -1.05, 1.05));
+  bar(arc(-0.13, 0.175, -0.85, 0.85, -0.005));
+  for (const s of [-1, 1]) {
+    bar([[s * 0.06, -0.02, 0.176], [s * 0.065, -0.075, 0.19], [s * 0.055, -0.13, 0.172]]);
+    bar([[s * 0.16, -0.02, 0.07], [s * 0.165, -0.075, 0.085], [s * 0.13, -0.13, 0.11]]);
+  }
+  const g = mergeGeometries(geos);
+  geos.forEach((x) => x.dispose());
+  return g;
+}
+
+/** A low-cut cleat: flat sole, rounded toe, higher heel counter (foot-bone space, toe toward +z). */
+function cleatGeometry() {
+  const g = new THREE.CapsuleGeometry(0.058, 0.19, 4, 10).rotateX(Math.PI / 2).scale(0.92, 0.62, 1);
+  const p = g.attributes.position;
+  for (let k = 0; k < p.count; k++) {
+    let y = p.getY(k), z = p.getZ(k);
+    if (y < -0.022) y = -0.03 - (y + 0.022) * 0.1; // flat sole
+    if (z < -0.06 && y > 0) y += (-0.06 - z) * 0.5; // heel counter
+    if (z > 0.08) y -= (z - 0.08) * 0.25 * (y > 0 ? 1 : 0); // toe drops
+    p.setY(k, y);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+/** The helmet's center stripe: a ribbon over the crown from the back rim to the brow (helmet unit space). */
+function helmetStripeGeometry() {
+  const pos = [], idx = [], N = 24, R = 0.508, hw = 0.05;
+  for (let k = 0; k <= N; k++) {
+    const t = -Math.PI * 0.62 + (k / N) * Math.PI * 1.04; // back rim → brow
+    for (const sx of [-1, 1]) {
+      const x = sx * hw, c = Math.sqrt(Math.max(0, R * R - x * x));
+      pos.push(x * 0.95, Math.cos(t) * c * 0.95, Math.sin(t) * c * 1.08);
+    }
+    if (k < N) { const a = k * 2; idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
 }

@@ -789,6 +789,24 @@ export class GameSession {
       }
       this.emit('flag', { foul: fouls[0], outcome });
     }
+    // Kickoff out of bounds: the receiving team takes the ball at the 40 or makes them re-kick from 5 yards back.
+    if (!fouls.length && r.kickType === 'kickoff' && r.kickOOB && !r.onside && m.phase === 'kickoff') {
+      const kicking = r.offTeam, recv = 1 - kicking;
+      const out = { type: 'kickoff_oob', team: kicking, accepted: false, kickoffRekick: true, newYL: Math.max(1, m.yardLine - 5),
+        text: 'Kickoff out of bounds: ball at the 40', acceptText: `Kickoff out of bounds: re-kick from the ${Math.max(1, m.yardLine - 5)}` };
+      if (!this.fast && this.isHuman(recv)) {
+        this.pendingPenalty = { outcome: out, recommend: false, foul: { type: 'kickoff_oob', team: kicking },
+          choice: { name: 'Kickoff out of bounds', yards: 5, accept: `Re-kick from their ${out.newYL}`, decline: 'Your ball at the 40' } };
+        this.state = 'penalty';
+        this.emit('flag', { foul: { type: 'kickoff_oob', team: kicking }, outcome: out, pending: true });
+        return;
+      }
+      // The CPU nearly always takes the 40.
+      out.accepted = this.rng.next() < 0.1;
+      if (out.accepted) out.text = out.acceptText;
+      this.completePlay(out.accepted ? out : null);
+      return;
+    }
     // A close call (sideline catch, spot at the line to gain, short of the goal line): the ruling on the field may
     // be wrong. The booth reviews late in halves / scores; otherwise the team it went against may challenge.
     if (!fouls.length && !this.fast && !this.practice && m.phase === 'scrimmage') {

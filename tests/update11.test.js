@@ -175,3 +175,30 @@ describe('pre-snap read', () => {
     expect(right / n).toBeGreaterThan(0.6);
   });
 });
+
+describe('kickoff out of bounds', () => {
+  it('the human receiving team chooses: ball at the 40 or a re-kick from 5 yards back', async () => {
+    const { GameSession } = await import('../src/game/session.js');
+    const { STEP } = await import('../src/core/constants.js');
+    const lg = generateLeagueRosters(defaultTeams(), 12);
+    for (const accept of [false, true]) {
+      const s = new GameSession({ teams: [lg[0], lg[1]], settings: { quarterMinutes: 15 }, humanTeam: 1, seed: 4, fast: false });
+      const { getOffPlay, getDefPlay } = await import('../src/data/playbook.js');
+      // The CPU (team 0) kicks off to the human; force the kick out of bounds and let the session judge it.
+      s.match.setupKickoff(0, 35);
+      s.choice = { off: getOffPlay('st_kickoff'), def: getDefPlay('st_kick_return') };
+      s.state = 'playcall';
+      s.tick(STEP, null);
+      expect(s.state).toBe('presnap');
+      s.sim.snap();
+      s.sim.result = { ...s.sim.buildResult('kickOOB'), kickOOB: true };
+      s.sim.state = 'dead';
+      s.finishPlay();
+      expect(s.state).toBe('penalty');
+      expect(s.pendingPenalty.choice.name).toBe('Kickoff out of bounds');
+      s.choosePenalty(accept);
+      if (accept) { expect(s.match.phase).toBe('kickoff'); expect(s.match.yardLine).toBe(30); }
+      else { expect(s.match.phase).toBe('scrimmage'); expect(s.match.possession).toBe(1); expect(s.match.yardLine).toBe(40); }
+    }
+  });
+});

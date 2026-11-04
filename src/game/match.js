@@ -1,5 +1,6 @@
 import { GOAL_X, HASH_Z, HALF_WIDTH } from '../core/constants.js';
 import { clamp } from '../core/math.js';
+import { winProb } from './winprob.js';
 
 // Full-game rules engine (pure logic). Field position is tracked as `yardLine`: yards from the
 // possessing team's own goal line (0..100). PlaySim works in absolute x; dirOf() converts.
@@ -203,6 +204,7 @@ export class Match {
     if (penalty && penalty.accepted) line = `${penalty.text} (play nullified)`;
     else if (b.phase === 'scrimmage' && this.phase === 'scrimmage' && this.possession === off && this.down === 1 && !r.kickType && (r.yards || 0) > 0 && r.touchdown === null) line += ' · FIRST DOWN';
     this.lastPlayText = b.sit ? `${b.sit}: ${line}` : line;
+    this.logWinProb(this.lastPlayText);
     // Drives end on the first play that changes possession, scores, or runs out the half.
     const d = b.drive; // a punt or turnover has already started the other team's drive
     if (!d || d.done || b.phase !== 'scrimmage' || d.team !== off) return;
@@ -219,6 +221,31 @@ export class Match {
     const drive = { team: off, plays: d.plays, yards: Math.round(endYL - d.yl), secs: Math.round(secs), result: end, start: d.yl };
     (this.drives ||= []).push(drive);
     this.say(`${this.teams[off].abbr} drive: ${drive.plays} play${drive.plays === 1 ? '' : 's'}, ${drive.yards} yds, ${clockText(drive.secs)} · ${end}`, 'drive');
+  }
+
+  /**
+   * The home team's chance to win after this play (post-game Win % chart and the key plays). Cheap: a small drive
+   * simulation (winprob.js) from the current state; skipped in practice.
+   */
+  logWinProb(text) {
+    if (this.settings.practice) return;
+    const log = (this.wpLog ||= [{ wp: 0.5, q: 1, clock: this.clock, text: 'Kickoff' }]);
+    let wp;
+    if (this.over) wp = this.score[0] > this.score[1] ? 1 : this.score[0] < this.score[1] ? 0 : 0.5;
+    else {
+      const qm = this.settings.quarterMinutes || 15;
+      let left = this.quarter >= 5 ? this.clock : Math.max(0, 4 - this.quarter) * qm * 60 + this.clock;
+      if (left > 120) left = 120 + (left - 120) * 15 / qm;
+      // Who has the ball and where (a kickoff about to happen: the receiver at his 30; a try: count it as scored + PAT).
+      const hasBall = this.phase === 'kickoff' ? 1 - this.kicker : this.possession;
+      let lead = this.score[0] - this.score[1];
+      if (this.phase === 'try') lead += (this.possession === 0 ? 1 : -1) * 0.95;
+      const yl = this.phase === 'scrimmage' ? this.yardLine : 30;
+      const s = { lead: hasBall === 0 ? lead : -lead, secs: left, ball: 'A', yl: Math.max(1, Math.min(99, Math.round(yl))), toA: this.timeouts[hasBall], toB: this.timeouts[1 - hasBall], ot: !!this.ot };
+      const p = winProb(s, 70);
+      wp = hasBall === 0 ? p : 1 - p;
+    }
+    log.push({ wp, q: this.quarter, clock: this.clock, text });
   }
 
   applyResultInner(r, sim, penalty = null) {

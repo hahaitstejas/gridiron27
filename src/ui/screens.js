@@ -677,8 +677,25 @@ export class Screens {
       el('div.pg-scoring', {}, ...(session.injuries || []).map((i) => el('div.pg-sc', {}, el('small', { text: m.teams[i.team].abbr }), el('b', { text: i.pos }),
         el('span', { text: `${i.name}: ${halftime ? (i.status === 'out' ? 'out' : i.status === 'returned' ? 'returned' : 'questionable') : injuryLine({ name: i.type || i.name, weeks: i.weeks, severe: i.severe })}${i.setback ? ' (aggravated)' : ''}` }), el('em', { text: '' }))),
         !(session.injuries || []).length ? el('div.st-empty', { text: 'No injuries.' }) : null));
+    // Win probability: the home team's chance after every play, 50% line, and the biggest swings.
+    const winPanel = () => {
+      const log = m.wpLog || [];
+      const W = 300, H = 150;
+      const x = (i) => 6 + (i * (W - 12)) / Math.max(1, log.length - 1), y = (v) => 8 + (1 - v) * (H - 16);
+      const pts = log.map((e, i) => `${x(i).toFixed(1)},${y(e.wp).toFixed(1)}`).join(' ');
+      const swings = log.slice(1).map((e, i) => ({ e, d: e.wp - log[i].wp })).sort((a2, b2) => Math.abs(b2.d) - Math.abs(a2.d)).slice(0, 3);
+      const chart = el('div.pg-chart', { html: `<svg viewBox="0 0 ${W} ${H}"><line x1="0" x2="${W}" y1="${y(0.5)}" y2="${y(0.5)}" stroke="#555" stroke-dasharray="4 4"/>
+        <text x="4" y="14" fill="#aaa" font-size="11">${h.abbr}</text><text x="4" y="${H - 4}" fill="#aaa" font-size="11">${a.abbr}</text>
+        <polyline fill="none" stroke="#fff" stroke-width="2.5" points="${pts}"/></svg>` });
+      const last = log.length ? log[log.length - 1].wp : 0.5;
+      return el('div.pg-panel', {}, el('div.pg-ptitle', { text: 'WIN PROBABILITY' }),
+        el('div.st-team-filter', { text: `${h.abbr} ${Math.round(last * 100)}% · ${a.abbr} ${Math.round((1 - last) * 100)}%` }), chart,
+        el('div.pg-scoring', {}, el('div.pg-sub', { text: 'Biggest swings' }), ...swings.map(({ e, d }) => el('div.pg-sc', {}, el('small', { text: `${e.q <= 4 ? `Q${e.q}` : 'OT'} ${clockShort(e.clock)}` }),
+          el('b', { text: `${d > 0 ? '+' : '−'}${Math.round(Math.abs(d) * 100)}%` }), el('span', { text: e.text.replace(/^.*?: /, '') }), el('em', { text: d > 0 ? h.abbr : a.abbr }))),
+          !swings.length ? el('div.st-empty', { text: 'No plays yet.' }) : null));
+    };
     // Right panel: one at a time, LB/RB switches (the menu stays short).
-    const PANELS = [['quarters', 'Quarters', quarters], ['team', 'Team', teamStats], ['summary', 'Scoring', summary], ['injuries', 'Injuries', injuries]];
+    const PANELS = [['quarters', 'Quarters', quarters], ['wp', 'Win %', winPanel], ['team', 'Team', teamStats], ['summary', 'Scoring', summary], ['injuries', 'Injuries', injuries]];
     const pi = Math.max(0, PANELS.findIndex(([k]) => k === panel));
     const right = el('div.pg-side', {},
       el('div.pg-tabs', {}, el('b.btn.LB', { text: 'LB' }), ...PANELS.map(([k, label], i) => el(`span${i === pi ? '.on' : ''}`, { text: label })), el('b.btn.RB', { text: 'RB' })),
@@ -703,7 +720,7 @@ export class Screens {
           el('div.pg-qbs', {}, qbCard(1, false), qbCard(0, true)),
           el('div.pg-leadrow', {}, leaders(1), leaders(0))),
         right),
-      el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn A">A</b> Select &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> Quarters · Team · Scoring · Injuries' + (halftime ? '' : ' &nbsp; <b class="btn B">B</b> Finish') }));
+      el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn A">A</b> Select &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> Quarters · Win % · Team · Scoring · Injuries' + (halftime ? '' : ' &nbsp; <b class="btn B">B</b> Finish') }));
     const idx = Math.min(focus, items.length - 1);
     this.nav.set(items, { columns: 1, onBack: halftime ? () => {} : onDone, index: idx,
       onTab: (d) => redo(PANELS[(pi + d + PANELS.length) % PANELS.length][0], this.nav.index) });

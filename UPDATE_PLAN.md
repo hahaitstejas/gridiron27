@@ -127,5 +127,5 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] E9 CPU (and the user's) rosters always have a K and a P (sign one; never a back kicking)
 - [x] E10 Dynamic kickoff: the kicker can't cross midfield before the ball lands; nobody can stop the return early
 - [x] E11 In-game depth chart shows who's hurt (and why a player isn't playing)
-- [ ] L1 Short-week fatigue + prime-time pressure in played franchise games
+- [x] L1 Short-week fatigue + prime-time pressure in played franchise games
 - [ ] L2 Mindless QB scrambles closer to 3-4 yds

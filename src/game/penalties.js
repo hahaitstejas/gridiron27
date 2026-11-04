@@ -127,6 +127,7 @@ export function crowdNoise(m) {
   if (m.down >= 3) n += 0.3;
   if (m.quarter >= 4 && Math.abs(m.score[0] - m.score[1]) <= 8) n += 0.25;
   if (m.yardLine >= 80) n += 0.15;
+  if (m.settings?.gameDay?.prime) n *= 1.25; // prime time: the building is louder
   return Math.min(1, n);
 }
 

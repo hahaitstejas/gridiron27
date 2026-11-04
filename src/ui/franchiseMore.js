@@ -257,7 +257,8 @@ export function gamePreview(ui, g) {
   const start = el('div.start-btn', { text: 'Play Game' });
   start.activate = () => ui.ctx.playGame(g);
   screens.frame('mono-screen pv-screen', el('h1', { text: 'Game Preview' }),
-    el('div.pv-top', {}, logoCanvas(teams[g.away].logo, 90), el('div.pv-vs', {}, el('b', { text: `${teams[g.away].abbr} @ ${teams[g.home].abbr}` }), el('small', { text: `${gameWhen(g)}${g.venue ? ` · ${g.venue.stadium}, ${g.venue.city}` : ''}` })), logoCanvas(teams[g.home].logo, 90)),
+    el('div.pv-top', {}, logoCanvas(teams[g.away].logo, 90), el('div.pv-vs', {}, el('b', { text: `${teams[g.away].abbr} @ ${teams[g.home].abbr}` }), el('small', { text: `${gameWhen(g)}${g.venue ? ` · ${g.venue.stadium}, ${g.venue.city}` : ''}` }),
+        (g.short || []).length ? el('small', { text: `Short week: ${g.short.map((t) => teams[t].abbr).join(', ')} (tired legs)` }) : null), logoCanvas(teams[g.home].logo, 90)),
     el('div.pv-grid', {}, dc, oc, starsCard), start,
     el('div.setup-help', { html: '<b class="btn A">A</b> Play &nbsp; <b class="btn B">B</b> back' }));
   screens.nav.set([start], { onBack: () => ui.hub() });

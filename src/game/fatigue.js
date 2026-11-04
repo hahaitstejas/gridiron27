@@ -21,14 +21,14 @@ export function needsRest(energy, team, rp, relax = 0) {
 }
 
 /** After a play: players who were on the field tire (more for carriers, route runners, rushers), everyone else recovers. */
-export function applyPlayFatigue(energy, sim, duration) {
+export function applyPlayFatigue(energy, sim, duration, mult = [1, 1]) {
   const scale = Math.min(1.5, Math.max(0.6, duration / 5));
   for (const team of [0, 1]) {
     const onField = new Set();
     for (const p of sim.players) {
       if (p.team !== team) continue;
       onField.add(p.rid);
-      let cost = (COST[p.pos] ?? 0.02) * scale;
+      let cost = (COST[p.pos] ?? 0.02) * scale * (mult[team] ?? 1);
       const t = p.task?.type;
       if (p.id === sim.result?.carrierId || t === 'carrier') cost += 0.03;
       else if (t === 'route' || t === 'rush' || t === 'blitz' || t === 'pursue') cost += 0.006 * scale;

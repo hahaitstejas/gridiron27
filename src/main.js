@@ -151,7 +151,8 @@ const franchiseUI = new FranchiseUI({
     const others = currentGames(f).filter((x) => x !== g && x.score);
     const tick = others.map((x, i) => ({ away: teams[x.away].abbr, home: teams[x.home].abbr, final: x.score, q: x.score.map((pts, k) => splitQuarters(pts, f.seed + i * 7 + k)).reverse() }));
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
-      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, noTies: f.phase === 'playoffs', unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null });
+      quarterMinutes: f.settings.quarterMinutes }, { franchise: g, noTies: f.phase === 'playoffs', unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null,
+      gameDay: { short: (g.short || []).map((ti) => (ti === g.home ? 0 : 1)), prime: /Opener|TNF|SNF|MNF|Thanksgiving|Christmas|8:\d\d PM/.test(`${g.slot || ''} ${g.time || ''}`) } });
     if (session) session.ticker = tick;
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back, onRelease: (p) => league.franchise && releasedPlayer(league.franchise, teams, teams[ti], p),
@@ -232,7 +233,7 @@ function startGame(p, opts = {}) {
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast',
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, gameDay: opts.gameDay || null, playerCam: prefs.careerCam !== 'broadcast',
       styles: !opts.franchise && cfg.styles ? [...cfg.styles] : null, coin: !opts.franchise ? cfg.coin || null : null, coinTeam: cfg.side === '2p' ? 'any' : cfg.side === 'home' ? 0 : cfg.side === 'away' ? 1 : null },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,

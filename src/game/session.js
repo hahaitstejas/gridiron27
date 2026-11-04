@@ -39,6 +39,10 @@ export class GameSession {
     // Difficulty only applies against the CPU (none in 2-player).
     this.diff = difficultyConfig(this.settings.difficulty, humanTeam);
     this.energy = newEnergy(); // player fatigue for substitutions (game/fatigue.js)
+    // Franchise game day (settings.gameDay = { short: [team], prime }): a team on a short week (Thursday after
+    // Sunday) starts a step down and tires faster; prime time makes the home crowd louder (penalties.js crowdNoise).
+    this.fatigueMult = [0, 1].map((t) => (this.settings.gameDay?.short?.includes(t) ? 1.15 : 1));
+    for (const t of this.settings.gameDay?.short || []) for (const p of this.teams[t]?.roster || []) this.energy[t].set(p.id, 0.92);
     this.recorder = new ReplayRecorder(); // last play, for instant replay (not in fast/headless mode)
     this.lastReplay = null;
     this.smart = humanTeam === null ? 0.9 : (DIFFICULTY[this.settings.difficulty] || DIFFICULTY.pro).smart;
@@ -853,7 +857,7 @@ export class GameSession {
         if (this.highlights.length > 14) this.highlights.splice(this.highlights.findIndex((h) => !/Touchdown|Interception/.test(h.label)) >>> 0, 1);
       }
     }
-    applyPlayFatigue(this.energy, sim, (r.duration || 5) * ((this.settings.sliders?.fatigue ?? 50) / 50));
+    applyPlayFatigue(this.energy, sim, (r.duration || 5) * ((this.settings.sliders?.fatigue ?? 50) / 50), this.fatigueMult);
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break
     let drillRep = null;

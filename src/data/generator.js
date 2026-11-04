@@ -1,5 +1,5 @@
 import { RNG } from '../core/rng.js';
-import { FIRST_NAMES, LAST_NAMES, COLLEGES } from './names.js';
+import { FIRST_NAMES, LAST_NAMES, COLLEGES, blockedName } from './names.js';
 import { POSITION_TEMPLATES, RATING_KEYS, ROSTER_COUNTS, JERSEY_RANGES, BODY, overall } from './positions.js';
 import { buildDepthChart } from './depthChart.js';
 
@@ -40,6 +40,8 @@ export function generatePlayer(pos, rng, quality = 0, opts = {}) {
     ratings,
     skin: rng.int(0, 5),
   };
+  // Never a real player's name: step to another surname (no extra RNG draw, so leagues stay the same otherwise).
+  for (let k = 1; blockedName(p.first, p.last) && k < 20; k++) p.last = LAST_NAMES[(LAST_NAMES.indexOf(p.last) + 7) % LAST_NAMES.length];
   p.ovr = overall(p);
   return p;
 }

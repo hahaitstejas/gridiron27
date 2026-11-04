@@ -56,3 +56,13 @@ describe('practice squad', () => {
     expect(t.roster.includes(p)).toBe(false);
   });
 });
+
+describe('names', () => {
+  it('generated leagues never use a blocked (real) name', async () => {
+    const { blockedName, FIRST_NAMES, LAST_NAMES } = await import('../src/data/names.js');
+    expect(blockedName('Caleb', 'Williams')).toBe(true);
+    const teams = generateLeagueRosters(defaultTeams(), 11);
+    expect(teams.flatMap((t) => t.roster).some((p) => blockedName(p.first, p.last))).toBe(false);
+    expect(FIRST_NAMES.length * LAST_NAMES.length).toBeGreaterThan(1000);
+  });
+});

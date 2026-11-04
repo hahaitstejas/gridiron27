@@ -35,11 +35,27 @@ export function buildDepthChart(roster) {
   pair('LG', 'RG', 'G');
   pair('LE', 'RE', 'DE');
   pair('LOLB', 'ROLB', 'OLB');
+  if (!roster.some((p) => p.pos === 'FB')) depth.FB = fbFallback({ roster, depth });
   // KR/PR: fastest players
   const fast = [...roster].filter((p) => ['WR', 'HB', 'CB'].includes(p.pos)).sort((a, b) => b.ratings.speed - a.ratings.speed);
   depth.KR = fast.slice(0, 3).map((p) => p.id);
   depth.PR = fast.slice(0, 3).map((p) => p.id);
   return depth;
+}
+
+/**
+ * No fullback on the roster: the third / fourth tight end plays FB (they block like one), then the backup halfbacks,
+ * then the top two tight ends and the starting back as a last resort. `unavailable` = ids that can't play.
+ */
+export function fbFallback(team, unavailable = new Set()) {
+  const ok = (p) => !unavailable.has(p.id);
+  const fbScore = (p) => overall({ ...p, pos: 'FB' });
+  const listed = (team.depth?.TE || []).map((id) => team.roster.find((p) => p.id === id)).filter((p) => p?.pos === 'TE');
+  const tes = listed.concat(team.roster.filter((p) => p.pos === 'TE' && !listed.includes(p)).sort((a, b) => b.ovr - a.ovr)).filter(ok);
+  const hbs = team.roster.filter((p) => p.pos === 'HB' && ok(p)).sort((a, b) => b.ovr - a.ovr);
+  const deepTE = tes.slice(2).sort((a, b) => fbScore(b) - fbScore(a));
+  const order = [...deepTE, ...hbs.slice(1), ...tes.slice(0, 2), ...hbs.slice(0, 1)];
+  return [...new Set(order.map((p) => p.id))].slice(0, 4);
 }
 
 /** Roster players who can play `slot`, best first by their overall at that spot, excluding ones listed. */

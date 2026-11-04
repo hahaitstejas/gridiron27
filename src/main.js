@@ -41,7 +41,7 @@ import { logoCanvas } from './render/logo.js';
 import { Screens, loadPrefs, savePrefs, ICONS } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
-import { depthChartScreen } from './ui/depthEditor.js';
+import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
 import { playbookScreen } from './ui/playbookEditor.js';
 import { registerCustomPlays, loadSpecs } from './data/customPlays.js';
 import { statsScreen } from './ui/statsScreen.js';
@@ -460,8 +460,8 @@ function pause() {
       ? () => { session.callTimeout(session.humanTeam); for (const e of session.events.splice(0)) onSessionEvent(e); screens.clear(); app = 'game'; } : null,
     timeoutsLeft: session?.match.timeouts[session?.humanTeam] ?? 0,
     onStats: session ? () => statsScreen(screens, session.match, { onBack: () => { screens.extraButtons = null; pause(); } }) : null,
-    onDepth: session && session.humanTeam !== null ? () => depthChartScreen(screens, session.teams[session.humanTeam], {
-      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause, onChange: () => {}, inGame: true }) : null,
+    onDepth: session && session.humanTeam !== null ? () => coachingScreen(screens, { session, team: session.humanTeam,
+      energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause }) : null,
     onControls: () => screens.controls({ onBack: pause }),
     onReplay: session?.lastReplay ? () => { screens.clear(); app = 'game'; startReplay(); } : null,
     // A close call against you is waiting for your decision: challenge it from here too.

@@ -592,7 +592,7 @@ export class Screens {
     add('Timeout', onTimeout, `${timeoutsLeft} left`);
     add('Challenge Play', onChallenge, onChallenge ? '' : 'nothing to challenge');
     add('Stats', onStats);
-    add('Coaching', onDepth, 'depth chart · this game');
+    add('Coaching', onDepth, 'depth chart · injuries');
     add('Instant Replay', onReplay);
     add('Settings', onSettings);
     add('Controls', onControls);

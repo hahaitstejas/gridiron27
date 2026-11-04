@@ -15,7 +15,7 @@ import { addNews, gameNews, checkGameRecords, checkSeasonRecords, giveAwards } f
 import { healWeek, weeklyHealth, cpuInjuredReserve, unavailableIds, injuryLine } from './health.js';
 import { updateMorale, developmentTick } from './development.js';
 import { revertElevations, cpuElevations, release as releaseToWaivers, processWaivers, waiverOrder, resetPSSeason } from './practiceSquad.js';
-import { cpuSignFreeAgents, addFreeAgent } from './freeAgents.js';
+import { cpuSignFreeAgents, addFreeAgent, ensureSpecialists } from './freeAgents.js';
 import { fits } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
 import { ensureDraftClass, weeklyScouting } from './draftClass.js';
@@ -51,6 +51,7 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
   ensurePicks(f, teams);
   ensureDraftClass(f);
   seedFreeAgents(f, seed * 17 + year); // in-season free agents (freeAgents.js)
+  ensureSpecialists(f, teams, new RNG(f.seed + 3), teams.map((_, i) => i)); // a league file without kickers still kicks
   return f;
 }
 
@@ -172,7 +173,7 @@ export function recordGame(f, teams, g, score, lines, injuries = []) {
     for (const t of teams) {
       const p = t.roster.find((q) => q.id === inj.rid);
       if (!p) continue;
-      const name = inj.name || inj.type || 'Injury';
+      const name = inj.type || inj.name || 'Injury';
       if (inj.weeks > 0 || !p.injury) p.injury = { name, part: inj.part || '', weeks: Math.max(inj.weeks || 0, p.injury?.weeks || 0), total: inj.weeks || 0, severe: !!inj.severe, questionable: !(inj.weeks > 0), game: true };
       const mine = t === teams[f.userTeam];
       if ((inj.weeks >= 2 && (mine || p.ovr >= 80)) || (mine && inj.weeks > 0)) addNews(f, `${t.abbr} ${p.pos} ${p.first} ${p.last}: ${injuryLine(p.injury)}`, 'injury');
@@ -222,6 +223,12 @@ export function weekInBetween(f, teams) {
     for (const w of processWaivers(f, teams, order, { fits: (t, sal) => fits(t, sal, 0, f.cap), toFreeAgency: (p) => addFreeAgent(f, p) })) {
       if (w.to !== null) logTransaction(f, `${teams[w.to].abbr} claim ${w.p.pos} ${w.p.first} ${w.p.last} off waivers`);
     }
+  }
+  // Nobody kicks without a kicker: CPU teams sign one (and a punter) when theirs is gone or hurt.
+  for (const mv of ensureSpecialists(f, teams, rng)) logTransaction(f, `${teams[mv.team].abbr} sign ${mv.player.pos} ${mv.player.first} ${mv.player.last}${mv.released ? `; release ${mv.released.pos} ${mv.released.first} ${mv.released.last}` : ''}`);
+  const ut = teams[f.userTeam];
+  for (const pos of ['K', 'P']) {
+    if (ut && !ut.roster.some((p) => p.pos === pos && !(p.injury?.weeks > 0))) addNews(f, `You have no healthy ${pos === 'K' ? 'kicker' : 'punter'}: sign one in Free Agents`, 'signing');
   }
   for (const mv of cpuSignFreeAgents(f, teams, rng)) {
     const t = teams[mv.team], p = mv.player;

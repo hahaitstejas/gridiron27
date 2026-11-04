@@ -958,3 +958,7 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #celwheel .cw-mid { grid-column: 2; grid-row: 2; width: 70px; height: 70px; border-radius: 50%; border: 5px solid rgba(0,0,0,0.75); display: grid; place-items: center; }
 #celwheel .cw-mid .btn { background: #fff; color: #000; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; }
 #intro .in-cap { margin-top: 10px; padding: 6px 16px; background: #fff; color: #000; font: italic 800 22px var(--fd); display: none; }
+
+/* Update 1.1: hurt players on the depth chart / injury center */
+.dc-row.hurt .dc-name, .dc-slot.hurt .dc-slot-player { color: #e0605a; }
+.dc-row.hurt.focused .dc-name, .dc-slot.hurt.focused .dc-slot-player { color: #a01810; }

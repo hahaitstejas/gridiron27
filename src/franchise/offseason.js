@@ -254,7 +254,24 @@ export function cpuCutDowns(f, teams) {
     if (ti === f.userTeam) return;
     cutDown(t, ROSTER_LIMIT, capOf(f));
     fillRoster(f, t, 50);
+    specialistsFromPool(f, t);
   });
+}
+
+/** After cut-downs a CPU team without a kicker or punter signs the best one left in the pool (a minimum deal if need be). */
+export function specialistsFromPool(f, team) {
+  const pool = f.offseason?.pool || [];
+  for (const pos of ['K', 'P']) {
+    if (team.roster.some((p) => p.pos === pos)) continue;
+    let p = pool.filter((q) => q.pos === pos).sort((a, b) => b.ovr - a.ovr)[0];
+    if (!p) { p = generatePlayer(pos, new RNG(f.seed + team.roster.length), -8, { age: 28 }); p.ovr = overall(p); pool.push(p); }
+    pool.splice(pool.indexOf(p), 1);
+    p.salary = Math.min(askingSalary(p), MIN_SALARY * 2);
+    p.years = 1;
+    addPlayer(team, p);
+    team.depth[pos] = [p.id, ...(team.depth[pos] || []).filter((id) => id !== p.id)];
+    cutDown(team, ROSTER_LIMIT, capOf(f)); // back under 53 and the cap (a lone specialist is never the one cut)
+  }
 }
 
 /** Sign affordable free agents (neediest positions first) until the roster has `size` players. */

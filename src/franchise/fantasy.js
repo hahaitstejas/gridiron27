@@ -6,6 +6,7 @@ import { addPlayer } from '../data/rosterOps.js';
 import { buildDepthChart } from '../data/depthChart.js';
 import { overall } from '../data/positions.js';
 import { setupMoney } from './contracts.js';
+import { ensureSpecialists } from './freeAgents.js';
 
 export const FANTASY_ROUNDS = 53;
 // Roster shape each team drafts toward (sums to 53).
@@ -93,4 +94,5 @@ export function finishFantasyDraft(f, teams) {
   f.cap = setupMoney(teams, f.seed);
   for (const p of d.pool) (f.freeAgents ||= []).push(p); // anyone undrafted is a free agent
   f.fantasy = { done: true, undrafted: d.pool.length };
+  ensureSpecialists(f, teams, new RNG(f.seed + 11), teams.map((_, i) => i)); // everyone leaves with a K and a P
 }

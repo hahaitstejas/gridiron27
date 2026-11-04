@@ -145,3 +145,50 @@ export function cpuSignFreeAgents(f, teams, rng, cap = f.cap) {
   });
   return moves;
 }
+
+/**
+ * Every team needs a healthy kicker and punter (otherwise a back ends up kicking PATs). A CPU team without one signs
+ * the best available specialist (cap permitting, else a minimum deal; a full roster lets its worst non-starter go);
+ * if the pool has none, a generated veteran. `teamsToCheck` = team indexes (default: the CPU teams).
+ * Returns [{ team, player, released }].
+ */
+export function ensureSpecialists(f, teams, rng, teamsToCheck = null) {
+  const moves = [];
+  const which = teamsToCheck ?? teams.map((_, i) => i).filter((i) => i !== f.userTeam);
+  for (const ti of which) {
+    const t = teams[ti];
+    for (const pos of ['K', 'P']) {
+      const healthy = t.roster.filter((p) => p.pos === pos && !p.injury?.ir && !(p.injury?.weeks > 0));
+      if (healthy.length) {
+        // Make sure the healthy one is on top of the depth chart (a hurt kicker would leave the spot to anyone).
+        const best = healthy.sort((a, b) => b.ovr - a.ovr)[0];
+        if (t.depth[pos]?.[0] !== best.id && !t.roster.find((p) => p.id === t.depth[pos]?.[0] && p.pos === pos && !(p.injury?.weeks > 0))) {
+          t.depth[pos] = [best.id, ...(t.depth[pos] || []).filter((id) => id !== best.id)];
+        }
+        continue;
+      }
+      f.freeAgents ||= [];
+      let p = f.freeAgents.filter((q) => q.pos === pos).sort((a, b) => b.ovr - a.ovr)[0];
+      if (!p) {
+        p = generatePlayer(pos, rng, rng.range(-14, -6), { age: rng.int(25, 34) });
+        p.ovr = overall(p);
+        f.freeAgents.push(p);
+      }
+      let cut = null;
+      if (t.roster.length >= ROSTER_MAX) {
+        const starters = new Set(Object.values(t.depth || {}).flatMap((ids) => ids.slice(0, 1)));
+        cut = t.roster.filter((q) => !q.career && !starters.has(q.id) && !['K', 'P', 'QB'].includes(q.pos)).sort((a, b) => a.ovr - b.ovr)[0] || null;
+      }
+      let r = signInSeason(f, t, p.id, cut?.id ?? null, f.cap);
+      if (!r.ok && r.reason !== 'roster-full') {
+        // Can't afford his in-season ask: he takes the minimum (a team must field a kicker).
+        r = signInSeason(f, t, p.id, cut?.id ?? null, Infinity);
+        if (r.ok) r.player.salary = MIN_SALARY;
+      }
+      if (!r.ok) continue;
+      t.depth[pos] = [r.player.id, ...(t.depth[pos] || []).filter((id) => id !== r.player.id)];
+      moves.push({ team: ti, player: r.player, released: r.released });
+    }
+  }
+  return moves;
+}

@@ -9,6 +9,7 @@ import { updateBallFlight, updatePendingThrow } from './passing.js';
 import { updateTackles, updateMoves } from './tackling.js';
 import { updateAnimations } from './anim.js';
 import { getOffFormation, getDefFormation } from '../data/playbook.js';
+import { fbFallback } from '../data/depthChart.js';
 import { ROUTES } from '../data/routes.js';
 import { runOffenseAI } from '../ai/offense.js';
 import { runDefenseAI, assignDefense, alignMan, disguiseAlign, frontAlign } from '../ai/defense.js';
@@ -167,8 +168,11 @@ export class PlaySim {
     // use position groups like DE/OLB). Never pull the starting QB onto special teams.
     const qb1 = team.depth.QB?.[0];
     const byPos = (pos) => team.roster.filter((p) => p.pos === pos).sort((a, b) => b.ovr - a.ovr).map((p) => p.id);
+    // No (healthy) fullback: the 3rd/4th tight end lines up there before a halfback does (depthChart.js fbFallback).
+    const noFB = !team.roster.some((p) => p.pos === 'FB' && !used.has(p.id));
     for (const fp of formation.players) {
-      const list = (team.depth[fp.p] || byPos(fp.p)).filter((id) => fp.p === 'QB' || id !== qb1);
+      const src = fp.p === 'FB' && noFB ? fbFallback(team, used) : team.depth[fp.p] || byPos(fp.p);
+      const list = src.filter((id) => fp.p === 'QB' || id !== qb1);
       let rp = null;
       // No-huddle: the same eleven stay on the field (nobody had time to sub).
       const keep = this.cfg.keep?.[teamIdx]?.[fp.s];

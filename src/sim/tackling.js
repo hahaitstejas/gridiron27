@@ -289,8 +289,9 @@ function pileOn(sim, c, d) {
 function injure(sim, p) {
   const inj = rollInjury(sim.rng);
   p.injured = inj;
-  sim.injuries.push({ id: p.id, rid: p.rid, team: p.team, name: p.name, pos: p.pos, number: p.number, ...inj });
-  sim.emit('injury', { player: p.id, ...inj });
+  // `inj.name` is the injury's name; the entry's `name` is the player's (the injury goes in `type`).
+  sim.injuries.push({ ...inj, id: p.id, rid: p.rid, team: p.team, name: p.name, pos: p.pos, number: p.number, type: inj.name });
+  sim.emit('injury', { ...inj, player: p.id });
 }
 
 /** Closing speed between tackler and runner (yd/s). */

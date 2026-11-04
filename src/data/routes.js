@@ -32,7 +32,10 @@ export const ROUTES = {
   out_up: { pts: [[6, 0], [6, 4], [40, 5]], end: 'continue' },
   screen: { pts: [[-0.5, 2.5], [-0.6, 5]], end: 'settle' },
   throwback: { pts: [[-1, -1], [-3.5, -3]], end: 'settle' }, // a receiver coming back behind the line for a pass back
-  rb_screen: { pts: [[1.5, 3], [2, 6]], end: 'settle' }, // a back leaking out to the flat behind the line
+  rb_screen: { pts: [[2.5, 3], [3.5, 6]], end: 'settle' }, // a back leaking out to the flat behind the line
+  tunnel: { pts: [[1, 0.5], [-1, -2.5], [-1.2, -5]], end: 'settle' }, // WR jab upfield, comes back inside behind the line
+  mid_screen: { pts: [[1.5, 1.5], [3.5, 0.5]], end: 'settle' }, // the back sneaks out behind the center, just past the line
+  te_screen: { pts: [[1.5, 0], [0.5, -1.5], [0, -3]], end: 'settle' }, // TE chips, slips inside behind the rush
 };
 
 // Non-route assignments for skill players.

@@ -3,7 +3,7 @@ import { seek, stop, moveDir } from '../sim/movement.js';
 import { carrierAI } from './carrier.js';
 import { qbDecide } from './qb.js';
 
-const OFF_TASKS = new Set(['pitch_trail', 'pa_fake', 'qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
+const OFF_TASKS = new Set(['screen_wall', 'pitch_trail', 'pa_fake', 'qb_pass', 'qb_handoff', 'qb_fake', 'pass_block', 'run_block', 'stalk', 'route', 'catch', 'run_path', 'carrier', 'escort', 'scramble']);
 
 export function runOffenseAI(sim, dt) {
   if ((sim._protT = (sim._protT || 0) - dt) <= 0) {
@@ -12,6 +12,9 @@ export function runOffenseAI(sim, dt) {
   }
   for (const p of sim.players) {
     if (!p.task || !OFF_TASKS.has(p.task.type)) continue;
+    // Screen release: let go of the man you're blocking (engaged blockers skip the AI below).
+    const scr = sim.offPlay.screen;
+    if (p.engagement && scr && p.task.type === 'pass_block' && (scr.release || []).includes(p.slot) && sim.t > (scr.releaseAt ?? 0.75) && !sim.passThrown) sim.breakEngagement(p.engagement);
     if (p.state !== 'active' || p.engagement) continue;
     p.face = null;
     switch (p.task.type) {
@@ -29,6 +32,7 @@ export function runOffenseAI(sim, dt) {
       case 'run_path': runPath(sim, p); break;
       case 'carrier': carrierAI(sim, p, dt); break;
       case 'escort': escort(sim, p); break;
+      case 'screen_wall': screenWall(sim, p); break;
       case 'pitch_trail': pitchTrail(sim, p); break;
     }
   }
@@ -257,6 +261,10 @@ function assignProtection(sim) {
 }
 
 function passBlock(sim, p) {
+  const scr = sim.offPlay.screen;
+  // Designed screen: the releasing linemen sell pass protection for a beat, then let their man go and set up a wall
+  // in front of the screen target.
+  if (scr && (scr.release || []).includes(p.slot) && sim.t > (scr.releaseAt ?? 0.75) && !sim.passThrown) { releaseToScreen(sim, p, scr); return; }
   const qb = sim.bySlot(sim.offIdx, 'QB');
   const tgt = p.task.target !== undefined ? sim.players[p.task.target] : null;
   if (!p.task.home) {
@@ -424,6 +432,27 @@ function catchBall(sim, p) {
 }
 
 // ---------- After the catch / handoff ----------
+function releaseToScreen(sim, p, scr) {
+  const tgt = sim.bySlot(sim.offIdx, scr.target);
+  if (!tgt) return;
+  const i = scr.release.indexOf(p.slot), n = scr.release.length;
+  // Where he'll catch it: the end of his screen route (else where he is now).
+  const end = tgt.task?.pts?.length ? tgt.task.pts[tgt.task.pts.length - 1] : tgt;
+  const tl = sim.toLocal(end.x, end.z);
+  const out = Math.sign(tl.lat || 1);
+  // Spread the wall across the target's path: inside, in front, outside.
+  const lat = tl.lat + (i - (n - 1) / 2) * 3.2 - out * 1.2;
+  p.task = { type: 'screen_wall', spot: sim.toWorld(Math.max(1, tl.down + 2.5 + (i % 2) * 1.5), lat) };
+  sim.emit('screenRelease', { player: p.id });
+}
+
+/** A released lineman: get to his spot; once the screen is caught he leads like an escort. */
+function screenWall(sim, p) {
+  const c = sim.carrier();
+  if (c && c.team === p.team && sim.ballLiveRun) { p.task = { type: 'escort', wall: true }; escort(sim, p); return; }
+  if (seek(p, p.task.spot.x, p.task.spot.z, 0.85, 0.5) < 0.6) p.face = { x: p.x + sim.dir * 10, z: p.z };
+}
+
 function escort(sim, p) {
   const c = sim.carrier();
   if (!c) { stop(p); return; }

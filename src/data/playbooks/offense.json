@@ -1021,7 +1021,16 @@
    },
    "read": [
     "RB"
-   ]
+   ],
+   "screen": {
+    "target": "RB",
+    "release": [
+     "RG",
+     "RT"
+    ],
+    "releaseAt": 0.75,
+    "throwAt": 1.15
+   }
   },
   {
    "id": "gd_draw",
@@ -2033,7 +2042,15 @@
    "read": [
     "Y",
     "X"
-   ]
+   ],
+   "screen": {
+    "target": "Y",
+    "release": [
+     "RT"
+    ],
+    "releaseAt": 0.15,
+    "throwAt": 0.45
+   }
   },
   {
    "id": "trips_iz",
@@ -3746,7 +3763,16 @@
    },
    "read": [
     "RB"
-   ]
+   ],
+   "screen": {
+    "target": "RB",
+    "release": [
+     "LG",
+     "LT"
+    ],
+    "releaseAt": 0.75,
+    "throwAt": 1.15
+   }
   },
   {
    "id": "heavy_i_iso",
@@ -4155,6 +4181,88 @@
     "H": "block",
     "Z": "slant"
    }
+  },
+  {
+   "id": "gd_tunnel_screen",
+   "name": "WR Tunnel Screen",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 3,
+   "screen": {
+    "target": "Z",
+    "release": [
+     "RG",
+     "RT"
+    ],
+    "releaseAt": 0.35,
+    "throwAt": 0.9
+   },
+   "routes": {
+    "X": "go",
+    "H": "slant",
+    "Y": "go",
+    "Z": "tunnel",
+    "RB": "block"
+   },
+   "read": [
+    "Z"
+   ]
+  },
+  {
+   "id": "ace_te_screen",
+   "name": "TE Screen",
+   "formation": "singleback_ace",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 3,
+   "screen": {
+    "target": "Y",
+    "release": [
+     "RG",
+     "C"
+    ],
+    "releaseAt": 0.65,
+    "throwAt": 1.15
+   },
+   "routes": {
+    "X": "go",
+    "Z": "go",
+    "Y": "te_screen",
+    "H": "block",
+    "RB": "block"
+   },
+   "read": [
+    "Y"
+   ]
+  },
+  {
+   "id": "spread_middle_screen",
+   "name": "Middle Screen",
+   "formation": "gun_doubles",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 3,
+   "screen": {
+    "target": "RB",
+    "release": [
+     "LG",
+     "C",
+     "RG"
+    ],
+    "releaseAt": 0.75,
+    "throwAt": 1.15
+   },
+   "routes": {
+    "X": "go",
+    "H": "go",
+    "Y": "go",
+    "Z": "go",
+    "RB": "mid_screen"
+   },
+   "read": [
+    "RB"
+   ]
   }
  ]
 }

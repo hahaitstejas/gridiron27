@@ -61,6 +61,9 @@ export function qbDecide(sim, qb, dt) {
   const tr = sim.offPlay.trick;
   if (tr && (tr.type === 'flea' || tr.type === 'double') && !sim.trickReady) return;
   if ((qb._decT = (qb._decT || 0) - dt) > 0) return;
+  // Designed screen: wait for the linemen to get out in front (unless he's about to get hit).
+  const scr = sim.offPlay.screen;
+  if (scr && sim.t < (scr.throwAt ?? 1.35) && pressureOn(sim, qb, true) < 0.55) return;
   qb._decT = 0.1;
   const t = sim.t;
   const awr = sim.R(qb, 'awareness');

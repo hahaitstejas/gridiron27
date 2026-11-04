@@ -238,6 +238,8 @@ function resolveCatch(sim, reach, late = false) {
       pPlay += under ? -0.1 : 0.03;
     }
     if (late) pPlay -= 0.1;
+    // A screen thrown on time arrives with the blockers already out front: much harder to get a hand on.
+    if (sim.offPlay.screen && b.intended === sim.bySlot(sim.possTeam, sim.offPlay.screen.target)?.id) pPlay -= 0.14;
     // Placement keeps the ball away from defenders: high over the underneath ones, low away from all of them.
     if (b.place) {
       const qb = sim.players[b.thrower];
@@ -319,6 +321,8 @@ function resolveCatch(sim, reach, late = false) {
   const ct = b.catchType && r.id === b.intended ? b.catchType : null;
   if (ct === 'aggressive') contest *= 0.55;
   else if (ct === 'rac') contest *= 1.35;
+  // An on-time screen: the rushers going by are chasing the quarterback, not playing the catch.
+  if (sim.offPlay.screen && r === sim.bySlot(sim.possTeam, sim.offPlay.screen.target)) contest *= 0.45;
   const sure = has(r, 'sureHands') ? contest * 0.4 : 0; // Sure Hands: traffic matters much less
   contest -= sure;
   let pCatch = 0.545 + sim.R(r, 'catching') * 0.0036 - contest - clamp((rc.d - 0.8) * 0.15, 0, 0.15);

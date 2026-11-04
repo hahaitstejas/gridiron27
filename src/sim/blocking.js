@@ -5,7 +5,7 @@ import { addFoul, foulRate } from './fouls.js';
 const ENGAGE_DIST = 1.05;
 const CONTACT_DIST = 0.85;
 
-const BLOCKER_TASKS = new Set(['pass_block', 'run_block', 'stalk', 'escort', 'kr_block']);
+const BLOCKER_TASKS = new Set(['pass_block', 'run_block', 'stalk', 'escort', 'kr_block', 'screen_wall']);
 
 export function canBlock(sim, b) {
   return b.team === sim.possTeam && b.state === 'active' && !b.engagement && BLOCKER_TASKS.has(b.task?.type) && b.id !== sim.ball.carrier;
@@ -144,7 +144,8 @@ function updateEngagement(sim, e, dt) {
   rate *= (1 - 0.45 * sim.sl(b.team, pass ? 'passBlocking' : 'runBlocking')) * (1 + 0.45 * sim.sl(d.team, pass ? 'passRush' : 'runDefense'));
   // Field goal / punt protection is a wall of big bodies for ~1.3 s: rushers rarely get clean through.
   if (sim.kick && b.team === sim.offIdx && b.task?.type === 'pass_block' && !sim.kick.launched) rate *= 0.22;
-  if (b.task?.type === 'escort') rate *= sim.kick ? 10 : 3; // open-field blocks don't hold long
+  if (b.task?.type === 'escort') rate *= sim.kick ? 10 : b.task.wall ? 1.2 : 3; // open-field blocks don't hold long (a set screen wall does)
+  if (b.task?.type === 'screen_wall') rate *= 1.1;
   if (b.task?.type === 'kr_block') rate *= sim.ball.state === 'kick' ? (sim.kick?.type === 'punt' ? 2 : 3) : 8; // coverage fights through return blocks (vises hold gunners a bit longer)
   if (pass && sim.isHumanControlled(d) && d.userActive) rate *= 1.25; // a human working his rush: a bit more push
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);

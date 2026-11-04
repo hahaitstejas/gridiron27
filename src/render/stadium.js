@@ -10,6 +10,7 @@ const ROWS = 34;
 const ROW_DEPTH = 0.95;
 const ROW_RISE = 0.55;
 const WALL_H = 2.6;
+const RIBBON_ROW = 13; // the LED ribbon board runs along the front of this row
 
 /** Builds the static stadium. Returns { group, update(dt, excitement), setTeams(home, away) }. */
 /** 256 px tile of grass blades for the field's detail layer (grey: multiplies the painted turf). */
@@ -154,7 +155,8 @@ export function buildStadium(renderer, home, away) {
     standGeos.push(box(lenX, ROW_RISE, ROW_DEPTH, 0, y - ROW_RISE / 2 + 0.01, -(WALL_Z + off + ROW_DEPTH / 2)));
     standGeos.push(box(ROW_DEPTH, ROW_RISE, lenZ, WALL_X + off + ROW_DEPTH / 2, y - ROW_RISE / 2 + 0.01, 0));
     standGeos.push(box(ROW_DEPTH, ROW_RISE, lenZ, -(WALL_X + off + ROW_DEPTH / 2), y - ROW_RISE / 2 + 0.01, 0));
-    // Spectator spots along each row (1 per ~0.95 yards), skipping aisles.
+    // Spectator spots along each row (1 per ~0.95 yards), skipping aisles and the ribbon-board row.
+    if (r === RIBBON_ROW) continue;
     for (let x = -WALL_X - off + 1; x < WALL_X + off - 1; x += 0.95) {
       if (Math.abs((x % 18 + 18) % 18) < 1.2) continue;
       seatPositions.push([x, y, WALL_Z + off + 0.45, 0]);
@@ -178,26 +180,71 @@ export function buildStadium(renderer, home, away) {
   const stands = new THREE.Mesh(mergeGeometries(standGeos), standMat);
   group.add(stands);
 
+  // LED ribbon board between the lower and upper rows, all the way around: scrolling team / league messages.
+  const ribbonCanvas = document.createElement('canvas');
+  ribbonCanvas.width = 2048; ribbonCanvas.height = 64;
+  const ribbonTex = new THREE.CanvasTexture(ribbonCanvas);
+  ribbonTex.wrapS = THREE.RepeatWrapping; ribbonTex.colorSpace = THREE.SRGBColorSpace; ribbonTex.anisotropy = 4;
+  const ribbonMat = new THREE.MeshBasicMaterial({ map: ribbonTex, toneMapped: false, fog: false });
+  {
+    const ry = WALL_H + RIBBON_ROW * ROW_RISE + 0.8, ro = RIBBON_ROW * ROW_DEPTH;
+    const geos = [];
+    const strip = (len, x, z, rotY) => { const g = new THREE.PlaneGeometry(len, 1.1); const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * len / 30); g.rotateY(rotY); g.translate(x, ry, z); geos.push(g); };
+    strip((WALL_X + ro) * 2, 0, WALL_Z + ro - 0.02, Math.PI);
+    strip((WALL_X + ro) * 2, 0, -(WALL_Z + ro - 0.02), 0);
+    strip((WALL_Z + ro) * 2, WALL_X + ro - 0.02, 0, -Math.PI / 2);
+    strip((WALL_Z + ro) * 2, -(WALL_X + ro - 0.02), 0, Math.PI / 2);
+    group.add(new THREE.Mesh(mergeGeometries(geos), ribbonMat));
+  }
+  const paintRibbon = (h, a, flash = null) => {
+    const g = ribbonCanvas.getContext('2d');
+    const segs = flash ? Array(4).fill(flash.text) : [h.name.toUpperCase(), 'GRIDIRON 27', h.city.toUpperCase(), 'GAME DAY'];
+    const W = 2048 / segs.length;
+    segs.forEach((t, k) => {
+      const bg = flash ? flash.color : k % 2 ? '#0c0f16' : h.colors.primary;
+      g.fillStyle = bg; g.fillRect(k * W, 0, W, 64);
+      g.fillStyle = k % 2 && !flash ? h.colors.secondary : '#ffffff';
+      g.font = '800 44px "Saira Condensed", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(t, k * W + W / 2, 34, W - 20);
+    });
+    ribbonTex.needsUpdate = true;
+  };
+
   // Crowd: one instanced mesh, bobbing in the vertex shader. Excitement drives the motion.
   // Each fan: a torso (shirt = instance color) and a head (skin tone, sometimes a cap) from one merged
   // geometry; aHead marks the head's vertices so the shader colors it.
-  const torsoG = new THREE.BoxGeometry(0.46, 0.58, 0.3); torsoG.translate(0, 0.32, 0);
-  const headG = new THREE.BoxGeometry(0.22, 0.24, 0.22); headG.translate(0, 0.76, 0.02);
-  torsoG.setAttribute('aHead', new THREE.Float32BufferAttribute(new Float32Array(torsoG.attributes.position.count).fill(0), 1));
-  headG.setAttribute('aHead', new THREE.Float32BufferAttribute(new Float32Array(headG.attributes.position.count).fill(1), 1));
-  const crowdGeo = mergeGeometries([torsoG, headG]);
+  // Rounded, people-shaped fans: tapered torso, head, and two arms that go up when the crowd gets loud.
+  const torsoG = new THREE.CylinderGeometry(0.2, 0.16, 0.56, 6, 1, true).scale(1, 1, 0.68); torsoG.translate(0, 0.3, 0);
+  const headG = new THREE.IcosahedronGeometry(0.115, 0); headG.translate(0, 0.72, 0.02);
+  const armG = (side) => { const g = new THREE.CylinderGeometry(0.05, 0.045, 0.44, 4, 1, true); g.translate(side * 0.235, 0.36, 0.02); return g; };
+  const tag = (g, head, arm) => {
+    const n = g.attributes.position.count;
+    g.setAttribute('aHead', new THREE.Float32BufferAttribute(new Float32Array(n).fill(head), 1));
+    g.setAttribute('aArm', new THREE.Float32BufferAttribute(new Float32Array(n).fill(arm), 1));
+    return g.index ? g.toNonIndexed() : g;
+  };
+  const crowdGeo = mergeGeometries([tag(torsoG, 0, 0), tag(headG, 1, 0), tag(armG(-1), 0, -1), tag(armG(1), 0, 1)]);
   const crowdMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const crowdUniforms = { uTime: { value: 0 }, uExcite: { value: 0.2 } };
   crowdMat.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = crowdUniforms.uTime;
     shader.uniforms.uExcite = crowdUniforms.uExcite;
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uExcite;\nattribute float aHead; varying float vHead; varying float vH;')
+      .replace('#include <common>', '#include <common>\nuniform float uTime; uniform float uExcite;\nattribute float aHead; attribute float aArm; varying float vHead; varying float vH;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         float ph = float(gl_InstanceID) * 12.9898;
         float h = fract(sin(ph) * 43758.5453);
         vHead = aHead; vH = h;
         float bob = max(0.0, sin(uTime * (5.0 + h * 4.0) + h * 30.0));
+        // Arms: hanging, or thrown up (and pumping) by the fans who are into it right now.
+        if (abs(aArm) > 0.5) {
+          float into = step(0.55 - uExcite * 0.5, fract(h * 5.77));
+          float th = mix(0.12, 2.75 + sin(uTime * (6.0 + h * 3.0) + h * 9.0) * 0.25, into * smoothstep(0.15, 0.6, uExcite));
+          vec2 piv = vec2(aArm * 0.235, 0.58);
+          vec2 v = transformed.xy - piv;
+          float a = th * aArm, c = cos(a), s2 = sin(a);
+          transformed.xy = piv + vec2(v.x * c - v.y * s2, v.x * s2 + v.y * c);
+        }
         transformed.y += bob * (0.05 + uExcite * 0.55) * step(0.35, h + uExcite * 0.6);
         // A little sway at the shoulders so rows don't move in lockstep.
         transformed.x += sin(uTime * (1.3 + h) + h * 20.0) * 0.04 * position.y;`);
@@ -210,6 +257,10 @@ export function buildStadium(renderer, home, away) {
           diffuseColor.rgb = fract(vH * 3.7) < 0.25 ? diffuseColor.rgb * 0.9 : skin;
         }`);
   };
+  // About one seat in ten is empty (the seat color shows through); the rest are filled.
+  let es = 7;
+  const fill = seatPositions.filter(() => ((es = (es * 16807) % 2147483647) / 2147483647) > 0.1);
+  seatPositions.length = 0; seatPositions.push(...fill);
   const crowd = new THREE.InstancedMesh(crowdGeo, crowdMat, seatPositions.length);
   const m = new THREE.Matrix4();
   const q = new THREE.Quaternion();
@@ -337,6 +388,8 @@ export function buildStadium(renderer, home, away) {
   const setBoardGame = (h, a, info) => {
     const key = [info.score, info.q, info.clock, info.down, info.flash?.text].join('|');
     if (key === boardKey) return;
+    // The ribbon boards flash with the video board (TOUCHDOWN, FIELD GOAL…) in the scoring team's color.
+    if ((info.flash?.text || null) !== (boardKey.split('|')[4] || null)) paintRibbon(h, a, info.flash || null);
     boardKey = key;
     const g = boardCanvas.getContext('2d');
     const grd = g.createLinearGradient(0, 0, 0, 384);
@@ -364,6 +417,7 @@ export function buildStadium(renderer, home, away) {
 
   setTeams(home, away);
   fillCrowdColors(home, away);
+  paintRibbon(home, away);
 
   let time = 0;
   // Snow cover: a white, slightly patchy layer over the field (shown in snow games).
@@ -397,7 +451,7 @@ export function buildStadium(renderer, home, away) {
     glow,
     snow,
     setTeams: (h, a, opts) => {
-      setTeams(h, a, opts); fillCrowdColors(h, a);
+      setTeams(h, a, opts); fillCrowdColors(h, a); paintRibbon(h, a);
       // Seats: the stadium creator's color, else a dark tint of the home color.
       if (h.stadium?.seats && !opts?.neutral) standMat.color.set(h.stadium.seats).multiplyScalar(0.85);
       else standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85);
@@ -407,6 +461,7 @@ export function buildStadium(renderer, home, away) {
     update(dt, excitement) {
       time += dt;
       crowdUniforms.uTime.value = time;
+      ribbonTex.offset.x = (time * 0.04) % 1;
       crowdUniforms.uExcite.value += (excitement - crowdUniforms.uExcite.value) * Math.min(1, dt * 3);
     },
   };

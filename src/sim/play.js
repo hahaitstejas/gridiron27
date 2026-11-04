@@ -789,7 +789,7 @@ export class PlaySim {
         // Defenders right on top of the catch/handoff react almost instantly.
         const near = Math.hypot(q.x - p.x, q.z - p.z) < 4 ? 0.2 : 1;
         // A QB crossing the line is in front of the zone defenders' eyes (they were reading him): quick reaction.
-        const qbRun = how === 'scramble' && q.task?.type !== 'man' ? 0.45 : 1;
+        const qbRun = how === 'scramble' ? (q.task?.type !== 'man' ? 0.3 : 0.75) : 1;
         q.task = { type: 'pursue', at: this.t + reactionDelay(this, q) * near * qbRun * (how === 'handoff' ? 1.3 : 1) };
         // Kick coverage keeps its lanes while closing so the returner can't find a seam.
         if (this.kick && q.team === this.offIdx) q.task.lane = (q.alignZ - this.ballZ) * 0.35;
@@ -886,13 +886,20 @@ export class PlaySim {
       this.emit('scramble', { player: c.id });
       // He can still throw until he crosses the line: man defenders stay on their men, and only a zone defender with
       // nobody to cover nearby comes up for him (the rest of the coverage holds: no free 5-yard dump-offs).
+      // Rushers he runs past come off their blocks (a lineman can't hold a man who's chasing the ball carrier).
+      for (const d of this.players) {
+        if (d.team === c.team || !d.engagement || Math.hypot(d.x - c.x, d.z - c.z) > 2.4) continue;
+        if (this.rng.next() < 0.55 + this.R(d, 'blockShed') * 0.003) { this.breakEngagement(d.engagement); d.task = { type: 'pursue', at: this.t + 0.1 }; }
+      }
       for (const d of this.players) {
         if (d.team === c.team || d.engagement || d.task?.type !== 'zone') continue;
         const dl = this.toLocal(d.x, d.z);
         if (dl.down > 11) continue;
         let near = 99;
         for (const r of this.players) if (r.team === c.team && (r.task?.type === 'route' || r.task?.type === 'catch')) near = Math.min(near, Math.hypot(r.x - d.x, r.z - d.z));
-        if (near < 5.5 || Math.hypot(d.x - c.x, d.z - c.z) > 9) continue;
+        // The underneath defender right in front of him (between the tackles, short) comes up no matter who's near.
+        const inFront = dl.down < 7 && Math.abs(dl.lat - this.toLocal(c.x, c.z).lat) < 4.5;
+        if (!inFront && (near < 5.5 || Math.hypot(d.x - c.x, d.z - c.z) > 9)) continue;
         d.task = { type: 'pursue', at: this.t + reactionDelay(this, d) };
       }
     }

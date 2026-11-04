@@ -491,6 +491,29 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   camera, wide kick camera (phases `kick` / `return`), RT play art pulls the camera back (`art` mode), celebrations
   (first down, sack, pick; RS wheel after your TD), light show on touchdowns, dusk games darken, holiday leaves / flurries.
 
+### Update 1.1 (UPDATE_PLAN.md)
+- No fullback on the roster: `fbFallback(team, unavailable)` in depthChart.js (3rd/4th TE, then backup HBs), used by
+  `buildDepthChart` and `PlaySim.place()`. 13 personnel (`singleback_tight`, `gun_heavy`) and 22 (`iform_heavy`) formations.
+- Timeouts: `Match.callTimeout` says a `timeout` message `{ team, left }` → team-colored HUD banner, referee `sig_timeout`,
+  video board flash, the used scorebug bar blinks (`hud.toBlink`). main.js handles session events raised between ticks
+  before the next tick (they used to be wiped by `tick()`'s `events.length = 0`).
+- Post-game: menu Finish / Highlights / Player Stats / Restart; the side panel (Quarters, Team, Scoring, Injuries) switches
+  with LB/RB; the scorebug hides behind it (`body:has(.pg-screen)`).
+- Pause → Coaching = `coachingScreen` (depthEditor.js): Depth Chart (hurt players marked OUT / QUES via `gameStatus`) and
+  Injury Center. Sim injury entries keep the player's `name`; the injury is `type`.
+- Practice squad: A on a player → elevate / undo (`unelevate`), sign to the 53, release (`releaseFromPS`, straight to FA).
+- Every team keeps a healthy K and P: `ensureSpecialists` (freeAgents.js; at creation, after a fantasy draft, each week)
+  and `specialistsFromPool` after offseason cut-downs.
+- Dynamic kickoff: a human's coverage man / setup blocker can't move until the ball lands (human.js); the kicker stays
+  behind midfield (kicking.js `kicker`).
+- Pre-snap: a human defender walks around with LS (`PlaySim.presnapMove`, kept ≥ 0.95 yd off the ball, his spot becomes his
+  alignment, `userMoved` skips `alignMan`); CPU blitzers creep up on a long count vs a human offense (`sim.creep`).
+- Franchise game day (`settings.gameDay = { short: [team], prime }`): short-week teams start at 0.92 energy and tire ×1.15;
+  prime time ×1.25 crowd noise.
+- Scrambles: the underneath zone defender in front of a QB who takes off comes up at once; engaged rushers next to him shed.
+  Mindless bot scrambles ~4.7 yds.
+- Generated names never match a real player's (`blockedName` in names.js: FNV-1a hashes, the generator steps the surname).
+
 ## File layout
 
 ```
@@ -649,7 +672,7 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
   completion ~60-65%, INT ~2.5-3%, sack ~6-8%, pressure ~20-30%, median YAC ~1-3, 3.5-4.5 yds/carry.
   Bot targets: blind quick throws should average well under 15 yds/play, a tapped (lob) throw to the open man
   ~60-65% / ~7 yds (bullets a bit better), mindless QB scrambles ~2-4 yds,
-  a QB who just holds the ball should be sacked in ~4-5 s (currently ~6 s; mindless upfield runs ~6-7 yds are
+  a QB who just holds the ball should be sacked in ~4-5 s (currently ~5.2 s; mindless upfield runs ~6-7 yds are
   a little high). Full games (`npm run games -- --games 16`): ~22-26
   pts and ~350-410 yds per team, ~4 penalties a game, FG make ~95% inside 30 / ~65% from 50+, no invariant
   violations. Every play is exercised by `npm test` against several opponents; `npm run sim -- --plays 600

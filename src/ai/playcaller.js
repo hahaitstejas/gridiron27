@@ -1,5 +1,6 @@
 import { listOffPlays, listDefPlays, getOffPlay, getDefPlay, getOffFormation } from '../data/playbook.js';
 import { fgDistance } from '../sim/kicking.js';
+import { fourthOptions, convRate, fgMake, puntResult, wpFor, lateGame } from '../game/winprob.js';
 
 // Situational CPU play calling: run/pass mix by down, distance, field, score and clock; 4th-down
 // decisions; two-minute drill; kneel-downs; PAT vs 2-point; defensive calls; timeouts.
@@ -66,7 +67,12 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   // Victory formation.
   if (shouldKneel(m, team)) return getOffPlay('st_kneel');
   // Spike to stop the clock in a hurry.
-  if (m.inTwoMinutes && lead <= 0 && m.clockRunning && m.timeouts[team] === 0 && m.clock < 35 && m.clock > 4 && m.down < 4) return getOffPlay('st_spike');
+  // Only when it helps: never on 3rd down unless it sets up a field goal, and before the half only in range of points.
+  if (m.inTwoMinutes && m.clockRunning && m.timeouts[team] === 0 && m.clock < 35 && m.clock > 4) {
+    const fgOK = fgDistance(m.yardLine) <= kickerMaxFG(m.teams[team], m, team, true);
+    const worth = q4 ? lead <= 0 : m.quarter === 2 && m.yardLine >= 45;
+    if (worth && (m.down <= 2 || (m.down === 3 && fgOK && (!q4 || (lead >= -3))))) return getOffPlay('st_spike');
+  }
   // 4th down / end-of-half field goals.
   if (m.down === 4) {
     const d = fourthDown(m, team, rng);
@@ -138,23 +144,46 @@ export function shouldKneel(m, team) {
   return false;
 }
 
-export function fourthDown(m, team, rng) {
-  const s = m.situation();
-  const yl = m.yardLine, toGo = m.toGo;
-  const lead = s.lead;
+/**
+ * 4th-down decision from the numbers (game/winprob.js): expected points through three quarters, win probability late
+ * in the fourth quarter / OT (score, clock, timeouts, field position). `aggr` (coach tendency, -1..1) shifts how much
+ * better going for it has to look. Returns 'go' | 'punt' | 'fg'.
+ */
+export function fourthDown(m, team, rng, aggr = null) {
+  const d = fourthDecision(m, team, aggr ?? (m.teams?.[team]?.coach?.aggr ?? 0));
+  return d.choice;
+}
+
+export function fourthDecision(m, team, aggr = 0) {
+  const yl = m.yardLine, toGo = Math.max(1, Math.round(m.toGo));
+  const z = fgZone(m.teams[team], m, team);
+  const lead = m.score[team] - m.score[1 - team];
   const fgDist = fgDistance(yl);
-  const inRange = fgDist <= kickerMaxFG(m.teams[team], m, team);
-  // The long-shot band: worth a try on 4th and long (a punt from there nets little), not on 4th and short.
-  const longShot = !inRange && fgDist <= kickerMaxFG(m.teams[team], m, team, true) && toGo >= 6;
-  const late = m.quarter >= 4 && m.clock < 240;
-  // Desperation: trailing late, must keep the ball.
-  if (late && lead < 0 && !(inRange && lead >= -3)) return 'go';
-  if (late && lead < -3 && m.clock < 120) return 'go';
-  if (toGo <= 1 && yl >= 45 && !(inRange && toGo > 0.9 && rng.chance(0.3))) return 'go';
-  if (toGo <= 2 && yl >= 60 && yl < 75 && !inRange) return 'go';
-  if (inRange || longShot) return 'fg';
-  if (toGo <= 3 && yl >= 55) return rng.chance(0.4) ? 'go' : 'punt';
-  return 'punt';
+  const maxFG = toGo >= 6 ? z.max : z.comfort; // the long-shot band only when a punt nets little
+  const o = fourthOptions(toGo, yl, z.comfort, maxFG);
+  let v = { go: o.go, punt: o.punt, fg: fgDist <= maxFG ? o.fg : null };
+  // Coaches lean conservative: going has to look clearly better early, more so in their own territory.
+  let margin = 0.25 + (yl < 40 ? 0.8 : 0) - aggr * 0.35;
+  if (lateGame(m)) {
+    // Win probability (x100) for each branch.
+    const c = convRate(toGo, yl);
+    const gain = yl + toGo + 3;
+    const succ = gain >= 100 ? wpFor(m, team, { mine: false, yl: 30, lead: lead + 7 }) : wpFor(m, team, { mine: true, yl: gain });
+    const fail = wpFor(m, team, { mine: false, yl: 100 - yl });
+    v.go = 100 * (c * succ + (1 - c) * fail);
+    v.punt = 100 * wpFor(m, team, { mine: false, yl: puntResult(yl) });
+    if (v.fg !== null) {
+      const p = fgMake(fgDist, z.comfort);
+      v.fg = 100 * (p * wpFor(m, team, { mine: false, yl: 30, lead: lead + 3 }) + (1 - p) * wpFor(m, team, { mine: false, yl: Math.max(20, 107 - yl) }));
+    }
+    // Late: win probability points; when the game is nearly lost anyway, the bigger chance wins.
+    margin = Math.min(0.4 - aggr * 0.4, 0.5 * Math.max(v.go, v.punt, v.fg ?? 0));
+  } else if (m.quarter === 2 && m.clock < 40 && v.fg !== null) {
+    v.go -= 1; // end of the half: take the points
+  }
+  const kick = v.fg !== null && v.fg >= v.punt ? 'fg' : 'punt';
+  const choice = v.go > v[kick] + margin ? 'go' : kick;
+  return { choice, values: v };
 }
 
 export function chooseTry(m, team) {

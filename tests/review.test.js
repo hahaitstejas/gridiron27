@@ -77,8 +77,8 @@ describe('new penalties', async () => {
     expect(out('roughing_kicker', 1)).toMatchObject({ newYL: 55, autoFirst: true });
     expect(KICK_FOULS.has('running_into_kicker')).toBe(true);
     expect(Object.keys(PENALTIES).length).toBeGreaterThanOrEqual(19);
-    // A made field goal is worth 3 when deciding whether to take a kicker foul.
-    expect(valueOfPlay(m, { offTeam: 0, kickType: 'fg', possTeam: 0, fgGood: true, touchdown: null })).toBe(3);
+    // A made field goal counts as points when deciding whether to take a kicker foul (3 minus the kickoff's value).
+    expect(valueOfPlay(m, { offTeam: 0, kickType: 'fg', possTeam: 0, fgGood: true, touchdown: null })).toBeGreaterThan(1.5);
   });
 });
 

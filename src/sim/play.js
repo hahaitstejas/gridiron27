@@ -163,6 +163,9 @@ export class PlaySim {
     for (const fp of formation.players) {
       const list = (team.depth[fp.p] || byPos(fp.p)).filter((id) => fp.p === 'QB' || id !== qb1);
       let rp = null;
+      // No-huddle: the same eleven stay on the field (nobody had time to sub).
+      const keep = this.cfg.keep?.[teamIdx]?.[fp.s];
+      if (keep !== undefined && byId.has(keep) && !used.has(keep)) rp = byId.get(keep);
       // Rotation: a tired player at this spot sits if someone fresher further down the depth chart can go.
       const rotate = this.energy && !KICK_PLAYS.has(this.offPlay.type);
       const tired = (id) => rotate && byId.has(id) && needsRest(this.energy, teamIdx, byId.get(id), this.subRelax);

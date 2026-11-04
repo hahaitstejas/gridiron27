@@ -169,7 +169,8 @@ export const dynamicKickoff = (sim) => sim.offPlay.type === 'kickoff' && sim.off
 export const LANDING_ZONE = 20; // the receiving 20 to the goal line
 
 /** Field-goal distance in yards from a line of scrimmage (yard line = yards from own goal). */
-export const fgDistance = (yardLine) => 100 - yardLine + 17;
+// Whole yards, rounded up (a 52.2-yard kick is announced as 53).
+export const fgDistance = (yardLine) => Math.ceil(100 - yardLine + 17 - 1e-6);
 
 /**
  * Launch the ball. params: { type: deep|squib|onside|punt|fg, power 0..1, accuracy (meter error),

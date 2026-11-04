@@ -1,3 +1,4 @@
+import { expectedPoints, epFirst, TD_VALUE, FG_VALUE, lateGame, wpFor, stateValue } from './winprob.js';
 // Penalty definitions, enforcement and automatic accept/decline (pure logic).
 // Yard lines are from the offense's own goal line (0..100), as in Match.
 
@@ -26,9 +27,35 @@ export const PENALTIES = {
 /** Fouls enforced on punts and field goals (the rest are ignored on kicks). */
 export const KICK_FOULS = new Set(['running_into_kicker', 'roughing_kicker']);
 
-/** Rough expected points for the team with the ball. */
-export function expectedPoints(yl, down = 1, toGo = 10) {
-  return -0.7 + 0.075 * yl - [0, 0, 0.35, 0.9, 1.8][Math.min(4, down)] - 0.04 * (toGo - 10);
+export { expectedPoints };
+
+/**
+ * Value to the offense (team `off`) of a resulting state: `st` = { own: bool (offense keeps it), down, toGo, yl (from
+ * the possessing team's goal), pts (points the offense scored, negative = conceded) }. Expected points early, win
+ * probability (x20) late in the game, so a defense declines to force 4th & short instead of giving 3rd & long.
+ */
+export function stateVal(m, off, st) {
+  const pts = st.pts || 0;
+  if (!lateGame(m)) {
+    if (st.scored) return st.pts > 0 ? (st.pts === 3 ? FG_VALUE : st.pts === 2 ? 1.5 : TD_VALUE) : -(st.pts === -2 ? 3 : TD_VALUE);
+    return st.own ? expectedPoints(st.yl, st.down, st.toGo) : -epFirst(st.yl);
+  }
+  if (st.scored) return 20 * wpFor(m, off, { mine: pts === -6, yl: pts === -2 ? 40 : 30, lead: m.score[off] - m.score[1 - off] + (pts === 6 ? 7 : pts === -6 ? -7 : pts) });
+  return st.own ? stateValue(m, off, st.down, st.toGo, st.yl) : 20 * wpFor(m, off, { mine: false, yl: st.yl });
+}
+
+/** The state the play itself produced (the penalty declined). */
+function playState(m, r) {
+  const off = r.offTeam;
+  if (r.kickType === 'fg' && r.possTeam === off && !r.touchdown) return r.fgGood ? { scored: true, pts: 3 } : { own: false, yl: Math.max(20, 107 - m.yardLine) };
+  if (r.touchdown === off) return { scored: true, pts: 6 };
+  if (r.touchdown !== null && r.touchdown !== undefined) return { scored: true, pts: -6 };
+  if (r.safety) return { scored: true, pts: -2 };
+  if (r.possTeam !== off) return { own: false, yl: r.touchback ? 20 : m.ylOf(r.possTeam, r.spotX) };
+  const yl = r.incomplete ? m.yardLine : m.ylOf(off, r.spotX);
+  if (yl >= m.firstYL) return { own: true, down: 1, toGo: Math.min(10, 100 - yl), yl };
+  if (m.down + 1 > 4) return { own: false, yl: 100 - yl };
+  return { own: true, down: m.down + 1, toGo: m.firstYL - yl, yl };
 }
 
 /**
@@ -36,20 +63,7 @@ export function expectedPoints(yl, down = 1, toGo = 10) {
  * `m` = Match before the play, `r` = PlaySim result.
  */
 export function valueOfPlay(m, r) {
-  const off = r.offTeam;
-  if (r.kickType === 'fg' && r.possTeam === off && !r.touchdown) return r.fgGood ? 3 : -expectedPoints(Math.max(20, 100 - m.yardLine - 7));
-  if (r.touchdown === off) return 7;
-  if (r.touchdown !== null && r.touchdown !== undefined) return -7;
-  if (r.safety) return -2 - 1;
-  if (r.possTeam !== off) {
-    const yl = r.touchback ? 20 : m.ylOf(r.possTeam, r.spotX);
-    return -expectedPoints(yl);
-  }
-  const yl = r.incomplete ? m.yardLine : m.ylOf(off, r.spotX);
-  if (yl >= m.firstYL) return expectedPoints(yl, 1, Math.min(10, 100 - yl));
-  const down = m.down + 1;
-  if (down > 4) return -expectedPoints(100 - yl);
-  return expectedPoints(yl, down, m.firstYL - yl);
+  return stateVal(m, r.offTeam, playState(m, r));
 }
 
 /**
@@ -92,10 +106,10 @@ export function enforce(m, foul, r) {
   let penVal;
   if (offending === 'off') {
     const down = lossOfDown ? m.down + 1 : m.down;
-    penVal = down > 4 ? -expectedPoints(100 - newYL) : expectedPoints(newYL, down, m.firstYL - newYL);
+    penVal = stateVal(m, off, down > 4 ? { own: false, yl: 100 - newYL } : { own: true, down, toGo: m.firstYL - newYL, yl: newYL });
     outcome.accepted = penVal < playVal; // defense wants the lower offensive value
   } else {
-    penVal = autoFirst || newYL >= m.firstYL ? expectedPoints(newYL, 1, 10) : expectedPoints(newYL, m.down, m.firstYL - newYL);
+    penVal = stateVal(m, off, autoFirst || newYL >= m.firstYL ? { own: true, down: 1, toGo: Math.min(10, 100 - newYL), yl: newYL } : { own: true, down: m.down, toGo: m.firstYL - newYL, yl: newYL });
     outcome.accepted = penVal > playVal;
   }
   outcome.acceptText = outcome.text;

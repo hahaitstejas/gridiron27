@@ -2,6 +2,8 @@ import { RNG } from '../core/rng.js';
 
 /** Seconds after a play is set for the players to break the huddle and line up (the renderer animates it). */
 export const LINEUP_T = 1.3;
+/** Both bumpers held (one of them just pressed): the timeout shortcut. */
+export const bothBumpers = (f) => f.down?.LB && f.down?.RB && (f.pressed.LB || f.pressed.RB);
 import { addFoul } from '../sim/fouls.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
@@ -174,11 +176,19 @@ export class GameSession {
     this.cpuMotionAt = 0;
     if (this.lock !== null) { this.humanTeams = [...this.baseHumans]; this.watching = false; }
     this.presnapUsed = 0;
+    this.tempoTarget = null; // CPU offense: game seconds it lets run between the whistle and the snap
+    this.cpuSnapAt = null; // CPU offense with a human watching: real seconds at the line before it snaps
     // CPU timeouts (stopping the clock between plays).
     for (const t of [0, 1]) if (!this.isHuman(t) && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
     if (this.drill) { const d = drillPlays(this.drill); this.choice = { off: d.off, def: d.def }; this.flushMessages(); this.emit('playcall', { human: this.humanSide }); return; }
-    if (!this.calls(off)) this.choice.off = chooseOffense(m, off, this.rng, this.smart);
+    if (!this.calls(off)) {
+      this.choice.off = chooseOffense(m, off, this.rng, this.smart);
+      this.tempoTarget = cpuTempo(m, off, this.rng);
+      // A human on defense gets time to look at the formation, switch players and audible (hurry-up: a quick snap).
+      const hurry = this.tempoTarget < 20;
+      this.cpuSnapAt = hurry ? 2.6 + this.rng.next() * 0.8 : 5 + this.rng.next() * 2.5;
+    }
     if (!this.calls(def)) { this.choice.def = this.cpuDefenseFor(this.choice.off); this.defAdj = cpuCoverageCall(this.choice.def, this.rng, m); }
     // CPU offense: sometimes motion a receiver before the snap (only when someone's watching).
     if (!this.isHuman(off) && this.humanTeam !== null && !this.fast && m.phase === 'scrimmage' && this.rng.next() < 0.3) this.cpuMotionAt = 0.35;
@@ -212,6 +222,7 @@ export class GameSession {
   /** No-huddle: rerun the last offensive play straight away (no extra accelerated-clock runoff). */
   noHuddle() {
     if (this.state !== 'playcall' || this.humanSide !== 'offense' || !this.lastOffPlay || this.match.phase !== 'scrimmage') return false;
+    if (this.match.justWarned) return false; // coming out of the two-minute warning everyone huddles
     this.choice.off = this.lastOffPlay;
     this.hurry = true;
     return true;
@@ -232,6 +243,8 @@ export class GameSession {
     const ok = this.match.callTimeout(team);
     if (ok) restAll(this.energy, 0.06);
     this.flushMessages();
+    // After a timeout both teams go back to the sideline: everyone picks a new play.
+    if (ok && this.state === 'presnap' && !this.drill) { this.audible = null; this.enterPlaycall(); }
     return ok;
   }
 
@@ -269,6 +282,7 @@ export class GameSession {
       defAdj: this.defAdj,
       weather: this.settings.weather || null,
       iced: !!this.iced,
+      keep: this.hurry && this.lastLineup?.poss === m.possession ? this.lastLineup.slots : null,
     });
     if (this.lock !== null) this.lockOn(this.sim);
     if (this.drill) drillControl(this.sim, this.drill);
@@ -312,11 +326,8 @@ export class GameSession {
     const cpuOff = !this.calls(this.offTeam);
     // Clock between plays.
     if (m.clockRunning && m.phase === 'scrimmage') {
-      const target = cpuOff ? cpuTempo(m, this.offTeam, this.rng) : this.presnapUsed;
-      const extra = Math.max(0, target - this.presnapUsed);
-      const accel = m.settings.accelClock > 0 && !(m.inTwoMinutes && m.score[m.possession] <= m.score[1 - m.possession]);
-      const want = cpuOff ? extra : this.hurry ? 0 : Math.max(0, (accel ? 40 - m.settings.accelClock : 0) - this.presnapUsed);
-      m.presnapRunoff(want);
+      // Whatever of the between-plays runoff hasn't already ticked off visibly (realtimePresnap) goes now.
+      m.presnapRunoff(Math.max(0, this.runoffBudget() - this.presnapUsed));
       if (m.clock <= 0) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
       if (!m.clockRunning) { this.flushMessages(); } // two-minute warning stopped it
     }
@@ -547,10 +558,13 @@ export class GameSession {
       if (this.audible) {
         // Audible / hot-route menus are modal: the play waits (the play clock doesn't).
         const f = this.inputFor(input, this.audible.team);
-        if (f) this.audibleInput(f);
+        if (f && bothBumpers(f)) { const t = this.audible.team; this.audible = null; if (this.callTimeout(t)) return; }
+        else if (f) this.audibleInput(f);
         if (this.state === 'presnap') this.sim.tick(dt, null);
         return;
       }
+      // Hold both bumpers = timeout (same as View).
+      for (const [team, f] of [[off, offIn], [def, defIn]]) if (f && bothBumpers(f) && this.calls(team) && this.callTimeout(team)) return;
       for (const [team, f] of [[off, offIn], [def, defIn]]) {
         if (!f || sim.isKick || !this.calls(team)) continue;
         const scrim = this.match.phase === 'scrimmage';
@@ -580,7 +594,7 @@ export class GameSession {
         if (c.length) sim.startMotion(this.rng.pick(c).id, this.rng.next() < 0.7);
       }
       // CPU offense snaps after a short beat at the line (instantly in fast mode).
-      if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? 1.6 : LINEUP_T + 0.2)) { this.snap(); return; }
+      if (!humanOff && this.presnapT >= (this.fast ? 0 : humanInvolved ? Math.max(LINEUP_T + 0.3, this.cpuSnapAt ?? 1.6) : LINEUP_T + 0.2)) { this.snap(); return; }
       sim.tick(dt, input);
       return;
     }
@@ -614,12 +628,36 @@ export class GameSession {
     }
   }
 
+  /**
+   * Game seconds that run between the whistle and the snap while the clock is running: the CPU offense's tempo, or
+   * for a human offense the accelerated-clock runoff (0 = real time only; none when hurrying or in a two-minute drill).
+   */
+  runoffBudget() {
+    const m = this.match;
+    if (!this.calls(this.offTeam)) return this.tempoTarget ?? cpuTempo(m, this.offTeam, this.rng);
+    const accel = m.settings.accelClock > 0 && !(m.inTwoMinutes && m.score[m.possession] <= m.score[1 - m.possession]);
+    return this.hurry || !accel ? 0 : 40 - m.settings.accelClock;
+  }
+
   realtimePresnap(dt) {
     const m = this.match;
     if (this.practice) { this.presnapUsed += dt; return; } // no clocks in practice
-    if (m.clockRunning && m.phase === 'scrimmage') m.presnapRunoff(dt);
-    this.presnapUsed += dt;
-    m.playClock = Math.max(0, m.playClock - dt);
+    // The clock keeps moving where you can see it: the between-plays runoff is spread over the play call and the
+    // time at the line (fast-forwarded), instead of jumping 12 seconds at the snap.
+    let gdt = dt;
+    const running = m.clockRunning && m.phase === 'scrimmage';
+    if (running) {
+      const left = this.runoffBudget() - this.presnapUsed;
+      const cpuOff = !this.calls(this.offTeam);
+      if (left > 0) {
+        if (cpuOff && this.state === 'presnap' && this.cpuSnapAt) gdt = Math.max(dt, left * dt / Math.max(dt, this.cpuSnapAt - this.presnapT));
+        else gdt = dt * (this.state === 'playcall' ? 4 : 2.5);
+        gdt = Math.min(gdt, Math.max(dt, left));
+      } else if (cpuOff) gdt = this.state === 'presnap' ? dt : 0; // the CPU is set: it snaps on its count
+      m.presnapRunoff(gdt);
+    }
+    this.presnapUsed += gdt;
+    m.playClock = Math.max(0, m.playClock - gdt);
     this.flushMessages();
     if (m.clock <= 0 && m.clockRunning) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
     // Delay of game on the human offense.
@@ -637,6 +675,12 @@ export class GameSession {
   finishPlay() {
     const m = this.match;
     const sim = this.sim;
+    // Who was on the field, by formation slot (a no-huddle snap keeps the same players).
+    if (!sim.isKick) {
+      const slots = [{}, {}];
+      for (const p of sim.players) if (p.rid !== undefined) slots[p.team][p.slot] = p.rid;
+      this.lastLineup = { poss: m.possession, slots };
+    }
     const r = sim.result;
     let outcome = null;
     const fouls = (sim.fouls || []).filter((f) => (!sim.isKick || KICK_FOULS.has(f.type)) && m.phase === 'scrimmage');

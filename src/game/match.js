@@ -158,7 +158,7 @@ export class Match {
       this.clock = 120;
       this.clockRunning = false;
       this.twoMinPending = false;
-      this.say('Two-minute warning', 'twoMinute');
+      this.say('Two-minute warning', 'twoMinute'); this.justWarned = true;
     }
     return before - this.clock;
   }
@@ -168,6 +168,7 @@ export class Match {
     this.timeouts[team]--;
     this.clockRunning = false;
     this.playClock = 25;
+    return true;
     this.say(`Timeout, ${this.teams[team].name} (${this.timeouts[team]} left)`, 'timeout');
     return true;
   }
@@ -178,6 +179,7 @@ export class Match {
    * `penalty` (optional) is an enforced penalty outcome from penalties.js.
    */
   applyResult(r, sim, penalty = null) {
+    this.justWarned = false;
     if (this.over) return;
     // Snapshot for the play-by-play line and the drive summary (see afterResult).
     const before = { phase: this.phase, down: this.down, toGo: this.toGo, firstYL: this.firstYL, yardLine: this.yardLine, poss: this.possession,
@@ -191,7 +193,7 @@ export class Match {
   afterResult(r, sim, penalty, b) {
     const off = r.offTeam;
     let line = describePlay(this, r, sim, true);
-    if (r.kickType === 'fg' && b.phase === 'scrimmage') line = line.replace(/ is (GOOD|NO GOOD)$/, ` ${Math.round(100 - b.yardLine + 17)}-yd try is $1`);
+    if (r.kickType === 'fg' && b.phase === 'scrimmage') line = line.replace(/ is (GOOD|NO GOOD)$/, ` ${Math.ceil(100 - b.yardLine + 17 - 1e-6)}-yd try is $1`);
     if (penalty && penalty.accepted) line = `${penalty.text} (play nullified)`;
     else if (b.phase === 'scrimmage' && this.phase === 'scrimmage' && this.possession === off && this.down === 1 && !r.kickType && (r.yards || 0) > 0 && r.touchdown === null) line += ' · FIRST DOWN';
     this.lastPlayText = b.sit ? `${b.sit}: ${line}` : line;
@@ -244,7 +246,7 @@ export class Match {
 
     // ----- Field goals -----
     if (r.kickType === 'fg') {
-      const dist = 100 - this.yardLine + 17;
+      const dist = Math.ceil(100 - this.yardLine + 17 - 1e-6);
       if (r.fgGood) {
         this.addScore(off, 3, `${dist}-yard field goal`);
         this.afterScore(off);
@@ -404,7 +406,7 @@ export class Match {
     if (this.twoMinPending) {
       this.twoMinPending = false;
       this.clockRunning = false;
-      this.say('Two-minute warning', 'twoMinute');
+      this.say('Two-minute warning', 'twoMinute'); this.justWarned = true;
     }
     if (this.clock <= 0 && !this.over && this.phase !== 'try') this.endPeriod();
   }

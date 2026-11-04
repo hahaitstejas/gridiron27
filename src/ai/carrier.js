@@ -20,6 +20,13 @@ export function carrierAI(sim, p, dt) {
   const td = sim.teamDir(p.team);
   const base = td > 0 ? 0 : Math.PI;
   const opp = sim.players.filter((d) => d.team !== p.team && d.state !== 'down' && d.state !== 'tackled');
+  // An interception in the end zone: take a knee (touchback at the 20) unless the field is wide open in front.
+  if (p.caughtInEZ && sim.stats.intBy === p.id && p.x * td <= -50 && t.ezDecided === undefined) {
+    const near = Math.min(99, ...opp.map((d) => Math.hypot(d.x - p.x, d.z - p.z)));
+    const deep = -50 - p.x * td;
+    t.ezDecided = !(near > 11 && deep < 4);
+    if (t.ezDecided) { p.anim = 'down'; p.vx = p.vz = 0; sim.tackleCarrier(p, null, 0); p.fallT = 0.15; return; }
+  }
   let bestA = base, bestS = -1e9;
   for (const a0 of ANGLES) {
     const a = base + a0;

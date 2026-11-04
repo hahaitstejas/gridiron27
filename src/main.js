@@ -42,7 +42,7 @@ import { Screens, loadPrefs, savePrefs, ICONS } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
-import { playbookScreen } from './ui/playbookEditor.js';
+import { playbookScreen, loadAudiblePackages } from './ui/playbookEditor.js';
 import { registerCustomPlays, loadSpecs } from './data/customPlays.js';
 import { statsScreen } from './ui/statsScreen.js';
 import { energyOf } from './game/fatigue.js';
@@ -127,6 +127,7 @@ const league = new LeagueUI({
 if (saved) { league.name = saved.name; league.franchise = saved.franchise; }
 // The user's own plays (League → Playbook) live in this browser, outside league saves.
 try { registerCustomPlays(loadSpecs()); } catch (e) { console.warn('Could not load custom plays', e); }
+loadAudiblePackages(); // Playbook → Audibles
 const pickTeam = (title, onPick, onBack, focus = prefs.home) => screens.teamPicker(teams, focus, { title, onPick, onBack });
 const rosterCtx = { screens, teams, onBack: () => league.menu(0), onChange: () => league.changed(), pickTeam };
 const teamCtx = { screens, teams, prefs, pickTeam, onChange: () => { savePrefs(prefs); league.changed(); },

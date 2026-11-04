@@ -6,11 +6,33 @@ import { playTags } from '../ai/playcaller.js';
 const baseId = (id) => id.replace(/__flip$/, '');
 const baseFormation = (f) => f.replace(/__flip$/, '');
 
-/** Offensive audibles from the current formation: A quick, B deep, X run left, Y run right, RB flip. */
+// Audible packages (Playbook → Audibles): the user's own A / B / X / Y picks per formation, for offense and defense.
+// The UI loads them from localStorage and registers them here, so this module stays pure.
+let PACKAGES = { off: {}, def: {} };
+export function setAudiblePackages(p) { PACKAGES = { off: { ...(p?.off || {}) }, def: { ...(p?.def || {}) } }; }
+export const audiblePackages = () => PACKAGES;
+const AUD_BTNS = ['A', 'B', 'X', 'Y'];
+
+/** The user's package for a formation as audible options (null if none set). */
+function packageOptions(side, formation, current, view, list) {
+  const pk = PACKAGES[side]?.[formation];
+  if (!pk) return null;
+  const out = [];
+  for (const btn of AUD_BTNS) {
+    const p = pk[btn] && list.find((x) => baseId(x.id) === pk[btn]);
+    if (p && baseId(p.id) !== baseId(current.id)) out.push({ btn, label: p.name, play: view(p) });
+  }
+  return out.length ? out : null;
+}
+
+/** Offensive audibles from the current formation: A quick, B deep, X run left, Y run right, RB flip (or the user's package). */
 export function offenseAudibles(play) {
   const flipped = /__flip$/.test(play.id);
-  const same = listOffPlays().filter((p) => !p.custom && p.formation === baseFormation(play.formation) && baseId(p.id) !== baseId(play.id));
   const view = (p) => (flipped ? mirrorOffPlay(p) : p);
+  const flip = { btn: 'RB', label: 'Flip play', play: flipped ? listOffPlays().find((p) => p.id === baseId(play.id)) : mirrorOffPlay(play) };
+  const mine = packageOptions('off', baseFormation(play.formation), play, view, listOffPlays());
+  if (mine) return [...mine, flip].filter((o) => o.play);
+  const same = listOffPlays().filter((p) => !p.custom && p.formation === baseFormation(play.formation) && baseId(p.id) !== baseId(play.id));
   const passes = same.filter((p) => p.type === 'pass');
   const runs = same.filter((p) => p.type === 'run').map(view);
   const pick = (list, ok) => list.find(ok) || list[0] || null;
@@ -32,6 +54,8 @@ export function offenseAudibles(play) {
 
 /** Defensive audibles from the current formation: A zone, B man, X blitz, Y deep shell. */
 export function defenseAudibles(play) {
+  const mine = packageOptions('def', play.formation, play, (p) => p, listDefPlays());
+  if (mine) return mine;
   const same = listDefPlays().filter((p) => p.formation === play.formation && p.id !== play.id);
   const blitz = (p) => /blitz|fire|cover0|double_a/i.test(p.id);
   const deep = (p) => /cover4|quarters|cover6|prevent|tampa|cover2(?!_man)/i.test(p.id);
@@ -141,4 +165,16 @@ export function defHotRoute(play, slot, key, lat = 0) {
   const assign = key === 'blitz' ? 'blitz' : key === 'spy' ? 'spy' : key === 'deep' ? 'zone:deep_middle'
     : key === 'flat' ? `zone:flat_${side}` : Math.abs(lat) > 3 ? `zone:hook_${side}` : 'zone:hook_middle';
   return { ...play, assign: { ...play.assign, [slot]: assign }, dhot: { ...(play.dhot || {}), [slot]: assign } };
+}
+
+/** Default audible picks for a formation (what the menu shows without a package): { A, B, X, Y } play ids. */
+export function defaultPackage(side, formation) {
+  const play = side === 'off' ? listOffPlays().find((p) => p.formation === formation && !p.custom) : listDefPlays().find((p) => p.formation === formation);
+  if (!play) return {};
+  const saved = PACKAGES[side][formation];
+  delete PACKAGES[side][formation];
+  // The auto picks exclude the current play, so build them from a play that isn't one of them.
+  const opts = side === 'off' ? offenseAudibles({ ...play, id: '__none__' }) : defenseAudibles({ ...play, id: '__none__' });
+  if (saved) PACKAGES[side][formation] = saved;
+  return Object.fromEntries(opts.filter((o) => AUD_BTNS.includes(o.btn)).map((o) => [o.btn, baseId(o.play.id)]));
 }

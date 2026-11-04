@@ -1,6 +1,7 @@
 import { el } from './nav.js';
 import { offenseArt } from './playart.js';
-import { getOffFormation } from '../data/playbook.js';
+import { getOffFormation, getDefFormation, listOffPlays, listDefPlays } from '../data/playbook.js';
+import { setAudiblePackages, audiblePackages, defaultPackage } from '../game/audibles.js';
 import {
   ROUTE_CHOICES, RUN_GAPS, customFormations, eligibleSlots, newSpec, changeFormation, buildPlay, registerCustomPlays, loadSpecs, saveSpecs,
 } from '../data/customPlays.js';
@@ -32,7 +33,8 @@ export function playbookScreen(ctx, focus = 0) {
     const id = `my_${Date.now().toString(36)}`;
     editor(ctx, newSpec(id), -1);
   });
-  const items = [...rows, add];
+  const aud = screens.menuItem('Audibles', 'Pick the four audibles (A / B / X / Y) for each formation, offense and defense', () => audibleScreen(ctx));
+  const items = [aud, ...rows, add];
   screens.frame('menu-screen', el('div.logo-small', { html: 'MY PLAYS' }),
     el('div.league-status', { text: specs.length ? `${specs.length} custom play${specs.length > 1 ? 's' : ''} · they show up in the "My Plays" tab when you call a play` : 'Design your own plays: they show up in the "My Plays" tab when you call a play' }),
     el('div.menu-list', {}, items),
@@ -102,4 +104,49 @@ function editor(ctx, spec, index, focus = 0) {
     el('div.over-buttons', {}, save, test, cancel),
     el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> cancel' }));
   screens.nav.set([...rows, save, test, cancel], { columns: 1, onBack: () => playbookScreen(ctx), index: Math.min(focus, rows.length + 2) });
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Audibles (Playbook → Audibles): choose the four audibles (A / B / X / Y) for every formation, offense and
+// defense. Saved in this browser (localStorage `g27.audibles`) and used by the audible menu at the line (X).
+const AUD_KEY = 'g27.audibles';
+export function loadAudiblePackages() {
+  try { const p = JSON.parse(localStorage.getItem(AUD_KEY) || 'null'); setAudiblePackages(p || {}); } catch { setAudiblePackages({}); }
+}
+function saveAudiblePackages() {
+  try { localStorage.setItem(AUD_KEY, JSON.stringify(audiblePackages())); } catch { /* storage blocked: this session only */ }
+}
+
+function audibleScreen(ctx, side = 'off', fi = 0, focus = 0) {
+  const { screens } = ctx;
+  screens.extraButtons = null;
+  const plays = side === 'off' ? listOffPlays().filter((p) => !p.trick && !p.hail) : listDefPlays();
+  const forms = [...new Set(plays.map((p) => p.formation))];
+  fi = (fi + forms.length) % forms.length;
+  const form = forms[fi];
+  const fname = (side === 'off' ? getOffFormation(form) : getDefFormation(form))?.name || form;
+  const inForm = plays.filter((p) => p.formation === form);
+  const pk = audiblePackages()[side];
+  const cur = pk[form] || defaultPackage(side, form);
+  const set = (btn, id) => { pk[form] = { ...cur, [btn]: id }; saveAudiblePackages(); };
+  const rows = ['A', 'B', 'X', 'Y'].map((btn, i) => {
+    const p = inForm.find((x) => x.id === cur[btn]);
+    const r = screens.menuItem(`${btn}  ·  ${p ? p.name : '—'}`, p ? `${p.type || p.coverage || ''}${p.concept ? ' · ' + p.concept : ''} · ◀▶ change` : '◀▶ choose a play', () => {});
+    r.spin = (d) => {
+      const k = inForm.findIndex((x) => x.id === cur[btn]);
+      const next = inForm[(k + d + inForm.length) % inForm.length];
+      set(btn, next.id);
+      audibleScreen(ctx, side, fi, i);
+    };
+    return r;
+  });
+  screens.frame('menu-screen', el('div.logo-small', { html: 'AUDIBLES' }),
+    el('div.league-status', { text: `${side === 'off' ? 'Offense' : 'Defense'} · ${fname} (${fi + 1}/${forms.length})${pk[form] ? ' · your package' : ' · default picks'}` }),
+    el('div.menu-list', {}, rows),
+    el('div.setup-help', { html: '◀▶ change the play &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> formation &nbsp; <b class="btn X">X</b> offense / defense &nbsp; <b class="btn Y">Y</b> back to the default &nbsp; <b class="btn B">B</b> back' }));
+  screens.nav.set(rows, { index: focus, onBack: () => playbookScreen(ctx), onTab: (d) => audibleScreen(ctx, side, fi + d, focus) });
+  screens.extraButtons = (fr) => {
+    if (fr.pressed.X) audibleScreen(ctx, side === 'off' ? 'def' : 'off', 0, 0);
+    else if (fr.pressed.Y) { delete pk[form]; saveAudiblePackages(); audibleScreen(ctx, side, fi, screens.nav.index); }
+  };
 }

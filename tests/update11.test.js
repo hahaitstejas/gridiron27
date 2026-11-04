@@ -138,3 +138,21 @@ describe('RPO', () => {
     expect(sim.offPlay.type).toBe('pass');
   });
 });
+
+describe('audible packages', () => {
+  it('the audible menu uses the saved package for that formation', async () => {
+    const { offenseAudibles, setAudiblePackages, defaultPackage } = await import('../src/game/audibles.js');
+    const { getOffPlay, listOffPlays } = await import('../src/data/playbook.js');
+    const play = getOffPlay('ace_inside_zone');
+    const def = defaultPackage('off', 'singleback_ace');
+    expect(Object.keys(def).length).toBeGreaterThan(2);
+    const ace = listOffPlays().filter((p) => p.formation === 'singleback_ace').map((p) => p.id);
+    setAudiblePackages({ off: { singleback_ace: { A: 'ace_seams', B: 'ace_smash', X: 'ace_power_l', Y: 'ace_counter' } } });
+    const opts = offenseAudibles(play);
+    expect(opts.map((o) => o.btn)).toEqual(['A', 'B', 'X', 'Y', 'RB']);
+    expect(opts[0].play.id).toBe('ace_seams');
+    expect(ace.includes('ace_seams')).toBe(true);
+    setAudiblePackages({});
+    expect(offenseAudibles(play).length).toBeGreaterThan(2);
+  });
+});

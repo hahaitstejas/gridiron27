@@ -540,6 +540,30 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   midLogo / seats / roof: dome = no weather); Route Drawer + Defensive Plays + share codes (data/customDesign.js); player
   appearance (`p.look` visor / towel / sleeves, `p.skin`); mod packs (data/mods.js, Playbook → Mod Packs).
 
+### Update 2.0: Realism (UPDATE_PLAN.md, render-only unless noted)
+- Bodies (`render/body.js`): every player / official / sideline figure is ONE smooth skinned mesh (`buildBodyGeometry`: torso over
+  shoulder pads, neck, arms with gloves, legs with socks; rings of superellipses, `split` rings give clean uniform seams),
+  drawn with a single InstancedMesh. GPU skinning from `PlayerRenderer.boneTex` (float texture, one row per instance:
+  13 bones × 4 texels, then `COL_PARAMS` build (width, limb, chest depth, pad width), `COL_COLORS` 8 uniform regions
+  (`REGION`: jersey, sleeve, pants, stripe, socks, skin, forearm, gloves), `COL_NUMBER` / `COL_NUMCOL`, `COL_FLAGS` officials'
+  stripes). The bind pose is drawPlayer's pose with every angle 0 (`BIND`, `bindOrigin`: translations only), so a bone =
+  frame × T(-origin). Numbers / names are printed in the fragment shader from the number atlas / name canvas (jersey UV =
+  angle around the torso, height); the pants stripe is drawn by angle around the leg. `bodyDepthMaterial` skins the shadows.
+  Rigid gear stays instanced: clearcoat helmet shell with jaw flaps and face opening (`helmetGeometry`), facemask cage
+  (`facemaskGeometry`), crown stripe ribbon, cleats, visor, towel, decals, face.
+- Gait (`render/gait.js` `Gait.apply`): planted feet. Each leg's phase advances with distance covered (`stepLen`, `dutyOf`
+  by speed): stance = foot locked in world space, swing = arc to the predicted landing; two-bone IK → `legs[s].hip/knee/out`,
+  `flat` keeps the shoe level. Only for `GAIT_ANIMS`, blended in/out (`g.w`). Also lean from acceleration / turn rate and
+  `pose.headYaw` toward the ball. Arm IK for catches (`reachForBall` in players.js, `REACH_ANIMS`). Head pitch: negative = up.
+  QB throw: load / stride / whip / follow-through.
+- Field: MeshStandardMaterial with a grass normal map (`normalFromHeight` from the blade tile), patchy macro color, natural
+  turf palette; PCF soft shadows.
+- Post (`GameRenderer.setupPost` / `draw(cam)`): HDR MSAA target → UnrealBloom (threshold 1.6) → OutputPass → grade
+  (saturation, contrast, vignette). Settings → Graphics: high (bloom) / medium / low (no post: what headless checks use).
+- Camera: broadcast presnap 10.5 back / 4.6 up (was 15 / 7.2), live 12 / 5.6. Dev: `window.__g27.renderer.rig.debug = { p, l }`.
+- Crowd: people-shaped fans (open cylinder torso, icosahedron head, two arms raised by excitement in the vertex shader), ~10%
+  empty seats; LED ribbon boards at `RIBBON_ROW` (`paintRibbon`, scroll; flash with the video board on scores).
+
 ## File layout
 
 ```
@@ -583,7 +607,7 @@ tests/                 Vitest unit tests
 ```
 
 ## Performance notes (target: 60 fps on an M3 MacBook Air, Chrome + Safari)
-- Players are ~15 `InstancedMesh` draw calls total; posing uses a preallocated matrix pool (no per-frame GC).
+- Players: one skinned body InstancedMesh + ~8 gear InstancedMeshes; posing uses a preallocated matrix pool (no per-frame GC).
 - Crowd is one instanced mesh (~15k boxes) animated in the vertex shader; stands/walls/posts are merged.
 - One shadow-casting directional light (2048 map) that follows the ball.
 - `GameRenderer.adapt()` lowers the pixel ratio if average frame time > 18.5 ms and raises it back when idle.

@@ -350,6 +350,7 @@ export class PlayerRenderer {
     const b = sim?.ball;
     const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
     this.gait.apply(p, i, pose, x, z, f, sc, official ? 1 : wide, dt, look);
+    if (b && REACH_ANIMS.has(p.anim) && (b.state === 'air' || b.state === 'kick')) reachForBall(pose, p, b, x, z, f, sc, wide, alpha);
     const yaw = Math.PI / 2 - f;
 
     poolI = 0;
@@ -466,6 +467,33 @@ export class PlayerRenderer {
   }
 }
 
+// ---------- Arm IK: hands go to the ball ----------
+const REACH_ANIMS = new Set(['reach', 'swat', 'pick', 'catch', 'fair_catch']);
+/** Aim both arms (one for a swat) from the shoulders at the ball, more as it arrives; elbows nearly straight. */
+function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
+  const bx = b.px + (b.x - b.px) * alpha, by = b.py + (b.y - b.py) * alpha, bz = b.pz + (b.z - b.pz) * alpha;
+  const dist = Math.hypot(bx - x, bz - z);
+  if (dist > 4.5) return;
+  const k = Math.min(1, (4.5 - dist) / 3) * (p.anim === 'catch' ? Math.max(0, 1 - p.animT / 0.18) : 1);
+  const sin = Math.sin(f), cos = Math.cos(f);
+  const dxw = bx - x, dzw = bz - z;
+  const lx = (dxw * sin - dzw * cos) / sc, lz = (dxw * cos + dzw * sin) / sc;
+  const shY = (B.hipH + pose.crouch + pose.rootY + B.torso * 0.84) * 1;
+  for (let s = 0; s < 2; s++) {
+    if (p.anim === 'swat' && s === 0) continue;
+    const side = s ? 1 : -1, a = pose.arms[s];
+    const dx = lx - side * B.shX * w * 0.6, dy = by / sc - shY, dz = lz;
+    const len = Math.hypot(dx, dy, dz) || 1;
+    const pitch = Math.atan2(dz, -dy) - pose.lean;
+    const out = Math.asin(Math.max(-0.9, Math.min(0.9, (dx * side) / len)));
+    a.pitch += (pitch - a.pitch) * k;
+    a.out += (out - a.out) * k;
+    a.elbow += (0.18 - a.elbow) * k;
+  }
+  // Eyes on the ball.
+  pose.head += (-Math.max(-0.6, Math.min(0.9, Math.atan2(by / sc - shY - 0.2, Math.hypot(lx, lz)))) - pose.head) * k; // negative = up
+}
+
 // ---------- Pose packing (for crossfades) ----------
 const POSE_KEYS = ['rootY', 'rootPitch', 'rootRoll', 'rootYaw', 'crouch', 'lean', 'twist', 'head'];
 const ARM_KEYS = ['pitch', 'out', 'elbow', 'twist'];
@@ -575,14 +603,18 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 0.6; pose.arms[0].elbow = pose.arms[1].elbow = 1.2;
       break;
     case 'throw': {
-      // Wind back then whip forward with the right arm.
-      const k = Math.min(1, t / 0.32);
-      pose.twist = k < 0.6 ? -0.6 * (k / 0.6) : -0.6 + 1.3 * ((k - 0.6) / 0.4);
-      pose.arms[1].pitch = k < 0.6 ? 2.2 + k * 0.8 : 2.7 - 2.2 * ((k - 0.6) / 0.4);
-      pose.arms[1].out = 0.7; pose.arms[1].elbow = k < 0.6 ? 1.6 : 0.3;
-      pose.arms[0].pitch = 1.0; pose.arms[0].elbow = 1.2; pose.arms[0].out = 0.2;
-      pose.legs[0].hip = 0.35; pose.legs[1].hip = -0.2; pose.legs[0].knee = 0.3; pose.legs[1].knee = 0.3;
-      pose.lean = 0.1 + k * 0.25;
+      // Load (ball back by the ear, front shoulder closed, weight on the back foot), stride and whip (hips open
+      // first, then the shoulders, the arm comes over the top), then follow through across the body.
+      const k = Math.min(1, t / 0.42);
+      const load = Math.min(1, k / 0.38), rel = Math.max(0, Math.min(1, (k - 0.38) / 0.3)), fol = Math.max(0, (k - 0.68) / 0.32);
+      const e = rel * rel * (3 - 2 * rel);
+      pose.twist = -0.75 * load + 1.3 * e - 0.15 * fol;
+      pose.arms[1].pitch = 2.25 + 0.45 * load - 1.9 * e - 0.5 * fol; pose.arms[1].out = 0.85 - 0.35 * e; pose.arms[1].elbow = 1.7 - 1.45 * e + 0.5 * fol;
+      pose.arms[0].pitch = 1.45 - 1.0 * e; pose.arms[0].out = 0.25 + 0.2 * e; pose.arms[0].elbow = 1.1 + 0.4 * e;
+      pose.legs[0].hip = 0.15 + 0.4 * load - 0.1 * e; pose.legs[0].knee = 0.25 + 0.15 * e; // front foot strides at the target
+      pose.legs[1].hip = -0.1 - 0.3 * e; pose.legs[1].knee = 0.35 + 0.35 * e; // back foot pushes off
+      pose.lean = 0.05 + 0.4 * e + 0.12 * fol; pose.crouch = -0.06 * e;
+      pose.head = -0.15;
       break;
     }
     case 'fair_catch':
@@ -590,7 +622,7 @@ function computePose(p, time, sim) {
       if (sp > 1) runLegs(Math.min(0.6, run));
       pose.arms[1].pitch = 3.05; pose.arms[1].elbow = 0.05; pose.arms[1].out = 0.25 + Math.sin(time * 9) * 0.35;
       pose.arms[0].pitch = 0.5; pose.arms[0].elbow = 1.0;
-      pose.head = 0.45;
+      pose.head = -0.45;
       break;
     case 'reach':
     case 'swat':
@@ -598,7 +630,7 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 2.6; pose.arms[0].elbow = pose.arms[1].elbow = 0.3;
       pose.arms[0].out = pose.arms[1].out = 0.25;
       if (p.anim === 'swat') { pose.rootY = Math.sin(Math.min(1, t / 0.5) * Math.PI) * 0.35; pose.arms[1].pitch = 3.0; }
-      pose.head = 0.3;
+      pose.head = -0.3;
       break;
     case 'catch': {
       // Hands up to the ball, then pull it into the chest.
@@ -607,7 +639,7 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 2.4 - k * 1.3;
       pose.arms[0].elbow = pose.arms[1].elbow = 0.3 + k * 1.5;
       pose.arms[0].out = pose.arms[1].out = 0.2 - k * 0.3;
-      pose.head = 0.25 - k * 0.35; pose.lean = 0.15 + k * 0.2;
+      pose.head = -0.25 + k * 0.35; pose.lean = 0.15 + k * 0.2;
       break;
     }
     case 'pick': {
@@ -617,7 +649,7 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 3.0 - k * 1.8;
       pose.arms[0].elbow = pose.arms[1].elbow = 0.15 + k * 1.6;
       pose.legs[0].hip = 0.9 * (1 - k); pose.legs[0].knee = 1.3 * (1 - k); pose.legs[1].knee = 0.4;
-      pose.head = 0.4 - k * 0.5;
+      pose.head = -0.4 + k * 0.5;
       break;
     }
     case 'falling': {
@@ -721,7 +753,7 @@ function computePose(p, time, sim) {
     }
     case 'cel_point':
       // Point to the sky with both hands.
-      pose.lean = -0.2; pose.head = 0.45;
+      pose.lean = -0.2; pose.head = -0.45;
       pose.arms[0].pitch = 2.7; pose.arms[1].pitch = 2.95; pose.arms[0].elbow = 0.35; pose.arms[1].elbow = 0.05; pose.arms[0].out = 0.25; pose.arms[1].out = 0.1;
       break;
     case 'cel_flex':
@@ -750,13 +782,13 @@ function computePose(p, time, sim) {
       break;
     case 'cel_sack':
       // Sack: arms out wide, chest up, a little shimmy.
-      pose.lean = -0.18; pose.head = 0.3; pose.rootY = Math.abs(Math.sin(t * 5)) * 0.08;
+      pose.lean = -0.18; pose.head = -0.3; pose.rootY = Math.abs(Math.sin(t * 5)) * 0.08;
       pose.arms[0].pitch = pose.arms[1].pitch = 1.4; pose.arms[0].out = pose.arms[1].out = 1.25 + Math.sin(t * 9) * 0.1; pose.arms[0].elbow = pose.arms[1].elbow = 0.25;
       pose.legs[0].out = pose.legs[1].out = 0.25;
       break;
     case 'cel_pick':
       // Interception: the ball held up high in one hand.
-      pose.lean = -0.1; pose.head = 0.35; pose.arms[1].pitch = 3.0; pose.arms[1].elbow = 0.05; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.3;
+      pose.lean = -0.1; pose.head = -0.35; pose.arms[1].pitch = 3.0; pose.arms[1].elbow = 0.05; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.3;
       pose.rootY = Math.abs(Math.sin(t * 4)) * 0.05;
       break;
     case 'huddle':

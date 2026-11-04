@@ -3407,6 +3407,471 @@
     "H": "block",
     "F": "block"
    }
+  },
+  {
+   "id": "tight_iz",
+   "name": "Tight Inside Zone",
+   "formation": "singleback_tight",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.5
+    ],
+    "mesh": [
+     -4.2,
+     0.6
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "tight_power",
+   "name": "Tight Power",
+   "formation": "singleback_tight",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     3.2
+    ],
+    "mesh": [
+     -4.2,
+     0.6
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "tight_stretch",
+   "name": "Tight Stretch",
+   "formation": "singleback_tight",
+   "type": "run",
+   "concept": "Outside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0.5,
+     6.5
+    ],
+    "mesh": [
+     -4.5,
+     2
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "tight_counter",
+   "name": "Tight Counter",
+   "formation": "singleback_tight",
+   "type": "run",
+   "concept": "Counter",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -2.6
+    ],
+    "mesh": [
+     -4.6,
+     1.4
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "tight_pa_boot",
+   "name": "Tight PA Boot",
+   "formation": "singleback_tight",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "cross",
+    "Y": "flat_l",
+    "H": "drag",
+    "U": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "U",
+    "Y",
+    "H",
+    "X"
+   ],
+   "pa": true,
+   "boot": 1
+  },
+  {
+   "id": "tight_pa_seam",
+   "name": "Tight PA Seams",
+   "formation": "singleback_tight",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Y": "seam",
+    "H": "seam",
+    "U": "flat",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "H",
+    "X",
+    "U"
+   ],
+   "pa": true
+  },
+  {
+   "id": "tight_y_cross",
+   "name": "Tight Y-Cross",
+   "formation": "singleback_tight",
+   "type": "pass",
+   "concept": "Y-Cross",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Y": "cross",
+    "H": "flat",
+    "U": "dig",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "U",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "tight_snag",
+   "name": "Tight Snag",
+   "formation": "singleback_tight",
+   "type": "pass",
+   "concept": "Snag",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Y": "sit",
+    "H": "flat",
+    "U": "corner",
+    "RB": "block"
+   },
+   "read": [
+    "U",
+    "Y",
+    "H",
+    "X"
+   ]
+  },
+  {
+   "id": "heavy_iz",
+   "name": "Heavy Inside Zone",
+   "formation": "gun_heavy",
+   "type": "run",
+   "concept": "Inside Zone",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "heavy_power",
+   "name": "Heavy Power",
+   "formation": "gun_heavy",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     3
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "gap",
+    "side": 1,
+    "pull": [
+     "LG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "heavy_read",
+   "name": "Heavy Zone Read",
+   "formation": "gun_heavy",
+   "type": "run",
+   "concept": "Zone Read",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1.0,
+     1.2
+    ],
+    "mesh": [
+     -4.8,
+     -0.4
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "read"
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "U": "block"
+   }
+  },
+  {
+   "id": "heavy_sticks",
+   "name": "Heavy Stick",
+   "formation": "gun_heavy",
+   "type": "pass",
+   "concept": "Stick",
+   "dropback": 3,
+   "routes": {
+    "X": "slant",
+    "Y": "stick",
+    "H": "flat",
+    "U": "stick",
+    "RB": "flat_l"
+   },
+   "read": [
+    "U",
+    "Y",
+    "H",
+    "RB",
+    "X"
+   ]
+  },
+  {
+   "id": "heavy_flood",
+   "name": "Heavy Flood",
+   "formation": "gun_heavy",
+   "type": "pass",
+   "concept": "Flood",
+   "dropback": 5,
+   "routes": {
+    "X": "go",
+    "Y": "out",
+    "H": "block",
+    "U": "corner",
+    "RB": "flat_r"
+   },
+   "read": [
+    "U",
+    "Y",
+    "RB",
+    "X"
+   ]
+  },
+  {
+   "id": "heavy_screen",
+   "name": "Heavy HB Screen",
+   "formation": "gun_heavy",
+   "type": "pass",
+   "concept": "Screen",
+   "dropback": 3,
+   "routes": {
+    "X": "go",
+    "Y": "block",
+    "H": "block",
+    "U": "drag",
+    "RB": "rb_screen"
+   },
+   "read": [
+    "RB"
+   ]
+  },
+  {
+   "id": "heavy_i_iso",
+   "name": "Heavy Iso",
+   "formation": "iform_heavy",
+   "type": "run",
+   "concept": "Iso",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     0.8
+    ],
+    "mesh": [
+     -4.2,
+     0.3
+    ],
+    "scheme": "gap",
+    "side": 1
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "heavy_i_toss",
+   "name": "Heavy Toss",
+   "formation": "iform_heavy",
+   "type": "run",
+   "concept": "Toss",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     0,
+     10
+    ],
+    "mesh": [
+     -6,
+     4
+    ],
+    "scheme": "zone",
+    "side": 1,
+    "style": "pitch"
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "heavy_i_power_l",
+   "name": "Heavy Power Left",
+   "formation": "iform_heavy",
+   "type": "run",
+   "concept": "Power",
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     1,
+     -3.2
+    ],
+    "mesh": [
+     -4.2,
+     -0.6
+    ],
+    "scheme": "gap",
+    "side": -1,
+    "pull": [
+     "RG"
+    ]
+   },
+   "routes": {
+    "X": "stalk",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
+  },
+  {
+   "id": "heavy_i_pa_shot",
+   "name": "Heavy PA Shot",
+   "formation": "iform_heavy",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Y": "seam",
+    "H": "drag",
+    "F": "block",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "Y",
+    "H"
+   ],
+   "pa": true
+  },
+  {
+   "id": "heavy_i_pa_boot",
+   "name": "Heavy PA Boot",
+   "formation": "iform_heavy",
+   "type": "pass",
+   "concept": "Play Action",
+   "dropback": 5,
+   "routes": {
+    "X": "cross",
+    "Y": "flat_r",
+    "H": "drag",
+    "F": "block",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "X",
+    "H"
+   ],
+   "pa": true,
+   "boot": 1
   }
  ]
 }

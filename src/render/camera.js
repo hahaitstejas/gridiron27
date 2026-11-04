@@ -33,6 +33,23 @@ export class CameraRig {
         p.set(focus.x - dir * 30, 14, fz * 0.3);
         l.set(focus.x + dir * 5, 0, fz * 0.8);
         break;
+      case 'all22':
+        // Coaches' film: high above the back of the play, wide enough for all 22 (and the deep safeties).
+        p.set(focus.x - dir * 26, 30, fz * 0.2);
+        l.set(focus.x + dir * (phase === 'air' ? 16 : 10), 0, fz * 0.4);
+        break;
+      case 'skycam':
+        // The cable-suspended camera right behind the offense, a little above helmet height... and following the ball.
+        p.set(focus.x - dir * (phase === 'air' ? 11 : 8.5), phase === 'air' ? 9 : 6.2, fz * 0.95);
+        l.set(focus.x + dir * 9, 1.2, fz);
+        break;
+      case 'cable': {
+        // Sideline cable cam: low on the near sideline, moving with the ball (classic side-on TV view, pulled in).
+        const side = extra.sideline ?? -1;
+        p.set(focus.x - dir * 4, 6.5, side * 36);
+        l.set(focus.x + dir * 2, 0.5, fz * 0.6);
+        break;
+      }
       case 'sky':
         p.set(focus.x - dir * 6, 42, fz);
         l.set(focus.x + dir * 3, 0, fz);

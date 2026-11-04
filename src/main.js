@@ -171,8 +171,11 @@ league.onDepth = () => {
   const pick = (i) => depthChartScreen(screens, teams[i], { onDone: () => league.menu(2), onChange: () => league.changed() });
   screens.teamPicker(teams, prefs.home, { title: 'Depth chart: pick a team', onPick: pick, onBack: () => league.menu(2) });
 };
+// Broadcast camera packages (Settings → Camera, or D-pad ▲ in a game to cycle).
+const CAM_MODE = { high: 'sky', all22: 'all22', skycam: 'skycam', endzone: 'endzone', cable: 'cable' };
+const camMode = () => CAM_MODE[prefs.camera] || 'broadcast';
 const applyCamera = () => {
-  renderer.rig.mode = prefs.camera === 'high' ? 'sky' : 'broadcast';
+  renderer.rig.mode = camMode();
   renderer.rig.zoom = { wide: 1.3, tight: 0.8 }[prefs.camera] || 1;
 };
 applyCamera();
@@ -775,7 +778,7 @@ function frameBody(now) {
     const playerCam = pc && pc.slot !== 'QB' && (sim.state === 'live' || lockedD) && prefs.careerCam !== 'broadcast';
     if (playerCam) focus = { x: pc.x, z: pc.z };
     else if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
-    renderer.rig.mode = artView ? 'art' : playerCam ? 'follow' : prefs.camera === 'high' ? 'sky' : 'broadcast';
+    renderer.rig.mode = artView ? 'art' : playerCam ? 'follow' : camMode();
     const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : m.dirOf(m.possession);
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;

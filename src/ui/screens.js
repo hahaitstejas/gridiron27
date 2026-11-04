@@ -27,7 +27,7 @@ export function defaultSliders() {
   return { user: side(), cpu: side(), penalties: 50, fatigue: 50, injuries: 50 };
 }
 
-const CAMERAS = { standard: 'Standard', wide: 'Wide', tight: 'Tight', high: 'High (sky cam)' };
+export const CAMERAS = { standard: 'Standard', wide: 'Wide', tight: 'Tight', high: 'High (overhead)', all22: 'All-22 (coaches film)', skycam: 'Skycam (behind the play)', endzone: 'End zone', cable: 'Sideline cable cam' };
 const FIELD_SPOTS = [[20, 'Own 20'], [25, 'Own 25'], [35, 'Own 35'], [50, 'Midfield'], [65, 'Opponent 35'], [80, 'Red zone (opp 20)'], [90, 'Opp 10'], [97, 'Goal line (opp 3)']];
 const SITUATIONS = [['1-10', '1st & 10'], ['2-6', '2nd & 6'], ['3-3', '3rd & 3'], ['3-8', '3rd & 8'], ['3-15', '3rd & 15'], ['4-1', '4th & 1']];
 

@@ -118,6 +118,8 @@ export const COVERAGE_CALLS = [
   { btn: 'X', key: 'in', label: 'Shade inside', set: { shade: 'in' } },
   { btn: 'Y', key: 'out', label: 'Shade outside', set: { shade: 'out' } },
   { btn: 'RB', key: 'disguise', label: 'Disguise the shell', set: { disguise: true } },
+  { btn: 'RT', key: 'bracket', label: 'Bracket their best receiver', set: { bracket: true } },
+  { btn: 'LS', key: 'bail', label: 'Press-bail (show press, bail at the snap)', set: { cover: 'bail' } },
   { btn: 'LT', key: 'reset', label: 'Reset', set: null },
 ];
 
@@ -129,6 +131,7 @@ export const FRONT_CALLS = [
   { btn: 'B', key: 'spread', label: 'Spread the line (contain the edge)', set: { front: 'spread' } },
   { btn: 'X', key: 'blitz', label: 'Show blitz (more sacks, weak outside)', set: { show: 'blitz' } },
   { btn: 'Y', key: 'crowd', label: 'Crowd the line (stop the run, thin coverage)', set: { show: 'crowd' } },
+  { btn: 'RT', key: 'sim', label: 'Simulated pressure (show 7-8, rush 4-5 from anywhere)', set: { show: 'sim' } },
   { btn: 'LT', key: 'reset', label: 'Reset front', set: { front: null, show: null } },
 ];
 
@@ -146,6 +149,10 @@ export function cpuCoverageCall(defPlay, rng, m = null) {
     if (m.toGo <= 2 && f < 0.6) call = { ...call, front: 'pinch', show: f < 0.35 ? 'crowd' : null };
     else if (m.toGo >= 3 && m.toGo <= 6 && f < 0.25) call = { ...call, front: 'spread' };
     else if (/blitz|fire|cover0/i.test(defPlay.id) ? f < 0.3 : f < 0.06) call = { ...call, show: 'blitz' };
+    else if (m.down >= 3 && m.toGo >= 5 && f < 0.2) call = { ...call, show: 'sim' };
+    // Their best receiver on a passing down: double him now and then; corners sometimes show press and bail.
+    if (m.down >= 2 && m.toGo >= 6 && rng.next() < 0.12) call = { ...call, bracket: true };
+    if (call?.cover === 'press' && rng.next() < 0.25) call = { ...call, cover: 'bail' };
   }
   return call;
 }

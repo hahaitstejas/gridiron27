@@ -4,7 +4,7 @@ import { seek, stop } from '../sim/movement.js';
 import { startMove } from '../sim/tackling.js';
 import { ZONES } from './zones.js';
 
-const DEF_TASKS = new Set(['rush', 'man', 'zone', 'spy', 'pursue', 'ball']);
+const DEF_TASKS = new Set(['rush', 'man', 'zone', 'spy', 'pursue', 'ball', 'bracket']);
 
 /**
  * Match man defenders to receivers. Rules in the play (man:L1, man:RB, ...) are hints; anyone
@@ -58,7 +58,7 @@ const CB_SLOTS = new Set(['LCB', 'RCB', 'NB', 'DB']);
 /** Corner depth for the pre-snap coverage call: press (1 yd), off (8 yds) or the play's default. */
 function cbDepth(sim, def) {
   const c = sim.defAdj?.cover;
-  return c === 'press' ? 1.1 : c === 'off' ? Math.max(def, 8) : def;
+  return c === 'press' || c === 'bail' ? 1.1 : c === 'off' ? Math.max(def, 8) : def;
 }
 
 /**
@@ -108,6 +108,11 @@ export function frontAlign(sim) {
     if (a.front === 'pinch') { if (ENDS.has(d.slot)) lat -= side * 1.1; else if (TACKLES.has(d.slot)) lat -= side * 0.4; }
     if (a.front === 'spread') { if (ENDS.has(d.slot)) lat += side * 0.3; } // a wider set; the edge-rush effect is in frontBonus
     if (a.show === 'blitz' && BACKERS.has(d.slot)) { down = 2.3; lat *= 0.85; }
+    // Simulated pressure: the backers and the strong safety walk up into the line; who comes is anyone's guess.
+    if (a.show === 'sim') {
+      if (BACKERS.has(d.slot)) { down = 1.6; lat *= 0.8; }
+      if (d.slot === 'SS' && !d.disguised) { down = 2.6; lat = clamp(lat, -5.5, 5.5); }
+    }
     if (a.show === 'crowd') {
       if (BACKERS.has(d.slot)) down = Math.min(down, 3.2);
       if (SAFETIES.has(d.slot) && !d.disguised) { down = Math.min(down, 7.5); lat = clamp(lat, -6, 6); }
@@ -252,6 +257,62 @@ export function assignDefense(sim) {
     if (lb) lb.task = { type: 'spy' };
   }
   pressJams(sim);
+  // Press-bail: the corners don't jam; they bail at the snap.
+  if (sim.defAdj?.cover === 'bail') for (const d of sim.defense()) if (CB_SLOTS.has(d.slot) && (d.task?.type === 'man' || d.task?.type === 'zone')) d.task.bail = 0.5;
+  if (sim.defAdj?.show === 'sim' && !/^st_/.test(sim.defPlay.id || '')) simPressure(sim);
+  if (sim.defAdj?.bracket) bracketStar(sim);
+}
+
+/**
+ * Simulated pressure: from the walked-up look, one or two of the backers / the strong safety come and as many
+ * linemen drop into the flats, so the offense sees 7-8 at the line, gets 4-5 rushers, from places it didn't expect.
+ */
+function simPressure(sim) {
+  const rng = sim.rng;
+  const up = sim.defense().filter((d) => (BACKERS.has(d.slot) || d.slot === 'SS') && d.task?.type !== 'rush');
+  const ends = sim.defense().filter((d) => ENDS.has(d.slot) && d.task?.type === 'rush');
+  const n = Math.min(up.length, ends.length, 1 + (rng.next() < 0.5 ? 1 : 0));
+  for (let i = 0; i < n; i++) {
+    const b = up.splice(Math.floor(rng.next() * up.length), 1)[0];
+    b.task = { type: 'rush', blitz: true };
+    const e = ends.splice(Math.floor(rng.next() * ends.length), 1)[0];
+    e.task = { type: 'zone', zone: sim.toLocal(e.x, e.z).lat < 0 ? 'curl_flat_l' : 'curl_flat_r' };
+  }
+  sim.simPressure = n;
+}
+
+/** Bracket: double the offense's best receiver with a safety over the top (or a backer underneath). */
+function bracketStar(sim) {
+  const recs = sim.offense().filter((o) => o.task?.type === 'route' && /WR|TE/.test(o.pos));
+  if (!recs.length) return;
+  const val = (r) => sim.R(r, 'routeRunning') + sim.R(r, 'speed') + sim.R(r, 'catching');
+  const star = recs.sort((a, b) => val(b) - val(a))[0];
+  const sl = sim.toLocal(star.x, star.z);
+  const coverMen = sim.defense().filter((d) => d.task && d.task.type !== 'rush' && !(d.task.type === 'man' && d.task.target === star.id));
+  const deepOnes = coverMen.filter((d) => SAFETIES.has(d.slot) && /^deep_/.test(d.task.zone || ''));
+  // Over the top: the safety on his side, if the shell can spare one; else a backer / nickel underneath.
+  let helper = deepOnes.length >= 2 ? deepOnes.sort((a, b) => Math.abs(sim.toLocal(a.x, a.z).lat - sl.lat) - Math.abs(sim.toLocal(b.x, b.z).lat - sl.lat))[0] : null;
+  const over = !!helper;
+  if (!helper) helper = coverMen.filter((d) => !SAFETIES.has(d.slot) && !CB_SLOTS.has(d.slot) || d.slot === 'NB').sort((a, b) => Math.hypot(a.x - star.x, a.z - star.z) - Math.hypot(b.x - star.x, b.z - star.z))[0];
+  if (!helper) return;
+  helper.task = { type: 'bracket', target: star.id, over };
+  // Somebody has to be on him too: if nobody plays him man, the nearest corner does.
+  if (!sim.defense().some((d) => d.task?.type === 'man' && d.task.target === star.id)) {
+    const cb = sim.defense().filter((d) => CB_SLOTS.has(d.slot) && d !== helper).sort((a, b) => Math.hypot(a.x - star.x, a.z - star.z) - Math.hypot(b.x - star.x, b.z - star.z))[0];
+    if (cb) cb.task = { type: 'man', target: star.id, cushion: 3, under: over };
+  }
+  sim.bracketOn = star.id;
+}
+
+/** The bracket defender: over the top of his man (between him and the goal line), or underneath and inside. */
+function bracket(sim, p) {
+  const r = sim.players[p.task.target];
+  if (!r || r.state !== 'active') { p.task = { type: 'zone', zone: 'hook_middle' }; return; }
+  const l = sim.toLocal(r.x, r.z);
+  const inside = -Math.sign(l.lat || 1);
+  const w = p.task.over ? sim.toWorld(Math.max(l.down + 5, 9), l.lat + inside * 1.2) : sim.toWorld(Math.max(1.5, l.down - 1.5), l.lat + inside * 2);
+  seek(p, w.x, w.z, 1, 0.4);
+  p.face = { x: r.x, z: r.z };
 }
 
 /**
@@ -290,7 +351,7 @@ export function runDefenseAI(sim, dt) {
       const dist = Math.hypot(b.target.x - p.x, b.target.z - p.z);
       const timeLeft = Math.max(0.1, b.T - b.t);
       const canReach = dist < p.maxSpeed * (timeLeft + 0.6);
-      const isMyMan = p.task.type === 'man' && p.task.target === b.intended;
+      const isMyMan = (p.task.type === 'man' || p.task.type === 'bracket') && p.task.target === b.intended;
       // A man defender trailing his receiver has his back to the QB: he stays in phase and only
       // finds the ball in the last moment.
       const rec = sim.players[b.intended];
@@ -321,7 +382,15 @@ export function runDefenseAI(sim, dt) {
         continue;
       }
     }
+    // Press-bail: he showed press; at the snap he turns and bails to a deep cushion before playing his job.
+    if (p.task.bail && sim.t < p.task.bail) {
+      const l = sim.toLocal(p.x, p.z);
+      const w = sim.toWorld(l.down + 6, l.lat);
+      seek(p, w.x, w.z, 0.9, 0.3);
+      continue;
+    }
     switch (p.task.type) {
+      case 'bracket': bracket(sim, p); break;
       case 'rush': rush(sim, p); break;
       case 'man': man(sim, p, dt); break;
       case 'zone': zone(sim, p); break;

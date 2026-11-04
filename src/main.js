@@ -43,6 +43,7 @@ import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
 import { playbookScreen, loadAudiblePackages } from './ui/playbookEditor.js';
+import { coverageRead } from './game/reads.js';
 import { registerCustomPlays, loadSpecs } from './data/customPlays.js';
 import { statsScreen } from './ui/statsScreen.js';
 import { energyOf } from './game/fatigue.js';
@@ -738,6 +739,7 @@ function frameBody(now) {
     const showArt = sim && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
       && session.humanTeam !== null && session.humanTeam !== undefined && (input.frame.rt || 0) > 0.5 && !SPECIAL_ART.has(sim.offPlay.type);
     renderer.playArt.update(showArt ? playArt(sim, session.humanTeam) : null, dt);
+    hud.readout(showArt && session.humanSide === 'offense' ? coverageRead(sim) : null);
     artView = !!showArt;
     const b = renderer.ball.position;
     const live = sim && sim.state !== 'presnap';

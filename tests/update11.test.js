@@ -156,3 +156,22 @@ describe('audible packages', () => {
     expect(offenseAudibles(play).length).toBeGreaterThan(2);
   });
 });
+
+describe('pre-snap read', () => {
+  it('reads two-high vs one-high correctly most of the time for an aware QB', async () => {
+    const { PlaySim } = await import('../src/sim/play.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const { getOffPlay, listDefPlays } = await import('../src/data/playbook.js');
+    const { coverageRead } = await import('../src/game/reads.js');
+    const { shellOf } = await import('../src/ai/defense.js');
+    const lg = generateLeagueRosters(defaultTeams(), 4);
+    let right = 0, n = 0;
+    for (const dp of listDefPlays()) {
+      const sim = new PlaySim({ rng: new RNG(3), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -20, ballZ: 0, offPlay: getOffPlay('ace_drive'), defPlay: dp, humanTeam: 0 });
+      const r = coverageRead(sim);
+      expect(r.text.length).toBeGreaterThan(5);
+      n++; if (r.shell === Math.min(2, shellOf(dp))) right++;
+    }
+    expect(right / n).toBeGreaterThan(0.6);
+  });
+});

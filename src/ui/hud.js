@@ -161,6 +161,17 @@ export class Hud {
     } else this.ticker(msg.text);
   }
 
+  /** Pre-snap read (offense, while RT play art is up): the QB's guess at the coverage and how sure he is. */
+  readout(read) {
+    let e = this._read;
+    if (!e) { e = this._read = document.createElement('div'); e.id = 'readout'; this.$('hint').parentNode.appendChild(e); }
+    if (!read) { e.classList.add('hidden'); return; }
+    const pct = Math.round(read.confidence * 100);
+    const key = read.text + pct;
+    if (e._key !== key) { e._key = key; e.innerHTML = `<small>QB READ</small><b>${read.text}</b><span class="rd-bar"><i style="width:${pct}%"></i></span><em>${pct}% sure</em>`; }
+    e.classList.remove('hidden');
+  }
+
   banner(big, small, secs = 2.2, cls = '') {
     const b = this.$('banner');
     b.className = cls;

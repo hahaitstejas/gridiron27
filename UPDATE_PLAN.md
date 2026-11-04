@@ -139,7 +139,7 @@ Phase A — playbook and trick plays
 - [x] A5 Audible packages live in the playbook: pick your audibles per formation (editable; the in-game audible menu uses them)
 Phase B — QB play and reads
 - [x] B1 Pocket movement: step up / slide / climb on the stick in the pocket; pocket-presence feel (awareness)
-- [ ] B2 Pre-snap reads: hold a button to see the likely coverage (shell, man/zone) with confidence by QB awareness
+- [x] B2 Pre-snap reads: hold a button to see the likely coverage (shell, man/zone) with confidence by QB awareness
 Phase C — defense
 - [ ] C1 Bracket coverage (double the best receiver; CPU brackets your star)
 - [ ] C2 Press-bail (show press, bail at the snap)

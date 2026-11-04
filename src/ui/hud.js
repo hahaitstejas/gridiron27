@@ -32,6 +32,7 @@ export class Hud {
       <div id="drillbar" class="hidden"></div>
       <div id="noise" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
+      <div id="celwheel" class="hidden"><div class="cw-opt cw-up">Dance</div><div class="cw-opt cw-left">Flex</div><div class="cw-mid"><b class="btn RS">RS</b></div><div class="cw-opt cw-right">Spike</div><div class="cw-opt cw-down">Team</div></div>
       <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
@@ -113,7 +114,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -436,6 +437,9 @@ export class Hud {
    * Scores from around the league (franchise games): the other games this week, revealed quarter by quarter as yours
    * goes on (session.ticker = [{ away, home, q: [[a1..a4], [h1..h4]], final }]).
    */
+  /** The touchdown celebration wheel (see main.js). */
+  celWheel(on) { this.$('celwheel').classList.toggle('hidden', !on); }
+
   renderTicker(session) {
     const tk = this.$('scoreticker');
     const list = session.ticker;

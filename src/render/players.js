@@ -394,8 +394,17 @@ export class PlayerRenderer {
     // a big hit), measured once in his own frame and kept through the time he lies on the turf.
     const falling = p.anim === 'falling' || p.anim === 'tackle' || p.anim === 'down' || p.anim === 'getup';
     if (falling && this.fallAnim[i] !== true) {
-      const sp = Math.hypot(p.vx, p.vz);
-      const a = sp > 0.6 ? Math.atan2(p.vz, p.vx) - p.facing : 0;
+      // His momentum plus the shove from whoever hit him: a runner hit head-on goes over backward, one wrapped
+      // from the side falls away from the tackler, one dragged down from behind falls forward.
+      let vx = p.vx, vz = p.vz;
+      const tk = p.anim === 'falling' && sim?.stats?.tackler !== null && sim?.stats?.tackler !== undefined ? sim.players[sim.stats.tackler] : null;
+      if (tk && tk !== p) {
+        const dx = p.x - tk.x, dz = p.z - tk.z, d = Math.hypot(dx, dz) || 1;
+        const hit = Math.max(2, Math.hypot(tk.vx, tk.vz) * 0.6);
+        vx += (dx / d) * hit; vz += (dz / d) * hit;
+      }
+      const sp = Math.hypot(vx, vz);
+      const a = sp > 0.6 ? Math.atan2(vz, vx) - p.facing : 0;
       (this.fall[i] ||= { fwd: 1, side: 0 });
       this.fall[i].fwd = Math.cos(a); this.fall[i].side = Math.sin(a);
       this.fallAnim[i] = true;
@@ -788,6 +797,29 @@ function computePose(p, time, sim) {
       pose.arms[0].pitch = pose.arms[1].pitch = 2.6 + air * 0.4; pose.arms[0].out = pose.arms[1].out = 0.35;
       break;
     }
+    case 'cel_dance': {
+      // Side to side with the arms swinging (the celebration wheel's "Dance").
+      const w = Math.sin(t * 7);
+      pose.rootRoll = w * 0.12; pose.twist = w * 0.35; pose.rootY = Math.abs(Math.cos(t * 7)) * 0.12;
+      pose.legs[0].out = 0.2 + Math.max(0, w) * 0.3; pose.legs[1].out = 0.2 + Math.max(0, -w) * 0.3; pose.legs[0].knee = pose.legs[1].knee = 0.45;
+      pose.arms[0].pitch = 1.9 + w * 0.6; pose.arms[1].pitch = 1.9 - w * 0.6; pose.arms[0].out = pose.arms[1].out = 0.55; pose.arms[0].elbow = pose.arms[1].elbow = 0.9;
+      break;
+    }
+    case 'cel_first':
+      // First down: the runner pops up and points the way the offense is going.
+      pose.lean = 0.05; pose.arms[1].pitch = 1.6; pose.arms[1].elbow = 0.02; pose.arms[1].out = 0.05; pose.arms[0].pitch = 0.3; pose.arms[0].elbow = 1.2;
+      break;
+    case 'cel_sack':
+      // Sack: arms out wide, chest up, a little shimmy.
+      pose.lean = -0.18; pose.head = 0.3; pose.rootY = Math.abs(Math.sin(t * 5)) * 0.08;
+      pose.arms[0].pitch = pose.arms[1].pitch = 1.4; pose.arms[0].out = pose.arms[1].out = 1.25 + Math.sin(t * 9) * 0.1; pose.arms[0].elbow = pose.arms[1].elbow = 0.25;
+      pose.legs[0].out = pose.legs[1].out = 0.25;
+      break;
+    case 'cel_pick':
+      // Interception: the ball held up high in one hand.
+      pose.lean = -0.1; pose.head = 0.35; pose.arms[1].pitch = 3.0; pose.arms[1].elbow = 0.05; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.3;
+      pose.rootY = Math.abs(Math.sin(t * 4)) * 0.05;
+      break;
     case 'huddle':
       // Hands on knees in the huddle, listening for the call.
       pose.crouch = -0.12; pose.lean = 0.55; pose.head = -0.1;

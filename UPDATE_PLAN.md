@@ -58,8 +58,8 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] D1 End zones: team name / city, conference + league logos; championship end zones
 - [x] D2 Glossy 3D logos
 - [ ] D3 Cutscenes: coaches, fans, tunnel run-out (skippable); TD camera locks on the scorer; kickoff camera
-- [ ] D4 Celebrations (TD, sack, INT, first down) incl. RS celebration wheel
-- [ ] D5 Tackle falls in the right direction, referees run, animations
+- [x] D4 Celebrations (TD, sack, INT, first down) incl. RS celebration wheel
+- [x] D5 Tackle falls in the right direction, referees run, animations
 - [ ] D6 Dynamic lighting, holiday decorations (Thanksgiving leaves, Christmas)
 - [x] D7 RT play art zooms out to the whole field
 - [x] D8 Tush push timing bar play
@@ -111,3 +111,4 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - commit 11: depth chart X = play the backups / Y = starters back; uniform editor (home/away/alt) in Teams & Logos; settings/training checked in the no-outline style.
 - commit 12: end zones (team name / city, conference + league logos; championship: each team's name and logo), glossy 3D logos in menus and the HUD.
 - commit 13: RT play art pulls the camera up and back over the whole formation; Tush Push play with a timing bar (A in the green) that sets the surge.
+- commit 14: celebrations (first-down point, sack, pick, TD wheel on RS: Dance/Flex/Spike/Team), tackle falls away from the tackler, officials stride instead of sliding.

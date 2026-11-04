@@ -172,6 +172,7 @@ applyCamera();
 
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
+let celWheel = null; // the touchdown celebration picker (RS)
 let artView = false; // RT play art: the camera pulls back over the whole field
 let autoReplayPending = false; // a big play just happened: show it once the play is over
 let session = null;
@@ -550,6 +551,11 @@ const isDarkHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16)
 
 function onSessionEvent(e) {
   renderer.presentation.onEvent(e, session);
+  // Your touchdown: the celebration wheel (RS: up Dance, left Flex, right Spike, down Team) for a couple of seconds.
+  if (e.type === 'touchdown' && session && !session.fast && speed <= 1) {
+    const sc = session.sim?.players[session.sim.ball.carrier];
+    if (sc && session.isHuman(sc.team) && renderer.presentation.cel) { celWheel = { t: 0, team: sc.team }; hud.celWheel(true); }
+  }
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') {
     hud.message(e, session);
@@ -652,6 +658,13 @@ function frameBody(now) {
       if (app !== 'game') break;
     }
     if (steps >= 6 * sp) acc = 0;
+    if (celWheel) {
+      const cf = two ? (celWheel.team === p1 ? f : input2.frame) : f;
+      celWheel.t += dt;
+      const pick = cf.ry < -0.6 ? 'dance' : cf.rx < -0.6 ? 'flex' : cf.rx > 0.6 ? 'spike' : cf.ry > 0.6 ? 'team' : null;
+      if (pick) renderer.presentation.pickCelebration(pick);
+      if (pick || celWheel.t > 2.4 || !renderer.presentation.cel) { celWheel = null; hud.celWheel(false); }
+    }
     consumed = pcOpen;
   }
 

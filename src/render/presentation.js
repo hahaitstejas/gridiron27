@@ -117,6 +117,12 @@ export class Presentation {
       this.announce = { sig: SIGNAL[e.foul?.type] || 'sig_holding', t: 0 };
     } else if (e.type === 'result' && e.result && !e.result.touchdown && !e.result.turnover && e.result.offTeam === session.match.possession && session.match.down === 1 && session.match.phase === 'scrimmage' && !sim.isKick && (e.result.yards || 0) > 0) {
       this.signal(nearest(ball.x, ball.z), 'sig_first', 1.6);
+      if ((e.result.yards || 0) >= 4 && e.result.carrierId !== undefined) this.moment = { idx: e.result.carrierId, style: 'cel_first', t: 0, dir: session.match.dirOf(e.result.offTeam) };
+    }
+    // Big defensive plays get a moment too: the sacker and the interceptor celebrate after the whistle.
+    if (e.type === 'result' && e.result && !session.fast) {
+      if (e.result.sack && e.result.tackler !== null && e.result.tackler !== undefined) this.moment = { idx: e.result.tackler, style: 'cel_sack', t: 0 };
+      else if (e.result.interception && e.result.intBy !== null && e.result.intBy !== undefined && !e.result.touchdown) this.moment = { idx: e.result.intBy, style: 'cel_pick', t: 0 };
     }
   }
 
@@ -143,6 +149,7 @@ export class Presentation {
     if (mode !== this.mode) { this.mode = mode; this.modeT = 0; if (mode === 'huddle') this.startHuddle(sim); }
     this.modeT += dt;
     if (this.cel && mode === 'huddle') this.cel.t += dt;
+    if (this.moment && mode !== 'huddle') this.moment = null;
     if (this.cel && (this.cel.t > CEL_T || (mode !== 'huddle' && sim.state === 'presnap'))) this.cel = null;
     if (mode === 'huddle') display = this.huddle(sim, m, dir, losX, ballZ, dt);
     else if (mode === 'lineup') display = this.lineup(sim, session.presnapT, dt);
@@ -156,6 +163,16 @@ export class Presentation {
   }
 
   /** Close-up camera target while a touchdown celebration runs: { x, z, dir } or null. */
+  /** The celebration wheel (RS after your touchdown): Dance / Flex / Spike / Team. */
+  pickCelebration(style) {
+    if (!this.cel) return false;
+    this.cel.style = style === 'team' ? 'cel_leap' : style === 'dance' ? 'cel_dance' : style === 'spike' ? 'cel_spike' : 'cel_flex';
+    this.cel.team = style === 'team' ? this.cel.team : this.cel.team;
+    this.cel.teamParty = style === 'team';
+    this.cel.picked = true;
+    return true;
+  }
+
   celebration() {
     const c = this.cel;
     if (!c || c.t > CEL_T - 0.3) return null;
@@ -220,6 +237,11 @@ export class Presentation {
       d.animT += dt;
       if (this.cel && d.anim !== 'down' && !(d.anim === 'getup' && d.animT < 0.6) && this.celebrate(sim, i, d, dt)) {
         // celebrating
+      } else if (this.moment && this.moment.idx === i && this.modeT < HUDDLE_DELAY + 0.9 && !(d.down && d.anim === 'down' && this.modeT < 0.5)) {
+        // A short celebration (first down point, sack, pick) before heading to the huddle.
+        d.vx = d.vz = 0; d.down = false;
+        if (this.moment.dir) d.facing = turn(d.facing, this.moment.dir > 0 ? 0 : Math.PI, dt * 6);
+        if (d.anim !== this.moment.style) { d.anim = this.moment.style; d.animT = 0; }
       } else if (this.modeT < HUDDLE_DELAY) {
         // A beat after the whistle: whoever is down stays down for a moment, the rest stand.
         if (!d.down) { d.anim = 'idle'; d.vx = d.vz = 0; }
@@ -334,7 +356,8 @@ export class Presentation {
       const dx = tx - r.x, dz = tz - r.z, dist = Math.hypot(dx, dz);
       const signaling = r.sigT > 0 && r.sig !== 'sig_flag';
       if (dist > 0.3 && !signaling) {
-        const v = Math.min(live ? 7.5 : 4.5, dist * 2.5, dist / dt);
+        // Officials run at a real stride (no creeping at a few inches a second when nearly there).
+        const v = Math.min(live ? 7.5 : 4.5, Math.max(dist * 2.5, Math.min(1.6, dist / dt)), dist / dt);
         r.vx = (dx / dist) * v; r.vz = (dz / dist) * v;
         r.x += r.vx * dt; r.z += r.vz * dt;
         const moveF = Math.atan2(r.vz, r.vx);
@@ -347,7 +370,10 @@ export class Presentation {
         if (face) r.facing = turn(r.facing, Math.atan2(face.z - r.z, face.x - r.x), dt * 5);
       }
       const sp = Math.hypot(r.vx, r.vz);
-      const anim = r.sigT > 0 ? r.sig : sp > 0.5 ? (Math.cos(Math.atan2(r.vz, r.vx) - r.facing) < -0.2 ? 'backpedal' : 'run') : 'idle';
+      // Any movement gets a stride (slow drifts used to slide in the idle pose: "floating" officials); sideways
+      // movement shuffles, backward backpedals.
+      const rel = sp > 0.05 ? Math.cos(Math.atan2(r.vz, r.vx) - r.facing) : 1;
+      const anim = r.sigT > 0 ? r.sig : sp > 0.15 ? (rel < -0.3 ? 'backpedal' : rel < 0.45 ? 'shuffle' : 'run') : 'idle';
       if (anim !== r.anim) { r.anim = anim; r.animT = 0; }
     });
   }

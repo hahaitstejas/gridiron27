@@ -303,3 +303,22 @@ describe('play designer', () => {
     D.registerCustomDefPlays([]); D.registerCustomRoutes([]);
   });
 });
+
+describe('mod packs', () => {
+  it('the example pack validates, its plays run, and it switches off cleanly', async () => {
+    const { validateMod, applyMod, removeMod, exampleMod } = await import('../src/data/mods.js');
+    const { getOffPlay } = await import('../src/data/playbook.js');
+    const { testPlay } = await import('../src/game/playtest.js');
+    const v = validateMod(exampleMod());
+    expect(v.ok).toBe(true);
+    expect(v.errors).toEqual([]);
+    applyMod(v.pack);
+    const lg = generateLeagueRosters(defaultTeams(), 60);
+    for (const id of ['ex_wide_out_up', 'ex_wide_draw']) expect(testPlay(getOffPlay(id), lg, 3).ok).toBe(true);
+    removeMod(v.pack.id);
+    expect(getOffPlay('ex_wide_out_up')).toBeUndefined();
+    const bad = validateMod({ name: 'Bad', offense: [{ id: 'x', formation: 'nope', type: 'pass' }] });
+    expect(bad.ok).toBe(false);
+    expect(bad.errors[0]).toMatch(/unknown formation/);
+  });
+});

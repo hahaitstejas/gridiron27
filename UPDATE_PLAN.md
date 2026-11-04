@@ -166,6 +166,6 @@ Phase G — modes and customization
 - [x] G2 Uniform creator (jersey / pants / helmet / stripes / numbers; home / away / alt)
 - [x] G3 Stadium creator (seat colors, roof, end zone art, field logo, name)
 - [x] G4 Play designer upgrades: drag routes visually, option routes, defensive play designer, share-codes
-- [ ] G5 Face / body options for created players; mod packs (JSON formations / plays / rules / uniforms)
+- [x] G5 Face / body options for created players; mod packs (JSON formations / plays / rules / uniforms)
 - [x] G6 One combined league spreadsheet: every CSV (teams, roster, depth, coaches, uniforms, stadiums, retired,
       schedule, free agents) in a single file with sections; import / export / public/local/league.csv

@@ -45,6 +45,7 @@ import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
 import { playbookScreen, loadAudiblePackages } from './ui/playbookEditor.js';
 import { coverageRead } from './game/reads.js';
 import { registerCustomRoutes, loadRoutes, registerCustomDefPlays, loadDefSpecs } from './data/customDesign.js';
+import { loadEnabledMods } from './data/mods.js';
 import { registerCustomPlays, loadSpecs } from './data/customPlays.js';
 import { statsScreen } from './ui/statsScreen.js';
 import { energyOf } from './game/fatigue.js';
@@ -128,7 +129,8 @@ const league = new LeagueUI({
 });
 if (saved) { league.name = saved.name; league.franchise = saved.franchise; }
 // The user's own plays (League → Playbook) live in this browser, outside league saves.
-// The user's routes first (plays may use them), then their offensive and defensive plays.
+// Mod packs, then the user's routes (plays may use them), then their offensive and defensive plays.
+try { loadEnabledMods(); } catch (e) { console.warn('Could not load mod packs', e); }
 try { registerCustomRoutes(loadRoutes()); registerCustomDefPlays(loadDefSpecs()); } catch (e) { console.warn('Could not load custom routes / defenses', e); }
 try { registerCustomPlays(loadSpecs()); } catch (e) { console.warn('Could not load custom plays', e); }
 loadAudiblePackages(); // Playbook → Audibles

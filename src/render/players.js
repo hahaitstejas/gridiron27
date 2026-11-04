@@ -280,7 +280,8 @@ export class PlayerRenderer {
       const facemask = uni.facemask || (isDark(helmet) ? '#cfcfcf' : '#333333');
       P.stripe.setColorAt(i, c.set(stripe));
       P.mask.setColorAt(i, c.set(facemask));
-      P.visor.setColorAt(i, c.set(p.number % 3 ? '#1a1f2a' : '#3a2a10'));
+      const vl = p.look?.visor;
+      P.visor.setColorAt(i, c.set(VISOR_COLORS[vl] || (p.number % 3 ? VISOR_COLORS.dark : VISOR_COLORS.gold)));
       P.towel.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);
@@ -295,7 +296,9 @@ export class PlayerRenderer {
         P.shin.setColorAt(j, c.set(uni.socks || (!isDark(pants) ? team.colors.primary : '#f2f2f2')));
         P.shoe.setColorAt(j, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
         P.upper.setColorAt(j, mud(uni.sleeves || jersey));
-        P.fore.setColorAt(j, c.set(skin));
+        // Arm sleeves (roster editor): white / black / team color, else bare forearms.
+        const sl = p.look?.sleeves;
+        P.fore.setColorAt(j, c.set(sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin));
         P.hand.setColorAt(j, uni.gloves ? c.set(uni.gloves) : c.set(team.colors.secondary).lerp(WHITE, 0.2));
         P.num.setColorAt(i * 4 + k, c.set(numColor));
         this.cellAttr.setXY(i * 4 + k, p.number % 10, Math.floor(p.number / 10));
@@ -931,8 +934,13 @@ const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stumble', 
 function gearOf(p) {
   const k = ((p.number || 0) * 37 + (p.skin || 0) * 11) % 100;
   const skill = ['QB', 'HB', 'WR', 'CB', 'FS', 'SS'].includes(p.pos);
-  return { visor: k < (skill ? 45 : 22), towel: p.pos === 'QB' || (skill && k % 3 === 0) };
+  const look = p.look || {};
+  // The roster editor's appearance choices win over the automatic gear.
+  const visor = look.visor && look.visor !== 'auto' ? look.visor !== 'none' : k < (skill ? 45 : 22);
+  const towel = look.towel && look.towel !== 'auto' ? look.towel === 'yes' : p.pos === 'QB' || (skill && k % 3 === 0);
+  return { visor, towel };
 }
+export const VISOR_COLORS = { dark: '#1a1f2a', gold: '#3a2a10', clear: '#9fb4c8' };
 
 // ---------- matrix helpers ----------
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);

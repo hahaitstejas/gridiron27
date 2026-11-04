@@ -6,6 +6,8 @@ import {
   routeChoices, RUN_GAPS, customFormations, eligibleSlots, newSpec, changeFormation, buildPlay, registerCustomPlays, loadSpecs, saveSpecs,
 } from '../data/customPlays.js';
 import { testPlay } from '../game/playtest.js';
+import { validateMod, applyMod, removeMod, loadMods, saveMods, exampleMod } from '../data/mods.js';
+import { pickFile, downloadFile } from '../data/storage.js';
 import { defenseArt } from './playart.js';
 import { ROUTES } from '../data/routes.js';
 import {
@@ -42,9 +44,10 @@ export function playbookScreen(ctx, focus = 0) {
   const aud = screens.menuItem('Audibles', 'Pick the four audibles (A / B / X / Y) for each formation, offense and defense', () => audibleScreen(ctx));
   const routes = screens.menuItem('Route Drawer', `Draw your own routes on a grid (${loadRoutes().length} saved); every play can use them`, () => routeList(ctx));
   const defs = screens.menuItem('Defensive Plays', `Build your own defenses (${loadDefSpecs().length} saved): formation + a job for every player`, () => defList(ctx));
+  const mods = screens.menuItem('Mod Packs', `Add formations, plays and routes from a .json pack (${loadMods().filter((m) => m.enabled).length} on)`, () => modScreen(ctx));
   const imp = screens.menuItem('Import a share code…', 'Paste a code from someone else (a play, a defense or a route)', () => importCode(ctx));
   for (const [i, r] of rows.entries()) r.share = () => showCode(shareCode('off', specs[i], loadRoutes()));
-  const items = [aud, routes, defs, imp, ...rows, add];
+  const items = [aud, routes, defs, mods, imp, ...rows, add];
   screens.frame('menu-screen', el('div.logo-small', { html: 'MY PLAYS' }),
     el('div.league-status', { text: specs.length ? `${specs.length} custom play${specs.length > 1 ? 's' : ''} · they show up in the "My Plays" tab when you call a play` : 'Design your own plays: they show up in the "My Plays" tab when you call a play' }),
     el('div.menu-list', {}, items),
@@ -343,4 +346,42 @@ function defEditor(ctx, spec, index, focus = 0) {
     el('div.over-buttons', {}, save, cancel),
     el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; ▲▼ move &nbsp; <b class="btn B">B</b> cancel' }));
   screens.nav.set([...rows, save, cancel], { columns: 1, onBack: () => defList(ctx), index: Math.min(focus, rows.length + 1) });
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Mod packs: .json files with formations / plays / routes (data/mods.js). A toggles a pack, X removes it.
+function modScreen(ctx, focus = 0, report = null) {
+  const { screens } = ctx;
+  screens.extraButtons = null;
+  const list = loadMods();
+  const rows = list.map((m, i) => {
+    const v = validateMod(m.json);
+    const it = screens.menuItem(`${m.enabled ? '● ' : '○ '}${m.json.name || 'Mod pack'}`, `${v.pack?.offense.length || 0} offensive · ${v.pack?.defense.length || 0} defensive plays · ${Object.keys(v.pack?.routes || {}).length} routes${m.enabled ? ' · ON' : ' · off'}`, () => {
+      m.enabled = !m.enabled;
+      if (m.enabled && v.ok) applyMod(v.pack); else if (v.pack) removeMod(v.pack.id);
+      saveMods(list); modScreen(ctx, i);
+    });
+    it.del = () => { if (!window.confirm(`Remove "${m.json.name}"?`)) return; if (v.pack) removeMod(v.pack.id); list.splice(i, 1); saveMods(list); modScreen(ctx, Math.max(0, i - 1)); };
+    return it;
+  });
+  const imp = screens.menuItem('Import a mod pack…', 'A .json file (see the example for the format)', async () => {
+    const f = await pickFile('.json,application/json');
+    if (!f) return;
+    let json;
+    try { json = JSON.parse(f.data); } catch (e) { modScreen(ctx, 0, [`${f.name}: not valid JSON (${e.message})`]); return; }
+    const v = validateMod(json);
+    if (!v.ok) { modScreen(ctx, 0, [`${f.name}: nothing usable`, ...v.errors.slice(0, 8)]); return; }
+    const all = loadMods().filter((m) => validateMod(m.json).pack?.id !== v.pack.id);
+    all.push({ json, enabled: true });
+    saveMods(all); applyMod(v.pack);
+    modScreen(ctx, all.length - 1, [`Installed "${v.pack.name}": ${v.pack.offense.length} offensive, ${v.pack.defense.length} defensive plays, ${Object.keys(v.pack.routes).length} routes`, ...(v.errors.length ? [`${v.errors.length} skipped:`, ...v.errors.slice(0, 6)] : [])]);
+  });
+  const ex = screens.menuItem('Download an example pack', 'example.g27mod.json: one formation, two plays and a custom route', () => downloadFile('example.g27mod.json', JSON.stringify(exampleMod(), null, 1), 'application/json'));
+  const items = [...rows, imp, ex];
+  screens.frame('menu-screen', el('div.logo-small', { html: 'MOD PACKS' }),
+    report ? el('div.ss-report', {}, report.map((l) => el('div', { text: l }))) : el('div.league-status', { text: 'Plays from packs that are on show up in their formation families; the CPU calls them too.' }),
+    el('div.menu-list', {}, items),
+    el('div.setup-help', { html: '<b class="btn A">A</b> on / off &nbsp; <b class="btn X">X</b> remove &nbsp; <b class="btn B">B</b> back' }));
+  screens.nav.set(items, { onBack: () => playbookScreen(ctx), index: Math.min(focus, items.length - 1) });
+  screens.extraButtons = (fr) => { if (fr.pressed.X) screens.nav.items[screens.nav.index]?.del?.(); };
 }

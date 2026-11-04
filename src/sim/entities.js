@@ -18,6 +18,7 @@ export function makeSimPlayer(idx, rp, team, side, slot) {
     height: (rp.height || 74) / 36, // inches -> yards
     bulk: clamp(((rp.weight || 220) - 180) / 140, 0, 1), // 0 slim .. 1 lineman
     skin: rp.skin ?? 2,
+    look: rp.look || null, // appearance (roster editor): visor, towel, arm sleeves
     x: 0, z: 0, px: 0, pz: 0, vx: 0, vz: 0,
     facing: 0, pfacing: 0,
     // Wide spread so ratings matter: SPD 56 (lineman) ~7.5 yd/s, 70 ~8.5, 90 ~10.0, 99 ~10.6.

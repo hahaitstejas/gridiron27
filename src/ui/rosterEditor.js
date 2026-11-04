@@ -121,6 +121,10 @@ export function playerCard(ctx, ti, id, focus = 0) {
     }),
     num('Weight (lbs)', 'weight', 150, 400, 5),
     text('College', 'college', 32),
+    // Appearance (the 3D player): skin tone, visor, towel, arm sleeves.
+    row('Skin tone', () => `${(p.skin ?? 2) + 1} of 6`, (d) => { p.skin = ((p.skin ?? 2) + d + 6) % 6; }),
+    ...[['Visor', 'visor', ['auto', 'none', 'dark', 'gold', 'clear']], ['Towel', 'towel', ['auto', 'yes', 'no']], ['Arm sleeves', 'sleeves', ['none', 'white', 'black', 'team']]]
+      .map(([label, key, opts]) => row(label, () => (p.look?.[key] || opts[0]).replace(/^./, (c) => c.toUpperCase()), (d) => { const cur = p.look?.[key] || opts[0]; (p.look ||= {})[key] = opts[(opts.indexOf(cur) + d + opts.length) % opts.length]; })),
     ...RATINGS.map(([key]) => row(RATING_NAMES[key], () => String(p.ratings[key]), (d, v) => {
       p.ratings[key] = clampInt(v !== undefined ? parseInt(v, 10) || p.ratings[key] : p.ratings[key] + d, 0, 99);
     }, 'num')),

@@ -61,8 +61,8 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [ ] D4 Celebrations (TD, sack, INT, first down) incl. RS celebration wheel
 - [ ] D5 Tackle falls in the right direction, referees run, animations
 - [ ] D6 Dynamic lighting, holiday decorations (Thanksgiving leaves, Christmas)
-- [ ] D7 RT play art zooms out to the whole field
-- [ ] D8 Tush push timing bar play
+- [x] D7 RT play art zooms out to the whole field
+- [x] D8 Tush push timing bar play
 
 ## Progress log
 - A1-A5, A14-A16 (commit 1): game/winprob.js (EP table, conversion rates, drive-level win probability) drives 4th downs and
@@ -110,3 +110,4 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   around-the-league score ticker in franchise games.
 - commit 11: depth chart X = play the backups / Y = starters back; uniform editor (home/away/alt) in Teams & Logos; settings/training checked in the no-outline style.
 - commit 12: end zones (team name / city, conference + league logos; championship: each team's name and logo), glossy 3D logos in menus and the HUD.
+- commit 13: RT play art pulls the camera up and back over the whole formation; Tush Push play with a timing bar (A in the green) that sets the surge.

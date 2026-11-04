@@ -3384,6 +3384,29 @@
     "X": "stalk",
     "Z": "block"
    }
+  },
+  {
+   "id": "gl_tush_push",
+   "name": "Tush Push",
+   "formation": "goal_line",
+   "type": "run",
+   "concept": "Sneak",
+   "push": true,
+   "run": {
+    "carrier": "QB",
+    "aim": [
+     1.2,
+     0
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "X": "block",
+    "Y": "block",
+    "H": "block",
+    "F": "block"
+   }
   }
  ]
 }

@@ -32,6 +32,7 @@ export class Hud {
       <div id="drillbar" class="hidden"></div>
       <div id="noise" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
+      <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="fps"></div>
@@ -112,7 +113,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   logoFor(team) {
     const l = team.logo;
@@ -401,6 +402,11 @@ export class Hud {
       elx.style.display = s.visible ? 'flex' : 'none';
       elx.style.transform = `translate(${s.x - 14}px, ${s.y - 30}px)`;
     }
+    // Tush push timing bar.
+    const pm = this.$('pushmeter');
+    const pushOn = sim?.offPlay?.push && sim.state === 'live' && sim.push && sim.push.quality === null && session.isHuman?.(sim.offIdx);
+    pm.classList.toggle('hidden', !pushOn);
+    if (pushOn) pm.querySelector('.pm-needle').style.left = `${sim.pushNeedle() * 100}%`;
     // Kick meter.
     const km = this.$('kickmeter');
     const meter = sim?.meter;
@@ -415,7 +421,7 @@ export class Hud {
       nd.style.bottom = `${((needle - METER.floor) / (1 - METER.floor)) * 100}%`;
       km.querySelector('.km-zone').style.bottom = `${((METER.accLine - METER.floor) / (1 - METER.floor)) * 100}%`;
       km.querySelector('.km-bar').style.setProperty('--zero', `${((0 - METER.floor) / (1 - METER.floor)) * 100}%`);
-      km.querySelector('.km-label').textContent = sim.offPlay.type === 'fg' ? `FG ${Math.round(Math.abs(60 * sim.dir - sim.losX)) + 7} yd` : sim.offPlay.name.toUpperCase();
+      km.querySelector('.km-label').textContent = sim.offPlay.type === 'fg' ? `FG ${Math.ceil(Math.abs(60 * sim.dir - sim.losX) + 7 - 1e-6)} yd` : sim.offPlay.name.toUpperCase();
     }
     // FPS
     this.fpsAcc += frameMs; this.fpsN++;

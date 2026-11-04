@@ -944,3 +944,8 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 #scoreticker .stk-g { padding: 0 22px; border-right: 1px solid rgba(255,255,255,0.15); } #scoreticker .stk-g b { color: #fff; margin: 0 4px; } #scoreticker em { color: #999; font-style: normal; margin-left: 6px; font-size: 12px; }
 @keyframes stk-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .with-ticker #pbp { transform: translate(-50%, -28px); }
+#pushmeter { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); width: 420px; text-align: center; }
+#pushmeter .pm-label { font: 700 18px var(--fd); margin-bottom: 6px; }
+#pushmeter .pm-bar { position: relative; height: 22px; background: rgba(0,0,0,0.75); border: 2px solid #fff; }
+#pushmeter .pm-zone { position: absolute; left: 42%; width: 16%; top: 0; bottom: 0; background: #3ccf6e; }
+#pushmeter .pm-needle { position: absolute; top: -6px; bottom: -6px; width: 4px; margin-left: -2px; background: #fff; box-shadow: 0 0 6px #000; }

@@ -37,6 +37,11 @@ export class CameraRig {
         p.set(focus.x - dir * 6, 42, fz);
         l.set(focus.x + dir * 3, 0, fz);
         break;
+      case 'art':
+        // Play art (hold RT at the line): pulled up and back so every route and the whole defense is in view.
+        p.set(focus.x - dir * 24, 34, fz * 0.5);
+        l.set(focus.x + dir * 11, 0, fz * 0.6);
+        break;
       case 'follow':
         p.set(focus.x - dir * 7, 3.2, fz + (extra.side ?? 3));
         l.set(focus.x + dir * 4, 1, fz);

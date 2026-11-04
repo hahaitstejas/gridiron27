@@ -441,6 +441,7 @@ export class PlaySim {
         if (input?.perTeam) this.withHuman(this.isHuman(this.offIdx) ? this.offIdx : this.humanTeam, () => updateSpecial(this, dt, this.inputFor(input, this.offIdx)));
         else updateSpecial(this, dt, this.humanTeam !== null ? input : null);
       }
+      this.updatePush(input);
       this.updateQBSpecial();
       this.updateOption();
       updatePendingThrow(this, dt);
@@ -609,6 +610,23 @@ export class PlaySim {
   roomDeep() { return END_X - this.losX * this.dir - 1.5; }
 
   /** QB-only plays: kneel downs, spikes and designed QB runs. */
+  /** Tush push timing: a needle sweeps across a bar; the push is as good as how close to the middle A lands. */
+  pushNeedle() { const t = this.push ? (this.t - this.push.t0) * 1.7 : 0; const k = t % 2; return k < 1 ? k : 2 - k; }
+
+  updatePush(input) {
+    if (!this.offPlay.push || this.isKick) return;
+    if (!this.push) this.push = { t0: this.t, quality: null };
+    if (this.push.quality !== null) return;
+    const human = this.isHuman(this.offIdx);
+    if (!human) { this.push.quality = this.rng.range(0.25, 0.85); return; }
+    const f = input?.perTeam ? input[this.offIdx] : input;
+    if (f?.pressed?.A) {
+      const d = Math.abs(this.pushNeedle() - 0.5);
+      this.push.quality = d < 0.08 ? 1 : d < 0.18 ? 0.65 : d < 0.3 ? 0.35 : 0;
+      this.emit('push', { quality: this.push.quality });
+    } else if (this.t - this.push.t0 > 1.4) { this.push.quality = 0; this.emit('push', { quality: 0 }); }
+  }
+
   updateQBSpecial() {
     const qb = this.bySlot(this.offIdx, 'QB');
     if (!qb || this.ball.carrier !== qb.id || this.ball.state !== 'held') return;

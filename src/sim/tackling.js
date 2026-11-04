@@ -181,7 +181,11 @@ export function attemptTackle(sim, d, c, air) {
   if (cSpeed > 7 && front > 0.3) p -= 0.05;
   if (d.engagement) p = 0.18 + (tak - btk) * 0.003;
   // QB sneak / short-yardage pile: the surge behind him is hard to stop right at the line.
-  if (c.task?.sneak && Math.abs(sim.toLocal(c.x, c.z).down) < 1.8) p *= 0.45;
+  if (c.task?.sneak && Math.abs(sim.toLocal(c.x, c.z).down) < 1.8) {
+    // Tush push: the surge behind him depends on the timing of the push (the human's meter, or the CPU's roll).
+    const q = sim.offPlay.push ? (sim.push?.quality ?? 0.5) : null;
+    p *= q === null ? 0.45 : 0.22 + (1 - q) * 0.5;
+  }
 
   let knockDown = false;
   let bigHit = false;

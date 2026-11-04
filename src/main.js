@@ -172,6 +172,7 @@ applyCamera();
 
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
+let artView = false; // RT play art: the camera pulls back over the whole field
 let autoReplayPending = false; // a big play just happened: show it once the play is over
 let session = null;
 let speed = 1;
@@ -565,6 +566,7 @@ function onSessionEvent(e) {
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
   else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
   else if (e.type === 'scenarioDone') hud.banner(e.success ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED', e.text, 2.4, e.success ? 'score' : 'miss');
+  else if (e.type === 'push') hud.ticker(e.quality >= 1 ? 'Perfect push!' : e.quality >= 0.6 ? 'Good push' : e.quality > 0 ? 'Late push' : 'Missed the push');
   else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');
   else if (e.type === 'drillRep') hud.banner(`${e.pts > 0 ? '+' : ''}${e.pts}`, e.text, 1.6, e.pts > 0 ? 'score' : 'miss');
   else if (e.type === 'fairCatchSignal') hud.banner('FAIR CATCH', 'The returner waves for a fair catch', 1.6, 'info');
@@ -683,6 +685,7 @@ function frameBody(now) {
     const showArt = sim && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
       && session.humanTeam !== null && session.humanTeam !== undefined && (input.frame.rt || 0) > 0.5 && !SPECIAL_ART.has(sim.offPlay.type);
     renderer.playArt.update(showArt ? playArt(sim, session.humanTeam) : null, dt);
+    artView = !!showArt;
     const b = renderer.ball.position;
     const live = sim && sim.state !== 'presnap';
     const phase = !live || session.state === 'playcall' ? 'presnap' : sim.ball.state === 'air' || sim.ball.state === 'kick' ? 'air' : sim.state === 'dead' ? 'dead' : 'live';
@@ -700,7 +703,7 @@ function frameBody(now) {
     const playerCam = pc && pc.slot !== 'QB' && (sim.state === 'live' || lockedD) && prefs.careerCam !== 'broadcast';
     if (playerCam) focus = { x: pc.x, z: pc.z };
     else if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
-    renderer.rig.mode = playerCam ? 'follow' : prefs.camera === 'high' ? 'sky' : 'broadcast';
+    renderer.rig.mode = artView ? 'art' : playerCam ? 'follow' : prefs.camera === 'high' ? 'sky' : 'broadcast';
     const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : m.dirOf(m.possession);
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;

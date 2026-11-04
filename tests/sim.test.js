@@ -314,6 +314,29 @@ describe('dynamic kickoff', async () => {
   const { generateLeagueRosters } = await import('../src/data/generator.js');
   const { defaultTeams } = await import('../src/data/teams.js');
   const lg = generateLeagueRosters(defaultTeams(), 6);
+  it('a human on either side cannot run before the ball lands; the kicker stays behind midfield', () => {
+    for (const human of [0, 1]) {
+      const sim = new PlaySim({ rng: new RNG(7 + human), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -15, ballZ: 0, offPlay: getOffPlay('st_kickoff'), defPlay: getDefPlay('st_kick_return'), humanTeam: human });
+      sim.snap();
+      if (sim.meter) Object.assign(sim.meter, { phase: 'done', power: 0.9, accuracy: 0 });
+      const start = new Map(sim.players.map((p) => [p.id, { x: p.x, z: p.z }]));
+      const kicker = sim.players.find((p) => p.team === 0 && p.slot === 'K');
+      let landed = false, moved = 0, kx = -99;
+      // Stick hard toward the other end zone (the camera sits behind the human's side), sprinting.
+      const stick = { lx: 0.3, ly: -1, rx: 0, ry: 0, lt: 0, rt: 1, down: {}, pressed: {}, released: {}, held: {}, flick: {} };
+      for (let k = 0; k < 2000 && !sim.finished; k++) {
+        sim.tick(STEP, stick);
+        if (sim.events.some((e) => e.type === 'kickLanded' || e.type === 'kickCaught')) landed = true;
+        if (!landed && sim.ball.state === 'kick') {
+          const me = sim.players[sim.controlledId];
+          if (me && me.task?.type !== 'returner') moved = Math.max(moved, Math.hypot(me.x - start.get(me.id).x, me.z - start.get(me.id).z));
+          kx = Math.max(kx, kicker.x);
+        }
+      }
+      expect(moved).toBeLessThan(1.5);
+      expect(kx).toBeLessThan(0);
+    }
+  });
   it('lines up at the receiving 40 and the setup zone, nobody moves until the ball lands, short kicks die at the 40', async () => {
     const sim = new PlaySim({ rng: new RNG(4), teams: [lg[0], lg[1]], offIdx: 0, dir: 1, losX: -15, ballZ: 0, offPlay: getOffPlay('st_kickoff'), defPlay: getDefPlay('st_kick_return') });
     const loc = (p) => sim.toLocal(p.x, p.z).down;

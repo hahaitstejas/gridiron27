@@ -2,6 +2,7 @@ import { lateral, lateralTarget } from './tricks.js';
 import { startThrow } from './passing.js';
 import { startMove } from './tackling.js';
 import { passRushMove } from './blocking.js';
+import { dynamicKickoff } from './kicking.js';
 
 const BULLET_HOLD = 0.17; // seconds held before a press becomes a bullet pass
 const RECEIVER_BUTTONS = ['A', 'B', 'X', 'Y', 'RB'];
@@ -58,6 +59,14 @@ export function applyHuman(sim, inp, dt) {
   if (sim.kick && p.task?.type === 'returner' && sim.ball.state === 'kick') {
     if (inp.pressed.Y && sim.kick.type === 'punt' && !p.fairCatch) { p.fairCatch = true; sim.emit('fairCatchSignal', { player: p.id }); }
     if (inp.pressed.X) p.kneel = true;
+  }
+
+  // Dynamic kickoff: until the ball hits the ground or a player, nobody but the kicker and the returners moves (the
+  // stick does nothing for a coverage man or a setup-zone blocker). The kicker follows the AI (kicking.js: not past midfield).
+  const kb = sim.ball;
+  if (sim.kick?.type === 'kickoff' && dynamicKickoff(sim) && (kb.state === 'tee' || (kb.state === 'kick' && !kb.bounces))) {
+    const t = p.task?.type;
+    if (t === 'cover' || t === 'cover_wait' || t === 'kr_block') { p.userActive = false; p.desired.x = 0; p.desired.z = 0; return; }
   }
 
   // Movement.

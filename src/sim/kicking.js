@@ -683,7 +683,10 @@ function runSpecialAI(sim, dt) {
         if (k.launched) {
           // After the kick the kicker is the safety valve: stay back, then pursue.
           const tgt = b.state === 'kick' && b.target ? b.target : b;
-          seek(p, tgt.x - sim.dir * 25, tgt.z * 0.5, 0.6, 2);
+          let gx = tgt.x - sim.dir * 25;
+          // Dynamic kickoff: the kicker can't cross midfield until the ball hits the ground or a player.
+          if (k.type === 'kickoff' && dynamicKickoff(sim) && b.state === 'kick' && !b.bounces) gx = sim.dir > 0 ? Math.min(gx, -1) : Math.max(gx, 1);
+          seek(p, gx, tgt.z * 0.5, 0.6, 2);
         }
         break;
     }

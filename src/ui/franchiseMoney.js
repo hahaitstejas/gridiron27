@@ -1,5 +1,6 @@
 import { el } from './nav.js';
-import { payroll, money, marketValue, evaluateTrade, executeTrade } from '../franchise/contracts.js';
+import { payroll, money, marketValue } from '../franchise/contracts.js';
+import { ensurePicks, picksOf, pickLabel, pickValue, expectedSlot, evaluateDeal, executeDeal, dealText, pickKey } from '../franchise/trades.js';
 import { logTransaction, tradeDeadlinePassed } from '../franchise/franchise.js';
 
 // Franchise money screens: contracts & cap, trades with CPU teams, the transaction log.
@@ -36,57 +37,132 @@ export function contractsScreen(ui, sortBy = 0) {
   screens.nav.set(rows, { columns: 1, onBack: () => ui.hub(), onTab: (d) => contractsScreen(ui, (sortBy + d + sorts.length) % sorts.length) });
 }
 
-/** Trades: pick a team, then players from both rosters. The CPU accepts a fair-or-better deal that fits the cap. */
-export function tradeScreen(ui) {
+/** Trades: pick a team, then players and draft picks from both sides. The CPU accepts a fair-or-better deal that fits the cap. */
+export function tradeScreen(ui, preset = null) {
   const f = ui.f;
-  if (tradeDeadlinePassed(f)) { window.alert('The trade deadline has passed. Trades open again next season.'); return; }
+  if (tradeDeadlinePassed(f) && f.phase === 'regular') { window.alert('The trade deadline has passed. Trades open again after the season.'); return; }
+  ensurePicks(f, ui.teams);
+  if (preset?.team !== undefined && preset.team !== f.userTeam) { tradeBuilder(ui, preset.team, newDeal(preset)); return; }
   ui.ctx.pickTeam('Trade with: pick a team', (ti) => {
-    if (ti === f.userTeam) { tradeScreen(ui); return; }
-    tradeBuilder(ui, ti, { give: new Set(), get: new Set(), side: 1 });
-  }, () => ui.hub(), (f.userTeam + 1) % ui.teams.length);
+    if (ti === f.userTeam) { tradeScreen(ui, preset); return; }
+    tradeBuilder(ui, ti, newDeal(preset));
+  }, () => ui.hub('Front Office'), (f.userTeam + 1) % ui.teams.length);
 }
 
-function tradeBuilder(ui, ti, st, focus = 0) {
+const newDeal = (preset) => ({ give: new Set(preset?.give || []), get: new Set(preset?.get || []), givePk: new Set(), getPk: new Set(), side: preset?.get?.length ? 2 : 0 });
+const TABS = ['Your roster', 'Your picks', 'Their roster', 'Their picks'];
+
+export function tradeBuilder(ui, ti, st, focus = 0) {
   const { screens } = ui.ctx;
-  const f = ui.f, me = ui.teams[f.userTeam], them = ui.teams[ti];
-  const team = st.side ? them : me, set = st.side ? st.get : st.give;
-  const list = [...team.roster].filter((p) => !p.career).sort((a, b) => b.ovr - a.ovr); // your career player is not for sale
-  const rows = list.map((p) => {
-    const on = set.has(p.id);
-    const r = el(`div.st-row${on ? '.mine' : ''}`, {}, el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: who(p) }), el('small', { text: p.injury ? ' INJ' : '' })),
-      el('span.st-num', { text: String(p.age) }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: money(p.salary || 0) }),
-      el('span.st-num', { text: on ? '✓' : '' }));
-    r.activate = () => { on ? set.delete(p.id) : set.add(p.id); tradeBuilder(ui, ti, st, list.indexOf(p)); };
-    return r;
-  });
-  const pick = (t, ids) => t.roster.filter((p) => ids.has(p.id));
-  const give = pick(me, st.give), get = pick(them, st.get);
-  const ev = evaluateTrade(them, give, me, get, f.cap);
+  const f = ui.f, teams = ui.teams, me = teams[f.userTeam], them = teams[ti];
+  const mine = st.side < 2, picksTab = st.side % 2 === 1;
+  const team = mine ? me : them;
+  let rows;
+  if (!picksTab) {
+    const set = mine ? st.give : st.get;
+    const list = [...team.roster].filter((p) => !p.career).sort((a, b) => b.ovr - a.ovr);
+    rows = list.map((p) => {
+      const on = set.has(p.id);
+      const r = el(`div.st-row${on ? '.mine' : ''}`, {}, el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: who(p) }),
+        el('small', { text: `${p.injury ? ' INJ' : ''}${p.onBlock ? ' BLOCK' : ''}${p.tradeRequest ? ' WANTS OUT' : ''}` })),
+        el('span.st-num', { text: String(p.age) }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: money(p.salary || 0) }),
+        el('span.st-num', { text: on ? '✓' : '' }));
+      r.activate = () => { on ? set.delete(p.id) : set.add(p.id); tradeBuilder(ui, ti, st, list.indexOf(p)); };
+      return r;
+    });
+  } else {
+    const set = mine ? st.givePk : st.getPk;
+    const list = picksOf(f, mine ? f.userTeam : ti);
+    rows = list.map((pk, i) => {
+      const k = pickKey(pk), on = set.has(k);
+      const r = el(`div.st-row${on ? '.mine' : ''}`, {}, el('span.dc-pos', { text: `R${pk.round}` }), el('span.st-name', {}, el('b', { text: pickLabel(pk, teams) })),
+        el('span.st-num', { text: `~#${expectedSlot(f, teams, pk.orig, pk.year)}` }), el('span.st-num', { text: pickValue(f, teams, pk).toFixed(1) }), el('span.st-num', { text: '' }),
+        el('span.st-num', { text: on ? '✓' : '' }));
+      r.activate = () => { on ? set.delete(k) : set.add(k); tradeBuilder(ui, ti, st, i); };
+      return r;
+    });
+  }
+  const players = (t, ids) => t.roster.filter((p) => ids.has(p.id));
+  const picks = (owner, keys) => picksOf(f, owner).filter((pk) => keys.has(pickKey(pk)));
+  const give = { players: players(me, st.give), picks: picks(f.userTeam, st.givePk) };
+  const get = { players: players(them, st.get), picks: picks(ti, st.getPk) };
+  const ev = evaluateDeal(f, teams, ti, give, f.userTeam, get);
   const meter = Math.max(0, Math.min(1, ev.ratio));
+  const line = (side) => [...side.players.map((p) => `${p.pos} ${who(p)} (${p.ovr}, ${money(p.salary)})`), ...side.picks.map((pk) => `${pickLabel(pk, teams)} pick`)];
   const summary = el('div.fr-week', {},
-    el('div.dc-head', { text: 'You give' }), give.length ? give.map((p) => el('div.fr-score', { text: `${p.pos} ${who(p)} (${p.ovr}, ${money(p.salary)})` })) : el('div.fr-score', { text: '—' }),
-    el('div.dc-head', { text: 'You get' }), get.length ? get.map((p) => el('div.fr-score', { text: `${p.pos} ${who(p)} (${p.ovr}, ${money(p.salary)})` })) : el('div.fr-score', { text: '—' }),
+    el('div.dc-head', { text: 'You give' }), ...(line(give).length ? line(give) : ['—']).map((t) => el('div.fr-score', { text: t })),
+    el('div.dc-head', { text: 'You get' }), ...(line(get).length ? line(get) : ['—']).map((t) => el('div.fr-score', { text: t })),
     el('div.dc-head', { text: `${them.abbr} interest` }),
-    el('div.tr-meter', {}, el('div', { style: { width: `${Math.round(meter * 100)}%`, background: ev.accept ? '#3ccf6e' : meter > 0.8 ? '#e8c547' : '#e05a4f' } })),
-    el('div.fr-score', { text: !give.length || !get.length ? 'Pick players on both sides.' : !ev.capOk ? 'Doesn\'t fit under the salary cap.' : ev.accept ? 'They\'d take this deal.' : meter > 0.8 ? 'Close: add a little more.' : 'Not enough value for them.' }));
+    el('div.tr-meter', {}, el('div', { style: { width: `${Math.round(meter * 100)}%`, background: ev.accept ? '#fff' : meter > 0.8 ? '#bbb' : '#666' } })),
+    el('div.fr-score', { text: !line(give).length || !line(get).length ? 'Something has to go each way: players or picks.' : !ev.capOk ? 'Doesn\'t fit under the salary cap.' : ev.accept ? 'They\'d take this deal.' : meter > 0.8 ? 'Close: add a little more.' : 'Not enough value for them.' }));
   const propose = el('div.start-btn', { text: 'Propose trade' });
   propose.activate = () => {
-    if (!evaluateTrade(them, give, me, get, f.cap).accept) { window.alert(`${them.city} ${them.name} turned it down.`); return; }
-    executeTrade(me, give, them, get);
-    logTransaction(f, `${me.abbr} trades ${give.map((p) => `${p.pos} ${who(p)}`).join(', ')} to ${them.abbr} for ${get.map((p) => `${p.pos} ${who(p)}`).join(', ')}`);
+    // Nothing for nothing: a deal needs something going each way.
+    if (!evaluateDeal(f, teams, ti, give, f.userTeam, get).accept) { window.alert(`${them.city} ${them.name} turned it down.`); return; }
+    executeDeal(f, teams, f.userTeam, give, ti, get);
+    logTransaction(f, `${me.abbr} trade ${dealText(teams, give)} to ${them.abbr} for ${dealText(teams, get)}`);
     ui.save();
     window.alert('Trade accepted! Check your depth chart.');
-    ui.hub();
+    ui.hub('Front Office');
   };
-  const buttons = [propose, back(() => ui.hub(), 'Cancel')];
+  const buttons = [propose, back(() => ui.hub('Front Office'), 'Cancel')];
   screens.frame('stats-screen', el('h1', { text: `Trade with ${them.city} ${them.name}` }),
     el('div.league-status', { text: `${capLine(f, me)}` }),
-    el('div.pc-tabs', {}, [`Your roster (${give.length})`, `${them.abbr} roster (${get.length})`].map((l, i) => el(`div.pc-tab${i === st.side ? '.on' : ''}`, { text: l }))),
-    el('div.fr-sched', {}, el('div.st-table', {}, el('div.st-row.st-head', {}, el('span.dc-pos', { text: 'POS' }), el('span.st-name', { text: 'Player' }),
-      ...['AGE', 'OVR', 'SALARY', ''].map((c) => el('span.st-num', { text: c }))), rows), summary),
+    el('div.pc-tabs', {}, TABS.map((l, i) => el(`div.pc-tab${i === st.side ? '.on' : ''}`, { text: `${l} (${[give.players, give.picks, get.players, get.picks][i].length})` }))),
+    el('div.fr-sched', {}, el('div.st-table', {}, el('div.st-row.st-head', {}, el('span.dc-pos', { text: picksTab ? 'RND' : 'POS' }), el('span.st-name', { text: picksTab ? 'Pick' : 'Player' }),
+      ...(picksTab ? ['SLOT', 'VALUE', '', ''] : ['AGE', 'OVR', 'SALARY', '']).map((c) => el('span.st-num', { text: c }))), rows.length ? rows : el('div.st-empty', { text: 'None.' })), summary),
     el('div.over-buttons', {}, buttons),
-    el('div.setup-help', { html: '<b class="btn A">A</b> add / remove player &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> switch roster &nbsp; <b class="btn B">B</b> back' }));
-  screens.nav.set([...rows, ...buttons], { columns: 1, index: focus, onBack: () => ui.hub(), onTab: () => { st.side = 1 - st.side; tradeBuilder(ui, ti, st); } });
+    el('div.setup-help', { html: '<b class="btn A">A</b> add / remove &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> your roster · your picks · their roster · their picks &nbsp; <b class="btn B">B</b> back' }));
+  screens.nav.set([...rows, ...buttons], { columns: 1, index: focus, onBack: () => ui.hub('Front Office'), onTab: (d) => { st.side = (st.side + d + 4) % 4; tradeBuilder(ui, ti, st); } });
+}
+
+/** Trade block: toggle who you're shopping (CPU teams make offers each week). */
+export function tradeBlockScreen(ui, focus = 0) {
+  const { screens } = ui.ctx;
+  const f = ui.f, me = ui.teams[f.userTeam];
+  const list = [...me.roster].filter((p) => !p.career).sort((a, b) => (b.onBlock ? 1 : 0) - (a.onBlock ? 1 : 0) || b.ovr - a.ovr);
+  const rows = list.map((p, i) => {
+    const r = el(`div.st-row${p.onBlock ? '.mine' : ''}`, {}, el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: who(p) }), el('small', { text: p.tradeRequest ? ' WANTS OUT' : '' })),
+      el('span.st-num', { text: String(p.age) }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: money(p.salary || 0) }), el('span.st-num', { text: p.onBlock ? 'ON BLOCK' : '' }));
+    r.activate = () => { p.onBlock = !p.onBlock; ui.save(); tradeBlockScreen(ui, i); };
+    return r;
+  });
+  screens.frame('stats-screen', el('h1', { text: 'Trade Block' }),
+    el('div.league-status', { text: 'Players on the block draw offers every week (Trade Offers). Teams can still ask about anyone. Being shopped hurts morale a little.' }),
+    el('div.st-table', {}, rows),
+    el('div.setup-help', { html: '<b class="btn A">A</b> put on / take off the block &nbsp; <b class="btn B">B</b> back' }));
+  screens.nav.set(rows, { columns: 1, index: Math.min(focus, rows.length - 1), onBack: () => ui.hub('Front Office') });
+}
+
+/** Offers that came in this week: A accepts, X declines. */
+export function offersScreen(ui) {
+  const { screens } = ui.ctx;
+  const f = ui.f, teams = ui.teams, me = teams[f.userTeam];
+  const offers = (f.offers || []).filter((o) => me.roster.some((p) => p.id === o.player));
+  const rows = offers.map((o) => {
+    const p = me.roster.find((q) => q.id === o.player);
+    const give = { players: o.give.players.map((x) => teams[o.from].roster.find((q) => q.id === x.id)).filter(Boolean), picks: o.give.picks.filter((pk) => f.picks?.[pk.year]?.[pk.round]?.[pk.orig] === o.from) };
+    const r = el('div.st-row', {}, el('span.st-team', { text: teams[o.from].abbr }), el('span.st-name', {}, el('b', { text: `${p.pos} ${who(p)} (${p.ovr})` }), el('small', { text: `  for ${dealText(teams, give)}${o.unsolicited ? ' · unsolicited' : ''}` })));
+    r.activate = () => {
+      if (!window.confirm(`Trade ${p.pos} ${who(p)} to ${teams[o.from].abbr} for ${dealText(teams, give)}?`)) return;
+      executeDeal(f, teams, f.userTeam, { players: [p], picks: [] }, o.from, give);
+      logTransaction(f, `${me.abbr} trade ${p.pos} ${who(p)} to ${teams[o.from].abbr} for ${dealText(teams, give)}`);
+      f.offers = f.offers.filter((x) => x.player !== o.player);
+      ui.save(); offersScreen(ui);
+    };
+    r.offer = o;
+    return r;
+  });
+  screens.frame('stats-screen', el('h1', { text: 'Trade Offers' }),
+    el('div.league-status', { text: 'Offers last until the week ends. Put players on the trade block to get more.' }),
+    el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'No offers this week.' })),
+    el('div.setup-help', { html: '<b class="btn A">A</b> accept &nbsp; <b class="btn X">X</b> decline &nbsp; <b class="btn B">B</b> back' }));
+  screens.nav.set(rows.length ? rows : [el('div')], { columns: 1, onBack: () => ui.hub('Front Office') });
+  screens.extraButtons = (fr) => {
+    if (!fr.pressed.X) return;
+    const o = screens.nav.items[screens.nav.index]?.offer;
+    if (o) { f.offers = f.offers.filter((x) => x !== o); ui.save(); offersScreen(ui); }
+  };
 }
 
 export function transactionsScreen(ui) {

@@ -45,7 +45,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] C3 Practice squad, waivers, elevations
 - [x] C4 Weekly progression (in-season growth), morale (temporary rating effect), trade demands
 - [x] C5 CPU signs free agents; +500 generated FAs option; 300 UDFAs each season
-- [ ] C6 Trades: fix one-sided trade bug, trade block + offers, draft-pick trading, view roster/depth during trades/draft/resign
+- [x] C6 Trades: fix one-sided trade bug, trade block + offers, draft-pick trading, view roster/depth during trades/draft/resign
 - [ ] C7 Draft: better screen, draft class CSV import, scouting all year, compensatory picks
 - [ ] C8 Franchise tag, Pro Bowl / All-Pro teams (raise asks), league-wide player search, leaders highlight my players
 - [ ] C9 Roster CSV contract columns (salary, years); retired numbers CSV; position number rules everywhere
@@ -95,3 +95,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   morale + trade requests, CPU in-season signings, +500 / 300 UDFA pools; hub = 4 boxes (Season, Team, Front Office,
   League) with sub-menus; injury report with IR, practice squad, waiver wire, player search, game preview. TODO in C1:
   schedule CSV import. TODO C8: leaders highlight.
+- commit 8: trades.js — draft-pick ownership (2 drafts ahead), pick values, deals with players + picks, the roster
+  screen's Trade opens the real trade screen (no more one-way gifts), trade block + weekly offers (accept/decline), CPU
+  contenders buy veterans with picks, compensatory picks (rounds 3-7), team pickers alphabetical. TODO: draft-day
+  trade-up offers in the draft screen (draftDayOffers exists), viewing roster/depth from re-sign/draft/trade screens.

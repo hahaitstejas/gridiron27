@@ -7,7 +7,7 @@ import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
-import { contractsScreen, tradeScreen, transactionsScreen, capLine } from './franchiseMoney.js';
+import { contractsScreen, tradeScreen, transactionsScreen, capLine, tradeBlockScreen, offersScreen } from './franchiseMoney.js';
 import { newsScreen, awardsScreen, latestHeadline, hallScreen } from './franchiseExtras.js';
 import { standings, rank, seeds, leaders, PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 import { gameWhen } from '../franchise/nflSchedule.js';
@@ -214,6 +214,8 @@ export class FranchiseUI {
     const officeTiles = () => [
       tile('', 'user', 'Free Agents', `${(f.freeAgents || []).length} available`, () => freeAgentsScreen(this)),
       f.phase === 'regular' ? tile('', 'swap', 'Trade', tradeDeadlinePassed(f) ? 'Deadline passed' : `Deadline: week ${Math.ceil(f.weeks * 0.6)}`, () => tradeScreen(this)) : null,
+      f.phase === 'regular' ? tile('', 'list', 'Trade Block', `${me.roster.filter((p) => p.onBlock).length} on the block`, () => tradeBlockScreen(this)) : null,
+      tile('', 'news', 'Trade Offers', `${(f.offers || []).length} this week`, () => offersScreen(this)),
       tile('', 'list', 'Waiver Wire', `${(f.waivers || []).length} on waivers`, () => waiversScreen(this)),
       tile('', 'people', 'Player Search', 'Every player in the league', () => playerSearch(this)),
       tile('', 'swap', 'Transactions', 'Trades, signings, moves', () => transactionsScreen(this)),

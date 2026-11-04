@@ -122,7 +122,9 @@ export function playerCard(ctx, ti, id, focus = 0) {
     }, 'num')),
   ];
   const trade = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Trade to another team…' }));
-  trade.activate = () => ctx.pickTeam(`Trade ${p.first} ${p.last} to…`, (to) => {
+  // In a franchise a trade goes through the trade screen (something has to come back); in the league editor it's a move.
+  if (ctx.onTrade) trade.activate = () => ctx.onTrade(p, ti);
+  else trade.activate = () => ctx.pickTeam(`Trade ${p.first} ${p.last} to…`, (to) => {
     if (to === ti) return playerCard(ctx, ti, id);
     tradePlayer(team, teams[to], id);
     ctx.onChange();

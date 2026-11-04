@@ -88,7 +88,8 @@ describe('offseason', () => {
     expect(f.offseason.pool.length).toBeGreaterThan(20);
     O.cpuFreeAgency(f, lg);
     O.makeDraft(f, lg);
-    expect(f.offseason.draft.picks).toHaveLength(224);
+    expect(f.offseason.draft.picks.filter((p) => !p.comp)).toHaveLength(224); // plus compensatory picks
+    expect(f.offseason.draft.picks.filter((p) => p.comp).length).toBeLessThanOrEqual(32);
     O.simToUserPick(f, lg);
     const myPick = f.offseason.draft.picks[f.offseason.draft.at];
     expect(myPick.team).toBe(3);

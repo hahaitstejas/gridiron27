@@ -17,6 +17,7 @@ import { updateMorale, developmentTick } from './development.js';
 import { revertElevations, cpuElevations, release as releaseToWaivers, processWaivers, waiverOrder, resetPSSeason } from './practiceSquad.js';
 import { cpuSignFreeAgents, addFreeAgent } from './freeAgents.js';
 import { fits } from './contracts.js';
+import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
 import { awardCareerGame } from './career.js';
 
 export const FRANCHISE_VERSION = 1;
@@ -43,6 +44,7 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
   };
   f.schedule = seasonSchedule(f, teams, seed * 7919 + year);
   f.weeks = f.schedule.length;
+  ensurePicks(f, teams);
   seedFreeAgents(f, seed * 17 + year); // in-season free agents (freeAgents.js)
   return f;
 }
@@ -81,6 +83,7 @@ export function upgradeFranchise(f, teams) {
   f.recordsSince ??= f.year;
   f.awards ||= {};
   if (!f.freeAgents) seedFreeAgents(f, f.seed);
+  if (f.phase !== 'offseason') ensurePicks(f, teams);
 }
 
 /** A team released a player: young players go on waivers for a week, vested veterans straight to free agency. */
@@ -191,6 +194,10 @@ export function weekInBetween(f, teams) {
     const t = teams[mv.team], p = mv.player;
     if (p.ovr >= 70) logTransaction(f, `${t.abbr} sign ${p.pos} ${p.first} ${p.last} (${p.ovr} OVR)${mv.released ? `; release ${mv.released.pos} ${mv.released.first} ${mv.released.last}` : ''}`);
   }
+  if (!tradeDeadlinePassed(f)) {
+    const n = weeklyOffers(f, teams, rng).length;
+    if (n) addNews(f, `Trade offers: ${n} for your players (Front Office → Trade Offers)`, 'trade');
+  }
   if (f.week % 2 === 1) {
     const changes = developmentTick(f, teams, rng, f.recentLines || {});
     f.recentLines = {};
@@ -251,6 +258,8 @@ export function advance(f, teams) {
     if (!tradeDeadlinePassed(f)) {
       upgradeFranchise(f, teams);
       for (const t of cpuTrades(f, teams, new RNG((f.seed += 3)), f.cap)) logTransaction(f, t);
+      const pt = cpuPickTrade(f, teams, new RNG((f.seed += 3)));
+      if (pt) logTransaction(f, pt);
     }
     f.week++;
     if (f.week >= f.weeks) {
@@ -292,6 +301,7 @@ export function startNextSeason(f, teams) {
   f.phase = 'regular';
   f.schedule = seasonSchedule(f, teams, f.seed * 31 + f.year);
   f.weeks = f.schedule.length;
+  ensurePicks(f, teams);
   f.stats = {};
   f.playoffs = null;
   resetPSSeason(teams);

@@ -501,11 +501,15 @@ export class Screens {
   /** Team grid. `extra` = { label, sub, logo, onPick } adds a card in front (e.g. League & Conferences). */
   teamPicker(teams, focus, { title, onPick, onBack, extra = null }) {
     this.extraButtons = null;
-    const cards = teams.map((t, i) => {
+    // Alphabetical (city + name): easier to find a team than in division order.
+    const order = alphaOrder(teams);
+    const cards = order.map((i) => {
+      const t = teams[i];
       const c = el('div.tp-card', { style: { '--tc': t.colors.primary } }, logoCanvas(t.logo, 56), el('div.tp-card-name', { text: `${t.city} ${t.name}` }), el('div.tp-card-abbr', { text: t.abbr }));
       c.activate = () => onPick(i);
       return c;
     });
+    focus = focus >= 0 ? order.indexOf(focus) : focus;
     if (extra) {
       const c = el('div.tp-card.tp-extra', {}, logoCanvas(extra.logo, 56), el('div.tp-card-name', { text: extra.label }), el('div.tp-card-abbr', { text: extra.sub }));
       c.activate = extra.onPick;

@@ -1,3 +1,4 @@
+import { compPicks, noteFreeAgentMove } from './trades.js';
 import { generatePool } from './freeAgents.js';
 // Franchise offseason (pure logic): progression and retirements, contracts, free agency, the draft and
 // cut-downs. Steps run in order; f.offseason.step says where the user is:
@@ -97,7 +98,7 @@ export function finishResigning(f, teams) {
       const ask = askingSalary(p);
       const keep = ti !== f.userTeam && p.ovr >= 66 && p.age < 33 && pay + ask <= capOf(f) * 0.97 && rng.chance(0.75);
       if (keep) { p.years = contractYears(p); p.salary = ask; pay += ask; }
-      else { releasePlayer(t, p.id); delete p.pinned; pool.push(p); }
+      else { releasePlayer(t, p.id); delete p.pinned; p.prevTeam = ti; pool.push(p); }
     }
   });
   // A few unsigned veterans fill out the market.
@@ -123,6 +124,8 @@ export function signFreeAgent(f, team, id) {
   p.years = Math.min(3, contractYears(p));
   p.salary = ask;
   addPlayer(team, p);
+  if (f.teamsRef) noteFreeAgentMove(f, p.prevTeam, f.teamsRef.indexOf(team), p); // compensatory picks
+  delete p.prevTeam;
   return p;
 }
 
@@ -135,6 +138,7 @@ export function needs(team) {
 
 /** CPU teams sign the best free agents at the positions they're short. */
 export function cpuFreeAgency(f, teams) {
+  f.teamsRef = teams;
   teams.forEach((t, ti) => {
     if (ti === f.userTeam) return;
     for (const [pos, short] of Object.entries(needs(t))) {
@@ -153,7 +157,15 @@ export function makeDraft(f, teams) {
   const order = rank(standings(teams, f.schedule)).reverse().map((r) => r.team);
   const ordered = [...order.filter((t) => t !== champ), ...(champ !== undefined ? [champ] : [])];
   const picks = [];
-  for (let round = 0; round < 7; round++) ordered.forEach((team, i) => picks.push({ round: round + 1, pick: i + 1, team, player: null }));
+  // Pick ownership (traded picks go to their new owner; trades.js), plus compensatory picks at the end of rounds 3-7.
+  const year = f.year + 1;
+  const own = (round, team) => f.picks?.[year]?.[round]?.[team] ?? team;
+  const comp = compPicks(f);
+  for (let round = 0; round < 7; round++) {
+    ordered.forEach((team, i) => picks.push({ round: round + 1, pick: i + 1, team: own(round + 1, team), orig: team, player: null }));
+    comp.filter((c) => c.round === round + 1).sort((a, b) => b.ovr - a.ovr).forEach((c, k) => picks.push({ round: round + 1, pick: ordered.length + k + 1, team: c.team, orig: c.team, comp: true, player: null }));
+  }
+  delete f.teamsRef;
   // Rookie class: a few blue-chippers, lots of depth; young with growth ahead of them.
   const positions = Object.entries(ROSTER_COUNTS).flatMap(([pos, n]) => Array(n).fill(pos));
   const cls = [];

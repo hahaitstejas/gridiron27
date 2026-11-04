@@ -571,6 +571,7 @@ const isDarkHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16)
 
 function onSessionEvent(e) {
   renderer.presentation.onEvent(e, session);
+  if (e.type === 'touchdown' && session && !session.fast) renderer.lightShow();
   // Your touchdown: the celebration wheel (RS: up Dance, left Flex, right Spike, down Team) for a couple of seconds.
   if (e.type === 'touchdown' && session && !session.fast && speed <= 1) {
     const sc = session.sim?.players[session.sim.ball.carrier];
@@ -756,6 +757,7 @@ function frameBody(now) {
     const noise = !live && !session.practice ? crowdNoise(m) : 0;
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15 + noise * 0.7;
     boardFrame(m, dt);
+    renderer.updateLighting(dt, (Math.min(m.quarter, 4) - 1 + (1 - m.clock / Math.max(1, m.periodLength()))) / 4);
     renderer.render(dt, focus, camDir, phase, snapCam, excite);
     snapCam = false;
     hud.update(session, renderer, dt, frameMs, playcall.open);

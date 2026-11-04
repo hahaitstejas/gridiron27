@@ -60,7 +60,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] D3 Cutscenes: coaches, fans, tunnel run-out (skippable); TD camera locks on the scorer; kickoff camera
 - [x] D4 Celebrations (TD, sack, INT, first down) incl. RS celebration wheel
 - [x] D5 Tackle falls in the right direction, referees run, animations
-- [ ] D6 Dynamic lighting, holiday decorations (Thanksgiving leaves, Christmas)
+- [x] D6 Dynamic lighting, holiday decorations (Thanksgiving leaves, Christmas)
 - [x] D7 RT play art zooms out to the whole field
 - [x] D8 Tush push timing bar play
 
@@ -113,3 +113,4 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - commit 13: RT play art pulls the camera up and back over the whole formation; Tush Push play with a timing bar (A in the green) that sets the surge.
 - commit 14: celebrations (first-down point, sack, pick, TD wheel on RS: Dance/Flex/Spike/Team), tackle falls away from the tackler, officials stride instead of sliding.
 - commit 15: intro with run-out (teams jog out of the tunnels), head coach close-up, crowd shot (captions), fixed single-angle TD camera, wide kickoff/return camera; every team gets a fictional coaching staff.
+- commit 16: dynamic lighting (touchdown light show, dusk games darken as they go), Thanksgiving leaves and Christmas flurries in franchise holiday games.

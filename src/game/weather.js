@@ -36,5 +36,5 @@ export function makeConditions(rng, weather = 'random', time = 'random', late = 
 /** "Night · Rain · Wind 14 mph" */
 export function conditionsText(c) {
   const mph = windMph(c.wind);
-  return [c.time[0].toUpperCase() + c.time.slice(1), c.type === 'clear' ? 'Clear' : c.type === 'rain' ? 'Rain' : 'Snow', mph >= 3 ? `Wind ${mph} mph` : 'Calm'].join(' · ');
+  return [...(c.holiday ? [c.holiday === 'thanksgiving' ? 'Thanksgiving' : 'Christmas Day'] : []), c.time[0].toUpperCase() + c.time.slice(1), c.type === 'clear' ? 'Clear' : c.type === 'rain' ? 'Rain' : 'Snow', mph >= 3 ? `Wind ${mph} mph` : 'Calm'].join(' · ');
 }

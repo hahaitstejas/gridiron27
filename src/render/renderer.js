@@ -120,7 +120,26 @@ export class GameRenderer {
     this.stadium.glow.material.opacity = c.time === 'night' ? 0.9 : c.time === 'dusk' ? 0.55 : 0;
     this.stadium.snow.visible = c.type === 'snow';
     this.renderer.toneMappingExposure = look.exposure;
-    this.precip.set(c.type, c.wind);
+    this.precip.set(c.type, c.wind, c.holiday || null);
+    this.baseExposure = look.exposure;
+    this.cond = c;
+  }
+
+  /** Touchdown light show: the stadium lights pulse for a couple of seconds. */
+  lightShow(secs = 2.4) { this.flashT = secs; }
+
+  /** Dynamic lighting each frame: the light show, and a dusk game slowly getting darker as it goes on (k = 0..1). */
+  updateLighting(dt, progress = null) {
+    let exp = this.baseExposure ?? this.renderer.toneMappingExposure;
+    if (progress !== null && this.cond?.time === 'dusk') {
+      exp *= 1 - Math.min(1, progress) * 0.18;
+      this.stadium.glow.material.opacity = 0.55 + Math.min(1, progress) * 0.35;
+    }
+    if (this.flashT > 0) {
+      this.flashT -= dt;
+      exp *= 1 + 0.28 * Math.max(0, Math.sin(this.flashT * 22)) * Math.min(1, this.flashT);
+    }
+    this.renderer.toneMappingExposure = exp;
   }
 
   resize() {

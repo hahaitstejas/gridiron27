@@ -4,7 +4,7 @@
 import { archiveSeason } from './legacy.js';
 import { seedFreeAgents, poolAfterOffseason } from './freeAgents.js';
 import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats, STAT_FIELDS, rank } from './season.js';
-import { nflSchedule, assignSlots, isPrimetime } from './nflSchedule.js';
+import { nflSchedule, assignSlots, isPrimetime, holidayOf } from './nflSchedule.js';
 import { teamRatings } from '../data/positions.js';
 import { quickSim } from './quicksim.js';
 import { RNG } from '../core/rng.js';
@@ -250,6 +250,7 @@ export function gameConditions(f, g) {
     // Kickoff time sets the light: night games under the lights, late-afternoon kicks at dusk late in the year.
     const time = !g.time ? 'random' : isPrimetime(g) ? 'night' : /^4:/.test(g.time) && late > 0.5 ? 'dusk' : 'day';
     g.conditions = makeConditions(new RNG(f.seed * 3 + f.week * 101 + g.home * 7 + g.away), 'random', time, late);
+    g.conditions.holiday = holidayOf(g); // Thanksgiving leaves, Christmas flurries (render only)
   }
   return g.conditions;
 }

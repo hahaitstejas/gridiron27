@@ -38,7 +38,7 @@ import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
 import { logoCanvas } from './render/logo.js';
-import { Screens, loadPrefs, savePrefs, ICONS } from './ui/screens.js';
+import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
@@ -670,6 +670,13 @@ function frameBody(now) {
     if (autoReplayPending && session.state === 'playcall' && session.lastReplay) {
       autoReplayPending = false;
       startReplay(true); input.consume(); requestAnimationFrame(frame); return;
+    }
+    // D-pad ◀▶ in a game (not on the play-call screen): cycle the broadcast camera packages.
+    if ((f.pressed.Left || f.pressed.Right) && !playcall.open && session.state !== 'playcall') {
+      const keys = Object.keys(CAMERAS);
+      prefs.camera = keys[(keys.indexOf(prefs.camera) + (f.pressed.Right ? 1 : -1) + keys.length) % keys.length];
+      savePrefs(prefs); applyCamera();
+      hud.ticker(`Camera: ${CAMERAS[prefs.camera]}`);
     }
     // RS click between plays: instant replay of the last play.
     if (f.pressed.RS && session.lastReplay && (playcall.open || session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))) {

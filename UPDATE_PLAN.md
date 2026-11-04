@@ -160,7 +160,7 @@ Phase E — physics and realism (as much as possible)
 - [x] E7 Fatigue visuals (hands on knees), muddy / grass-stained uniforms over the game
 Phase F — presentation
 - [x] F1 Win-probability graph (post-game panel, plus key-plays list)
-- [ ] F2 Broadcast camera packages: All-22, skycam, end zone, sideline cable cam (Settings + in-game cycle)
+- [x] F2 Broadcast camera packages: All-22, skycam, end zone, sideline cable cam (Settings + in-game cycle)
 Phase G — modes and customization
 - [ ] G1 Local co-op on the same team (2 humans on offense or defense together)
 - [ ] G2 Uniform creator (jersey / pants / helmet / stripes / numbers; home / away / alt)

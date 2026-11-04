@@ -60,6 +60,7 @@ export class Hud {
       ['Play call', 'LB/RB tabs · A select · B back · X flip play · View timeout'],
       ['Passing', 'Receiver icons A B X Y RB · tap = lob, hold = bullet · hold LB high / LT low · left stick leads · LS click pump fake · RS click throw away'],
       ['Pass rush (engaged with a blocker)', 'A bull rush (strength) · X swim · Y spin · RS↓ rip (finesse: pass rush, agility) · hold the stick toward the ball for leverage'],
+      ['Camera', 'D-pad ◀▶ cycles the camera: standard, wide, tight, overhead, All-22, skycam, end zone, sideline cable cam'],
       ['Pocket', 'LS (no RT) step up / slide / climb in the pocket and still throw on target · RT breaks the pocket'],
       ['Ball carrier', 'RT sprint · RS click switch the ball to the other arm · A stiff arm · B spin · X dive/slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect · LB pitch (speed option) · hold LT at the mesh to keep (zone read) or pull and throw (RPO)'],
       ['At the line (offense)', 'A snap · X audible · Y hot route · RB motion · LB protection (slide left/right, max protect, everyone out) · LT hard count (may draw the defense offside: a free play) · B spike · hold RT to see the play art (one player)'],

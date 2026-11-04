@@ -250,3 +250,18 @@ describe('local co-op', () => {
     }
   });
 });
+
+describe('uniform creator', () => {
+  it('details round-trip through the uniforms sheet; plain sheets keep their columns', async () => {
+    const { exportUniforms, importUniforms } = await import('../src/data/extraCSV.js');
+    const { parseCSV } = await import('../src/data/csv.js');
+    const a = generateLeagueRosters(defaultTeams(), 40);
+    expect(exportUniforms(a).split('\n')[0]).toBe('team,kind,jersey,pants,number,number_outline,helmet');
+    a[3].uniforms = { home: { jersey: '#123456', sleeves: '#abcdef', stripe: '#ff0000', socks: '#00ff00' } };
+    const csv = exportUniforms(a);
+    expect(csv.split('\n')[0]).toContain('sleeves');
+    const b = generateLeagueRosters(defaultTeams(), 41);
+    importUniforms(b, parseCSV(csv));
+    expect(b[3].uniforms.home).toMatchObject({ jersey: '#123456', sleeves: '#abcdef', stripe: '#ff0000', socks: '#00ff00' });
+  });
+});

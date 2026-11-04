@@ -82,18 +82,24 @@ export function importUniforms(teams, rows) {
     const ti = idx.get((r.team || '').toUpperCase()), kind = (r.kind || '').toLowerCase().trim().replace(/\s+/g, '_').replace('alternate', 'alt').replace('rivalry', 'alt').replace(/^colou?r_?rush$/, 'color_rush');
     if (ti === undefined || !UNIFORM_KINDS.includes(kind)) { skipped.push(`row ${i + 2}: team "${r.team}" / kind "${r.kind}" (${UNIFORM_KINDS.join(', ')})`); return; }
     const u = {};
-    for (const [col, key] of [['jersey', 'jersey'], ['pants', 'pants'], ['number', 'number'], ['number_outline', 'outline'], ['helmet', 'helmet']]) { const v = hex(r[col]); if (v) u[key] = v; }
+    for (const [col, key] of [['jersey', 'jersey'], ['pants', 'pants'], ['number', 'number'], ['number_outline', 'outline'], ['helmet', 'helmet'], ...EXTRA_COLS]) { const v = hex(r[col]); if (v) u[key] = v; }
+    if (/^none$/i.test(r.helmet_stripe || '')) u.stripe = 'none';
     ((teams[ti].uniforms ||= {})[kind] = u);
   });
   return { count: rows.length - skipped.length, skipped };
 }
+// Optional uniform-creator columns (written only when some team uses them, so plain sheets keep their columns).
+const EXTRA_COLS = [['sleeves', 'sleeves'], ['shoulders', 'shoulders'], ['helmet_stripe', 'stripe'], ['facemask', 'facemask'], ['socks', 'socks'], ['gloves', 'gloves'], ['cleats', 'cleats']];
 export function exportUniforms(teams) {
   const out = [];
+  let extras = false;
   for (const t of teams) for (const kind of UNIFORM_KINDS) {
     const u = uniformFor(t, kind);
-    out.push({ team: t.abbr, kind, jersey: u.jersey, pants: u.pants, number: u.number, number_outline: u.outline, helmet: u.helmet });
+    const row = { team: t.abbr, kind, jersey: u.jersey, pants: u.pants, number: u.number, number_outline: u.outline, helmet: u.helmet };
+    for (const [col, key] of EXTRA_COLS) if (u[key]) { row[col] = u[key]; extras = true; }
+    out.push(row);
   }
-  return toCSV(out, ['team', 'kind', 'jersey', 'pants', 'number', 'number_outline', 'helmet']);
+  return toCSV(out, ['team', 'kind', 'jersey', 'pants', 'number', 'number_outline', 'helmet', ...(extras ? EXTRA_COLS.map(([c]) => c) : [])]);
 }
 
 /** Stadiums: per team, plus neutral sites (league.sites: championship venues by year, international venues). */

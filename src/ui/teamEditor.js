@@ -1,4 +1,4 @@
-import { uniformFor, UNIFORM_KINDS, UNIFORM_NAMES } from '../data/uniforms.js';
+import { uniformFor, UNIFORM_KINDS, UNIFORM_NAMES, UNIFORM_EXTRAS, EXTRA_NAMES } from '../data/uniforms.js';
 import { el } from './nav.js';
 import { logoCanvas, drawLogo, LOGO_SHAPES } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
@@ -69,7 +69,13 @@ export function teamEditor(ctx, ti, focus = 0) {
   const uni = ((t.uniforms ||= {})[kind] ||= { ...uniformFor(t, kind) });
   rows.push(el('div.dc-head', { text: 'Uniforms' }),
     choice('Uniform set', UNIFORM_KINDS.map((k) => UNIFORM_NAMES[k]), () => UNIFORM_NAMES[kind], (v) => { uniformKind[ti] = UNIFORM_KINDS.find((k) => UNIFORM_NAMES[k] === v); setTimeout(() => teamEditor(ctx, ti, screens.nav.index), 0); }),
-    colorRow('Jersey', uni, 'jersey'), colorRow('Pants', uni, 'pants'), colorRow('Numbers', uni, 'number'), colorRow('Number outline', uni, 'outline'), colorRow('Helmet', uni, 'helmet'));
+    colorRow('Jersey', uni, 'jersey'), colorRow('Pants', uni, 'pants'), colorRow('Numbers', uni, 'number'), colorRow('Number outline', uni, 'outline'), colorRow('Helmet', uni, 'helmet'),
+    // Uniform creator: the details (unset ones follow the base colors).
+    el('div.dc-head', { text: 'Uniform details' }),
+    choice('Helmet stripe', ['Team default', 'None', 'Custom color'], () => (uni.stripe === 'none' ? 'None' : uni.stripe ? 'Custom color' : 'Team default'),
+      (v) => { if (v === 'None') uni.stripe = 'none'; else if (v === 'Team default') delete uni.stripe; else if (!uni.stripe || uni.stripe === 'none') uni.stripe = t.colors.secondary; }),
+    ...(uni.stripe && uni.stripe !== 'none' ? [colorRow('Helmet stripe color', uni, 'stripe')] : []),
+    ...UNIFORM_EXTRAS.filter((k) => k !== 'stripe').map((k) => colorRow(EXTRA_NAMES[k], extrasView(t, uni), k)));
   const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
   rows.push(action(`Reset the ${UNIFORM_NAMES[kind].toLowerCase()} uniform to the team colors`, () => { delete t.uniforms[kind]; ctx.onChange(); teamEditor(ctx, ti, screens.nav.index); }));
   rows.push(
@@ -110,6 +116,15 @@ export function teamEditor(ctx, ti, focus = 0) {
  * names and the league logo (painted at both 25-yard lines, and at midfield in the championship game).
  * ctx = the team editor's ctx (onBack returns to the team list, onChange autosaves).
  */
+/** The uniform with each unset detail reading as its derived color; only a change is written to the uniform. */
+const extrasView = (t, uni) => new Proxy(uni, { get: (o, k) => o[k] ?? (UNIFORM_EXTRAS.includes(k) ? defaultExtra(t, o, k) : undefined) });
+
+/** Starting color for a uniform detail (what the renderer would derive), so the color row has something to edit. */
+function defaultExtra(t, uni, k) {
+  const dark = (c) => { const h = (c || '#000000').replace('#', ''); return 0.299 * parseInt(h.slice(0, 2), 16) + 0.587 * parseInt(h.slice(2, 4), 16) + 0.114 * parseInt(h.slice(4, 6), 16) < 140; };
+  return { sleeves: uni.jersey, shoulders: uni.jersey, facemask: dark(uni.helmet) ? '#cfcfcf' : '#333333', socks: dark(uni.pants) ? '#f2f2f2' : t.colors.primary, gloves: t.colors.secondary, cleats: '#151515' }[k];
+}
+
 export function leagueEditor(ctx, focus = 0) {
   const { screens } = ctx;
   screens.extraButtons = null;
@@ -129,14 +144,6 @@ export function leagueEditor(ctx, focus = 0) {
     CONFERENCES[i] = v.trim().slice(0, 20);
     return true;
   });
-  // Uniforms: home, away and alternate ("rivalry") sets — jersey, pants, numbers, number outline, helmet.
-  const kind = uniformKind[ti] || 'home';
-  const uni = ((t.uniforms ||= {})[kind] ||= { ...uniformFor(t, kind) });
-  rows.push(el('div.dc-head', { text: 'Uniforms' }),
-    choice('Uniform set', UNIFORM_KINDS.map((k) => UNIFORM_NAMES[k]), () => UNIFORM_NAMES[kind], (v) => { uniformKind[ti] = UNIFORM_KINDS.find((k) => UNIFORM_NAMES[k] === v); setTimeout(() => teamEditor(ctx, ti, screens.nav.index), 0); }),
-    colorRow('Jersey', uni, 'jersey'), colorRow('Pants', uni, 'pants'), colorRow('Numbers', uni, 'number'), colorRow('Number outline', uni, 'outline'), colorRow('Helmet', uni, 'helmet'));
-  const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
-  rows.push(action(`Reset the ${UNIFORM_NAMES[kind].toLowerCase()} uniform to the team colors`, () => { delete t.uniforms[kind]; ctx.onChange(); teamEditor(ctx, ti, screens.nav.index); }));
   const rows = [
     textRow('League name', LEAGUE, 'name', 30),
     textRow('Championship game', LEAGUE, 'championship', 30),

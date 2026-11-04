@@ -4,6 +4,10 @@
 export const UNIFORM_KINDS = ['home', 'away', 'alt', 'throwback', 'color_rush'];
 export const UNIFORM_NAMES = { home: 'Home', away: 'Away', alt: 'Alternate', throwback: 'Throwback', color_rush: 'Color Rush' };
 export const UNIFORM_FIELDS = ['jersey', 'pants', 'number', 'outline', 'helmet'];
+// Uniform creator extras (optional; unset = derived from the base colors in the renderer): sleeves, shoulder caps,
+// helmet stripe ('none' = no stripe), facemask, socks, gloves, cleats.
+export const UNIFORM_EXTRAS = ['sleeves', 'shoulders', 'stripe', 'facemask', 'socks', 'gloves', 'cleats'];
+export const EXTRA_NAMES = { sleeves: 'Sleeves', shoulders: 'Shoulder caps', stripe: 'Helmet stripe', facemask: 'Facemask', socks: 'Socks', gloves: 'Gloves', cleats: 'Cleats' };
 
 const hex = (c) => (c || '#000000').replace('#', '');
 export function isDark(c) {

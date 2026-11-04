@@ -163,7 +163,7 @@ Phase F — presentation
 - [x] F2 Broadcast camera packages: All-22, skycam, end zone, sideline cable cam (Settings + in-game cycle)
 Phase G — modes and customization
 - [x] G1 Local co-op on the same team (2 humans on offense or defense together)
-- [ ] G2 Uniform creator (jersey / pants / helmet / stripes / numbers; home / away / alt)
+- [x] G2 Uniform creator (jersey / pants / helmet / stripes / numbers; home / away / alt)
 - [ ] G3 Stadium creator (seat colors, roof, end zone art, field logo, name)
 - [ ] G4 Play designer upgrades: drag routes visually, option routes, defensive play designer, share-codes
 - [ ] G5 Face / body options for created players; mod packs (JSON formations / plays / rules / uniforms)

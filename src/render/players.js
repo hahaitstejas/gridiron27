@@ -6,6 +6,7 @@ import { drawLogo } from './logo.js';
 // players). Poses are computed procedurally from the sim's animation state every frame.
 
 const SKIN = ['#f1c9a5', '#e0ac85', '#c68a62', '#a0663f', '#7a4a2c', '#53321e'];
+const WHITE = new THREE.Color('#ffffff');
 const MUD = new THREE.Color('#4a3a28'); // muddy / grass-stained uniforms (setColors, this.dirt)
 const MAX = 56; // 22 players + 7 officials + 22 on the sidelines (+ spare)
 
@@ -275,25 +276,27 @@ export class PlayerRenderer {
       P.pelvis.setColorAt(i, mud(pants));
       P.neck.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
-      P.stripe.setColorAt(i, c.set(u.helmetStripe ? team.colors.secondary : helmet));
-      P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
+      const stripe = uni.stripe === 'none' ? helmet : uni.stripe || (u.helmetStripe ? team.colors.secondary : helmet);
+      const facemask = uni.facemask || (isDark(helmet) ? '#cfcfcf' : '#333333');
+      P.stripe.setColorAt(i, c.set(stripe));
+      P.mask.setColorAt(i, c.set(facemask));
       P.visor.setColorAt(i, c.set(p.number % 3 ? '#1a1f2a' : '#3a2a10'));
       P.towel.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);
-        P.bar.setColorAt(i * 2 + k, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
-        P.cap.setColorAt(i * 2 + k, c.set(jersey).offsetHSL(0, 0, -0.04));
+        P.bar.setColorAt(i * 2 + k, c.set(facemask));
+        P.cap.setColorAt(i * 2 + k, uni.shoulders ? c.set(uni.shoulders) : c.set(jersey).offsetHSL(0, 0, -0.04));
         P.num.setColorAt(i * 4 + 2 + k, c.set(numColor));
         this.cellAttr.setXY(i * 4 + 2 + k, p.number % 10, Math.floor(p.number / 10));
       }
       for (let k = 0; k < 2; k++) {
         const j = i * 2 + k;
         P.thigh.setColorAt(j, c.set(pants).lerp(MUD, (this.dirt || 0) * 0.4));
-        P.shin.setColorAt(j, c.set(!isDark(pants) ? team.colors.primary : '#f2f2f2'));
-        P.shoe.setColorAt(j, c.set(i % 3 ? '#151515' : '#f0f0f0'));
-        P.upper.setColorAt(j, c.set(jersey));
+        P.shin.setColorAt(j, c.set(uni.socks || (!isDark(pants) ? team.colors.primary : '#f2f2f2')));
+        P.shoe.setColorAt(j, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
+        P.upper.setColorAt(j, mud(uni.sleeves || jersey));
         P.fore.setColorAt(j, c.set(skin));
-        P.hand.setColorAt(j, c.set(team.colors.secondary).lerp(new THREE.Color('#ffffff'), 0.2));
+        P.hand.setColorAt(j, uni.gloves ? c.set(uni.gloves) : c.set(team.colors.secondary).lerp(WHITE, 0.2));
         P.num.setColorAt(i * 4 + k, c.set(numColor));
         this.cellAttr.setXY(i * 4 + k, p.number % 10, Math.floor(p.number / 10));
       }

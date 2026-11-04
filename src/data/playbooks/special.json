@@ -1237,16 +1237,16 @@
    "type": "pass",
    "fake": "punt",
    "concept": "Fake punt",
-   "dropback": 3,
+   "dropback": 1,
    "routes": {
     "X": "go",
     "Z": "go",
-    "Y": "block",
+    "Y": "flat",
     "H": "flat"
    },
    "read": [
-    "X",
     "H",
+    "X",
     "Z"
    ]
   },

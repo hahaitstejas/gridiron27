@@ -40,3 +40,21 @@ describe('decision math', () => {
     expect(out.accepted).toBe(false);
   });
 });
+
+describe('trick plays', () => {
+  it('laterals only go backward or level', async () => {
+    const { canLateral } = await import('../src/sim/tricks.js');
+    const sim = { teamDir: () => 1 };
+    const a = { team: 0, x: 0, z: 0, state: 'active' };
+    expect(canLateral(sim, a, { team: 0, x: -2, z: 3, state: 'active' })).toBe(true);
+    expect(canLateral(sim, a, { team: 0, x: 3, z: 1, state: 'active' })).toBe(false);
+    expect(canLateral(sim, a, { team: 1, x: -2, z: 1, state: 'active' })).toBe(false);
+  });
+  it('the CPU throws a Hail Mary on the last play when it needs a touchdown', async () => {
+    const { chooseOffense } = await import('../src/ai/playcaller.js');
+    const { RNG } = await import('../src/core/rng.js');
+    const m = mk({ phase: 'scrimmage', yardLine: 50, toGo: 10, down: 1, score: [14, 20], quarter: 4, clock: 4, clockRunning: false, inTwoMinutes: true, possession: 0,
+      situation() { return { lead: -6 }; } });
+    expect(chooseOffense(m, 0, new RNG(1)).id).toBe('trick_hail_mary');
+  });
+});

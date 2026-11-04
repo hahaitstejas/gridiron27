@@ -388,6 +388,13 @@ function catchBall(sim, p) {
 function escort(sim, p) {
   const c = sim.carrier();
   if (!c) { stop(p); return; }
+  // Last gasp: a couple of teammates trail the ball carrier for a lateral instead of blocking.
+  if (sim.cfg.lastGasp && p.id % 3 === 0 && c.team === p.team && Math.hypot(c.x - p.x, c.z - p.z) < 14) {
+    const td = sim.teamDir(c.team);
+    const side = p.id % 2 ? 1 : -1;
+    seek(p, c.x - td * 3, c.z + side * 4, 1, 0.3);
+    return;
+  }
   if (p.slot === 'QB' && p.team === sim.offIdx && sim.possTeam === sim.offIdx) {
     seek(p, p.x, p.z, 0.3);
     return;

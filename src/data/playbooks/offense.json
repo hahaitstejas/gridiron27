@@ -3231,6 +3231,159 @@
     "Y": "stalk",
     "RB": "block"
    }
+  },
+  {
+   "id": "trick_hail_mary",
+   "name": "Hail Mary",
+   "formation": "trick_hail",
+   "type": "pass",
+   "concept": "Hail Mary",
+   "dropback": 7,
+   "routes": {
+    "X": "post",
+    "Z": "post",
+    "H": "seam",
+    "Y": "seam",
+    "RB": "go"
+   },
+   "read": [
+    "Z",
+    "X",
+    "H",
+    "Y",
+    "RB"
+   ],
+   "hail": true
+  },
+  {
+   "id": "trick_flea_flicker",
+   "name": "Flea Flicker",
+   "formation": "trick_singleback",
+   "type": "pass",
+   "concept": "Flea flicker",
+   "dropback": 5,
+   "pa": true,
+   "trick": {
+    "type": "flea",
+    "back": "RB"
+   },
+   "routes": {
+    "X": "post",
+    "Z": "go",
+    "Y": "seam",
+    "H": "block",
+    "RB": "block"
+   },
+   "read": [
+    "Z",
+    "X",
+    "Y"
+   ]
+  },
+  {
+   "id": "trick_hook_ladder",
+   "name": "Hook and Ladder",
+   "formation": "trick_gun",
+   "type": "pass",
+   "concept": "Hook and ladder",
+   "dropback": 3,
+   "trick": {
+    "type": "ladder",
+    "from": "Y",
+    "to": "H"
+   },
+   "routes": {
+    "Y": "curl",
+    "H": "drag",
+    "X": "go",
+    "Z": "go",
+    "RB": "block"
+   },
+   "read": [
+    "Y",
+    "X",
+    "Z"
+   ]
+  },
+  {
+   "id": "trick_throwback",
+   "name": "Throwback Pass",
+   "formation": "trick_gun",
+   "type": "pass",
+   "concept": "Double pass",
+   "dropback": 1,
+   "trick": {
+    "type": "double",
+    "passer": "Z"
+   },
+   "routes": {
+    "Z": "throwback",
+    "X": "go",
+    "H": "post",
+    "Y": "seam",
+    "RB": "block"
+   },
+   "read": [
+    "X",
+    "H",
+    "Y"
+   ]
+  },
+  {
+   "id": "trick_swap_special",
+   "name": "Swap Special",
+   "formation": "trick_gun",
+   "type": "pass",
+   "concept": "QB pass back",
+   "dropback": 0,
+   "trick": {
+    "type": "double",
+    "passer": "RB",
+    "qbRoute": "flat_r"
+   },
+   "routes": {
+    "RB": "screen_l",
+    "X": "go",
+    "H": "post",
+    "Y": "seam",
+    "Z": "slant"
+   },
+   "read": [
+    "QB",
+    "Y",
+    "H",
+    "Z"
+   ]
+  },
+  {
+   "id": "trick_reverse",
+   "name": "WR Reverse",
+   "formation": "trick_singleback",
+   "type": "run",
+   "concept": "Reverse",
+   "trick": {
+    "type": "reverse",
+    "to": "Z"
+   },
+   "run": {
+    "carrier": "RB",
+    "aim": [
+     -1,
+     6
+    ],
+    "mesh": [
+     -4.2,
+     0.6
+    ],
+    "scheme": "zone",
+    "side": 1
+   },
+   "routes": {
+    "Y": "block",
+    "H": "block",
+    "X": "stalk",
+    "Z": "block"
+   }
   }
  ]
 }

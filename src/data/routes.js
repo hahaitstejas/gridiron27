@@ -31,6 +31,7 @@ export const ROUTES = {
   zig: { pts: [[6, -4], [6, 6]], end: 'continue' },
   out_up: { pts: [[6, 0], [6, 4], [40, 5]], end: 'continue' },
   screen: { pts: [[-0.5, 2.5], [-0.6, 5]], end: 'settle' },
+  throwback: { pts: [[-1, -1], [-3.5, -3]], end: 'settle' }, // a receiver coming back behind the line for a pass back
   rb_screen: { pts: [[1.5, 3], [2, 6]], end: 'settle' }, // a back leaking out to the flat behind the line
 };
 

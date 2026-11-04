@@ -46,6 +46,7 @@ export class GameSession {
     // Injuries this game ({ team, rid, name, pos, type, weeks }); those players sit out the rest of the game.
     // settings.unavailable = [[ids], [ids]] lists players already hurt (franchise).
     this.injuries = [];
+    this.tricksRun = {}; // trick plays and fakes run this game, by "team:playId"
     this.state = 'playcall';
     this.sim = null;
     this.events = [];
@@ -212,7 +213,12 @@ export class GameSession {
     if (this.state !== 'playcall') return;
     if (this.humanSide === 'offense') {
       this.choice.off = play;
-      if (!/^st_/.test(play.id)) this.lastOffPlay = play;
+      if (!/^st_/.test(play.id)) {
+        this.lastOffPlay = play;
+        const r = (this.recentOff ||= {})[this.humanTeam] ||= [];
+        const i = r.indexOf(play); if (i >= 0) r.splice(i, 1);
+        r.unshift(play); r.length = Math.min(r.length, 9);
+      }
       // 2-player: a special-teams call brings the other human's matching unit on automatically.
       if (this.isHuman(this.defTeam) && !this.choice.def && (this.match.phase === 'kickoff' || defenseForSpecial(play))) this.choice.def = this.cpuDefenseFor(play);
     } else this.choice.def = play;
@@ -283,6 +289,10 @@ export class GameSession {
       weather: this.settings.weather || null,
       iced: !!this.iced,
       keep: this.hurry && this.lastLineup?.poss === m.possession ? this.lastLineup.slots : null,
+      // Trick plays and fakes work once: a defense that has seen this one today reads it.
+      trickSeen: (off.trick || off.fake) ? (this.tricksRun[`${m.possession}:${off.id}`] || 0) : 0,
+      // The last play of a half (or a game you're losing by one score): laterals until somebody's down.
+      lastGasp: m.phase === 'scrimmage' && (m.quarter === 2 || (m.quarter >= 4 && m.score[m.possession] < m.score[1 - m.possession] && m.score[1 - m.possession] - m.score[m.possession] <= 8)) && m.clock <= 6,
     });
     if (this.lock !== null) this.lockOn(this.sim);
     if (this.drill) drillControl(this.sim, this.drill);
@@ -316,6 +326,7 @@ export class GameSession {
   snap() {
     const m = this.match;
     const sim = this.sim;
+    if (sim.offPlay.trick || sim.offPlay.fake) { const k = `${m.possession}:${sim.offPlay.id}`; this.tricksRun[k] = (this.tricksRun[k] || 0) + 1; }
     // Jet motion plays: the snap call starts the motion; the ball is snapped as he reaches the QB (see tick).
     const mo = sim.offPlay.motion;
     if (mo && !sim.isKick && !this.jetGo) {

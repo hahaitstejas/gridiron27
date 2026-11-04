@@ -216,7 +216,7 @@ function resolveCatch(sim, reach, late = false) {
   if (!cands.length) return;
   cands.sort((a, c) => a.d - c.d);
   for (const c of cands) b.tried.add(c.p.id);
-  const offC = cands.filter((c) => c.p.team === sim.possTeam && c.p.slot !== 'QB' && !['LT', 'LG', 'C', 'RG', 'RT'].includes(c.p.slot));
+  const offC = cands.filter((c) => c.p.team === sim.possTeam && (c.p.slot !== 'QB' || c.p.task?.type === 'route' || c.p.id === b.intended) && !c.p.trickPasser && !['LT', 'LG', 'C', 'RG', 'RT'].includes(c.p.slot));
   const defC = cands.filter((c) => c.p.team !== sim.possTeam);
   const recDist = offC.length ? offC[0].d : 9;
 

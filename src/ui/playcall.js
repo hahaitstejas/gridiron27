@@ -1,7 +1,7 @@
 import { el } from './nav.js';
 import { offenseArt, defenseArt, specialArt } from './playart.js';
 import { listOffPlays, listDefPlays, getOffFormation, getDefFormation, getOffPlay, mirrorOffPlay } from '../data/playbook.js';
-import { chooseOffense, chooseDefense } from '../ai/playcaller.js';
+import { hurryUp, chooseOffense, chooseDefense } from '../ai/playcaller.js';
 import { downText, yardLineText, clockText } from '../game/match.js';
 import { fgDistance } from '../sim/kicking.js';
 import { bothBumpers } from '../game/session.js';
@@ -54,6 +54,9 @@ export class PlayCallScreen {
       if (m.phase === 'kickoff') return [{ name: 'Kickoff', special: true, plays: ['st_kickoff', 'st_squib', 'st_onside'].map(getOffPlay) }];
       const sugg = this.suggestions();
       tabs.push({ name: 'Suggested', plays: sugg });
+      // Recent: the last plays you called this game (newest first).
+      const recent = (this.session.recentOff?.[this.session.humanTeam] || []).filter((p) => p && !/^st_/.test(p.id));
+      if (recent.length) tabs.push({ name: 'Recent', plays: recent.slice(0, 9) });
       const fams = new Map();
       if (listOffPlays().some((p) => p.custom)) fams.set('My Plays', new Map()); // the user's plays, right after Suggested
       for (const p of listOffPlays()) {
@@ -94,9 +97,13 @@ export class PlayCallScreen {
     const m = this.session.match;
     const team = this.session.humanTeam;
     const out = [];
-    for (let i = 0; i < 40 && out.length < 6; i++) {
+    // With the clock running out and no timeouts, the staff doesn't suggest runs (or trick plays).
+    const noRuns = this.side === 'offense' && hurryUp(m, team) && m.timeouts[team] === 0;
+    for (let i = 0; i < 60 && out.length < 6; i++) {
       const p = this.side === 'offense' ? chooseOffense(m, team, this.rng) : chooseDefense(m, team, this.rng, 0.2);
-      if (p && !out.includes(p) && !/^st_/.test(p.id)) out.push(p);
+      if (!p || out.includes(p) || /^st_/.test(p.id) || p.trick) continue;
+      if (noRuns && p.type === 'run') continue;
+      out.push(p);
     }
     return out;
   }

@@ -23,6 +23,8 @@ export function playTags(p) {
     goalLine: /goal/i.test(p.formation) || /goal/i.test(f?.family || ''),
     shotgun: /gun/i.test(p.formation),
     sneak: p.run?.carrier === 'QB',
+    // Routes that end at the sideline (stop the clock by getting out of bounds).
+    sideline: p.type === 'pass' && routes.filter((r) => ['out', 'quick_out', 'deep_out', 'corner', 'comeback', 'fade', 'flat', 'out_up', 'wheel'].includes(r)).length >= 2,
   };
   p._tags = tags;
   return tags;
@@ -52,6 +54,13 @@ export function fgZone(team, m = null, kickTeam = null) {
 export function kickerMaxFG(team, m = null, kickTeam = null, longShot = false) {
   const z = fgZone(team, m, kickTeam);
   return longShot ? z.max : z.comfort;
+}
+
+/** Is this team in a two-minute drill (trailing late, or driving before the half)? */
+export function hurryUp(m, team) {
+  if (!m.inTwoMinutes) return false;
+  const lead = m.score[team] - m.score[1 - team];
+  return m.quarter === 2 ? !(lead > 0 && m.yardLine < 20) : lead <= 0;
 }
 
 /** Decide what to do on the current snap. Returns a play object (may be special teams). */
@@ -86,6 +95,14 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   if ((m.quarter === 2 || q4) && m.clock < 8 && !m.clockRunning && fgDist <= lastShot && (m.quarter === 2 || (lead >= -3 && lead <= 0))) return getOffPlay('st_fg');
   if ((m.quarter === 2 || q4) && m.clock < 4 && m.clockRunning && fgDist <= lastShot) return getOffPlay('st_fg');
 
+  // Last play, too far for a kick, needing a touchdown: Hail Mary.
+  const needTD = m.quarter === 2 ? fgDist > lastShot : q4 && lead < 0 && lead >= -8;
+  if ((m.quarter === 2 || q4) && needTD && m.yardLine >= 35 && m.yardLine < 75 && (m.clock <= 6 || (m.clock <= 12 && m.timeouts[team] === 0 && m.clockRunning))) return getOffPlay('trick_hail_mary');
+  // Now and then a trick play, early downs with room to work (never in the red zone or a two-minute drill).
+  if (m.down <= 2 && m.yardLine >= 35 && m.yardLine <= 75 && !m.inTwoMinutes && rng.next() < 0.012) {
+    const tricks = listOffPlays().filter((p) => p.trick);
+    if (tricks.length) return rng.pick(tricks);
+  }
   // Run/pass mix.
   let run = 0.45;
   const toGo = m.toGo;
@@ -93,7 +110,10 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   if (m.down === 2) run = toGo >= 8 ? 0.35 : toGo <= 3 ? 0.55 : 0.45;
   if (m.down >= 3) run = toGo <= 2 ? 0.55 : toGo <= 4 ? 0.3 : 0.1;
   if (m.yardLine >= 95) run += 0.15;
-  if (m.inTwoMinutes && lead <= 0) run = 0.12;
+  // Two-minute drill (always before the half unless backed up and ahead): throw, and with no timeouts left
+  // stay away from runs in the middle of the field that keep the clock moving.
+  const drill = hurryUp(m, team);
+  if (drill) run = m.timeouts[team] === 0 ? 0.02 : 0.1;
   if (q4 && lead > 0 && m.clock < 360) run = 0.75;
   if (q4 && lead < -8 && m.clock < 480) run *= 0.5;
   const wantRun = rng.chance(run);
@@ -101,6 +121,7 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
     run: wantRun,
     deep: !wantRun && (toGo >= 12 || (m.inTwoMinutes && lead < 0 && m.yardLine < 60)) && rng.chance(0.55),
     quick: !wantRun && (toGo <= 5 || (m.down === 3 && toGo <= 7)) && rng.chance(0.6),
+    sideline: !wantRun && drill && m.timeouts[team] <= 1,
     goalLine: m.yardLine >= 97,
     shortYardage: toGo <= 1,
   });
@@ -113,7 +134,8 @@ function pickPlay(m, rng, want) {
   const team = m.teams?.[m.possession];
   const qb = team?.roster.find((x) => x.id === team.depth?.QB?.[0]);
   const mobile = (qb?.ratings?.speed ?? 0) >= 76;
-  let pool = listOffPlays().filter((p) => !p.custom && (mobile || !qbRun(p))); // the CPU sticks to the stock playbook
+  // The CPU sticks to the stock playbook (trick plays are called on purpose, below).
+  let pool = listOffPlays().filter((p) => !p.custom && !p.trick && !p.hail && (mobile || !qbRun(p)));
   const score = (p) => {
     const t = playTags(p);
     let w = 1;
@@ -122,6 +144,7 @@ function pickPlay(m, rng, want) {
     else if (t.deep) w *= 0.4; // deep shots are a change-up, not the base offense
     if (t.pass && p.pa && !want.run && m.down >= 3) w *= 0.3; // nobody bites on play action on 3rd and long
     if (want.quick && t.quick) w *= 3;
+    if (want.sideline) w *= t.sideline ? 3 : 0.5;
     if (want.deep && t.quick) w *= 0.4;
     if (want.goalLine) w *= t.goalLine ? 3 : t.deep ? 0.2 : 1;
     if (want.shortYardage && t.sneak) w *= 3;

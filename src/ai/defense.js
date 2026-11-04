@@ -210,10 +210,20 @@ export function leverage(sim) {
 
 /** Special-teams units caught by a fake (no assignments): the front rushes, everyone else plays zone. */
 function fakeKickAssign(sim) {
+  // A fake: the return / block unit reads it. The edge men contain, the jammers stay on the gunners, the hold-up man
+  // spies the up-back and whoever is deep plays the middle. (They used to all rush or drift: a free 6 yards.)
   const out = {};
+  const off = sim.offense();
+  const men = new Map();
   for (const d of sim.defense()) {
-    const down = sim.toLocal(d.x, d.z).down;
-    out[d.slot] = down < 2.5 ? 'rush' : down > 14 ? 'zone:deep_middle' : 'zone:mid_robber';
+    const l = sim.toLocal(d.x, d.z);
+    if (l.down < 2.5 && Math.abs(l.lat) > 12) {
+      // Jammer: cover the nearest gunner.
+      let best = null, bd = 1e9;
+      for (const o of off) { const k = Math.hypot(o.x - d.x, o.z - d.z); if (k < bd && !men.has(o.id)) { bd = k; best = o; } }
+      if (best) { men.set(best.id, d.id); out[d.slot] = `fakeman:${best.id}`; continue; }
+    }
+    out[d.slot] = l.down < 2.5 ? (Math.abs(l.lat) >= 4 ? 'contain' : 'rush') : l.down > 14 ? 'zone:deep_middle' : 'spy';
   }
   return out;
 }
@@ -226,6 +236,8 @@ export function assignDefense(sim) {
     const a = assign[d.slot] || 'zone:hook_middle';
     d.perceived = { x: 0, z: 0 };
     if (a === 'rush' || a === 'blitz') d.task = { type: 'rush', blitz: a === 'blitz' };
+    else if (a === 'contain') d.task = { type: 'rush', contain: true };
+    else if (a.startsWith('fakeman:')) d.task = { type: 'man', target: +a.slice(8), cushion: 1.5 };
     else if (a.startsWith('man:')) {
       const r = man.get(d.id);
       if (r) d.task = { type: 'man', target: r.id, cushion: Math.max(1, Math.min(7, Math.abs(sim.toLocal(d.x, d.z).down - sim.toLocal(r.x, r.z).down))) };
@@ -263,10 +275,15 @@ export function runDefenseAI(sim, dt) {
       else if (dist < 22 && p.task.type !== 'rush') p.task = { type: 'ball', prev: p.task, rally: true };
     }
     // Play action: linebackers and safeties step up to the run fake; less aware players bite longer.
-    if (sim.offPlay?.pa && sim.ball.state !== 'air' && (p.task.type === 'zone' || p.task.type === 'man' || p.task.type === 'spy') && !/CB|NB|DB/.test(p.slot)) {
-      // Safeties are taught to read their keys first: they bite less than linebackers.
+    const flea = sim.offPlay?.trick?.type === 'flea' || sim.offPlay?.trick?.type === 'reverse';
+    if (sim.offPlay?.pa && sim.ball.state !== 'air' && (p.task.type === 'zone' || p.task.type === 'man' || p.task.type === 'spy') && (flea || !/CB|NB|DB/.test(p.slot))) {
+      // Safeties are taught to read their keys first: they bite less than linebackers. A flea flicker's real
+      // handoff fools everyone for longer, corners included.
       const safety = p.slot === 'FS' || p.slot === 'SS';
-      const bite = safety ? 0.15 + (1 - sim.R(p, 'awareness') / 100) * 0.5 : 0.3 + (1 - sim.R(p, 'awareness') / 100) * 1.0;
+      let bite = safety ? 0.15 + (1 - sim.R(p, 'awareness') / 100) * 0.5 : 0.3 + (1 - sim.R(p, 'awareness') / 100) * 1.0;
+      if (flea) bite = /CB|NB|DB/.test(p.slot) ? bite * 0.3 : bite + 0.1;
+      // Seen it already this game: they don't fall for it twice.
+      if (sim.cfg.trickSeen) bite *= 0.35;
       if (sim.t < bite) {
         const l = sim.toLocal(p.x, p.z);
         const w = sim.toWorld(Math.max(1.5, l.down - 3), l.lat * 0.9);
@@ -293,8 +310,8 @@ function rush(sim, p) {
   if (!goal) { stop(p); return; }
   let tx = goal.x, tz = goal.z;
   // Edge rushers keep contain early in the down.
-  if ((p.slot === 'LE' || p.slot === 'RE') && sim.t < 1.6 && !p.task.blitz) {
-    const side = p.slot === 'LE' ? -1 : 1;
+  if (((p.slot === 'LE' || p.slot === 'RE') && sim.t < 1.6 && !p.task.blitz) || (p.task.contain && sim.t < 2.2)) {
+    const side = p.task.contain ? Math.sign(sim.toLocal(p.x, p.z).lat) || 1 : p.slot === 'LE' ? -1 : 1;
     const w = sim.toLocal(goal.x, goal.z);
     const pt = sim.toWorld(w.down + 0.5, w.lat + side * 2.2);
     tx = pt.x; tz = pt.z;

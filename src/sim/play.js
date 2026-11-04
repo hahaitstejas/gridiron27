@@ -1,3 +1,4 @@
+import { updateTricks, lateralArrived } from './tricks.js';
 import { GOAL_X, END_X, HALF_WIDTH, HASH_Z, BALL_CARRY_HEIGHT } from '../core/constants.js';
 import { needsRest, energyOf } from '../game/fatigue.js';
 import { clamp } from '../core/math.js';
@@ -434,6 +435,7 @@ export class PlaySim {
       this.updateOption();
       updatePendingThrow(this, dt);
       runOffenseAI(this, dt);
+      updateTricks(this, dt);
       runDefenseAI(this, dt);
       if (input?.perTeam) { for (const t of this.humanTeams) { const f = input[t]; if (f) this.withHuman(t, () => applyHuman(this, f, dt)); } }
       else if (this.humanTeam !== null && input) applyHuman(this, input, dt);
@@ -481,6 +483,7 @@ export class PlaySim {
       b.z = b.from.z + (qb.z - b.from.z) * k;
       b.y = b.from.y + (BALL_CARRY_HEIGHT - b.from.y) * k + Math.sin(k * Math.PI) * 0.3;
       if (k >= 1) {
+        if (b.trick) { lateralArrived(this, qb); return; }
         b.state = 'held';
         if (b.pitch) {
           b.pitch = false;

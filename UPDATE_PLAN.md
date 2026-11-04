@@ -10,8 +10,8 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] A3 CPU clock management: no spike-then-punt, end-of-half logic, kneel on end-zone INT
 - [x] A4 FG distance whole yards rounded up everywhere ("53-yard attempt")
 - [x] A5 Clock display ticks smoothly (no 8:26 → 8:14 jumps), runoff visible
-- [ ] A6 Fake punts/FGs harder (defense reads them, contain)
-- [ ] A7 Hail Mary + trick plays folder (flea flicker, philly special-style, hook and ladder, laterals at end of game)
+- [x] A6 Fake punts/FGs harder (defense reads them, contain)
+- [x] A7 Hail Mary + trick plays folder (flea flicker, philly special-style, hook and ladder, laterals at end of game)
 - [ ] A8 FG block: MLB no free middle, longer kicks block more often, user edge rusher with X dive
 - [ ] A9 Juke rework (lateral cut, no backward loss, actually beats the defender)
 - [ ] A10 QB: no infinite scramble/hold (pressure collapses, sack), no guaranteed 5-yd QB runs, pressure hurts accuracy
@@ -25,8 +25,8 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [ ] A18 QB slide spot; fair catch shown as an action; hit stick (RS flick) high risk/high reward
 - [ ] A19 Pass rush improvements; weather effects on throwing
 - [ ] A20 Overtime = current NFL rules (regular season: both possess, 10 min; playoffs)
-- [ ] A21 Coach suggestions match the situation; recent plays tab; more plays
-- [ ] A22 Catch buttons A secure / X run after / Y aggressive
+- [x] A21 Coach suggestions match the situation; recent plays tab; more plays
+- [x] A22 Catch buttons A secure / X run after / Y aggressive
 
 ## Phase B — menus
 - [ ] B1 Remove all outlines (panels, logos, selection box) everywhere; slider focus visible
@@ -70,3 +70,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   visibly between plays; CPU waits 5-7.5 s at the line vs a human defense; no-huddle keeps personnel, not right after the
   two-minute warning; timeouts send both teams back to the play call; both bumpers = timeout; Match.callTimeout now
   returns true (icing and CPU timeout rest never fired before).
+- A6, A7, A21, A22 (commit 2): fakes read by the return/block unit (contain, jammers on gunners, spy; tools/fakes.js);
+  sim/tricks.js: laterals (LB as a carrier, CPU last-gasp), Hail Mary, flea flicker, hook and ladder, throwback,
+  swap special (QB catches), WR reverse in a "Trick Plays" folder; defenses don't fall for the same trick twice;
+  suggestions skip runs in a no-timeout drill; Recent tab; catch buttons A secure / X run after / Y aggressive.

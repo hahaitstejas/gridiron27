@@ -1,3 +1,4 @@
+import { lateral, lateralTarget } from './tricks.js';
 import { startThrow } from './passing.js';
 import { startMove } from './tackling.js';
 import { passRushMove } from './blocking.js';
@@ -65,7 +66,7 @@ export function applyHuman(sim, inp, dt) {
 
   const b = sim.ball;
   const hasBall = b.state === 'held' && b.carrier === p.id;
-  const isPasser = hasBall && p.slot === 'QB' && p.team === sim.offIdx && !sim.passThrown && !sim.qbCrossed && sim.offPlay.type === 'pass' && sim.possTeam === sim.offIdx;
+  const isPasser = hasBall && (p.slot === 'QB' || p.trickPasser) && p.team === sim.offIdx && !sim.passThrown && !sim.qbCrossed && sim.offPlay.type === 'pass' && sim.possTeam === sim.offIdx;
 
   if (isPasser && b.state === 'held') {
     handlePassing(sim, p, inp);
@@ -76,9 +77,9 @@ export function applyHuman(sim, inp, dt) {
     return;
   }
   if (onOffense) {
-    // Ball in the air to my receiver: pick a catch type (Y aggressive, X run after catch, B possession).
+    // Ball in the air to my receiver: pick a catch type (A secure / possession, X run after catch, Y aggressive).
     if (b.state === 'air' && b.intended === p.id) {
-      const type = inp.pressed.Y ? 'aggressive' : inp.pressed.X ? 'rac' : inp.pressed.B ? 'possession' : null;
+      const type = inp.pressed.Y ? 'aggressive' : inp.pressed.X ? 'rac' : inp.pressed.A || inp.pressed.B ? 'possession' : null;
       if (type && b.catchType !== type) { b.catchType = type; sim.emit('catchType', { player: p.id, kind: type }); }
     }
     return;
@@ -114,6 +115,8 @@ function handlePassing(sim, qb, inp) {
 function handleCarrier(sim, p, inp, cam) {
   p.protect = !!inp.down.RB;
   if (p.task?.option && inp.pressed.LB && sim.pitchOption()) return; // speed option pitch
+  // LB: lateral to the best teammate level with or behind you (last-gasp plays, hook and ladders).
+  if (inp.pressed.LB && !p.task?.option) { const to = lateralTarget(sim, p); if (to && lateral(sim, p, to, 'run')) return; }
   const isQB = p.slot === 'QB';
   if (inp.pressed.A) startMove(sim, p, 'stiffarm');
   else if (inp.pressed.B) startMove(sim, p, 'spin');

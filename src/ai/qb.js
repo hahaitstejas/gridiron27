@@ -57,6 +57,9 @@ function routeDeveloped(sim, r) {
 
 export function qbDecide(sim, qb, dt) {
   if (sim.passThrown || sim.pendingThrow || sim.qbCrossed) return;
+  // A trick play's script runs first (the flea flicker's pitch back, the double pass's lateral).
+  const tr = sim.offPlay.trick;
+  if (tr && (tr.type === 'flea' || tr.type === 'double') && !sim.trickReady) return;
   if ((qb._decT = (qb._decT || 0) - dt) > 0) return;
   qb._decT = 0.1;
   const t = sim.t;
@@ -66,7 +69,7 @@ export function qbDecide(sim, qb, dt) {
   // Finish the drop before reading (unless the rush forces an early throw).
   if ((t < 0.55 || task.phase === 'drop') && pressure < 0.7) return;
 
-  const order = (sim.offPlay.read || []).map((s) => sim.bySlot(sim.offIdx, s)).filter(Boolean);
+  const order = (sim.offPlay.read || []).map((s) => sim.bySlot(sim.offIdx, s)).filter((r) => r && r !== qb);
   for (const p of sim.players) if (p.team === sim.offIdx && p.task?.type === 'route' && !order.includes(p)) order.push(p);
   const readTime = 0.5 - awr * 0.0025;
   const seen = Math.max(1, Math.floor((t - 0.6) / readTime) + 1);

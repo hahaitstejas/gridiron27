@@ -3,6 +3,7 @@ import { UNIFORM_NAMES } from '../data/uniforms.js';
 import { passerRating } from '../game/boxscore.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
+import { faceImg } from './faces.js';
 import { logoCanvas } from '../render/logo.js';
 import { teamRatings } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
@@ -84,8 +85,9 @@ function featuredCard(teams) {
     <path d="M82 6 Q100 22 118 6" fill="none" stroke="${c.secondary}" stroke-width="8"/>
     <text x="100" y="${p.last.length > 9 ? 62 : 64}" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="800" font-size="${p.last.length > 9 ? 17 : 21}" fill="${c.secondary}" letter-spacing="2">${p.last.toUpperCase()}</text>
     <text x="100" y="168" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="96" fill="${c.secondary}" stroke="${c.accent || '#fff'}" stroke-width="2">${p.number}</text></svg>`;
+  const face = faceImg(p, 'mm-face');
   return el('div.mm-feature', {}, el('div.mm-jersey-wrap', { html: jersey }),
-    el('div.mm-player', {}, el('small', { text: `${p.pos} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
+    el('div.mm-player', {}, ...(face ? [face] : []), el('small', { text: `${p.pos} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
       el('div.mm-ovr', {}, el('b', { text: String(p.ovr) }), el('small', { text: 'OVR' }))));
 }
 
@@ -113,7 +115,7 @@ export function alphaOrder(teams) {
 /** A team's star players: the best few with their traits (the "X-factor" look, our own names). */
 function starPanel(t) {
   const stars = [...t.roster].map((p) => ({ p, tr: traitsOf(p) })).sort((a, b) => (b.tr.length - a.tr.length) || (b.p.ovr - a.p.ovr)).slice(0, 6);
-  return el('div.ts-stars', {}, ...stars.map(({ p, tr }) => el('div.ts-star', {}, el('b', { text: `${p.pos} ${p.first[0]}. ${p.last}` }), el('span', { text: `${p.ovr} OVR` }),
+  return el('div.ts-stars', {}, ...stars.map(({ p, tr }) => el('div.ts-star', {}, ...[faceImg(p, 'ts-face')].filter(Boolean), el('b', { text: `${p.pos} ${p.first[0]}. ${p.last}` }), el('span', { text: `${p.ovr} OVR` }),
     el('small', { text: tr.length ? tr.map((id) => TRAITS[id].name).join(', ') : '—' }))));
 }
 
@@ -605,7 +607,7 @@ export class Screens {
     add('Restart', onRestart);
     add(game?.practice ? 'Quit Practice' : 'Quit', onQuit);
     const qb = (q, t, right) => el(`div.pz-qb${right ? '.right' : ''}`, {},
-      el('div.pz-head', {}, el('div.pz-name', {}, el('small', { text: q ? `#${q.number}` : '' }), el('b', { html: q ? `${q.first.toUpperCase()}<br>${q.last.toUpperCase()}` : '' })),
+      el('div.pz-head', {}, ...[q && faceImg(q, 'pz-face')].filter(Boolean), el('div.pz-name', {}, el('small', { text: q ? `#${q.number}` : '' }), el('b', { html: q ? `${q.first.toUpperCase()}<br>${q.last.toUpperCase()}` : '' })),
         el('div.pz-logo', {}, logoCanvas(t.logo, 110))),
       el('div.pz-stats', {}, statRing(q ? +q.comp : 0, q ? q.comp : '0.0', 'COMP%', 170),
         el('div.pz-nums', {}, ...[['YDS', q?.yds ?? 0], ['TD', q?.td ?? 0], ['INT', q?.int ?? 0], ['RATING', q?.rating ?? '0.0']]
@@ -639,7 +641,7 @@ export class Screens {
       const st = qbOf(team), p = st && pl(team, st.rid), t = m.teams[team];
       const comp = st?.passAtt ? (100 * st.passCmp) / st.passAtt : 0;
       return el(`div.pg-qb${right ? '.right' : ''}`, {},
-        el('div.pg-qbhead', {}, el('div.pz-name', {}, el('small', { text: p ? `#${p.number}` : '' }), el('b', { html: p ? `${p.first.toUpperCase()}<br>${p.last.toUpperCase()}` : '—' })),
+        el('div.pg-qbhead', {}, ...[p && faceImg(p, 'pz-face small')].filter(Boolean), el('div.pz-name', {}, el('small', { text: p ? `#${p.number}` : '' }), el('b', { html: p ? `${p.first.toUpperCase()}<br>${p.last.toUpperCase()}` : '—' })),
           el('div.pg-logo.small', {}, logoCanvas(t.logo, 56))),
         el('div.pg-qbstats', {}, statRing(comp, comp.toFixed(1), 'COMP%', 104),
           el('div.pz-nums', {}, ...[['YDS', Math.round(st?.passYds || 0)], ['TD', st?.passTD || 0], ['INT', st?.int || 0], ['RTG', st ? passerRating(st).toFixed(1) : '0.0']]

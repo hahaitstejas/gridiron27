@@ -37,7 +37,7 @@ export function toCSV(objs, header) {
   return [header.join(','), ...objs.map((o) => header.map((h) => esc(o[h])).join(','))].join('\n') + '\n';
 }
 
-const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp'];
+const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp', 'face'];
 const POS_ALIAS = { RB: 'HB', LB: 'OLB', ILB: 'MLB', NB: 'CB', S: 'FS', OT: 'T', OG: 'G', EDGE: 'DE', NT: 'DT', PK: 'K',
   // Depth-chart slot names work as positions too.
   LT: 'T', RT: 'T', LG: 'G', RG: 'G', LE: 'DE', RE: 'DE', LOLB: 'OLB', ROLB: 'OLB', SAM: 'OLB', WILL: 'OLB', MIKE: 'MLB' };
@@ -60,6 +60,9 @@ function playerFromRow(row, pos, rng) {
   if (row.height) p.height = +row.height;
   if (row.weight) p.weight = +row.weight;
   if (row.college) p.college = row.college;
+  // Optional face photo: a file in public/local/faces/, a web link or a data URL (ui/faces.js).
+  const face = (row.face ?? row.photo ?? row.headshot ?? row.FACE ?? '').trim();
+  if (face) p.face = face;
   const num = parseInt(row.number, 10);
   if (Number.isFinite(num) && num >= 0 && num <= 99) p.number = num;
   // Contract columns (so year-one free agency is right): salary in $M, years left, or the year the deal expires.
@@ -145,7 +148,9 @@ export function exportRosterCSV(teams) {
   for (const t of teams) for (const p of t.roster) {
     const o = { team: t.abbr, first: p.first, last: p.last, pos: p.pos, number: p.number, age: p.age, height: p.height, weight: p.weight, college: p.college,
       // Salary in whole dollars (60000000), like a real cap sheet; imports take dollars or $M.
-      salary: p.salary ? Math.round(p.salary * 1e6) : '', years: p.years ?? '', exp: p.proYears ?? '' };
+      salary: p.salary ? Math.round(p.salary * 1e6) : '', years: p.years ?? '', exp: p.proYears ?? '',
+      // Uploaded photos (data URLs) are too big for a spreadsheet cell: only file names / links are written.
+      face: p.face && !/^data:/i.test(p.face) ? p.face : '' };
     for (const [key, code] of RATINGS) o[code] = p.ratings[key];
     o.OVR = overall(p);
     rows.push(o);

@@ -1,3 +1,4 @@
+import { faceImg } from './faces.js';
 import { fgDistance } from '../sim/kicking.js';
 import { DRILLS } from '../game/drills.js';
 import { crowdNoise } from '../game/penalties.js';
@@ -235,6 +236,8 @@ export class Hud {
       who.innerHTML = `<b></b><span></span>`;
       who.querySelector('b').textContent = `#${l.number} ${l.name}`;
       who.querySelector('span').textContent = `${t.abbr} ${l.pos}`;
+      const face = faceImg(t.roster?.find((q) => q.id === l.rid));
+      if (face) { face.classList.add('sc-face'); row.appendChild(face); }
       const line = document.createElement('div');
       line.className = 'sc-line';
       line.textContent = l.line;

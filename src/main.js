@@ -541,7 +541,7 @@ function pauseInfo(s) {
     if (!p) return null;
     const st = m.stats.players[`${t}:${p.id}`] || {};
     const comp = st.passAtt ? ((100 * st.passCmp) / st.passAtt).toFixed(1) : '0.0';
-    return { first: p.first, last: p.last, number: p.number, comp, yds: Math.round(st.passYds || 0), td: st.passTD || 0, int: st.int || 0,
+    return { first: p.first, last: p.last, number: p.number, face: p.face, comp, yds: Math.round(st.passYds || 0), td: st.passTD || 0, int: st.int || 0,
       att: st.passAtt || 0, cmp: st.passCmp || 0, rating: passerRating({ passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, ...st }).toFixed(1) };
   });
   const mode = s.franchiseGame ? 'Franchise' : s.tournamentGame ? 'Tournament' : s.scenario ? 'Scenario' : s.drill ? 'Skills Drill' : 'Play Now';

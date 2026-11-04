@@ -606,7 +606,7 @@ export function playStatLines(m, r, sim) {
     const s = m.stats.players[`${p.team}:${p.rid}`];
     if (!s) return;
     const line = fmt(s).filter(Boolean).join(' · ');
-    if (line) out.push({ id, team: p.team, name: p.name, number: p.number, pos: p.pos, line });
+    if (line) out.push({ id, rid: p.rid, team: p.team, name: p.name, number: p.number, pos: p.pos, line });
   };
   const td = (n) => (n ? `${n} TD` : '');
   const passLine = (s) => [`${s.passCmp}/${s.passAtt}`, `${Math.round(s.passYds)} YDS`, td(s.passTD), s.int ? `${s.int} INT` : ''];

@@ -322,3 +322,21 @@ describe('mod packs', () => {
     expect(bad.errors[0]).toMatch(/unknown formation/);
   });
 });
+
+describe('face photos', () => {
+  it('reads an optional face column and writes file names / links back out (not uploaded data)', async () => {
+    const { parseCSV, importRosterRows, exportRosterCSV } = await import('../src/data/csv.js');
+    const teams = generateLeagueRosters(defaultTeams(), 5);
+    const abbr = teams[3].abbr;
+    const csv = `team,first,last,pos,face\n${abbr},Ava,Stone,QB,stone.png\n${abbr},Bo,Reed,WR,https://example.org/reed.jpg\n${abbr},Cy,Lane,HB,\n`;
+    importRosterRows(teams, parseCSV(csv));
+    const by = (l) => teams[3].roster.find((p) => p.last === l);
+    expect(by('Stone').face).toBe('stone.png');
+    expect(by('Reed').face).toBe('https://example.org/reed.jpg');
+    expect(by('Lane').face).toBeUndefined();
+    by('Lane').face = 'data:image/jpeg;base64,AAAA';
+    const rows = parseCSV(exportRosterCSV([teams[3]]));
+    expect(rows.find((r) => r.last === 'Stone').face).toBe('stone.png');
+    expect(rows.find((r) => r.last === 'Lane').face).toBe('');
+  });
+});

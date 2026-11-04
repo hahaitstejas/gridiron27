@@ -670,7 +670,7 @@ BOS,Marcus,Hale,QB,12,27,75,221,Granite U,72,75,70,58,80,40,60,50,90,85,30,30,30
 `team` = team abbreviation; `pos` ∈ QB HB FB WR TE T G C DE DT OLB MLB CB FS SS K P (aliases accepted: RB→HB,
 LB→OLB, ILB→MLB, NB→CB, S→FS, OT→T, OG→G, EDGE→DE, NT→DT, and the depth slot names LT/RT→T,
 LG/RG→G, LE/RE→DE, LOLB/ROLB→OLB); height in inches, weight in lbs. Only `team`,
-`first`, `last`, `pos` are required. An optional `OVR` column sets the displayed overall (exports include it). Blank/missing ratings use the position template; blank `number` keeps
+`first`, `last`, `pos` are required. An optional `OVR` column sets the displayed overall (exports include it). An optional `face` column (also `photo` / `headshot`) gives a face photo: a file name in `public/local/faces/` (git-ignored), a web link, or a data URL (`ui/faces.js` `faceSrc` / `faceImg`; the roster editor can upload one, stored as a 160 px JPEG in the save; exports write only names / links). Shown next to the name on the main-menu featured player, the post-play stat card, the roster player card, the pause / post-game QB panels and Star Players. Blank/missing ratings use the position template; blank `number` keeps
 or auto-assigns a number. A file may list just a few players: each one replaces the best generated player
 at that position and is **pinned** to the top of the depth chart in file order (e.g. list CBs as
 CB1, CB2, nickel, CB4). Implemented in `src/data/csv.js` (`parseCSV`, `importRosterRows`, `exportRosterCSV`).

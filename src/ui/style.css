@@ -1012,3 +1012,15 @@ body:has(.pg-screen:not(.hidden)) #scorebug, body:has(.pg-screen:not(.hidden)) #
 /* Route drawer (1.2) */
 .rd-wrap { display: flex; justify-content: center; margin: 8px 0; }
 .rd-canvas { width: min(520px, 90vw); height: auto; border: 1px solid rgba(255,255,255,0.4); cursor: crosshair; }
+
+/* Player face photos (ui/faces.js): round headshots next to the name, only when a player has one. */
+img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; background: #1a1a1a; border: 2px solid #fff; flex: none; }
+.sc-row:has(.sc-face) { display: flex; align-items: center; gap: 8px; }
+.sc-face { width: 44px; height: 44px; border-width: 1px; order: -1; }
+.mm-face { width: 120px; height: 120px; display: block; margin: 0 0 10px; }
+.pc-head { display: flex; align-items: center; gap: 16px; }
+.pc-head h1 { margin: 0; }
+.pc-face { width: 84px; height: 84px; }
+.pz-face { width: 92px; height: 92px; }
+.pz-face.small { width: 56px; height: 56px; }
+.ts-face { width: 36px; height: 36px; float: left; margin-right: 8px; border-width: 1px; }

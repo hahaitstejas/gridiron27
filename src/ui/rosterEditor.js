@@ -1,6 +1,8 @@
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { numberAllowed } from '../data/positions.js';
 import { el } from './nav.js';
+import { faceImg, shrinkFace } from './faces.js';
+import { pickFile, loadImage } from '../data/storage.js';
 import { RATINGS, POSITIONS, overall } from '../data/positions.js';
 import { generatePlayer } from '../data/generator.js';
 import { addPlayer, releasePlayer, tradePlayer, changePosition } from '../data/rosterOps.js';
@@ -79,6 +81,7 @@ export function playerCard(ctx, ti, id, focus = 0) {
     traitEl.innerHTML = traitsOf(p).map((t) => `<i title="${TRAITS[t].desc}">★ ${TRAITS[t].name}</i>`).join('');
   };
   const changed = () => { refresh(); ctx.onChange(); };
+  const action = (label, fn) => { const r = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); r.activate = fn; return r; };
 
   const row = (label, get, spin, type) => {
     const val = el('span.opt-val');
@@ -121,6 +124,21 @@ export function playerCard(ctx, ti, id, focus = 0) {
     }),
     num('Weight (lbs)', 'weight', 150, 400, 5),
     text('College', 'college', 32),
+    // Face photo: a file in public/local/faces/ or a web link (typed), or an uploaded picture (A on the next row).
+    row('Face photo', () => (!p.face ? 'none' : /^data:/i.test(p.face) ? 'uploaded' : p.face.length > 22 ? `${p.face.slice(0, 20)}…` : p.face), (d, v) => {
+      if (v !== undefined) { if (v.trim()) p.face = v.trim(); else delete p.face; }
+      else if (d) delete p.face;
+      setTimeout(() => playerCard(ctx, ti, id, screens.nav.index), 0);
+    }),
+    action('Upload a face photo…', async () => {
+      const f = await pickFile('image/*', true);
+      if (!f) return;
+      const img = await loadImage(f.data);
+      if (!img) { window.alert("That file couldn't be read as an image."); return; }
+      p.face = shrinkFace(img);
+      ctx.onChange();
+      playerCard(ctx, ti, id, screens.nav.index);
+    }),
     // Appearance (the 3D player): skin tone, visor, towel, arm sleeves.
     row('Skin tone', () => `${(p.skin ?? 2) + 1} of 6`, (d) => { p.skin = ((p.skin ?? 2) + d + 6) % 6; }),
     ...[['Visor', 'visor', ['auto', 'none', 'dark', 'gold', 'clear']], ['Towel', 'towel', ['auto', 'yes', 'no']], ['Arm sleeves', 'sleeves', ['none', 'white', 'black', 'team']]]
@@ -149,8 +167,9 @@ export function playerCard(ctx, ti, id, focus = 0) {
   const done = el('div.start-btn', { text: 'Done' });
   done.activate = () => rosterScreen(ctx, ti);
   const all = [...rows, trade, release, done];
+  const face = faceImg(p, 'pc-face');
   screens.frame('depth-screen',
-    titleEl,
+    face ? el('div.pc-head', {}, face, titleEl) : titleEl,
     el('div.league-status', {}, subEl, ovrEl, traitEl),
     el('div.setup-opts.card-opts', {}, all),
     el('div.setup-help', { html: '◀▶ change (hold to repeat) &nbsp; <b class="btn A">A</b> type a value &nbsp; <b class="btn B">B</b> back' }));

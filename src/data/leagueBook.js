@@ -45,7 +45,7 @@ export function splitLeagueBook(text) {
  */
 export function exportLeagueBook(teams, { playAs = null, sites = null, schedule = null, freeAgents = null } = {}) {
   // Free agents: the plain roster columns (no overall or contract: they get a deal when they sign).
-  const faHead = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1])];
+  const faHead = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'face'];
   const fa = toCSV(freeAgents?.length ? parseCSV(exportRosterCSV([{ abbr: 'FA', roster: freeAgents }])) : [], faHead);
   const sec = {
     TEAMS: exportTeamsCSV(teams, playAs),

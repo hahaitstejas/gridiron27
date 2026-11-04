@@ -14,8 +14,9 @@ import { makeConditions } from '../game/weather.js';
 import { addNews, gameNews, checkGameRecords, checkSeasonRecords, giveAwards } from './extras.js';
 import { healWeek, weeklyHealth, cpuInjuredReserve, unavailableIds, injuryLine } from './health.js';
 import { updateMorale, developmentTick } from './development.js';
-import { revertElevations, cpuElevations } from './practiceSquad.js';
-import { cpuSignFreeAgents } from './freeAgents.js';
+import { revertElevations, cpuElevations, release as releaseToWaivers, processWaivers, waiverOrder, resetPSSeason } from './practiceSquad.js';
+import { cpuSignFreeAgents, addFreeAgent } from './freeAgents.js';
+import { fits } from './contracts.js';
 import { awardCareerGame } from './career.js';
 
 export const FRANCHISE_VERSION = 1;
@@ -80,6 +81,14 @@ export function upgradeFranchise(f, teams) {
   f.recordsSince ??= f.year;
   f.awards ||= {};
   if (!f.freeAgents) seedFreeAgents(f, f.seed);
+}
+
+/** A team released a player: young players go on waivers for a week, vested veterans straight to free agency. */
+export function releasedPlayer(f, teams, team, p) {
+  f.teamsIdx = (t) => teams.indexOf(t);
+  const to = releaseToWaivers(f, team, p, (q) => addFreeAgent(f, q));
+  delete f.teamsIdx;
+  return to;
 }
 
 /** Log a transaction (trade, signing, release) for the hub's Transactions screen. */
@@ -171,6 +180,13 @@ export function weekInBetween(f, teams) {
       addNews(f, `${t.abbr} ${p.pos} ${p.first} ${p.last} has asked to be traded`, 'trade');
     }
   });
+  // Waivers clear at the end of the week (worst record claims first; unclaimed players become free agents).
+  if (f.waivers?.length) {
+    const order = waiverOrder(f, standings(teams, f.schedule));
+    for (const w of processWaivers(f, teams, order, { fits: (t, sal) => fits(t, sal, 0, f.cap), toFreeAgency: (p) => addFreeAgent(f, p) })) {
+      if (w.to !== null) logTransaction(f, `${teams[w.to].abbr} claim ${w.p.pos} ${w.p.first} ${w.p.last} off waivers`);
+    }
+  }
   for (const mv of cpuSignFreeAgents(f, teams, rng)) {
     const t = teams[mv.team], p = mv.player;
     if (p.ovr >= 70) logTransaction(f, `${t.abbr} sign ${p.pos} ${p.first} ${p.last} (${p.ovr} OVR)${mv.released ? `; release ${mv.released.pos} ${mv.released.first} ${mv.released.last}` : ''}`);
@@ -278,6 +294,7 @@ export function startNextSeason(f, teams) {
   f.weeks = f.schedule.length;
   f.stats = {};
   f.playoffs = null;
+  resetPSSeason(teams);
   poolAfterOffseason(f, f.offseason?.pool); // the unsigned are next season's free agents
   f.offseason = null;
 }

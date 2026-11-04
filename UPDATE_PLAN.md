@@ -36,15 +36,15 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [ ] B5 Settings, training, every remaining old-style screen restyled
 - [x] B6 Teams alphabetical everywhere
 - [x] B7 Sortable stat columns (X sorts), COMP% in passing, targets + catch% in receiving
-- [ ] B8 Franchise hub: a few boxes that open sub-menus
+- [x] B8 Franchise hub: a few boxes that open sub-menus
 - [ ] B9 Depth chart "play the backups" button
 
 ## Phase C — franchise realism
-- [ ] C1 17-game NFL schedule formula only; schedule CSV import; primetime + kickoff times, short weeks, holidays, international games
-- [ ] C2 Injuries: realistic rate, specific injuries, questionable/out during games, severity after, re-injury risk choice, IR
-- [ ] C3 Practice squad, waivers, elevations
-- [ ] C4 Weekly progression (in-season growth), morale (temporary rating effect), trade demands
-- [ ] C5 CPU signs free agents; +500 generated FAs option; 300 UDFAs each season
+- [x] C1 17-game NFL schedule formula only; schedule CSV import; primetime + kickoff times, short weeks, holidays, international games
+- [x] C2 Injuries: realistic rate, specific injuries, questionable/out during games, severity after, re-injury risk choice, IR
+- [x] C3 Practice squad, waivers, elevations
+- [x] C4 Weekly progression (in-season growth), morale (temporary rating effect), trade demands
+- [x] C5 CPU signs free agents; +500 generated FAs option; 300 UDFAs each season
 - [ ] C6 Trades: fix one-sided trade bug, trade block + offers, draft-pick trading, view roster/depth during trades/draft/resign
 - [ ] C7 Draft: better screen, draft class CSV import, scouting all year, compensatory picks
 - [ ] C8 Franchise tag, Pro Bowl / All-Pro teams (raise asks), league-wide player search, leaders highlight my players
@@ -91,3 +91,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   (highlight reel, score by quarter, score summary, team stats, restart); targets, CMP%, CTH%, FG% and sortable stat
   columns (◀▶ + X). New standalone franchise modules (wired in later): nflSchedule.js, health.js, practiceSquad.js,
   development.js.
+- commits 6-7: franchise schedule (nflSchedule.js), injuries (health.js), practice squad + waivers, development +
+  morale + trade requests, CPU in-season signings, +500 / 300 UDFA pools; hub = 4 boxes (Season, Team, Front Office,
+  League) with sub-menus; injury report with IR, practice squad, waiver wire, player search, game preview. TODO in C1:
+  schedule CSV import. TODO C8: leaders highlight.

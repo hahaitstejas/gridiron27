@@ -169,3 +169,19 @@ Phase G — modes and customization
 - [x] G5 Face / body options for created players; mod packs (JSON formations / plays / rules / uniforms)
 - [x] G6 One combined league spreadsheet: every CSV (teams, roster, depth, coaches, uniforms, stadiums, retired,
       schedule, free agents) in a single file with sections; import / export / public/local/league.csv
+
+## Update 2.0: Realism (graphics, animation, gameplay feel)
+Goal (user): features are solid; now make it look and move like a real broadcast game. All art stays original / procedural.
+- [ ] R1 Player bodies: one smooth skinned body per player (GPU skinning from a bone texture, instanced), muscled
+      profiles, jersey over shoulder pads, numbers / names printed on the jersey, fabric / helmet clearcoat materials,
+      better helmet + facemask cage + cleats; shadows skinned too.
+- [ ] R2 Field: realistic grass (blade noise, mowing stripes every 5 yds, normal / roughness), crisp painted lines, worn
+      areas between the hashes; higher-res texture with anisotropy.
+- [ ] R3 Lighting + post: softer shadows, contact shadows under players, bloom on lights, broadcast color grade, SMAA;
+      adaptive quality.
+- [ ] R4 Camera: broadcast default behind the offense, lower and tighter (like a TV game), smooth framing of the play.
+- [ ] R5 Animation: real stances (3-point, 2-point WR split, QB under center / gun, RB), gait with lean and arm pump by
+      speed, accel / decel / cut lean, QB drop steps + throwing motion, blocking engagements (hands inside, leverage),
+      wrap tackles, catches, backpedal / turn and run for DBs, foot planting (less sliding).
+- [ ] R6 Stadium + crowd: people-shaped crowd with variety and motion, stadium tiers / ribbon boards / sideline detail.
+- [ ] R7 Gameplay feel: momentum, turning radius at speed, plant-and-cut, collision reactions.

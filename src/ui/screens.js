@@ -1,3 +1,5 @@
+import { passerRating } from '../game/boxscore.js';
+import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
 import { logoCanvas } from '../render/logo.js';
 import { teamRatings } from '../data/positions.js';
@@ -86,6 +88,33 @@ function featuredCard(teams) {
 }
 
 /** A line-art controller with a label (Team Select / Controller Select). */
+/**
+ * A ring that fills with a percentage (full circle = 100%, empty = 0%): SVG arc from 12 o'clock, clockwise,
+ * the value in the middle. Used for completion % on the pause and post-game screens.
+ */
+export function statRing(pct, label, sub, size = 140) {
+  const r = 44, c = 2 * Math.PI * r, k = Math.max(0, Math.min(100, pct)) / 100;
+  const d = el('div.ring', { style: { width: `${size}px`, height: `${size}px` } });
+  d.innerHTML = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,0.14)" stroke-width="6"/>`
+    + `<circle cx="50" cy="50" r="${r}" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="butt" stroke-dasharray="${(c * k).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 50 50)"/></svg>`
+    + `<div class="ring-in"><b>${label}</b><small>${sub}</small></div>`;
+  return d;
+}
+
+const clockShort = (c) => `${Math.floor(c / 60)}:${String(Math.floor(c % 60)).padStart(2, '0')}`;
+
+/** Team indexes sorted by city + name (every team list in the game uses this order). */
+export function alphaOrder(teams) {
+  return teams.map((t, i) => i).sort((a, b) => `${teams[a].city} ${teams[a].name}`.localeCompare(`${teams[b].city} ${teams[b].name}`));
+}
+
+/** A team's star players: the best few with their traits (the "X-factor" look, our own names). */
+function starPanel(t) {
+  const stars = [...t.roster].map((p) => ({ p, tr: traitsOf(p) })).sort((a, b) => (b.tr.length - a.tr.length) || (b.p.ovr - a.p.ovr)).slice(0, 6);
+  return el('div.ts-stars', {}, ...stars.map(({ p, tr }) => el('div.ts-star', {}, el('b', { text: `${p.pos} ${p.first[0]}. ${p.last}` }), el('span', { text: `${p.ovr} OVR` }),
+    el('small', { text: tr.length ? tr.map((id) => TRAITS[id].name).join(', ') : '—' }))));
+}
+
 function padIcon(label) {
   return el('div.ts-pad', { html: `${ICONS.pad}<small>${label}</small>` });
 }
@@ -158,40 +187,151 @@ export class Screens {
    * Quick Play, step 1 — Team Select: the two teams (◀▶ change the focused one) and the controllers (◀▶ move yours
    * to a side: left = away, middle = watch, right = home, or both for two players). A goes on to Game Settings.
    */
-  playNow(teams, prefs, { onStart, onBack }, p = { ...prefs }) {
+  /**
+   * Quick Play, step 1 — Team Select. Every connected controller is an icon under the two teams: ◀▶ moves it to the
+   * away side, the middle (watch) or the home side; ▲▼ changes the team on your side (alphabetical), LT picks a random
+   * one; A opens your side's menu (Ready, Star Players, Advanced Settings, Uniforms). When everyone on a side is ready
+   * the game settings come up. Player 2 joins by pressing A on a second controller. Driven by `this.custom` (main.js
+   * hands it both controllers' frames) instead of the usual focus navigation.
+   */
+  playNow(teams, prefs, { onStart, onBack, p2 = null }, p = { ...prefs }) {
+    const order = alphaOrder(teams);
+    p.coin ||= 'receive';
+    p.styles ||= ['balanced', 'balanced'];
+    p.uniforms ||= ['home', 'away'];
+    // Controller columns: 0 = away, 1 = middle (watch), 2 = home.
+    const st = this._ts || (this._ts = { cols: [p.side === 'away' ? 0 : p.side === 'home' || p.side === '2p' ? 2 : 1, p.side === '2p' ? 0 : 1], ready: [false, false], menu: null, held: [null, null] });
+    st.ready = [false, false]; st.menu = null;
+    const sideKey = (col) => (col === 0 ? 'away' : 'home');
     const box = (key, label) => {
-      const it = el('div.ts-team');
-      const draw = () => {
+      const it = el(`div.ts-team.${key}`);
+      it.draw = () => {
         const t = teams[p[key]];
         const r = teamRatings(t);
         it.innerHTML = '';
-        it.append(el('div.ts-side', { text: label }), el('div.ts-logo', {}, logoCanvas(t.logo, 200)),
+        it.append(el('div.ts-side', { text: label }), el('div.ts-logo.gloss', {}, logoCanvas(t.logo, 200)),
           el(`div.ts-card.${key}`, {}, el('div.ts-ovr', {}, el('b', { text: String(r.ovr) }), el('small', { text: 'OVR' })),
             el('div.ts-name', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() })),
             el('div.ts-sub', { text: `OFF ${r.off} · DEF ${r.def}` })));
       };
-      it.spin = (d) => { p[key] = (p[key] + d + teams.length) % teams.length; if (p.home === p.away) p[key] = (p[key] + d + teams.length) % teams.length; draw(); };
-      it.activate = () => this.gameSettings(teams, p, { onStart, onBack: () => this.playNow(teams, prefs, { onStart, onBack }, p) });
-      draw();
+      it.draw();
       return it;
     };
     const away = box('away', 'AWAY'), home = box('home', 'HOME');
-    const SIDES = ['away', 'cpu', 'home', '2p'];
     const pads = el('div.ts-pads');
-    pads.spin = (d) => { p.side = SIDES[(SIDES.indexOf(p.side) + d + SIDES.length) % SIDES.length]; drawPads(); };
-    pads.activate = away.activate;
-    const drawPads = () => {
-      const col = (n) => el(`div.ts-padcol${n === 1 ? '.mid' : ''}`, {}, ...(
-        p.side === '2p' ? (n === 0 ? [padIcon('P2')] : n === 2 ? [padIcon('P1')] : [])
-          : (n === SIDES.indexOf(p.side) ? [padIcon('P1')] : [])));
+    const menuHost = el('div.ts-menuhost');
+    const note = el('div.ts-padnote');
+    const players = () => [0, ...(p2?.() ? [1] : [])];
+    const draw = () => {
+      away.draw(); home.draw();
       pads.innerHTML = '';
-      pads.append(col(0), col(1), col(2), el('div.ts-padnote', { text: p.side === 'cpu' ? 'Watch: CPU vs CPU' : p.side === '2p' ? 'Two players: P1 home, P2 away' : `You play ${p.side === 'home' ? 'home' : 'away'}` }));
+      for (let c = 0; c < 3; c++) {
+        pads.append(el(`div.ts-padcol${c === 1 ? '.mid' : ''}`, {}, ...players().filter((i) => st.cols[i] === c).map((i) => {
+          const d = padIcon(`P${i + 1}${c !== 1 && st.ready[i] ? ' ✓' : ''}`);
+          if (c !== 1 && st.ready[i]) d.classList.add('ready');
+          return d;
+        })));
+      }
+      const onSide = players().filter((i) => st.cols[i] !== 1);
+      note.textContent = !onSide.length ? 'Watch: CPU vs CPU' : onSide.length === 2 ? 'Two players, head to head' : `P${onSide[0] + 1} plays the ${sideKey(st.cols[onSide[0]])} team`;
+      pads.append(note);
+      menuHost.innerHTML = '';
+      if (st.menu) {
+        const m = st.menu;
+        const items = sideMenu(m.player);
+        const panel = el(`div.ts-menu.${sideKey(st.cols[m.player])}`, {}, ...items.map((x, i) => el(`div.ts-mi${i === m.idx ? '.on' : ''}`, { text: x.label })));
+        if (m.sub) panel.append(el('div.ts-sub-panel', {}, m.sub));
+        menuHost.append(panel);
+      }
     };
-    drawPads();
+    const step = (key, d) => {
+      const i = order.indexOf(p[key]);
+      p[key] = order[(i + d + order.length) % order.length];
+      if (p.home === p.away) p[key] = order[(order.indexOf(p[key]) + d + order.length) % order.length];
+    };
+    const random = (key) => {
+      const other = key === 'home' ? p.away : p.home;
+      const pool = order.filter((i) => i !== other);
+      p[key] = pool[Math.floor(Math.random() * pool.length)];
+    };
+    const sideIdx = (player) => (st.cols[player] === 2 ? 0 : 1); // team index in the game: 0 home, 1 away
+    const STYLES = ['balanced', 'power', 'spread', 'westcoast', 'airraid'];
+    const STYLE_NAMES = { balanced: 'Balanced', power: 'Power run', spread: 'Spread', westcoast: 'West Coast', airraid: 'Air Raid' };
+    const COIN = { receive: 'Receive', defer: 'Defer (kick, ball 2nd half)', kick: 'Kick' };
+    const UNI = { home: 'Home', away: 'Away', alt: 'Alternate' };
+    const sideMenu = (player) => {
+      const ti = sideIdx(player), key = sideKey(st.cols[player]);
+      return [
+        { label: 'READY', go: () => { st.ready[player] = true; st.menu = null; } },
+        { label: 'Star Players', go: () => { st.menu.sub = starPanel(teams[p[key]]); } },
+        { label: `Playbook: ${STYLE_NAMES[p.styles[ti]]}`, spin: (d) => { p.styles[ti] = STYLES[(STYLES.indexOf(p.styles[ti]) + d + STYLES.length) % STYLES.length]; } },
+        { label: `Coin toss: ${COIN[p.coin]}`, spin: (d) => { const k = Object.keys(COIN); p.coin = k[(k.indexOf(p.coin) + d + k.length) % k.length]; } },
+        { label: `Uniform: ${UNI[p.uniforms[ti]]}`, spin: (d) => { const k = Object.keys(UNI); p.uniforms[ti] = k[(k.indexOf(p.uniforms[ti]) + d + k.length) % k.length]; } },
+      ];
+    };
+    const finish = () => {
+      const on = players().filter((i) => st.cols[i] !== 1);
+      p.side = !on.length ? 'cpu' : on.length === 2 ? '2p' : sideKey(st.cols[on[0]]);
+      p.p1Team = st.cols[0] === 2 ? 0 : 1; // 2 players: which game team (0 home / 1 away) player 1 has
+      this.custom = null;
+      this.gameSettings(teams, p, { onStart, onBack: () => this.playNow(teams, prefs, { onStart, onBack, p2 }, p) });
+    };
+    const dirOf = (f, i) => {
+      let d = null;
+      if (f.down.Left || f.lx < -0.6) d = 'l'; else if (f.down.Right || f.lx > 0.6) d = 'r';
+      else if (f.down.Up || f.ly < -0.6) d = 'u'; else if (f.down.Down || f.ly > 0.6) d = 'd';
+      const fresh = d !== st.held[i];
+      st.held[i] = d;
+      return fresh ? d : null;
+    };
     this.frame('mono-screen ts-screen', el('h1', { text: 'Team Select' }),
-      el('div.ts-row', {}, away, el('div.ts-at', { text: '@' }), home), pads,
-      el('div.setup-help', { html: '▲▼ Teams / controllers &nbsp; ◀▶ Change &nbsp; <b class="btn A">A</b> Next: game settings &nbsp; <b class="btn B">B</b> Back' }));
-    this.nav.set([away, home, pads], { columns: 1, onBack, index: 2 });
+      el('div.ts-row', {}, away, el('div.ts-at', { text: '@' }), home), pads, menuHost,
+      el('div.setup-help', { html: '<b class="btn LS">◀▶</b> Move your controller &nbsp; <b class="btn LS">▲▼</b> Change team (in the middle: away · LB/RB home) &nbsp; <b class="btn LT">LT</b> Random team &nbsp; <b class="btn A">A</b> Side menu / Ready &nbsp; <b class="btn B">B</b> Back' }));
+    this.nav.set([]);
+    draw();
+    this.custom = (frames) => {
+      let changed = false;
+      for (const i of players()) {
+        const f = frames[i];
+        if (!f) continue;
+        const d = dirOf(f, i);
+        if (st.menu && st.menu.player === i) {
+          const items = sideMenu(i);
+          if (d === 'u') { st.menu.idx = (st.menu.idx + items.length - 1) % items.length; st.menu.sub = null; changed = true; }
+          else if (d === 'd') { st.menu.idx = (st.menu.idx + 1) % items.length; st.menu.sub = null; changed = true; }
+          else if ((d === 'l' || d === 'r') && items[st.menu.idx].spin) { items[st.menu.idx].spin(d === 'r' ? 1 : -1); changed = true; }
+          else if (f.pressed.A) { const it = items[st.menu.idx]; if (it.go) it.go(); else it.spin(1); changed = true; }
+          else if (f.pressed.B) { st.menu = null; changed = true; }
+          continue;
+        }
+        if (d === 'l' || d === 'r') {
+          const to = Math.max(0, Math.min(2, st.cols[i] + (d === 'r' ? 1 : -1)));
+          // One player per side (head to head); player 2 can't play alone (player 1's controller runs the game).
+          const taken = to !== 1 && players().some((j) => j !== i && st.cols[j] === to);
+          if (!taken) { st.cols[i] = to; st.ready[i] = false; changed = true; }
+        } else if (d === 'u' || d === 'd') {
+          step(st.cols[i] === 1 ? 'away' : sideKey(st.cols[i]), d === 'd' ? 1 : -1); st.ready = [false, false]; changed = true;
+        }
+        if (st.cols[i] === 1 && (f.pressed.LB || f.pressed.RB)) { step('home', f.pressed.RB ? 1 : -1); changed = true; }
+        if (f.pressed.LT || (f.lt > 0.6 && !st.ltHeld?.[i])) {
+          if (st.cols[i] === 1) { random('away'); random('home'); } else random(sideKey(st.cols[i]));
+          st.ready = [false, false]; changed = true;
+        }
+        (st.ltHeld ||= [false, false])[i] = f.lt > 0.6;
+        if (f.pressed.A) {
+          if (st.cols[i] === 1) { if (i === 0 && players().every((j) => st.cols[j] === 1 || st.ready[j])) { finish(); return; } }
+          else { st.menu = { player: i, idx: 0, sub: null }; changed = true; }
+        }
+        if (f.pressed.B && i === 0) {
+          if (st.ready[0]) { st.ready[0] = false; changed = true; }
+          else { this.custom = null; this._ts = null; onBack(); return; }
+        }
+      }
+      // Everyone on a side is ready (player 1 must be on a side or have pressed A in the middle).
+      const on = players().filter((i) => st.cols[i] !== 1);
+      if (on.length && on.every((i) => st.ready[i]) && !(players().includes(1) && st.cols[1] !== 1 && st.cols[0] === 1)) { finish(); return; }
+      if (changed) draw();
+    };
   }
 
   /** Quick Play, step 2 — Game Settings: quarter length, clock, difficulty, stadium, weather, time of day. */
@@ -457,8 +597,10 @@ export class Screens {
     const qb = (q, t, right) => el(`div.pz-qb${right ? '.right' : ''}`, {},
       el('div.pz-head', {}, el('div.pz-name', {}, el('small', { text: q ? `#${q.number}` : '' }), el('b', { html: q ? `${q.first.toUpperCase()}<br>${q.last.toUpperCase()}` : '' })),
         el('div.pz-logo', {}, logoCanvas(t.logo, 110))),
-      el('div.pz-stats', {}, el('div.pz-ring', {}, el('b', { text: q ? q.comp : '0.0' }), el('small', { text: 'COMP%' })),
-        el('div.pz-nums', {}, el('b', { text: String(q?.yds ?? 0) }), el('small', { text: 'YDS' }), el('b', { text: String(q?.td ?? 0) }), el('small', { text: 'TDS' }))));
+      el('div.pz-stats', {}, statRing(q ? +q.comp : 0, q ? q.comp : '0.0', 'COMP%', 170),
+        el('div.pz-nums', {}, ...[['YDS', q?.yds ?? 0], ['TD', q?.td ?? 0], ['INT', q?.int ?? 0], ['RATING', q?.rating ?? '0.0']]
+          .map(([k, v]) => el('div.pz-num', {}, el('b', { text: String(v) }), el('small', { text: k }))))),
+      el('div.pz-line', { text: q ? `${q.cmp}/${q.att} passing` : '' }));
     const title = game?.practice ? 'Practice' : game?.mode || 'Play Now';
     this.frame('mono-screen pz-screen', el('h1', { text: title }),
       el('div.pz-main', {}, el('div.pz-list', {}, items),
@@ -469,50 +611,88 @@ export class Screens {
   }
 
   /** Final box score; `halftime: true` makes it the halftime report (no player of the game, Start 2nd Half). */
-  gameOver(session, { onDone, onStats, doneLabel = 'Main Menu', halftime = false }) {
+  /**
+   * Post-game (and halftime) screen, after the user's mockup: a menu on the left (Finish Game, View Highlights, Player
+   * Stats, Team Stats, Score Summary, Restart), the final score with both logos, each team's quarterback with a
+   * completion ring, the top rusher / receiver / defender for each side, and the score by quarter. The right-hand
+   * panel switches between the quarter chart, team stats and the scoring summary.
+   */
+  gameOver(session, { onDone, onStats, onHighlights = null, onRestart = null, doneLabel = 'Finish Game', halftime = false }, panel = 'quarters') {
     const m = session.match;
     const [h, a] = m.teams;
     const S = m.stats.team;
-    const row = (label, f) => `<tr><td>${f(S[1])}</td><th>${label}</th><td>${f(S[0])}</td></tr>`;
-    const table = `<table class="box">
-      <tr><td><b>${a.abbr}</b></td><th></th><td><b>${h.abbr}</b></td></tr>
-      ${row('First downs', (s) => s.firstDowns)}
-      ${row('Total yards', (s) => Math.round(s.yards))}
-      ${row('Passing', (s) => `${s.passCmp}/${s.passAtt}, ${Math.round(s.passYds)}`)}
-      ${row('Rushing', (s) => `${s.rushAtt}-${Math.round(s.rushYds)}`)}
-      ${row('3rd down', (s) => `${s.thirdConv}/${s.thirdAtt}`)}
-      ${row('Sacks allowed', (s) => s.sacks)}
-      ${row('Turnovers', (s) => s.turnovers)}
-      ${row('Penalties', (s) => `${s.penalties}-${s.penYds}`)}
-    </table>`;
-    // Top performers.
-    const name = (team, rid) => { const p = m.teams[team].roster.find((x) => x.id === rid); return p ? `${p.first[0]}. ${p.last}` : '?'; };
     const ps = Object.values(m.stats.players);
-    const best = (k) => ps.filter((x) => x[k] > 0).sort((x, y) => y[k] - x[k])[0];
-    const pass = best('passYds'), rush = best('rushYds'), rec = best('recYds'), tk = best('tackles');
-    const lead = [
-      pass && `Passing: ${name(pass.team, pass.rid)} ${pass.passCmp}/${pass.passAtt}, ${Math.round(pass.passYds)} yds, ${pass.passTD} TD, ${pass.int} INT`,
-      rush && `Rushing: ${name(rush.team, rush.rid)} ${rush.rushAtt} car, ${Math.round(rush.rushYds)} yds, ${rush.rushTD} TD`,
-      rec && `Receiving: ${name(rec.team, rec.rid)} ${rec.rec} rec, ${Math.round(rec.recYds)} yds, ${rec.recTD} TD`,
-      tk && `Defense: ${name(tk.team, tk.rid)} ${tk.tackles} tackles${tk.sacks ? `, ${tk.sacks} sack${tk.sacks > 1 ? 's' : ''}` : ''}`,
+    const pl = (team, rid) => m.teams[team].roster.find((x) => x.id === rid);
+    const top = (team, k) => ps.filter((x) => x.team === team && x[k] > 0).sort((x, y) => y[k] - x[k])[0];
+    const qbOf = (team) => ps.filter((x) => x.team === team && x.passAtt > 0).sort((x, y) => y.passAtt - x.passAtt)[0];
+    const qbCard = (team, right) => {
+      const st = qbOf(team), p = st && pl(team, st.rid), t = m.teams[team];
+      const comp = st?.passAtt ? (100 * st.passCmp) / st.passAtt : 0;
+      return el(`div.pg-qb${right ? '.right' : ''}`, {},
+        el('div.pg-qbhead', {}, el('div.pz-name', {}, el('small', { text: p ? `#${p.number}` : '' }), el('b', { html: p ? `${p.first.toUpperCase()}<br>${p.last.toUpperCase()}` : '—' })),
+          el('div.pg-logo.small', {}, logoCanvas(t.logo, 84))),
+        el('div.pg-qbstats', {}, statRing(comp, comp.toFixed(1), 'COMP%', 130),
+          el('div.pz-nums', {}, ...[['YDS', Math.round(st?.passYds || 0)], ['TD', st?.passTD || 0], ['INT', st?.int || 0], ['RTG', st ? passerRating(st).toFixed(1) : '0.0']]
+            .map(([k, v]) => el('div.pz-num', {}, el('b', { text: String(v) }), el('small', { text: k }))))));
+    };
+    const leaders = (team) => {
+      const rows = [['RUSH', top(team, 'rushYds'), (x) => `${x.rushAtt} car · ${Math.round(x.rushYds)} yds${x.rushTD ? ` · ${x.rushTD} TD` : ''}`],
+        ['REC', top(team, 'recYds'), (x) => `${x.rec} rec · ${Math.round(x.recYds)} yds${x.recTD ? ` · ${x.recTD} TD` : ''}`],
+        ['DEF', ps.filter((x) => x.team === team).sort((x, y) => (y.tackles + y.sacks * 3 + y.defInt * 4) - (x.tackles + x.sacks * 3 + x.defInt * 4))[0], (x) => [x.tackles ? `${x.tackles} tkl` : '', x.sacks ? `${x.sacks} sack` : '', x.defInt ? `${x.defInt} INT` : ''].filter(Boolean).join(' · ') || '—']];
+      return el('div.pg-leaders', {}, ...rows.map(([k, x, f]) => { const p = x && pl(team, x.rid); return el('div.pg-lead', {}, el('small', { text: k }), el('b', { text: p ? `${p.first[0]}. ${p.last}` : '—' }), el('span', { text: x ? f(x) : '' })); }));
+    };
+    // Right panel.
+    const quarters = () => {
+      const bq = m.byQuarter || [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]];
+      const nq = m.quarter >= 5 || bq[0][4] || bq[1][4] ? 5 : 4;
+      const cum = [0, 1].map((t) => { let c = 0; return bq[t].slice(0, nq).map((v) => (c += v)); });
+      const max = Math.max(7, ...cum[0], ...cum[1]);
+      const W = 300, H = 150, x = (i) => 24 + (i * (W - 40)) / (nq - 1 || 1), y = (v) => H - 18 - (v / max) * (H - 34);
+      const line = (t, dash) => `<polyline fill="none" stroke="#fff" stroke-width="${t ? 2 : 3}" ${dash ? 'stroke-dasharray="5 4"' : ''} points="${cum[t].map((v, i) => `${x(i)},${y(v)}`).join(' ')}"/>`
+        + cum[t].map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${t ? '#000' : '#fff'}" stroke="#fff" stroke-width="2"/>`).join('');
+      const labels = Array.from({ length: nq }, (_, i) => `<text x="${x(i)}" y="${H - 2}" fill="#999" font-size="11" text-anchor="middle">${i < 4 ? `Q${i + 1}` : 'OT'}</text>`).join('');
+      const chart = el('div.pg-chart', { html: `<svg viewBox="0 0 ${W} ${H}">${labels}${line(1, true)}${line(0, false)}</svg>` });
+      const tbl = el('table.pg-qtable', { html: `<tr><th></th>${Array.from({ length: nq }, (_, i) => `<th>${i < 4 ? i + 1 : 'OT'}</th>`).join('')}<th>T</th></tr>`
+        + [1, 0].map((t) => `<tr><td>${m.teams[t].abbr} ${t ? '- - -' : '———'}</td>${bq[t].slice(0, nq).map((v) => `<td>${v}</td>`).join('')}<td><b>${m.score[t]}</b></td></tr>`).join('') });
+      return el('div.pg-panel', {}, el('div.pg-ptitle', { text: 'SCORE BY QUARTER' }), chart, tbl);
+    };
+    const teamStats = () => {
+      const row = (label, f) => `<tr><td>${f(S[1])}</td><th>${label}</th><td>${f(S[0])}</td></tr>`;
+      return el('div.pg-panel', {}, el('div.pg-ptitle', { text: 'TEAM STATS' }), el('table.box', { html: `<tr><td><b>${a.abbr}</b></td><th></th><td><b>${h.abbr}</b></td></tr>
+        ${row('First downs', (x) => x.firstDowns)}${row('Total yards', (x) => Math.round(x.yards))}${row('Passing', (x) => `${x.passCmp}/${x.passAtt}, ${Math.round(x.passYds)}`)}
+        ${row('Rushing', (x) => `${x.rushAtt}-${Math.round(x.rushYds)}`)}${row('3rd down', (x) => `${x.thirdConv}/${x.thirdAtt}`)}${row('Sacks allowed', (x) => x.sacks)}
+        ${row('Turnovers', (x) => x.turnovers)}${row('Penalties', (x) => `${x.penalties}-${x.penYds}`)}` }));
+    };
+    const summary = () => el('div.pg-panel', {}, el('div.pg-ptitle', { text: 'SCORE SUMMARY' }),
+      el('div.pg-scoring', {}, ...(m.scoring || []).map((sc) => el('div.pg-sc', {}, el('small', { text: `${sc.q <= 4 ? `Q${sc.q}` : 'OT'} ${clockShort(sc.clock)}` }),
+        el('b', { text: m.teams[sc.team].abbr }), el('span', { text: sc.what }), el('em', { text: `${sc.score[1]}-${sc.score[0]}` }))),
+        !(m.scoring || []).length ? el('div.st-empty', { text: 'No points scored.' }) : null));
+    const right = panel === 'team' ? teamStats() : panel === 'summary' ? summary() : quarters();
+    const redo = (p) => this.gameOver(session, { onDone, onStats, onHighlights, onRestart, doneLabel, halftime }, p);
+    const item = (label, act) => { const it = el(`div.pz-item${act ? '' : '.disabled'}`, {}, el('span', { text: label })); it.activate = act || (() => {}); return it; };
+    const items = [
+      item(halftime ? 'Start 2nd Half' : doneLabel.toUpperCase(), onDone),
+      halftime ? null : item('View Highlights', onHighlights),
+      item('Player Stats', onStats),
+      item('Team Stats', () => redo('team')),
+      item('Score Summary', () => redo('summary')),
+      item('Score by Quarter', () => redo('quarters')),
+      halftime ? null : item('Restart', onRestart),
     ].filter(Boolean);
-    // Player of the game: the biggest stat line (same production score as career XP), a winner's player on ties.
-    const potg = ps.map((x) => ({ x, v: gameXP(x) + (x.team === m.winner ? 15 : 0) })).sort((p1, p2) => p2.v - p1.v)[0]?.x;
-    const potgP = potg && m.teams[potg.team].roster.find((x) => x.id === potg.rid);
-    const potgCard = potgP && !halftime ? el('div.potg', { style: { '--tc': m.teams[potg.team].colors.primary } },
-      el('small', { text: 'PLAYER OF THE GAME' }), el('b', { text: `#${potgP.number} ${potgP.first} ${potgP.last}` }),
-      el('span', { text: `${m.teams[potg.team].abbr} ${potgP.pos} · ${lineText(potg)}` })) : null;
-    const done = el('div.start-btn', { text: doneLabel });
-    done.activate = onDone;
-    const stats = el('div.start-btn.secondary', { text: 'Full Stats' });
-    stats.activate = onStats;
-    this.frame(halftime ? 'over-screen halftime-screen' : 'over-screen',
-      el('h1', { text: halftime ? 'Halftime' : 'Final' }),
-      el('div.final-score', {}, logoCanvas(a.logo, 90), el('div.fs', { text: `${a.abbr} ${m.score[1]}  –  ${m.score[0]} ${h.abbr}` }), logoCanvas(h.logo, 90)),
-      el('div.final-sub', { text: halftime ? 'First half leaders and team stats' : m.ot ? 'Overtime' : '' }),
-      potgCard,
-      el('div.final-cols', {}, el('div', { html: table }), el('ul.leaders', {}, lead.map((l) => el('li', { text: l })))),
-      el('div.over-buttons', {}, stats, done));
-    this.nav.set([stats, done], { columns: 2, onBack: halftime ? () => {} : onDone, index: 1 }); // halftime: only the button starts the 2nd half
+    this.frame(`mono-screen pg-screen${halftime ? ' halftime-screen' : ''}`, el('h1', { text: halftime ? 'Halftime' : 'Post Game' }),
+      el('div.pg-main', {},
+        el('div.pz-list', {}, items),
+        el('div.pg-center', {},
+          el('div.pg-score', {},
+            el('div.pg-team', {}, el('div.pg-logo', {}, logoCanvas(a.logo, 150)), el('small', { text: a.city.toUpperCase() }), el('b', { text: a.name.toUpperCase() })),
+            el('div.pg-num', {}, el('small', { text: halftime ? 'HALFTIME' : m.ot ? 'FINAL / OT' : 'FINAL' }), el('b', { text: `${m.score[1]}  -  ${m.score[0]}` })),
+            el('div.pg-team', {}, el('div.pg-logo', {}, logoCanvas(h.logo, 150)), el('small', { text: h.city.toUpperCase() }), el('b', { text: h.name.toUpperCase() }))),
+          el('div.pg-qbs', {}, qbCard(1, false), qbCard(0, true)),
+          el('div.pg-sub', { text: 'Top rusher, receiver and defender' }),
+          el('div.pg-leadrow', {}, leaders(1), leaders(0))),
+        right),
+      el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn A">A</b> Select' + (halftime ? '' : ' &nbsp; <b class="btn B">B</b> Finish') }));
+    const idx = panel === 'team' ? 3 : panel === 'summary' ? 4 : 0;
+    this.nav.set(items, { columns: 1, onBack: halftime ? () => {} : onDone, index: halftime ? Math.max(0, idx - 1) : idx });
   }
 }

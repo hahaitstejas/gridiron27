@@ -69,7 +69,8 @@ function teamLines(rng, side, mine, theirs, lines) {
   // Receiving: share of catches by depth spot, yards and TDs follow catches.
   const targets = [[at('WR', 0), 0.26], [at('WR', 1), 0.2], [at('TE', 0), 0.16], [at('WR', 2), 0.13], [at('HB', 0), 0.11], [at('TE', 1), 0.05], [at('HB', 1), 0.05], [at('WR', 3), 0.04]]
     .filter(([id]) => id !== undefined);
-  split(rng, targets, cmp, (id, n) => add(id, 'rec', n));
+  split(rng, targets, cmp, (id, n) => { add(id, 'rec', n); add(id, 'tgt', n); });
+  split(rng, targets, att - cmp, (id, n) => add(id, 'tgt', n)); // incompletions (targets = catches + these)
   split(rng, targets.map(([id, w]) => [id, w * (0.7 + ovr(id) / 250)]), passYds, (id, n) => add(id, 'recYds', n));
   split(rng, targets.map(([id, w]) => [id, id === at('HB', 0) ? w * 0.5 : w]), passTD, (id, n) => add(id, 'recTD', n));
   // Rushing.

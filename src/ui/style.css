@@ -810,3 +810,91 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .screen .htm-team, .screen .fr-save-logo, .screen .ps-team { background: none !important; }
 .screen > .logo-small { position: absolute; top: 18px; left: 26px; margin: 0; font: italic 600 26px var(--fd); color: #cfcfcf; letter-spacing: 1px; text-transform: uppercase; }
 .screen.menu-screen > .league-status { margin-top: 4px; color: #9a9a9a; }
+
+/* ---- Team Select: per-controller icons and the side menu (Update 1.0) ---- */
+/* (the screen is position: absolute, so the side menu positions against it) */
+.ts-pad.ready svg { stroke: #fff; fill: rgba(255,255,255,0.25); }
+.ts-menuhost { position: absolute; inset: 0; pointer-events: none; }
+.ts-menu { position: absolute; top: 24%; width: 330px; background: #0b0b0b; padding: 6px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 18px 50px rgba(0,0,0,0.8); pointer-events: auto; }
+.ts-menu.away { left: 26%; } .ts-menu.home { right: 6%; }
+.ts-mi { padding: 12px 18px; font: 500 22px var(--fd); text-align: center; color: #fff; background: #161616; }
+.ts-mi:first-child { font-style: italic; font-weight: 700; }
+.ts-mi.on { background: #fff; color: #000; }
+.ts-sub-panel { margin-top: 6px; }
+.ts-stars { display: flex; flex-direction: column; gap: 4px; }
+.ts-star { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 6px 10px; background: #121212; }
+.ts-star b { font: 600 16px var(--fd); } .ts-star span { font-size: 14px; color: #bbb; } .ts-star small { grid-column: 1 / -1; color: #9a9a9a; font-size: 13px; }
+
+/* ---- Update 1.0: no outlines anywhere in the menus (the user's call). Flat dark panels separate things; the focused
+   item is solid white with black text and no border. Dividers inside cards and the button glyphs stay. ---- */
+.screen, .screen * { outline: none !important; }
+.screen *:not(.btn):not(.ts-ovr):not(.pz-ring):not(.ring) { border-color: transparent !important; }
+.screen .setup-help, .screen .hub-foot { border-top-color: transparent !important; }
+.screen .panel, .screen .hub-tile, .screen .menu-item, .screen .opt-row, .screen .fr-tile, .screen .pz-item, .screen .mm-tab,
+.screen .ts-card, .screen .gs-box, .screen .st-table, .screen .roster-row { background: rgba(255, 255, 255, 0.055) !important; }
+.screen .nav-item.focused, .screen .nav-item.focused * { border-color: transparent !important; }
+.screen .ts-logo, .screen .mm-league, .screen .pz-logo, .screen .mm-feature { background: transparent !important; }
+.mm-tabs { gap: 4px; } .pz-list { gap: 3px; }
+/* Sliders: the track and knob stay visible on the white focus row. */
+.screen .nav-item.focused .slider-track, .screen .nav-item.focused .sl-track { background: rgba(0, 0, 0, 0.25) !important; }
+.screen .nav-item.focused .slider-fill, .screen .nav-item.focused .sl-fill, .screen .nav-item.focused .slider-knob, .screen .nav-item.focused .sl-knob { background: #000 !important; }
+.screen .nav-item.focused .sl-bar { background: rgba(0, 0, 0, 0.22) !important; }
+.screen .nav-item.focused .sl-bar i { background: #000 !important; }
+
+/* ---- Pause: bigger, fills the screen (Update 1.0) ---- */
+.ring { position: relative; flex: none; }
+.ring svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ring-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-in b { font: 500 40px/1 var(--fd); } .ring-in small { font-size: 13px; letter-spacing: 2px; color: #bbb; margin-top: 4px; }
+.screen.pz-screen { padding-top: 90px; }
+.pz-main { width: min(1500px, 100%); gap: 4vw; }
+.pz-list { width: 330px; }
+.pz-item { padding: 11px 18px; font-size: 23px; }
+.pz-item small { font-size: 13px; }
+.pz-matchup { gap: 4vw; align-self: center; }
+.pz-logo { width: 176px; height: 176px; } .pz-logo canvas { width: 160px; height: 160px; }
+.pz-name small { font-size: 24px; } .pz-name b { font-size: 42px; }
+.pz-stats { gap: 30px; margin-top: 40px; }
+.pz-nums { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 26px; }
+.pz-num { display: flex; flex-direction: column; align-items: center; }
+.pz-num b { font: 500 42px/1 var(--fd); } .pz-num small { font-size: 13px; letter-spacing: 2px; color: #bbb; margin-top: 3px; }
+.pz-line { margin-top: 14px; color: #9a9a9a; font-size: 16px; letter-spacing: 1px; text-align: right; }
+.pz-qb.right .pz-line { text-align: left; }
+.pz-situation { font-size: 20px; margin-top: 30px; }
+.sort-h.cur { background: #fff; color: #000 !important; }
+.sort-h.sorted { font-weight: 700; }
+.st-num.sorted { color: #fff; font-weight: 700; }
+
+/* ---- Post-game (Update 1.0, after the user's mockup) ---- */
+.screen.pg-screen { justify-content: flex-start; padding: 80px 2.5vw 0; bottom: 58px; background: #000 !important; }
+.pg-main { display: flex; gap: 3vw; width: min(1600px, 100%); align-items: flex-start; }
+.pg-center { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 14px; min-width: 0; }
+.pg-score { display: flex; align-items: center; gap: 3vw; }
+.pg-team { display: flex; flex-direction: column; align-items: center; }
+.pg-team small { font-size: 13px; letter-spacing: 2px; color: #bbb; margin-top: 8px; } .pg-team b { font: italic 800 26px var(--fd); }
+.pg-logo canvas { width: 150px; height: 150px; } .pg-logo.small canvas { width: 84px; height: 84px; }
+.pg-num { display: flex; flex-direction: column; align-items: center; } .pg-num small { font-size: 13px; letter-spacing: 3px; color: #bbb; }
+.pg-num b { font: 500 92px/1 var(--fd); white-space: pre; }
+.pg-qbs { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; width: 100%; margin-top: 8px; }
+.pg-qbhead { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.pg-qb.right .pg-qbhead { flex-direction: row-reverse; justify-content: flex-end; }
+.pg-qb .pz-name b { font-size: 28px; } .pg-qb .pz-name small { font-size: 18px; }
+.pg-qb.right .pz-name { text-align: left; }
+.pg-qbstats { display: flex; align-items: center; justify-content: flex-end; gap: 20px; margin-top: 12px; }
+.pg-qb.right .pg-qbstats { flex-direction: row-reverse; justify-content: flex-end; }
+.pg-qbstats .ring-in b { font-size: 30px; }
+.pg-qbstats .pz-num b { font-size: 30px; }
+.pg-sub { color: #9a9a9a; letter-spacing: 1px; font-size: 15px; margin-top: 6px; }
+.pg-leadrow { display: grid; grid-template-columns: 1fr 1fr; gap: 3vw; width: 100%; }
+.pg-leaders { display: flex; flex-direction: column; gap: 4px; }
+.pg-lead { display: grid; grid-template-columns: 46px 1fr auto; gap: 10px; align-items: baseline; padding: 6px 12px; background: rgba(255,255,255,0.055); }
+.pg-lead small { color: #999; letter-spacing: 2px; font-size: 12px; } .pg-lead b { font: 600 18px var(--fd); } .pg-lead span { color: #ccc; font-size: 15px; }
+.pg-panel { width: 360px; flex: none; display: flex; flex-direction: column; gap: 10px; }
+.pg-ptitle { font: italic 800 22px var(--fd); letter-spacing: 1px; }
+.pg-chart { background: rgba(255,255,255,0.055); padding: 12px; } .pg-chart svg { width: 100%; height: auto; display: block; }
+.pg-qtable { width: 100%; border-collapse: collapse; font-size: 16px; } .pg-qtable th, .pg-qtable td { padding: 4px 6px; text-align: center; } .pg-qtable td:first-child { text-align: left; white-space: nowrap; color: #ccc; }
+.pg-scoring { display: flex; flex-direction: column; gap: 4px; max-height: 56vh; overflow: auto; }
+.pg-sc { display: grid; grid-template-columns: 70px 44px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 10px; background: rgba(255,255,255,0.055); font-size: 15px; }
+.pg-sc small { color: #999; } .pg-sc em { font-style: normal; font-weight: 700; }
+.pg-panel .box { width: 100%; }
+@media (max-width: 1200px) { .pg-main { flex-wrap: wrap; } .pg-panel { width: 100%; } }

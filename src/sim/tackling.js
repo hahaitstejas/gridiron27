@@ -103,7 +103,12 @@ export function updateMoves(sim, dt) {
         break;
       case 'dive':
       case 'slide':
-        if (m.t < 0.3) { p.desired.x = fx * p.maxSpeed; p.desired.z = fz * p.maxSpeed; }
+        // A slide sits down quickly (the ball is spotted where it began, so he shouldn't glide 4 yards past it).
+        if (m.t < 0.3) {
+          const k = m.type === 'slide' ? Math.max(0.15, 0.6 - m.t * 2) : 1;
+          p.desired.x = fx * p.maxSpeed * k; p.desired.z = fz * p.maxSpeed * k;
+          if (m.type === 'slide') { p.vx += (p.desired.x - p.vx) * Math.min(1, dt * 10); p.vz += (p.desired.z - p.vz) * Math.min(1, dt * 10); }
+        }
         else if (p.state === 'active' && sim.ball.carrier === p.id && sim.ball.state === 'held') {
           // Carrier gives himself up: down by contact with the ground.
           sim.tackleCarrier(p, null, 0);
@@ -195,7 +200,10 @@ export function attemptTackle(sim, d, c, air) {
     p = moveActive(d, 'tackle_dive') ? 0.05 : p + 0.08;
   }
   if (moveActive(d, 'tackle_dive')) p += 0.05;
-  if (moveActive(d, 'hitstick')) { p += 0.06; bigHit = true; }
+  // Hit stick: high risk, high reward. Lead with the shoulder instead of wrapping up: more whiffs, but the ones
+  // that land are big hits that jar the ball loose.
+  const stick = moveActive(d, 'hitstick');
+  if (stick) { p -= 0.16 - (sim.R(d, 'hitPower') - 70) * 0.002; bigHit = true; }
   if (moveActive(d, 'strip')) p -= 0.12;
   // Gang tackling.
   for (const o of sim.players) {
@@ -226,7 +234,7 @@ export function attemptTackle(sim, d, c, air) {
     d.vx = c.vx * 0.9 + (c.x - d.x) * 1.5; d.vz = c.vz * 0.9 + (c.z - d.z) * 1.5; // ...and lands on him
     if (bigHit) sim.emit('bigHit', { player: c.id, tackler: d.id });
     // Fumble? More likely on big hits and strip attempts, less when protecting the ball.
-    let pf = 0.008 + (sim.R(d, 'hitPower') - sim.R(c, 'carrying')) * 0.0005 + (bigHit ? 0.05 : 0) + (moveActive(d, 'strip') ? 0.12 : 0);
+    let pf = 0.008 + (sim.R(d, 'hitPower') - sim.R(c, 'carrying')) * 0.0005 + (bigHit ? 0.05 : 0) + (stick ? 0.1 + sim.R(d, 'hitPower') * 0.0008 : 0) + (moveActive(d, 'strip') ? 0.12 : 0);
     if (front < -0.2) pf += 0.01;
     if (c.protect) pf *= 0.3;
     pf *= 1 + 0.8 * sim.sl(c.team, 'fumbles');

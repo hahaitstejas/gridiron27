@@ -802,7 +802,16 @@ export class GameSession {
     }
     const scrimmage = m.phase === 'scrimmage';
     const quarter = m.quarter;
-    if (!this.fast) this.lastReplay = this.recorder.take();
+    if (!this.fast) {
+      this.lastReplay = this.recorder.take();
+      // Highlights for the post-game reel: scores, takeaways, big gains, sacks, blocked kicks.
+      const big = r.touchdown !== null && r.touchdown !== undefined ? 'Touchdown' : r.interception ? 'Interception' : r.fumbleLost ? 'Fumble'
+        : sim.kick?.blocked ? 'Blocked kick' : r.sack ? 'Sack' : !sim.isKick && r.yards >= 20 ? `${Math.round(r.yards)}-yard gain` : null;
+      if (big && this.lastReplay && m.phase !== 'try') {
+        (this.highlights ||= []).push({ replay: this.lastReplay, label: big, q: m.quarter, clock: m.clock, team: r.touchdown ?? r.offTeam });
+        if (this.highlights.length > 14) this.highlights.splice(this.highlights.findIndex((h) => !/Touchdown|Interception/.test(h.label)) >>> 0, 1);
+      }
+    }
     applyPlayFatigue(this.energy, sim, (r.duration || 5) * ((this.settings.sliders?.fatigue ?? 50) / 50));
     m.applyResult(r, sim, outcome && outcome.accepted ? outcome : null);
     if (m.quarter !== quarter) restAll(this.energy, m.quarter === 3 ? 1 : 0.2); // halftime / quarter break

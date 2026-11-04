@@ -8,8 +8,9 @@ export const TIMES = ['day', 'dusk', 'night'];
 // Rating penalties by weather (points off the 0-99 rating, see PlaySim.R).
 export const WEATHER_MODS = {
   clear: {},
-  rain: { catching: 6, carrying: 8, throwAccuracy: 3, kickAccuracy: 4 },
-  snow: { speed: 3, acceleration: 4, agility: 4, catching: 4, carrying: 4, kickPower: 4, throwAccuracy: 2 },
+  // A wet ball: harder to grip for passers and receivers alike (rain games average ~6% lower completion rates).
+  rain: { catching: 9, carrying: 9, throwAccuracy: 9, throwPower: 4, kickAccuracy: 5 },
+  snow: { speed: 3, acceleration: 4, agility: 5, catching: 6, carrying: 5, kickPower: 5, throwAccuracy: 5, throwPower: 3 },
 };
 
 /** Wind speed in mph (for display). */

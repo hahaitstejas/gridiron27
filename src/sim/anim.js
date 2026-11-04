@@ -30,6 +30,8 @@ export function updateAnimations(sim, dt) {
       else continue;
     }
     if (p.wantsBall && sim.ball.state === 'air' && sim.ball.T - sim.ball.t < 0.6) { setAnim(p, 'reach'); continue; }
+    // Fair catch: the returner waves one arm over his head while the punt is in the air.
+    if (p.fairCatch && sim.ball.state === 'kick' && sim.ball.T - sim.ball.t > 0.45) { setAnim(p, 'fair_catch'); continue; }
     if (p.task?.type === 'pass_block' && speed < 2.5) { setAnim(p, 'passset'); continue; }
     if (sim.state === 'dead' && sim.result?.touchdown === p.team && p.id === sim.result.carrierId) { setAnim(p, 'celebrate'); continue; }
     // Backpedal when moving opposite to facing.

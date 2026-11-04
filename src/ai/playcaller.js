@@ -56,6 +56,8 @@ export function kickerMaxFG(team, m = null, kickTeam = null, longShot = false) {
   return longShot ? z.max : z.comfort;
 }
 
+const clamp01 = (x) => Math.max(0.02, Math.min(0.95, x));
+
 /** Is this team in a two-minute drill (trailing late, or driving before the half)? */
 export function hurryUp(m, team) {
   if (!m.inTwoMinutes) return false;
@@ -116,11 +118,15 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   if (drill) run = m.timeouts[team] === 0 ? 0.02 : 0.1;
   if (q4 && lead > 0 && m.clock < 360) run = 0.75;
   if (q4 && lead < -8 && m.clock < 480) run *= 0.5;
+  // Playbook style (Team Select → Advanced: power runs more, spread and air raid throw more and quicker / deeper).
+  const style = m.settings?.styles?.[team];
+  if (style === 'power') run += 0.12; else if (style === 'spread') run -= 0.08; else if (style === 'airraid') run -= 0.14; else if (style === 'westcoast') run -= 0.04;
+  run = clamp01(run);
   const wantRun = rng.chance(run);
   return pickPlay(m, rng, {
     run: wantRun,
-    deep: !wantRun && (toGo >= 12 || (m.inTwoMinutes && lead < 0 && m.yardLine < 60)) && rng.chance(0.55),
-    quick: !wantRun && (toGo <= 5 || (m.down === 3 && toGo <= 7)) && rng.chance(0.6),
+    deep: !wantRun && (toGo >= 12 || style === 'airraid' || (m.inTwoMinutes && lead < 0 && m.yardLine < 60)) && rng.chance(style === 'airraid' ? 0.45 : 0.55),
+    quick: !wantRun && (toGo <= 5 || (m.down === 3 && toGo <= 7) || style === 'westcoast' || style === 'spread') && rng.chance(style === 'westcoast' ? 0.75 : 0.6),
     sideline: !wantRun && drill && m.timeouts[team] <= 1,
     goalLine: m.yardLine >= 97,
     shortYardage: toGo <= 1,

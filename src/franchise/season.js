@@ -3,7 +3,7 @@
 import { RNG } from '../core/rng.js';
 
 export const SEASON_LENGTHS = [6, 10, 17];
-export const STAT_FIELDS = ['passAtt', 'passCmp', 'passYds', 'passTD', 'int', 'rushAtt', 'rushYds', 'rushTD', 'rec', 'recYds', 'recTD',
+export const STAT_FIELDS = ['passAtt', 'passCmp', 'passYds', 'passTD', 'int', 'rushAtt', 'rushYds', 'rushTD', 'rec', 'tgt', 'recYds', 'recTD',
   'tackles', 'sacks', 'defInt', 'ff', 'fgAtt', 'fgMade', 'xpAtt', 'xpMade', 'punts', 'puntYds'];
 
 /**

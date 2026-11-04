@@ -1,3 +1,4 @@
+import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
 import { drawLogo } from './logo.js';
 
@@ -230,7 +231,9 @@ export class PlayerRenderer {
 
   /** Assign per-instance colors from team uniforms (once per play setup). */
   setColors(sim, teams) {
-    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}`).join(',') + teams.map((t) => t.colors.primary + t.colors.secondary + t.uniform.pants).join() + ':' + (this.extra?.length || 0);
+    const wear = this.wear || ['home', 'away'];
+    const unis = teams.map((t, k) => uniformFor(t, wear[k]));
+    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}`).join(',') + JSON.stringify(unis) + ':' + (this.extra?.length || 0);
     if (key === this.colorsKey) return;
     this.colorsKey = key;
     const P = this.parts;
@@ -257,11 +260,12 @@ export class PlayerRenderer {
     sim.players.forEach((p, i) => {
       const team = teams[p.team];
       const u = team.uniform;
-      // The away team wears white jerseys, like on TV.
-      const jersey = p.team === 1 ? '#f4f4f4' : pick(team, u.jersey);
-      const helmet = pick(team, u.helmet);
-      const pants = pick(team, u.pants);
-      const numColor = !isDark(jersey) && p.team === 1 ? team.colors.primary : isDark(jersey) ? (isDark(team.colors.secondary) ? '#ffffff' : team.colors.secondary) : (isDark(team.colors.primary) ? team.colors.primary : '#111111');
+      // Home / away (white, like on TV) / alternate sets from data/uniforms.js (editable per team).
+      const uni = unis[p.team];
+      const jersey = uni.jersey;
+      const helmet = uni.helmet || pick(team, u.helmet);
+      const pants = uni.pants;
+      const numColor = uni.number;
       const skin = SKIN[p.skin % SKIN.length];
       P.torso.setColorAt(i, c.set(jersey));
       P.pads.setColorAt(i, c.set(jersey).offsetHSL(0, 0, -0.03));
@@ -282,7 +286,7 @@ export class PlayerRenderer {
       for (let k = 0; k < 2; k++) {
         const j = i * 2 + k;
         P.thigh.setColorAt(j, c.set(pants));
-        P.shin.setColorAt(j, c.set(u.pants === 'white' ? team.colors.primary : '#f2f2f2'));
+        P.shin.setColorAt(j, c.set(!isDark(pants) ? team.colors.primary : '#f2f2f2'));
         P.shoe.setColorAt(j, c.set(i % 3 ? '#151515' : '#f0f0f0'));
         P.upper.setColorAt(j, c.set(jersey));
         P.fore.setColorAt(j, c.set(skin));
@@ -633,6 +637,13 @@ function computePose(p, time, sim) {
       pose.lean = 0.1 + k * 0.25;
       break;
     }
+    case 'fair_catch':
+      // One arm straight up, waving side to side; eyes on the ball.
+      if (sp > 1) runLegs(Math.min(0.6, run));
+      pose.arms[1].pitch = 3.05; pose.arms[1].elbow = 0.05; pose.arms[1].out = 0.25 + Math.sin(time * 9) * 0.35;
+      pose.arms[0].pitch = 0.5; pose.arms[0].elbow = 1.0;
+      pose.head = 0.45;
+      break;
     case 'reach':
     case 'swat':
       if (sp > 1) runLegs(Math.min(0.8, run));

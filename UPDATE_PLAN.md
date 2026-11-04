@@ -17,25 +17,25 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] A10 QB: no infinite scramble/hold (pressure collapses, sack), no guaranteed 5-yd QB runs, pressure hurts accuracy
 - [x] A11 Defender jumping the QB at the LOS (cheese 5-yd passes) — keep man coverage on the receiver
 - [x] A12 Deep zones out of bounds inside the 10 (clamp landmarks to the field of play)
-- [ ] A13 Kickoff: nobody moves early, offsides rule checked
+- [x] A13 Kickoff: nobody moves early, offsides rule checked
 - [x] A14 No huddle: same personnel; no huddle not allowed right after the two-minute warning
 - [x] A15 CPU snaps too fast after a huddle (give the human time)
 - [x] A16 After a timeout teams can repick the play
-- [ ] A17 Timeout button mapping (hold both bumpers), 2-player pause/timeouts, 2-player controller fix, hide play name in 2P
-- [ ] A18 QB slide spot; fair catch shown as an action; hit stick (RS flick) high risk/high reward
-- [ ] A19 Pass rush improvements; weather effects on throwing
-- [ ] A20 Overtime = current NFL rules (regular season: both possess, 10 min; playoffs)
+- [x] A17 Timeout button mapping (hold both bumpers), 2-player pause/timeouts, 2-player controller fix, hide play name in 2P
+- [x] A18 QB slide spot; fair catch shown as an action; hit stick (RS flick) high risk/high reward
+- [x] A19 Pass rush improvements; weather effects on throwing
+- [x] A20 Overtime = current NFL rules (regular season: both possess, 10 min; playoffs)
 - [x] A21 Coach suggestions match the situation; recent plays tab; more plays
 - [x] A22 Catch buttons A secure / X run after / Y aggressive
 
 ## Phase B — menus
-- [ ] B1 Remove all outlines (panels, logos, selection box) everywhere; slider focus visible
-- [ ] B2 Pause: bigger graphic, comp% ring, INT, QBR
-- [ ] B3 Post-game screen from the mockup (finish, highlights, player/team stats, score summary, restart, top players, score by quarter)
-- [ ] B4 Team select: LT random team, A → side menu (Ready, Traits, Advanced settings: playbook, coin toss; Edit uniforms)
+- [x] B1 Remove all outlines (panels, logos, selection box) everywhere; slider focus visible
+- [x] B2 Pause: bigger graphic, comp% ring, INT, QBR
+- [x] B3 Post-game screen from the mockup (finish, highlights, player/team stats, score summary, restart, top players, score by quarter)
+- [x] B4 Team select: LT random team, A → side menu (Ready, Traits, Advanced settings: playbook, coin toss; Edit uniforms)
 - [ ] B5 Settings, training, every remaining old-style screen restyled
-- [ ] B6 Teams alphabetical everywhere
-- [ ] B7 Sortable stat columns (X sorts), COMP% in passing, targets + catch% in receiving
+- [x] B6 Teams alphabetical everywhere
+- [x] B7 Sortable stat columns (X sorts), COMP% in passing, targets + catch% in receiving
 - [ ] B8 Franchise hub: a few boxes that open sub-menus
 - [ ] B9 Depth chart "play the backups" button
 
@@ -82,3 +82,12 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
   the defense plasters and sends extra rushers (hold-the-ball sack ~5 s); zone defenders react fast to a QB crossing;
   the CPU puts a spy on a human QB who keeps scrambling; pressure / fading away / getting hit ruin throws; nobody lines
   up past his own end line.
+- commit 5: kickoff players frozen until the ball lands (human too); slide spot; fair-catch arm wave; hit stick =
+  more whiffs, more fumbles; pass rush leverage for humans; rain/snow hurt throwing; OT: 15-min playoff periods with
+  3 timeouts, OT two-minute warning; Team Select rebuilt (each controller moves its own icon, ▲▼ alphabetical teams,
+  LT random, side menu: Ready / Star Players / Playbook style / Coin toss / Uniform), 2 players either side, menus
+  answer both pads, no play name shown in 2P; uniforms.js (home/away/alt); coin toss choice; playbook styles feed the
+  CPU caller; no outlines anywhere; pause screen bigger with comp% ring, INT, rating; post-game screen from the mockup
+  (highlight reel, score by quarter, score summary, team stats, restart); targets, CMP%, CTH%, FG% and sortable stat
+  columns (◀▶ + X). New standalone franchise modules (wired in later): nflSchedule.js, health.js, practiceSquad.js,
+  development.js.

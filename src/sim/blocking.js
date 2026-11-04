@@ -71,7 +71,7 @@ function updateEngagement(sim, e, dt) {
   for (const h of e.helpers) bPow += ((pass ? sim.R(h, 'passBlock') : sim.R(h, 'runBlock')) * 0.6 + sim.R(h, 'strength') * 0.4) * 0.55;
   // A user who keeps working (stick held) gets a little extra leverage.
   // Brick Wall linemen hold up in pass protection.
-  const diff = dPow - bPow + frontBonus(sim, d, pass) + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 3 : 0) - (pass && has(b, 'brickWall') ? 6 : 0);
+  const diff = dPow - bPow + frontBonus(sim, d, pass) + rng.gauss(0, 4) + (d.userActive && sim.isHumanControlled(d) ? 5 : 0) - (pass && has(b, 'brickWall') ? 6 : 0);
   e.bal = e.bal * 0.95 + diff * 0.05;
 
   // Where the defender wants to go.
@@ -135,6 +135,7 @@ function updateEngagement(sim, e, dt) {
   if (sim.kick && b.team === sim.offIdx && b.task?.type === 'pass_block' && !sim.kick.launched) rate *= 0.22;
   if (b.task?.type === 'escort') rate *= sim.kick ? 10 : 3; // open-field blocks don't hold long
   if (b.task?.type === 'kr_block') rate *= sim.ball.state === 'kick' ? (sim.kick?.type === 'punt' ? 2 : 3) : 8; // coverage fights through return blocks (vises hold gunners a bit longer)
+  if (pass && sim.isHumanControlled(d) && d.userActive) rate *= 1.25; // a human working his rush: a bit more push
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);
 }
 

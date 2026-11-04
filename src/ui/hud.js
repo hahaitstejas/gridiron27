@@ -246,7 +246,7 @@ export class Hud {
 
     const pre = session.state === 'presnap' && sim && sim.state === 'presnap' && !playcallOpen;
     const pn = this.$('playname');
-    pn.classList.toggle('hidden', !pre || session.humanTeam === null);
+    pn.classList.toggle('hidden', !pre || session.humanTeam === null || session.twoPlayer); // 2 players: don't show your call to the other guy
     if (pre && session.humanTeam !== null) {
       const human = session.humanSide;
       const play = human === 'offense' ? sim.offPlay : sim.defPlay;

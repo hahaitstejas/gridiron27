@@ -1,3 +1,4 @@
+import { passerRating } from './game/boxscore.js';
 // Bundled font (offline): Saira Condensed for every menu, HUD and canvas text.
 import { downText, yardLineText, clockText } from './game/match.js';
 import '@fontsource/saira-condensed/400.css';
@@ -73,8 +74,18 @@ else if (local?.rosterTeams?.length === 1) prefs.home = teams.findIndex((t) => t
 if (prefs.away === prefs.home) prefs.away = (prefs.home + 8) % 32;
 
 let input2 = null;
+/** Either controller's input as one frame (menus in a 2-player game: whoever paused can work them). */
+function mergeFrames(a, b) {
+  const big = (x, y) => (Math.abs(x) >= Math.abs(y) ? x : y);
+  const m = { ...a, lx: big(a.lx, b.lx), ly: big(a.ly, b.ly), rx: big(a.rx, b.rx), ry: big(a.ry, b.ry), lt: Math.max(a.lt, b.lt), rt: Math.max(a.rt, b.rt),
+    down: {}, pressed: {}, released: {}, held: {}, flick: {} };
+  for (const k of Object.keys(a.down)) { m.down[k] = a.down[k] || b.down[k]; m.pressed[k] = a.pressed[k] || b.pressed[k]; m.released[k] = a.released[k] || b.released[k]; m.held[k] = Math.max(a.held[k], b.held[k]); }
+  for (const k of Object.keys(a.flick)) m.flick[k] = a.flick[k] || b.flick[k];
+  return m;
+}
 const input = new InputManager({ other: () => input2?.padIndex ?? -1 });
 input2 = new InputManager({ keyboard: false, other: () => input.padIndex }); // player 2 (local 2-player)
+input2.claiming = true; // a second controller joins whenever its A is pressed (Team Select shows it)
 let p2Wait = null; // start callback waiting for player 2's controller
 const hud = new Hud(document.getElementById('hud'));
 // Canvas text (field numbers, end zones, jerseys, logos, video boards) is painted once: wait for the font first.
@@ -162,7 +173,7 @@ function toMenu() {
   hud.hideAll();
   playcall.hide();
   screens.mainMenu({
-    onPlayNow: () => screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu }),
+    onPlayNow: () => { screens._ts = null; screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu, p2: () => input2.connected }); },
     onPractice: showPractice,
     onLeague: () => league.menu(),
     onRosters: () => league.onRosters(),
@@ -187,8 +198,8 @@ function startGame(p, opts = {}) {
   // Local 2-player needs a second controller: ask player 2 to press A first.
   if (cfg.side === '2p' && !input2.connected) {
     input2.claiming = true;
-    screens.frame('menu-screen', el('div.logo-small', { html: '2 PLAYERS' }),
-      el('div.league-status', { text: 'Player 2: press A on the second controller (player 1 is home, player 2 is away)' }));
+    screens.frame('mono-screen', el('h1', { text: '2 Players' }),
+      el('div.league-status', { text: 'Player 2: press A on the second controller' }));
     screens.nav.set([], { onBack: () => { p2Wait = null; toMenu(); } });
     p2Wait = () => startGame(p, opts);
     return;
@@ -199,12 +210,16 @@ function startGame(p, opts = {}) {
   const conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
   session = new GameSession({
     teams: [home, away],
-    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast' },
+    settings: { quarterMinutes: cfg.quarterMinutes, accelClock: cfg.accelClock, difficulty: cfg.difficulty, penalties: opts.practice ? false : cfg.penalties, practice: opts.practice || null, drill: opts.drill || null, scenario: opts.scenario || null, noTies: !!opts.noTies, neutral: !!opts.neutral || (cfg.stadium === 'neutral' && !opts.franchise && !opts.tournament && !opts.practice && !opts.scenario), sliders: prefs.sliders, unavailable: opts.unavailable || null, weather: conditions, lockPlayer: opts.lockPlayer ?? null, playerCam: prefs.careerCam !== 'broadcast',
+      styles: !opts.franchise && cfg.styles ? [...cfg.styles] : null, coin: !opts.franchise ? cfg.coin || null : null, coinTeam: cfg.side === '2p' ? 'any' : cfg.side === 'home' ? 0 : cfg.side === 'away' ? 1 : null },
     humanTeam,
     humanTeams: cfg.side === '2p' ? [0, 1] : null,
     seed,
   });
   session.franchiseGame = opts.franchise || null;
+  session.p1Team = cfg.side === '2p' ? (cfg.p1Team ?? 0) : 0;
+  // Uniforms for this game (Team Select → side menu; franchise games: home / away).
+  renderer.players.wear = !opts.franchise && !opts.tournament && cfg.uniforms ? [...cfg.uniforms] : ['home', 'away'];
   session.drillPrefs = opts.drillPrefs || null;
   // Depth chart edits during a game (pause → Depth Chart) are for this game only: keep the saved charts to put back.
   session.depthSnapshot = session.teams.map((t) => JSON.parse(JSON.stringify(t.depth)));
@@ -247,11 +262,17 @@ function endIntro() {
   snapCam = false; // the game camera eases in from the last intro shot
 }
 
-function startReplay(auto = false) {
-  if (!session?.lastReplay) return;
-  const player = new ReplayPlayer(session.lastReplay);
+/**
+ * Instant replay of the last play, or (`reel`) a list of highlights played back to back: { items: [{ replay, label }],
+ * onEnd } (the post-game screen's View Highlights).
+ */
+function startReplay(auto = false, reel = null) {
+  const rec = reel ? reel.items[reel.i ?? 0]?.replay : session?.lastReplay;
+  if (!rec) { reel?.onEnd?.(); return; }
+  const player = new ReplayPlayer(rec);
   const dir = player.ghost.dir;
-  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true, auto, endT: 0, dir, angle: 0 };
+  replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true, auto: auto || !!reel, endT: 0, dir, angle: 0, reel };
+  if (reel) hud.ticker(`Highlight ${(reel.i ?? 0) + 1} of ${reel.items.length}: ${reel.items[reel.i ?? 0].label}`);
   app = 'replay';
   screens.clear();
   playcall.hide();
@@ -260,7 +281,16 @@ function startReplay(auto = false) {
   lastSim = null;
 }
 
-function endReplay() {
+function endReplay(skipAll = false) {
+  const reel = replay?.reel;
+  if (reel) {
+    reel.i = (reel.i ?? 0) + 1;
+    replay = null;
+    hud.replayView(null);
+    if (!skipAll && reel.i < reel.items.length) { startReplay(true, reel); return; }
+    reel.onEnd?.();
+    return;
+  }
   replay = null;
   hud.replayView(null);
   app = 'game';
@@ -280,6 +310,8 @@ const REPLAY_ANGLES = [
 function updateReplay(f, dt) {
   const r = replay;
   // An automatic replay gets out of the way as soon as you press anything (you're picking a play).
+  if (r.reel && (f.pressed.B || f.pressed.Menu)) { endReplay(true); return; } // leave the highlight reel
+  if (r.reel && f.pressed.A) { endReplay(); return; } // next highlight
   if (f.pressed.B || f.pressed.Menu || (r.auto && (f.pressed.A || f.pressed.X || f.pressed.Y))) { endReplay(); return; }
   if (f.pressed.A) r.playing = !r.playing;
   if (f.pressed.X) r.speed = r.speed < 1 ? 1 : 0.25;
@@ -354,7 +386,13 @@ function showFinal() {
   const g = session.franchiseGame, tg = session.tournamentGame;
   const done = g ? () => { const m = session.match, inj = session.injuries; leaveGame(); franchiseUI.recordPlayed(g, m, inj); }
     : tg ? () => { const m = session.match; leaveGame(); tournamentUI.recordPlayed(tg, m); } : toMenu;
-  screens.gameOver(session, { onDone: done, doneLabel: g ? 'Back to Franchise' : tg ? 'Back to the Bracket' : 'Main Menu', onStats: () => statsScreen(screens, session.match, { onBack: showFinal }) });
+  const hl = session.highlights || [];
+  screens.gameOver(session, {
+    onDone: done, doneLabel: g ? 'Finish Game' : tg ? 'Finish Game' : 'Finish Game',
+    onStats: () => statsScreen(screens, session.match, { onBack: showFinal }),
+    onHighlights: hl.length ? () => { app = 'replay'; startReplay(true, { items: hl, i: 0, onEnd: () => { app = 'over'; showFinal(); } }); } : null,
+    onRestart: !g && !tg && lastStart && !session.drill ? () => { const [p, o] = lastStart; leaveGame(); startGame(p, o); } : null,
+  });
 }
 
 /** Back to the menus from a game (no main menu: the caller shows the next screen). */
@@ -447,7 +485,8 @@ function pauseInfo(s) {
     if (!p) return null;
     const st = m.stats.players[`${t}:${p.id}`] || {};
     const comp = st.passAtt ? ((100 * st.passCmp) / st.passAtt).toFixed(1) : '0.0';
-    return { first: p.first, last: p.last, number: p.number, comp, yds: Math.round(st.passYds || 0), td: st.passTD || 0 };
+    return { first: p.first, last: p.last, number: p.number, comp, yds: Math.round(st.passYds || 0), td: st.passTD || 0, int: st.int || 0,
+      att: st.passAtt || 0, cmp: st.passCmp || 0, rating: passerRating({ passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, ...st }).toFixed(1) };
   });
   const mode = s.franchiseGame ? 'Franchise' : s.tournamentGame ? 'Tournament' : s.scenario ? 'Scenario' : s.drill ? 'Skills Drill' : 'Play Now';
   return { home, away, score: m.score, quarter: ord(m.quarter), clock: clockText(m.clock), down, practice: !!s.practice, accent: mine.colors.primary, qbs, mode };
@@ -512,6 +551,8 @@ function onSessionEvent(e) {
   else if (e.type === 'scenarioDone') hud.banner(e.success ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED', e.text, 2.4, e.success ? 'score' : 'miss');
   else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');
   else if (e.type === 'drillRep') hud.banner(`${e.pts > 0 ? '+' : ''}${e.pts}`, e.text, 1.6, e.pts > 0 ? 'score' : 'miss');
+  else if (e.type === 'fairCatchSignal') hud.banner('FAIR CATCH', 'The returner waves for a fair catch', 1.6, 'info');
+  else if (e.type === 'juked' && session.isHuman?.(session.sim?.players[e.by]?.team)) hud.ticker('Juked him!');
   else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');
   else if (e.type === 'gameOver') {
     app = 'over';
@@ -546,8 +587,13 @@ function frameBody(now) {
     if (f.pressed.A || f.pressed.Menu) toMenu();
     consumed = true;
   } else if (app === 'menu' || app === 'paused' || app === 'halftime' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
-    screens.extraButtons?.(f);
-    nav.update(f, dt);
+    // Team Select reads every controller itself; elsewhere in 2-player games either controller drives the menus.
+    if (screens.custom) screens.custom([f, input2.connected ? input2.frame : null], dt);
+    else {
+      const mf = session?.twoPlayer && input2.connected ? mergeFrames(f, input2.frame) : f;
+      screens.extraButtons?.(mf);
+      nav.update(mf, dt);
+    }
     consumed = true;
   } else if (app === 'intro' && intro) {
     updateIntro(f, dt);
@@ -572,8 +618,9 @@ function frameBody(now) {
     if (playcall.open && !session.needsHumanCall) playcall.hide();
     const pcOpen = playcall.open;
     // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
-    if (pcOpen) { playcall.update(two && session.humanTeam === 1 ? input2.frame : f, dt); }
-    const gameInput = two ? { perTeam: true, 0: f, 1: input2.frame } : f;
+    const p1 = session.p1Team ?? 0; // 2 players: the game team player 1 has (0 home, 1 away)
+    if (pcOpen) { playcall.update(two && session.humanTeam !== p1 ? input2.frame : f, dt); }
+    const gameInput = two ? { perTeam: true, [p1]: f, [1 - p1]: input2.frame } : f;
     // Career: snaps your player sits out run at 4x (the next one he's in comes up quickly).
     const sp = session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed;
     acc += dt * sp;

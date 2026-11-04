@@ -43,17 +43,24 @@ export class Match {
     this.endReason = null;
     this.pendingPeriodEnd = false;
     this.messages = [];
-    // Coin toss: winner takes the ball; the other team kicks off.
+    // Coin toss: the winner receives, defers (kicks now, receives the second half) or kicks (the other team gets the
+    // second-half choice and receives again). A human's pre-game choice (Team Select) applies when he wins it; the CPU
+    // defers, like most coaches.
     const winner = rng.chance(0.5) ? 0 : 1;
-    this.openingReceiver = winner;
-    this.possession = winner; // receiving team
-    this.kicker = 1 - winner;
-    this.say(`${this.teams[winner].name} win the toss and will receive.`, 'toss');
-    this.setupKickoff(1 - winner, KICKOFF_YL);
+    const human = this.settings.coinTeam === 'any' || this.settings.coinTeam === winner;
+    const choice = human && this.settings.coin ? this.settings.coin : 'defer';
+    const receiver = choice === 'receive' ? winner : 1 - winner;
+    this.openingReceiver = receiver;
+    this.secondHalfReceiver = choice === 'defer' ? winner : 1 - winner;
+    this.possession = receiver; // receiving team
+    this.kicker = 1 - receiver;
+    this.say(`${this.teams[winner].name} win the toss and ${choice === 'receive' ? 'will receive' : choice === 'defer' ? 'defer to the second half' : 'choose to kick'}.`, 'toss');
+    this.setupKickoff(1 - receiver, KICKOFF_YL);
     this.driveStart = null;
   }
 
-  periodLength() { return this.settings.quarterMinutes * 60 * (this.quarter > 4 ? 10 / 15 : 1); }
+  // Overtime (current NFL rules): 10 minutes in the regular season, full 15-minute periods in the playoffs.
+  periodLength() { return this.settings.quarterMinutes * 60 * (this.quarter > 4 && !this.settings.noTies ? 10 / 15 : 1); }
   say(text, kind = 'info') { this.messages.push({ text, kind, quarter: this.quarter, clock: this.clock }); }
   takeMessages() { const m = this.messages; this.messages = []; return m; }
 
@@ -142,7 +149,7 @@ export class Match {
     const before = this.clock;
     this.clock = Math.max(0, this.clock - dt);
     // Two-minute warning (2nd and 4th quarters).
-    if ((this.quarter === 2 || this.quarter === 4) && before > 120 && this.clock <= 120 && !this.twoMinWarned[this.quarter]) {
+    if ((this.quarter === 2 || this.quarter >= 4) && before > 120 && this.clock <= 120 && !this.twoMinWarned[this.quarter]) {
       this.twoMinWarned[this.quarter] = true;
       this.twoMinPending = true;
     }
@@ -152,7 +159,7 @@ export class Match {
   presnapRunoff(sec) {
     if (!this.clockRunning || this.over || sec <= 0) return 0;
     const before = this.clock;
-    const twoMinLine = (this.quarter === 2 || this.quarter === 4) && before > 120 && !this.twoMinWarned[this.quarter];
+    const twoMinLine = (this.quarter === 2 || this.quarter >= 4) && before > 120 && !this.twoMinWarned[this.quarter];
     this.tickClock(sec);
     if (twoMinLine && this.clock <= 120) {
       this.clock = 120;
@@ -367,6 +374,10 @@ export class Match {
   addScore(team, pts, what) {
     this.score[team] += pts;
     this.stats.team[team].points += pts;
+    // Scoring summary and the score by quarter (post-game screen).
+    const q = Math.min(this.quarter, 5);
+    ((this.byQuarter ||= [[0, 0, 0, 0, 0], [0, 0, 0, 0, 0]])[team])[q - 1] += pts;
+    (this.scoring ||= []).push({ q: this.quarter, clock: this.clock, team, pts, what, score: [...this.score] });
     this.say(`${what}, ${this.teams[team].name}! ${this.teams[0].abbr} ${this.score[0]} – ${this.teams[1].abbr} ${this.score[1]}`, 'score');
     this.lastScore = { team, pts, what };
     if (this.ot && this.ot.suddenDeath && pts !== 6) this.endGame('OT');
@@ -420,8 +431,9 @@ export class Match {
       this.timeouts = [3, 3];
       this.twoMinWarned = {};
       this.halftime = true;
-      // The team that kicked off to start the game receives the second half.
-      this.setupKickoff(this.openingReceiver, KICKOFF_YL);
+      // Second half: usually the team that kicked off to start the game receives (see the coin toss).
+      const recv2 = this.secondHalfReceiver ?? 1 - this.openingReceiver;
+      this.setupKickoff(1 - recv2, KICKOFF_YL);
       return;
     }
     if (q === 4 || q >= 5) {
@@ -431,17 +443,19 @@ export class Match {
         // Playoffs and tournaments can't end tied: another sudden-death period.
         this.quarter++;
         this.clock = this.periodLength();
-        this.timeouts = [2, 2];
+        // Playoffs: a fresh set of three timeouts every two overtime periods (like a half).
+        if (this.quarter % 2 === 1) this.timeouts = [3, 3];
         this.ot.suddenDeath = true;
         const recv = this.rng.chance(0.5) ? 0 : 1;
         this.say(`Still tied: another overtime period. ${this.teams[recv].name} will receive.`, 'half');
         this.setupKickoff(1 - recv, KICKOFF_YL);
         return;
       }
-      // Overtime: new coin toss, 10-minute period (scaled), 2 timeouts each.
+      // Overtime: new coin toss, 10-minute period (scaled; 15 in the playoffs), 2 timeouts each (3 in the playoffs).
+      // Both teams get a possession (2024+ rules, regular season and playoffs), then it's sudden death.
       this.quarter = 5;
       this.clock = this.periodLength();
-      this.timeouts = [2, 2];
+      this.timeouts = this.settings.noTies ? [3, 3] : [2, 2];
       this.ot = { poss: [0, 0], suddenDeath: false };
       const recv = this.rng.chance(0.5) ? 0 : 1;
       this.say(`Overtime! ${this.teams[recv].name} will receive.`, 'half');
@@ -476,7 +490,7 @@ function newStats(teams) {
 
 function pstat(m, team, rid) {
   const key = `${team}:${rid}`;
-  return (m.stats.players[key] ||= { team, rid, snaps: 0, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 0, rushYds: 0, rushTD: 0, rec: 0, recYds: 0, recTD: 0, tackles: 0, sacks: 0, defInt: 0, ff: 0, fr: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, krYds: 0, prYds: 0 });
+  return (m.stats.players[key] ||= { team, rid, snaps: 0, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 0, rushYds: 0, rushTD: 0, rec: 0, tgt: 0, recYds: 0, recTD: 0, tackles: 0, sacks: 0, defInt: 0, ff: 0, fr: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, krYds: 0, prYds: 0 });
 }
 
 function recordStats(m, r, sim) {
@@ -510,6 +524,8 @@ function recordStats(m, r, sim) {
     } else if (qb !== null) {
       const s = pstat(m, off, qb);
       s.passAtt++; T[off].passAtt++;
+      const tg = rid(r.target);
+      if (tg !== null && team(r.target) === off) pstat(m, off, tg).tgt++;
       if (r.complete) {
         s.passCmp++; T[off].passCmp++;
         s.passYds += yds; T[off].passYds += yds; T[off].yards += yds;

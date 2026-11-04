@@ -1,3 +1,4 @@
+import { uniformFor, UNIFORM_KINDS, UNIFORM_NAMES } from '../data/uniforms.js';
 import { el } from './nav.js';
 import { logoCanvas, drawLogo, LOGO_SHAPES } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
@@ -15,6 +16,8 @@ const HEX = /^#?[0-9a-f]{6}$/i;
  * builder (shape, letters, colors, or an uploaded image) with a live preview.
  * ctx = { screens, teams, prefs, onBack, onChange, pickTeam }.
  */
+const uniformKind = {}; // which uniform set the editor shows, per team
+
 export function teamEditor(ctx, ti, focus = 0) {
   const { screens, teams, prefs } = ctx;
   const t = teams[ti];
@@ -61,7 +64,14 @@ export function teamEditor(ctx, ti, focus = 0) {
     colorRow('Logo letters color', t.logo, 'fg'),
     colorRow('Logo border', t.logo, 'border'),
   ];
+  // Uniforms: home, away and alternate ("rivalry") sets — jersey, pants, numbers, number outline, helmet.
+  const kind = uniformKind[ti] || 'home';
+  const uni = ((t.uniforms ||= {})[kind] ||= { ...uniformFor(t, kind) });
+  rows.push(el('div.dc-head', { text: 'Uniforms' }),
+    choice('Uniform set', UNIFORM_KINDS.map((k) => UNIFORM_NAMES[k]), () => UNIFORM_NAMES[kind], (v) => { uniformKind[ti] = UNIFORM_KINDS.find((k) => UNIFORM_NAMES[k] === v); setTimeout(() => teamEditor(ctx, ti, screens.nav.index), 0); }),
+    colorRow('Jersey', uni, 'jersey'), colorRow('Pants', uni, 'pants'), colorRow('Numbers', uni, 'number'), colorRow('Number outline', uni, 'outline'), colorRow('Helmet', uni, 'helmet'));
   const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
+  rows.push(action(`Reset the ${UNIFORM_NAMES[kind].toLowerCase()} uniform to the team colors`, () => { delete t.uniforms[kind]; ctx.onChange(); teamEditor(ctx, ti, screens.nav.index); }));
   rows.push(
     action('Use team colors for the logo', () => {
       Object.assign(t.logo, { bg: t.colors.primary, fg: t.colors.secondary, border: t.colors.accent });
@@ -119,7 +129,14 @@ export function leagueEditor(ctx, focus = 0) {
     CONFERENCES[i] = v.trim().slice(0, 20);
     return true;
   });
+  // Uniforms: home, away and alternate ("rivalry") sets — jersey, pants, numbers, number outline, helmet.
+  const kind = uniformKind[ti] || 'home';
+  const uni = ((t.uniforms ||= {})[kind] ||= { ...uniformFor(t, kind) });
+  rows.push(el('div.dc-head', { text: 'Uniforms' }),
+    choice('Uniform set', UNIFORM_KINDS.map((k) => UNIFORM_NAMES[k]), () => UNIFORM_NAMES[kind], (v) => { uniformKind[ti] = UNIFORM_KINDS.find((k) => UNIFORM_NAMES[k] === v); setTimeout(() => teamEditor(ctx, ti, screens.nav.index), 0); }),
+    colorRow('Jersey', uni, 'jersey'), colorRow('Pants', uni, 'pants'), colorRow('Numbers', uni, 'number'), colorRow('Number outline', uni, 'outline'), colorRow('Helmet', uni, 'helmet'));
   const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
+  rows.push(action(`Reset the ${UNIFORM_NAMES[kind].toLowerCase()} uniform to the team colors`, () => { delete t.uniforms[kind]; ctx.onChange(); teamEditor(ctx, ti, screens.nav.index); }));
   const rows = [
     textRow('League name', LEAGUE, 'name', 30),
     textRow('Championship game', LEAGUE, 'championship', 30),

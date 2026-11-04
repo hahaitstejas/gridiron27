@@ -36,8 +36,21 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
       el('h1', { text: `${team.city} ${team.name}: depth chart` }),
       inGame ? el('div.league-status', { text: 'Changes made here last for this game only; your saved depth chart is back for the next one.' }) : null,
       el('div.dc-grid', {}, cards),
-      el('div.setup-help', { html: '<b class="btn A">A</b> edit position &nbsp; <b class="btn B">B</b> done' }));
+      el('div.setup-help', { html: `<b class="btn A">A</b> edit position &nbsp; <b class="btn X">X</b> play the backups &nbsp; <b class="btn Y">Y</b> ${inGame ? 'starters back in' : 'auto (best first)'} &nbsp; <b class="btn B">B</b> done` }));
     screens.nav.set(cards, { columns: 6, onBack: () => { screens.extraButtons = null; onDone(); }, index: focus });
+    // Blowouts: X sends the backups in at every position (worst first, kickers and returners untouched); Y puts the
+    // best players back on top.
+    screens.extraButtons = (f) => {
+      if (!f.pressed.X && !f.pressed.Y) return;
+      const backups = !!f.pressed.X;
+      for (const slot of Object.keys(DEPTH_SLOTS)) {
+        if (['K', 'P', 'KR', 'PR'].includes(slot)) continue;
+        const ids = [...new Set([...(team.depth[slot] || []), ...eligibleForSlot(team, slot).map((p) => p.id)])].filter((id) => byId.has(id) && !byId.get(id).injury?.ir);
+        team.depth[slot] = ids.sort((a, b) => (slotRating(byId.get(a), slot) - slotRating(byId.get(b), slot)) * (backups ? 1 : -1)).slice(0, Math.max(team.depth[slot]?.length || 0, 3));
+      }
+      onChange();
+      slots(screens.nav.index);
+    };
   }
 
   function edit(slot, focusIdx = 0, holding = null) {

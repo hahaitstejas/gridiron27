@@ -33,11 +33,11 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] B2 Pause: bigger graphic, comp% ring, INT, QBR
 - [x] B3 Post-game screen from the mockup (finish, highlights, player/team stats, score summary, restart, top players, score by quarter)
 - [x] B4 Team select: LT random team, A → side menu (Ready, Traits, Advanced settings: playbook, coin toss; Edit uniforms)
-- [ ] B5 Settings, training, every remaining old-style screen restyled
+- [x] B5 Settings, training, every remaining old-style screen restyled
 - [x] B6 Teams alphabetical everywhere
 - [x] B7 Sortable stat columns (X sorts), COMP% in passing, targets + catch% in receiving
 - [x] B8 Franchise hub: a few boxes that open sub-menus
-- [ ] B9 Depth chart "play the backups" button
+- [x] B9 Depth chart "play the backups" button
 
 ## Phase C — franchise realism
 - [x] C1 17-game NFL schedule formula only; schedule CSV import; primetime + kickoff times, short weeks, holidays, international games
@@ -51,7 +51,7 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - [x] C9 Roster CSV contract columns (salary, years); retired numbers CSV; position number rules everywhere
 - [x] C10 Coaches CSV (HC/OC/DC with tendencies) feeding the CPU play caller; game preview screen from coordinators
 - [x] C11 Score ticker banner (other games by quarter)
-- [ ] C12 Uniform editor + uniforms CSV (home/away/rivalry: jersey, pants, number, number outline)
+- [x] C12 Uniform editor + uniforms CSV (home/away/rivalry: jersey, pants, number, number outline)
 - [x] C13 Stadiums CSV (fictional defaults), neutral championship venue each year
 
 ## Phase D — presentation
@@ -108,3 +108,4 @@ No NFL/EA/Madden names or IP (use "traits" not "X-Factors"; mockup names are pla
 - commit 10: honors.js (All-Pro 1st/2nd teams, Pro Bowl per conference; honors raise asking prices), franchise tag (Y on
   the re-sign screen, CPU tags stars), roster needs on re-sign/free-agency screens, your players highlighted grey,
   around-the-league score ticker in franchise games.
+- commit 11: depth chart X = play the backups / Y = starters back; uniform editor (home/away/alt) in Teams & Logos; settings/training checked in the no-outline style.

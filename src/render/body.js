@@ -11,24 +11,27 @@ import * as THREE from 'three';
 export const BONE = { hips: 0, chest: 1, head: 2, shL: 3, shR: 4, elL: 5, elR: 6, hipL: 7, hipR: 8, kneeL: 9, kneeR: 10, footL: 11, footR: 12 };
 export const BONES = 13;
 export const COL_PARAMS = 52; // (width, limb thickness, chest depth, shoulder-pad width)
-export const COL_COLORS = 53; // 8 region colors
-export const COL_NUMBER = 61; // (atlas cell x, cell y, name row, show number)
-export const COL_NUMCOL = 62; // number color
-export const COL_FLAGS = 63; // (officials' stripes, -, -, -)
-export const TEX_W = 64;
+export const COL_COLORS = 53; // 9 region colors
+export const COL_NUMBER = 62; // (atlas cell x, cell y, name row, show number)
+export const COL_NUMCOL = 63; // number color
+export const COL_FLAGS = 64; // (officials' stripes, lineman bulk 0..1, shoulder pads 0..1, face photo)
+export const TEX_W = 72;
 // Uniform regions (vertex attribute) → color texel.
-export const REGION = { jersey: 0, sleeve: 1, pants: 2, stripe: 3, socks: 4, skin: 5, forearm: 6, gloves: 7 };
+export const REGION = { jersey: 0, sleeve: 1, pants: 2, stripe: 3, socks: 4, skin: 5, forearm: 6, gloves: 7, shoe: 8 };
 
 // Bind-pose joint positions (yards) for width w: kept in sync with PlayerRenderer.drawPlayer's frames.
-export const BIND = { hipH: 1.0, hipX: 0.125, thigh: 0.48, shin: 0.47, torso: 0.66, shX: 0.27, upper: 0.34, fore: 0.32 };
+// Procedural defaults; applySkeleton() replaces them with the MakeHuman body's (src/assets/human.json) at boot.
+export const BIND = { hipH: 1.0, hipX: 0.125, thigh: 0.48, shin: 0.47, torso: 0.66, shX: 0.27, shY: 0.66 * 0.84, shZ: 0, upper: 0.34, fore: 0.32, headY: 0.86, headZ: 0.02, helmY: 0, helmZ: 0 };
+/** Use a body's skeleton (yards). Everything that poses or skins players reads BIND, so this is the one switch. */
+export function applySkeleton(sk) { Object.assign(BIND, sk); }
 /** Bind-space origin of bone b for width w (the bind pose has no rotations, so bind = a translation). */
 export function bindOrigin(b, w, out) {
-  const B = BIND, shY = B.hipH + B.torso * 0.84;
+  const B = BIND, shY = B.hipH + B.shY;
   switch (b) {
     case BONE.hips: case BONE.chest: return out.set(0, B.hipH, 0);
-    case BONE.head: return out.set(0, B.hipH + B.torso + 0.2, 0.02);
-    case BONE.shL: case BONE.shR: return out.set((b === BONE.shL ? -1 : 1) * B.shX * w, shY, 0);
-    case BONE.elL: case BONE.elR: return out.set((b === BONE.elL ? -1 : 1) * B.shX * w, shY - B.upper, 0);
+    case BONE.head: return out.set(0, B.hipH + B.headY, B.headZ);
+    case BONE.shL: case BONE.shR: return out.set((b === BONE.shL ? -1 : 1) * B.shX * w, shY, B.shZ);
+    case BONE.elL: case BONE.elR: return out.set((b === BONE.elL ? -1 : 1) * B.shX * w, shY - B.upper, B.shZ);
     case BONE.hipL: case BONE.hipR: return out.set((b === BONE.hipL ? -1 : 1) * B.hipX * w, B.hipH, 0);
     case BONE.kneeL: case BONE.kneeR: return out.set((b === BONE.kneeL ? -1 : 1) * B.hipX * w, B.hipH - B.thigh, 0);
     default: return out.set((b === BONE.footL ? -1 : 1) * B.hipX * w, B.hipH - B.thigh - B.shin - 0.01, 0.06);
@@ -163,7 +166,14 @@ export function buildBodyGeometry() {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(out.pos, 3));
   g.setAttribute('uv', new THREE.Float32BufferAttribute(out.uv, 2));
-  g.setAttribute('aSkin', new THREE.Float32BufferAttribute(out.skin, 4));
+  // Same attribute layout as the MakeHuman body: 4 bone indices / weights, region, zero shape deltas.
+  const n = out.pos.length / 3, idx = new Float32Array(n * 4), wt = new Float32Array(n * 4), reg = new Float32Array(n);
+  for (let k = 0; k < n; k++) { idx[k * 4] = out.skin[k * 4]; idx[k * 4 + 1] = out.skin[k * 4 + 1]; wt[k * 4] = out.skin[k * 4 + 2]; wt[k * 4 + 1] = 1 - out.skin[k * 4 + 2]; reg[k] = out.skin[k * 4 + 3]; }
+  g.setAttribute('aIdx', new THREE.BufferAttribute(idx, 4));
+  g.setAttribute('aWt', new THREE.BufferAttribute(wt, 4));
+  g.setAttribute('aRegion', new THREE.BufferAttribute(reg, 1));
+  g.setAttribute('aBulkD', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  g.setAttribute('aPadD', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   g.setAttribute('aAxis', new THREE.Float32BufferAttribute(out.axis, 3));
   g.setAttribute('aKind', new THREE.Float32BufferAttribute(out.kind, 1));
   g.setAttribute('aBody', new THREE.Float32BufferAttribute(out.body, 2));
@@ -176,7 +186,11 @@ export function buildBodyGeometry() {
 // ---------- shaders ----------
 const VERT_HEAD = /* glsl */`
 uniform sampler2D boneTex;
-attribute vec4 aSkin;
+attribute vec4 aIdx;
+attribute vec4 aWt;
+attribute float aRegion;
+attribute vec3 aBulkD;
+attribute vec3 aPadD;
 attribute vec3 aAxis;
 attribute float aKind;
 attribute vec2 aBody;
@@ -192,20 +206,21 @@ vec3 buildPos(vec3 p) {
   vec4 prm = texelFetch(boneTex, ivec2(${COL_PARAMS}, gl_InstanceID), 0); // width, limb, chest depth
   if (aKind < 0.5) { float pad = mix(1.0, prm.w, smoothstep(1.38, 1.56, p.y)); return vec3(p.x * prm.x * pad, p.y, p.z * prm.z); }
   if (aKind < 1.5) { vec3 ax = vec3(aAxis.x * prm.x, aAxis.y, aAxis.z); return ax + (p - aAxis) * vec3(prm.y, 1.0, prm.y); }
+  if (aKind > 4.5) { vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID), 0); return p + aBulkD * fl.y + aPadD * fl.z; } // the MakeHuman body: lineman build and pads as shape deltas
   return vec3(p.x * prm.x, p.y, p.z * prm.x);
 }
-mat4 skinMat() { return boneMat(int(aSkin.x)) * aSkin.z + boneMat(int(aSkin.y)) * (1.0 - aSkin.z); }
+mat4 skinMat() { return boneMat(int(aIdx.x)) * aWt.x + boneMat(int(aIdx.y)) * aWt.y + boneMat(int(aIdx.z)) * aWt.z + boneMat(int(aIdx.w)) * aWt.w; }
 `;
 
 function patchVertex(sh, normals = true) {
   sh.uniforms.boneTex = BODY_UNIFORMS.boneTex;
   let v = VERT_HEAD + 'mat4 gSk;\n' + sh.vertexShader;
   if (normals) v = v.replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\ngSk = skinMat();\nobjectNormal = normalize(mat3(gSk) * objectNormal);');
-  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aSkin.w; vBody = aBody;`);
+  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aRegion; vBody = aBody;`);
   sh.vertexShader = v;
 }
 
-export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 } };
+export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
@@ -213,8 +228,8 @@ export function bodyMaterial(envMap, fabric) {
     sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.35, 0.35) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
-    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
-    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows;
+    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex;
+    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 ` + sh.fragmentShader
@@ -248,9 +263,18 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       }
       // Pants stripe down the outside of each leg (vBody.y = -2 left leg, -3 right leg; x = angle around it).
       if (region == 2 && vBody.y < -1.5) { float sd = vBody.y < -2.5 ? 1.0 : -1.0; if (sin(vBody.x) * sd > 0.972) col = tex(${COL_COLORS} + 3).rgb; }
+      // Face photo (8 x 8 atlas, cell = instance) on the front of the MakeHuman head (vBody.y > 5 marks it), faded into the skin.
+      if (region == 5 && vBody.y > 5.0 && flg.w > 0.5) {
+        vec2 st = vec2(vBody.x, vBody.y - 10.0);
+        float k = smoothstep(0.5, 0.3, length(st - 0.5));
+        float inst = vInst + 0.5;
+        vec2 cell = vec2(mod(floor(inst), 8.0), floor(floor(inst) / 8.0));
+        vec2 q = clamp(st, 0.0, 1.0) * 0.84 + 0.08;
+        col = mix(col, texture2D(faceTex, vec2((cell.x + q.x) / 8.0, 1.0 - (cell.y + 1.0 - q.y) / 8.0)).rgb, k);
+      }
       diffuseColor.rgb = col;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-      roughnessFactor = region == 5 ? 0.5 : region == 7 ? 0.55 : region == 2 || region == 3 ? 0.62 : 0.78;`)
+      roughnessFactor = region == 5 ? 0.5 : region == 7 ? 0.55 : region == 8 ? 0.35 : region == 2 || region == 3 ? 0.62 : 0.78;`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>`);
   };
   return m;
@@ -287,4 +311,28 @@ export function fabricNormal() {
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
   return t;
+}
+
+/** The MakeHuman body (tools/buildhuman.mjs → src/assets/human.json) as a BufferGeometry in our bind pose. */
+export function buildHumanGeometry(h) {
+  const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const g = new THREE.BufferGeometry();
+  const n = h.count;
+  g.setAttribute('position', new THREE.BufferAttribute(dec(h.position, Float32Array), 3));
+  g.setAttribute('aBulkD', new THREE.BufferAttribute(dec(h.bulk, Float32Array), 3));
+  g.setAttribute('aPadD', new THREE.BufferAttribute(dec(h.pad, Float32Array), 3));
+  g.setAttribute('aIdx', new THREE.BufferAttribute(Float32Array.from(dec(h.skinIndex, Uint8Array)), 4));
+  g.setAttribute('aWt', new THREE.BufferAttribute(dec(h.skinWeight, Float32Array), 4));
+  g.setAttribute('aRegion', new THREE.BufferAttribute(Float32Array.from(dec(h.region, Uint8Array)), 1));
+  g.setAttribute('aBody', new THREE.BufferAttribute(dec(h.body, Float32Array), 2));
+  g.setAttribute('aKind', new THREE.BufferAttribute(new Float32Array(n).fill(5), 1));
+  g.setAttribute('aAxis', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  // Fabric UVs for the knit normal map: a simple cylindrical wrap (only the tiling matters).
+  const p = g.attributes.position.array, uv = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) { uv[i * 2] = Math.atan2(p[i * 3], p[i * 3 + 2]) * 1.6; uv[i * 2 + 1] = p[i * 3 + 1] * 9; }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  g.setIndex(new THREE.BufferAttribute(dec(h.index, Uint16Array), 1));
+  g.computeVertexNormals();
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
+  return g;
 }

@@ -32,7 +32,7 @@ export class GameRenderer {
     r.toneMapping = THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
     r.shadowMap.enabled = true;
-    r.shadowMap.type = THREE.PCFSoftShadowMap;
+    r.shadowMap.type = THREE.PCFShadowMap; // (PCFSoft was removed from three; PCF + the 2048 map is soft enough)
     container.appendChild(r.domElement);
     this.renderer = r;
 

@@ -192,7 +192,7 @@ User: "do all of this" (Phases A-D), check-ins every 4 h from 6:11 PM Central. O
 public domain / free for any use (CC0, CMU mocap); each one is listed with its license in `public/assets/CREDITS.md`.
 Sources reachable from the container: public GitHub repos (git clone), npm. Polyhaven / ambientCG are blocked by the
 environment's network policy (the user can allow them in the environment settings).
-- [ ] A1 Human base mesh: a public-domain human (MakeHuman CC0 base mesh) shaped into a football build (pads, pants, socks,
+- [x] A1 Human base mesh: a public-domain human (MakeHuman CC0 base mesh) shaped into a football build (pads, pants, socks,
       gloves as regions), skinned to our 13-bone skeleton (weights from the bone distance / MakeHuman weights), drop-in for
       render/body.js (same bone texture, regions, numbers); LOD (the procedural body far away).
 - [ ] A2 Materials: jersey mesh / stretch fabric, pants sheen, rubber gloves, skin subsurface look, sweat sheen late in games;

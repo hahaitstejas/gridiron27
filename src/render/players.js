@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
 import { Gait } from './gait.js';
 import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
-import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION } from './body.js';
+import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry } from './body.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
 // players). Poses are computed procedurally from the sim's animation state every frame.
@@ -14,12 +14,8 @@ const WHITE = new THREE.Color('#ffffff');
 const MUD = new THREE.Color('#4a3a28'); // muddy / grass-stained uniforms (setColors, this.dirt)
 const MAX = 56; // 22 players + 7 officials + 22 on the sidelines (+ spare)
 
-// Base proportions for a 6'2" player, in yards.
-const B = {
-  hipH: 1.0, hipX: 0.125, thigh: 0.48, shin: 0.47,
-  torso: 0.66, torsoW: 0.44, torsoD: 0.27, padW: 0.64, padD: 0.36,
-  shX: 0.27, upper: 0.34, fore: 0.32,
-};
+// Proportions for a 6'2" player, in yards: the body's skeleton (render/body.js BIND, set from the MakeHuman asset at boot).
+const B = BIND;
 
 /** Officials' black-and-white vertical stripes, per instance (aStripe = 1), drawn around the body in object space. */
 function striped(mat, count, geo) {
@@ -176,6 +172,7 @@ export class PlayerRenderer {
     this.faceCanvas.width = this.faceCanvas.height = 1024;
     this.faceTex = new THREE.CanvasTexture(this.faceCanvas);
     this.faceTex.colorSpace = THREE.SRGBColorSpace;
+    BODY_UNIFORMS.faceTex.value = this.faceTex; // the body shader paints photos on the MakeHuman face from the same atlas
     this.faceAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX), 1);
     this.faceRev = 0; this.faceCells = [];
     const tex = this.faceTex;
@@ -202,6 +199,23 @@ export class PlayerRenderer {
     const g = this.faceCanvas.getContext('2d');
     const x = (i % 8) * 128, y = Math.floor(i / 8) * 128, s = Math.min(img.width, img.height);
     g.drawImage(img, (img.width - s) / 2, Math.max(0, (img.height - s) * 0.2), s, s, x, y, 128, 128);
+  }
+
+  /**
+   * Switch to the MakeHuman body (src/assets/human.json, CC0; built by tools/buildhuman.mjs): its skeleton becomes BIND
+   * (so posing, the gait's IK and the bone texture all follow), its mesh replaces the procedural one. Called at boot;
+   * until it resolves (or if it fails) the procedural body draws.
+   */
+  async loadHuman() {
+    try {
+      const h = (await import('../assets/human.json')).default;
+      applySkeleton({ ...h.skeleton, torso: h.skeleton.headY - 0.2, helmY: 0.072, helmZ: 0.028 });
+      const old = this.body.geometry;
+      this.body.geometry = buildHumanGeometry(h);
+      old.dispose();
+      this.human = true;
+      this.colorsKey = '';
+    } catch (e) { console.warn('[Gridiron 27] human body not loaded, using the procedural one', e); }
   }
 
   /** Body texel helpers: region color, number, flags (row i of the bone texture). */
@@ -242,7 +256,8 @@ export class PlayerRenderer {
     const named = sim.players.map((p, i) => paintName(i, p.name));
     this.nameTex.needsUpdate = true;
     const pick = (team, which) => (which === 'white' ? '#f4f4f4' : which === 'secondary' ? team.colors.secondary : which === 'accent' ? team.colors.accent : team.colors.primary);
-    const flags = (i, stripes) => this.texel(i, COL_FLAGS, stripes ? 1 : 0, 0, 0, 0);
+    // Flags: officials' stripes, lineman build (MakeHuman bulk delta), shoulder pads, face photo.
+    const flags = (i, stripes, bulk = 0, pads = 1, photo = 0) => this.texel(i, COL_FLAGS, stripes ? 1 : 0, bulk, pads, photo);
     sim.players.forEach((p, i) => {
       const team = teams[p.team];
       const u = team.uniform;
@@ -276,7 +291,8 @@ export class PlayerRenderer {
       this.region(i, REGION.forearm, sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin);
       this.regionC(i, REGION.gloves, uni.gloves ? c.set(uni.gloves) : c.set(team.colors.secondary).lerp(WHITE, 0.2));
       this.number(i, p.number, uni.number, named[i] ? i : -1);
-      flags(i, false);
+      flags(i, false, Math.min(0.6, p.bulk * 0.75), 1, img ? 1 : 0); // linemen: up to 60% of the heavy shape (powerful, not obese)
+      this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
       const hstripe = uni.stripe === 'none' ? helmet : uni.stripe || (u.helmetStripe ? team.colors.secondary : helmet);
@@ -300,7 +316,8 @@ export class PlayerRenderer {
       for (const g of [REGION.pants, REGION.stripe, REGION.socks]) this.region(i, g, '#1a1a1a');
       this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, skin);
       this.number(i, (r * 13 + 7) % 100, '#111111');
-      flags(i, true);
+      flags(i, true, 0.15, 0);
+      this.region(i, REGION.shoe, '#0e0e0e');
       P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
       for (let k = 0; k < 2; k++) P.shoe.setColorAt(i * 2 + k, c.set('#0e0e0e'));
     }
@@ -318,7 +335,8 @@ export class PlayerRenderer {
       this.region(i, REGION.socks, b.coach ? '#b9a77c' : u.pants === 'white' ? team.colors.primary : '#f2f2f2');
       this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, b.coach ? skin : team.colors.secondary);
       this.number(i, b.coach ? -1 : b.number, numColor);
-      flags(i, false);
+      flags(i, false, b.coach ? 0.35 : 0.3, b.coach ? 0 : 1);
+      this.region(i, REGION.shoe, '#151515');
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
       P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
@@ -414,42 +432,44 @@ export class PlayerRenderer {
     root.multiply(scaleM(sc, sc, sc));
 
     // Bones (render/body.js): hips (upright), chest (leans and twists through the waist), head, arms, legs.
-    const w = official ? 1 : wide;
+    const w = official || this.human ? 1 : wide; // the MakeHuman body's joints don't move with build (bulk is a shape delta)
     const hips = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0));
     const pel = cl(hips).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
-    const head = cl(pel).multiply(trans(0, B.torso + 0.2, 0.02)).multiply(rotY(-(pose.headYaw || 0))).multiply(rotX(pose.head));
+    const head = cl(pel).multiply(trans(0, B.headY, B.headZ)).multiply(rotY(-(pose.headYaw || 0))).multiply(rotX(pose.head));
     this.bone(i, BONE.hips, hips, w);
     this.bone(i, BONE.chest, pel, w);
     this.bone(i, BONE.head, head, w);
     // Build: width, limb thickness, chest depth (linemen are deep through the chest), shoulder pads (none on officials).
     this.texel(i, COL_PARAMS, w, official ? 0.92 : limb, w * (official ? 0.95 : 1 + p.bulk * 0.22), official ? 0.72 : 1);
+    // Gear sits on the skull (the MakeHuman head bone pivots at the top of the neck: helmY / helmZ up to the skull center).
+    const hg = B.helmY || B.helmZ ? cl(head).multiply(trans(0, B.helmY, B.helmZ)) : head;
     if (official) {
       // Officials and coaches: a bare head (the helmet part, skin-colored) under a cap: the towel part is the
       // crown, the helmet stripe the brim.
-      P.helmet.setMatrixAt(i, cl(head).multiply(trans(0, 0.01, 0.01)).multiply(scaleM(0.23, 0.27, 0.25)));
-      P.towel.setMatrixAt(i, cl(head).multiply(trans(0, 0.185, 0)).multiply(scaleM(2.3, 0.33, 16.5)));
-      P.stripe.setMatrixAt(i, cl(head).multiply(trans(0, 0.07, 0.07)).multiply(scaleM(0.5, 0.2, 0.3)));
+      P.helmet.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, 0.01, 0.01)).multiply(scaleM(0.23, 0.27, 0.25)));
+      P.towel.setMatrixAt(i, cl(hg).multiply(trans(0, this.human ? 0.115 : 0.185, this.human ? -0.01 : 0)).multiply(scaleM(2.3, 0.33, 16.5)));
+      P.stripe.setMatrixAt(i, cl(hg).multiply(trans(0, this.human ? 0.075 : 0.07, this.human ? 0.1 : 0.07)).multiply(scaleM(0.5, 0.2, 0.3)));
       P.mask.setMatrixAt(i, ZERO); P.face.setMatrixAt(i, ZERO);
       P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
       P.visor.setMatrixAt(i, ZERO);
     } else {
-      P.helmet.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
-      P.face.setMatrixAt(i, cl(head).multiply(trans(0, -0.04, 0.075)));
+      P.helmet.setMatrixAt(i, cl(hg).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.face.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, -0.04, 0.075)));
       const g = gearOf(p);
-      P.visor.setMatrixAt(i, g.visor ? cl(head).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
+      P.visor.setMatrixAt(i, g.visor ? cl(hg).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
       P.towel.setMatrixAt(i, g.towel ? cl(hips).multiply(trans(-0.07, 0.03, 0.15 * wide)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
-      P.decal.setMatrixAt(i * 2, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
-      P.decal.setMatrixAt(i * 2 + 1, cl(head).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
-      P.stripe.setMatrixAt(i, cl(head).multiply(scaleM(0.33, 0.33, 0.33)));
-      P.mask.setMatrixAt(i, head);
+      P.decal.setMatrixAt(i * 2, cl(hg).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.decal.setMatrixAt(i * 2 + 1, cl(hg).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
+      P.stripe.setMatrixAt(i, cl(hg).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.mask.setMatrixAt(i, hg);
     }
 
     // Arms.
     for (let s = 0; s < 2; s++) {
       const side = s === 0 ? -1 : 1; // -1 = left
       const a = pose.arms[s];
-      const sh = cl(pel).multiply(trans(side * B.shX * w, B.torso * 0.84, 0)).multiply(rotX(-a.pitch)).multiply(rotZ(side * a.out)).multiply(rotY(side * (a.twist || 0)));
+      const sh = cl(pel).multiply(trans(side * B.shX * w, B.shY, B.shZ)).multiply(rotX(-a.pitch)).multiply(rotZ(side * a.out)).multiply(rotY(side * (a.twist || 0)));
       const el = cl(sh).multiply(trans(0, -B.upper, 0)).multiply(rotX(-a.elbow));
       this.bone(i, s ? BONE.shR : BONE.shL, sh, w);
       this.bone(i, s ? BONE.elR : BONE.elL, el, w);
@@ -465,7 +485,7 @@ export class PlayerRenderer {
       this.bone(i, s ? BONE.hipR : BONE.hipL, hip, w);
       this.bone(i, s ? BONE.kneeR : BONE.kneeL, knee, w);
       this.bone(i, s ? BONE.footR : BONE.footL, foot, w);
-      P.shoe.setMatrixAt(i * 2 + s, foot);
+      P.shoe.setMatrixAt(i * 2 + s, this.human ? ZERO : foot); // the MakeHuman foot is the cleat (shoe region)
     }
   }
 
@@ -530,7 +550,7 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
   const sin = Math.sin(f), cos = Math.cos(f);
   const dxw = bx - x, dzw = bz - z;
   const lx = (dxw * sin - dzw * cos) / sc, lz = (dxw * cos + dzw * sin) / sc;
-  const shY = (B.hipH + pose.crouch + pose.rootY + B.torso * 0.84) * 1;
+  const shY = B.hipH + pose.crouch + pose.rootY + B.shY;
   for (let s = 0; s < 2; s++) {
     if (p.anim === 'swat' && s === 0) continue;
     const side = s ? 1 : -1, a = pose.arms[s];

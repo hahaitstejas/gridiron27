@@ -4,7 +4,9 @@
 // IK turns each foot target into the hip / knee / splay angles the pose uses. Also: lean into acceleration and turns,
 // and a head that tracks the ball.
 
-const LEG = { thigh: 0.48, shin: 0.47, ankleY: 0.04 };
+import { BIND } from './body.js';
+// Leg lengths and ankle height come from the body's skeleton (BIND), read live so the MakeHuman body's apply.
+const LEG = { get thigh() { return BIND.thigh; }, get shin() { return BIND.shin; }, get ankleY() { return BIND.hipH - BIND.thigh - BIND.shin - 0.01; } };
 // Gaits that plant their feet. Everything else (falls, dives, jumps, celebrations) keeps its authored legs.
 export const GAIT_ANIMS = new Set(['run', 'idle', 'backpedal', 'shuffle', 'passset', 'block', 'juke', 'stiffarm', 'truck', 'strip', 'catch', 'reach', 'swat', 'stumble', 'fair_catch', 'sig_flag', 'tired']);
 
@@ -30,7 +32,7 @@ export class Gait {
     const g = this.state(i);
     const vx = p.vx || 0, vz = p.vz || 0, sp = Math.hypot(vx, vz);
     const sin = Math.sin(f), cos = Math.cos(f);
-    const hipX = 0.125 * w;
+    const hipX = BIND.hipX * w;
     if (!g.init || dt > 0.25 || Math.hypot(x - g.bx, z - g.bz) > 3) {
       // First frame (or a jump in time): feet under the hips.
       g.init = true; g.f = f; g.vx = vx; g.vz = vz; g.sp = sp;
@@ -57,7 +59,7 @@ export class Gait {
     const L = stepLen(sp), duty = sp > 0.35 ? dutyOf(sp) : 1;
     const cycleT = sp > 0.35 ? (2 * L) / sp : 1;
     if (sp > 0.35) g.ph = (g.ph + dt / cycleT) % 1;
-    const crouch = pose.crouch, hipY = (1.0 + crouch + pose.rootY) * sc;
+    const crouch = pose.crouch, hipY = (BIND.hipH + crouch + pose.rootY) * sc;
     for (let s = 0; s < 2; s++) {
       const side = s ? 1 : -1, ft = g.feet[s];
       const ph = (g.ph + (s ? 0.5 : 0)) % 1;

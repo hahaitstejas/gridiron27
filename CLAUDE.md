@@ -4,7 +4,7 @@ Original browser-based 3D American football game (Three.js + Vite, plain JavaScr
 **No NFL / NFLPA / EA / Madden names, logos, teams or other IP anywhere** — all teams, players,
 logos and branding are original or procedurally generated.
 Outside art / animation data is allowed only if it is public domain or free for any use (CC0, the CMU motion-capture
-database), and every such asset is listed with its source and license in `public/assets/CREDITS.md`.
+database), and every such asset is listed with its source and license in `src/assets/CREDITS.md`.
 
 ## Run / test
 
@@ -565,6 +565,17 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Camera: broadcast presnap 10.5 back / 4.6 up (was 15 / 7.2), live 12 / 5.6. Dev: `window.__g27.renderer.rig.debug = { p, l }`.
 - Crowd: people-shaped fans (open cylinder torso, icosahedron head, two arms raised by excitement in the vertex shader), ~10%
   empty seats; LED ribbon boards at `RIBBON_ROW` (`paintRibbon`, scroll; flash with the video board on scores).
+
+### Update 3.0: Realism II (UPDATE_PLAN.md)
+- Player body = the CC0 MakeHuman mesh (`tools/buildhuman.mjs` → `src/assets/human.json`, ~5.6k verts / 11k tris; credits in
+  `src/assets/CREDITS.md`): athletic male shape, `aBulkD` delta to a heavy shape (lineman build = `COL_FLAGS.y`, capped 0.6),
+  `aPadD` = shoulder pads + clothing thickness (`COL_FLAGS.z`, 0 for officials / coaches), up to 4 bone weights (`aIdx` /
+  `aWt`, MakeHuman's 163 bones folded into our 13), regions incl. `shoe` (the MH foot is the cleat; rigid cleats / face sphere
+  hidden), face-photo coordinates on the real face (`aBody.y` > 5, `COL_FLAGS.w`). `PlayerRenderer.loadHuman()` (awaited at
+  boot) → `applySkeleton()` replaces `BIND` (hipH 1.076, thigh 0.518, shin 0.469, shX 0.206, upper 0.28, fore 0.278 …), which
+  players.js posing (`B`), `bindOrigin` and the gait's IK (`LEG` getters) all read; joints don't scale with build when it's
+  active (w = 1). Gear sits on `hg` = head × T(0, helmY, helmZ). The procedural body (`buildBodyGeometry`) is the fallback.
+  Rebuild after changing the tool: `node tools/buildhuman.mjs` (needs a clone of makehumancommunity/makehuman's data dir).
 
 ## File layout
 

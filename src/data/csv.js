@@ -37,7 +37,7 @@ export function toCSV(objs, header) {
   return [header.join(','), ...objs.map((o) => header.map((h) => esc(o[h])).join(','))].join('\n') + '\n';
 }
 
-const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp', 'face'];
+const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp', 'face', 'skin'];
 const POS_ALIAS = { RB: 'HB', LB: 'OLB', ILB: 'MLB', NB: 'CB', S: 'FS', OT: 'T', OG: 'G', EDGE: 'DE', NT: 'DT', PK: 'K',
   // Depth-chart slot names work as positions too.
   LT: 'T', RT: 'T', LG: 'G', RG: 'G', LE: 'DE', RE: 'DE', LOLB: 'OLB', ROLB: 'OLB', SAM: 'OLB', WILL: 'OLB', MIKE: 'MLB' };
@@ -154,7 +154,9 @@ export function exportRosterCSV(teams) {
       // Salary in whole dollars (60000000), like a real cap sheet; imports take dollars or $M.
       salary: p.salary ? Math.round(p.salary * 1e6) : '', years: p.years ?? '', exp: p.proYears ?? '',
       // Uploaded photos (data URLs) are too big for a spreadsheet cell: only file names / links are written.
-      face: p.face && !/^data:/i.test(p.face) ? p.face : '' };
+      face: p.face && !/^data:/i.test(p.face) ? p.face : '',
+      // A hand-picked tone (1-6 or #hex); blank = the default / the face photo's.
+      skin: p.skinManual ? (p.skinColor || (p.skin ?? 2) + 1) : '' };
     for (const [key, code] of RATINGS) o[code] = p.ratings[key];
     o.OVR = overall(p);
     rows.push(o);

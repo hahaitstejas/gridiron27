@@ -70,8 +70,8 @@ export class CameraRig {
         // back once the ball is snapped and further when it's thrown deep.
         let back = phase === 'presnap' ? 10.5 : phase === 'kick' ? 34 : phase === 'return' ? 20 : phase === 'air' ? 15 : 12;
         let height = phase === 'presnap' ? 4.6 : phase === 'kick' ? 24 : phase === 'return' ? 11 : phase === 'air' ? 7.2 : 5.6;
-        // On defense you have to read the whole offense (backfield included) before the snap: further back and higher.
-        if (this.onDefense && (phase === 'presnap' || phase === 'live')) { back = phase === 'presnap' ? 20 : 17; height = phase === 'presnap' ? 9.5 : 8.5; }
+        // A human on offense or defense needs the whole formation (backfield included) in frame: further back and higher.
+        if (this.wideView && (phase === 'presnap' || phase === 'live')) { back = phase === 'presnap' ? 20 : 17; height = phase === 'presnap' ? 9.5 : 8.5; }
         p.set(focus.x - dir * back * this.zoom, height * this.zoom, fz * 0.85);
         l.set(focus.x + dir * (phase === 'presnap' ? 7 : 6), phase === 'presnap' ? 1.1 : 0.8, fz * 0.95);
       }

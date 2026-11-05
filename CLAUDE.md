@@ -604,7 +604,7 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   uniforms) with a white wristband.
   Main menu: the old dark orbit, over the featured player's home field (`screens.featured` → main.js `menuFieldTeam` →
   `renderer.setTeams(team, team)`); the card is the SVG jersey + face photo. Team Select: `starCards(t)` (QB + playmakers, no K/P, one per
-  position; face photo or number, trait). Defense camera: `CameraRig.onDefense` (human on defense, not kicks) pulls the
+  position; face photo or number, trait). Offense / defense camera: `CameraRig.wideView` (human on offense or defense, not kicks) pulls the
   broadcast view back to 20 / 9.5 presnap so the backfield is in frame. Atlases (logos, names, faces) only re-upload
   when their content changes (texture uploads were hitching every play); crowd fans ~30 tris; helmet shell 44×24.
 - Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK

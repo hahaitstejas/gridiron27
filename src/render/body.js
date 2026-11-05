@@ -248,11 +248,13 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
           // Front number (chest) and back number (bigger), name above it across the shoulders.
           vec2 st = vec2(-1.0);
           float fa = a > 3.14159 ? a - 6.28318 : a;
-          if (abs(fa) < 0.85 && vBody.y > 0.28 && vBody.y < 0.82) st = vec2(fa / 1.7 + 0.5, (vBody.y - 0.28) / 0.54);
+          if (abs(fa) < 0.78 && vBody.y > 0.3 && vBody.y < 0.8) st = vec2(fa / 1.56 + 0.5, (vBody.y - 0.3) / 0.5);
           float ba = a - 3.14159;
-          if (abs(ba) < 1.05 && vBody.y > 0.2 && vBody.y < 0.74) st = vec2(ba / 2.1 + 0.5, (vBody.y - 0.2) / 0.54);
+          if (abs(ba) < 0.95 && vBody.y > 0.1 && vBody.y < 0.74) st = vec2(ba / 1.9 + 0.5, (vBody.y - 0.1) / 0.64);
           if (st.x >= 0.0) {
-            vec2 uvN = vec2((st.x + nb.x) / 10.0, 1.0 - ((1.0 - st.y) + nb.y) / 10.0);
+            // Crop the atlas cell to the digits (they sit mid-cell with wide margins) so the number fills its patch.
+            vec2 sc = vec2(0.07 + st.x * 0.86, 0.2 + (1.0 - st.y) * 0.64);
+            vec2 uvN = vec2((sc.x + nb.x) / 10.0, 1.0 - (sc.y + nb.y) / 10.0);
             vec4 t = texture2D(numTex, uvN);
             if (t.a > 0.4) col = mix(ncol * 0.12, ncol, t.r);
           }

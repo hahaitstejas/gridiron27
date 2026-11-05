@@ -38,24 +38,32 @@ function part(geo, mat, count, shadow = true) {
   return m;
 }
 
+/**
+ * Jersey numbers 0-99, one per cell of a 10 x 10 atlas (2048 px: sharp even across a whole back). Block style: heavy,
+ * widened digits with a dark outline (the color is applied in the shader; the outline stays dark).
+ */
 function numberAtlas() {
+  const N = 2048, C = N / 10;
   const c = document.createElement('canvas');
-  c.width = c.height = 1024;
+  c.width = c.height = N;
   const g = c.getContext('2d');
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = '700 78px "Saira Condensed", "Arial Narrow", sans-serif';
+  g.font = '800 150px "Saira Condensed", "Arial Narrow", sans-serif';
+  g.lineJoin = 'round';
   for (let n = 0; n < 100; n++) {
-    const cx = (n % 10) * 102.4 + 51.2, cy = Math.floor(n / 10) * 102.4 + 54;
-    g.lineWidth = 9;
-    g.strokeStyle = 'rgba(0,0,0,1)';
-    g.fillStyle = '#ffffff';
-    g.strokeText(String(n), cx, cy);
-    g.fillText(String(n), cx, cy);
+    const cx = (n % 10) * C + C / 2, cy = Math.floor(n / 10) * C + C * 0.53;
+    const s = String(n);
+    // Widen to block proportions, but keep two digits inside the cell.
+    const wide = Math.min(1.35, (C * 0.9) / Math.max(1, g.measureText(s).width));
+    g.save(); g.translate(cx, cy); g.scale(wide, 1);
+    g.lineWidth = 14; g.strokeStyle = 'rgba(0,0,0,1)'; g.strokeText(s, 0, 0);
+    g.fillStyle = '#ffffff'; g.fillText(s, 0, 0);
+    g.restore();
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 4;
+  t.anisotropy = 8;
   return t;
 }
 

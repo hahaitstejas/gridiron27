@@ -258,6 +258,35 @@ for (let i = 0; i < A.length; i++) {
   }
 }
 
+// ---------- the jersey hangs straight off the shoulder pads (a football jersey is boxy: no V-taper to the waist) ----------
+// Below the chest, every jersey vertex is pushed out to (most of) the chest's outline in its direction, so the torso reads
+// as one block from the pads to the belt, the way it does on TV.
+{
+  const chestY = shY - 0.14;
+  const torsoV = ids.filter((i) => region[i] === 0);
+  const BINS = 48, chest = new Array(BINS).fill(0);
+  const czOf = (y) => { let s2 = 0, n = 0; for (const i of torsoV) if (Math.abs(A[i][1] - y) < 0.03) { s2 += A[i][2]; n++; } return n ? s2 / n : 0; };
+  const cz0 = czOf(chestY);
+  const bin = (x, z) => ((Math.floor(((Math.atan2(x, z) + Math.PI) / (2 * Math.PI)) * BINS) % BINS) + BINS) % BINS;
+  for (const i of torsoV) {
+    const p = A[i];
+    if (Math.abs(p[1] - chestY) > 0.035) continue;
+    const r = Math.hypot(p[0] + pad[i][0], p[2] + pad[i][2] - cz0);
+    const b = bin(p[0], p[2] - cz0);
+    chest[b] = Math.max(chest[b], r);
+  }
+  for (let b = 0; b < BINS; b++) if (!chest[b]) chest[b] = Math.max(chest[(b + BINS - 1) % BINS], chest[(b + 1) % BINS]);
+  for (const i of torsoV) {
+    const p = A[i];
+    if (p[1] >= chestY || p[1] < waistY - 0.04) continue;
+    const cz = czOf(p[1]);
+    const dx = p[0], dz = p[2] - cz, r = Math.hypot(dx, dz) || 1e-6;
+    const k = (p[1] - waistY) / (chestY - waistY); // 1 at the chest, 0 at the belt
+    const want = chest[bin(dx, dz)] * (0.86 + 0.1 * Math.max(0, Math.min(1, k)));
+    if (want > r) pad[i] = add(pad[i], [dx / r * (want - r), 0, dz / r * (want - r)]);
+  }
+}
+
 // ---------- clothing: the jersey hangs off the pads, sleeves and padded pants sit off the skin (part of the pads delta) ----------
 {
   const nrm = A.map(() => [0, 0, 0]);
@@ -265,7 +294,7 @@ for (let i = 0; i < A.length; i++) {
     const n = cross(sub(A[b], A[a]), sub(A[c], A[a]));
     for (const v of [a, b, c]) nrm[v] = add(nrm[v], n);
   }
-  const THICK = { 0: 0.026, 1: 0.018, 2: 0.02, 3: 0.02, 4: 0.006, 8: 0.012 };
+  const THICK = { 0: 0.02, 1: 0.016, 2: 0.01, 3: 0.01, 4: 0.006, 8: 0.012 };
   for (const i of ids) {
     const t = THICK[region[i]];
     if (!t) continue;

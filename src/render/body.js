@@ -230,7 +230,7 @@ export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
   const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.35,
-    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.35, 0.35) });
+    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.55, 0.55) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
@@ -263,6 +263,19 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
         // Sleeve stripes: two bands just above the sleeve's end, on the arm tube and the shoulder cap alike.
         if (region == 1 && vPart > 0.5 && vPart < 1.5) { float d = y - uRegY.y; if ((d > 0.018 && d < 0.032) || (d > 0.044 && d < 0.058)) col = trimC; }
         // Jersey neckline: a V in front with a trim edge and the undershirt inside, a trim collar band all round.
+        // Cloth: a few soft vertical drape folds hanging from the pads, horizontal tuck wrinkles above the belt, and the
+        // pants bunching at the knees: shading only (no geometry), strongest where real fabric gathers.
+        if (region == 0) {
+          float a = vBody.x;
+          float h = (y - uRegY.x) / max(0.01, uRegY.y - uRegY.x);
+          float drape = sin(a * 9.0 + sin(a * 2.0) * 1.5) * 0.5 + 0.5;
+          float tuck = (sin(y * 260.0 + sin(a * 5.0) * 2.0) * 0.5 + 0.5) * (1.0 - smoothstep(0.0, 0.22, h));
+          col *= 1.0 - 0.07 * drape * smoothstep(0.1, 0.5, 1.0 - h) - 0.12 * tuck;
+        }
+        if (region == 2 && vPart > 1.5 && vPart < 2.5) {
+          float k = max(0.0, 1.0 - abs(y - uRegY.w - 0.07) / 0.06);
+          col *= 1.0 - 0.1 * k * (sin(y * 300.0) * 0.5 + 0.5);
+        }
         if (region == 0 && vBody.y > 0.5) {
           float a = vBody.x - 1.5708; float fa = a > 3.14159 ? a - 6.28318 : a;
           float depth = 1.0 - vBody.y;
@@ -334,24 +347,30 @@ export function bodyDepthMaterial() {
 
 /** A fine knit pattern for jersey / pants fabric (tiling normal map). */
 export function fabricNormal() {
-  const N = 128;
+  // Athletic jersey mesh: staggered rows of small holes in a fine knit, as a height field turned into normals.
+  const N = 256;
+  const H = new Float32Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const row = Math.floor(y / 10), ox = (row % 2) * 5;
+    const u = ((x + ox) % 10) / 10 - 0.5, v = (y % 10) / 10 - 0.5;
+    const hole = Math.max(0, 0.32 - Math.hypot(u, v * 1.15)) / 0.32;
+    const rib = 0.15 * Math.sin((x / N) * Math.PI * 2 * 64);
+    H[y * N + x] = -hole * hole + rib;
+  }
   const c = document.createElement('canvas');
   c.width = c.height = N;
   const g = c.getContext('2d');
   const img = g.createImageData(N, N);
+  const at = (x, y) => H[((y + N) % N) * N + ((x + N) % N)];
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    // Mesh holes: a grid of shallow dimples.
-    const u = (x % 8) / 8 - 0.5, v = (y % 8) / 8 - 0.5;
-    const r = Math.hypot(u, v);
-    const d = r < 0.3 ? (0.3 - r) : 0;
-    const nx = u * d * 5, ny = v * d * 5;
-    const i = (y * N + x) * 4;
-    img.data[i] = 128 + nx * 127; img.data[i + 1] = 128 + ny * 127; img.data[i + 2] = 255; img.data[i + 3] = 255;
+    const dx = (at(x + 1, y) - at(x - 1, y)) * 2.2, dy = (at(x, y + 1) - at(x, y - 1)) * 2.2;
+    const l = Math.hypot(dx, dy, 1), i = (y * N + x) * 4;
+    img.data[i] = (-dx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (-dy / l * 0.5 + 0.5) * 255; img.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
   }
   g.putImageData(img, 0, 0);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 4;
+  t.anisotropy = 8;
   return t;
 }
 

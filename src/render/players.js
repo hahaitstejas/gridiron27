@@ -78,12 +78,13 @@ export class PlayerRenderer {
 
     // Helmet decals: a patch bent onto the helmet shell (same local space as helmetGeo), the team's logo from a
     // two-cell atlas (home | away) picked per instance; aDecal = (cell, flip) so both sides read the right way.
-    const decalGeo = new THREE.PlaneGeometry(0.46, 0.46, 6, 6);
+    // Big, like a real helmet logo: most of the side of the shell, centered a little behind and above the ear hole.
+    const decalGeo = new THREE.PlaneGeometry(0.62, 0.62, 10, 10);
     {
-      const pos = decalGeo.attributes.position, R = 0.505;
+      const pos = decalGeo.attributes.position, R = 0.512;
       for (let k = 0; k < pos.count; k++) {
-        const u = pos.getX(k), v = pos.getY(k);
-        pos.setXYZ(k, Math.sqrt(Math.max(0.0001, R * R - u * u - v * v)) * 0.95, v * 0.95, u * 1.08);
+        const u = pos.getX(k) - 0.03, v = pos.getY(k) + 0.06;
+        pos.setXYZ(k, Math.sqrt(Math.max(0.0001, R * R - u * u - v * v)) * 0.95, v * 0.95, u * 1.1);
       }
       decalGeo.computeVertexNormals();
     }
@@ -95,7 +96,7 @@ export class PlayerRenderer {
     this.logoTex = new THREE.CanvasTexture(this.logoCanvas);
     this.logoTex.colorSpace = THREE.SRGBColorSpace;
     this.logoTex.anisotropy = 4;
-    const decalMat = new THREE.MeshStandardMaterial({ map: this.logoTex, transparent: true, alphaTest: 0.35, roughness: 0.3, metalness: 0.1, envMap, envMapIntensity: 0.6,
+    const decalMat = new THREE.MeshStandardMaterial({ map: this.logoTex, transparent: true, alphaTest: 0.35, roughness: 0.5, metalness: 0, envMap, envMapIntensity: 0.25,
       side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
     decalMat.onBeforeCompile = (sh) => {
       sh.vertexShader = 'attribute vec2 aDecal;\n' + sh.vertexShader.replace('#include <uv_vertex>',

@@ -211,7 +211,9 @@ environment's network policy (the user can allow them in the environment setting
 - [x] C1 Paired contact: tackles where both bodies move together (wrap, drive back, twist down), blocks with hands on the
       chest and leverage, gang tackles / piles; render-side alignment of the two players. Done: tacklers close to wrap distance and face the runner (`wrapTarget`,
       gang tacklers too), blockers' hands reach the other man's chest by distance and both square up.
-- [ ] C2 Physics falls: simple per-body ragdoll-ish fall (momentum + ground contact) so no two tackles look the same.
+- [ ] C2 Physics falls (next): simple per-body ragdoll-ish fall (momentum + ground contact) so no two tackles look the same.
 - [ ] D1 Stadium: upper deck, suites ring, roof fascia, sideline benches / tents / cameras, end-zone seating detail.
 - [ ] D2 Broadcast: camera cuts between plays (huddle close-up, sideline, crowd, coach), better replay angles, a lower-third
       for players with stats (face photo), field-level shot after big plays.
+- [x] Extra (user priority: player look): helmet / facemask / chin strap, V-neck, sleeve + sock stripes, gloves, printed
+      numbers as projected patches, athletic-mesh fabric normal map, drape / tuck / knee wrinkle shading, big helmet logos.

@@ -58,6 +58,11 @@ export async function loadLocalLeague(teams) {
       const img = await loadImage(/^(https?:|data:)/i.test(file) ? file : `/local/logos/${file}`);
       if (img) team.logo._img = img; else summary.problems.push(`logo image not found: logos/${file}`);
     }));
+    await Promise.all(r.leagueImages.map(async ({ target, file }) => {
+      const img = await loadImage(/^(https?:|data:)/i.test(file) ? file : `/local/logos/${file}`);
+      if (!img) { summary.problems.push(`league logo image not found: ${file}`); return; }
+      if (target === 'league') LEAGUE.logo._img = img; else if (LEAGUE.confLogos?.[target]) LEAGUE.confLogos[target]._img = img;
+    }));
     Object.assign(localBook, { freeAgents: r.freeAgents, schedule: r.schedule, loaded: true });
     console.info('[Gridiron 27] Local league book:', summary.loaded.join(', '), summary.problems);
     return summary;

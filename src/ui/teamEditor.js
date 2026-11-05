@@ -180,14 +180,14 @@ export function leagueEditor(ctx, focus = 0) {
       if (!f) return;
       const img = await loadImage(f.data);
       if (!img) { window.alert("That file couldn't be read as an image."); return; }
-      LEAGUE.logo.dataUrl = await shrinkImage(img, 256);
+      LEAGUE.logo.dataUrl = await shrinkImage(img, 256); delete LEAGUE.logo.image;
       LEAGUE.logo._img = await loadImage(LEAGUE.logo.dataUrl);
       changed();
       leagueEditor(ctx, rows.length);
     }),
   ];
-  if (LEAGUE.logo.dataUrl) rows.push(action('Remove logo image (use the built logo)', () => {
-    delete LEAGUE.logo.dataUrl; LEAGUE.logo._img = null;
+  if (LEAGUE.logo.dataUrl || LEAGUE.logo.image) rows.push(action('Remove logo image (use the built logo)', () => {
+    delete LEAGUE.logo.dataUrl; delete LEAGUE.logo.image; LEAGUE.logo._img = null;
     changed();
     leagueEditor(ctx, rows.length);
   }));
@@ -195,7 +195,7 @@ export function leagueEditor(ctx, focus = 0) {
   rows.push(el('div.dc-head', { text: 'Conference logos (end zones)' }));
   LEAGUE.confLogos ||= [null, null];
   [0, 1].forEach((i) => {
-    const has = !!LEAGUE.confLogos[i]?.dataUrl;
+    const has = !!(LEAGUE.confLogos[i]?.dataUrl || LEAGUE.confLogos[i]?.image);
     rows.push(action(`${CONFERENCES[i]}: ${has ? 'replace logo image…' : 'upload a logo image…'}`, async () => {
       const f = await pickFile('image/*', true);
       if (!f) return;

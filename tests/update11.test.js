@@ -99,7 +99,7 @@ describe('league book (one spreadsheet)', () => {
     a[2].retired = [{ number: 12, player: 'Old Star' }];
     const text = exportLeagueBook(a, { playAs: 4 });
     expect(isLeagueBook(text)).toBe(true);
-    expect(Object.keys(splitLeagueBook(text))).toEqual(['TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE']);
+    expect(Object.keys(splitLeagueBook(text))).toEqual(['LEAGUE', 'TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE']);
     // Spreadsheet apps pad marker rows with commas and add blank rows: still fine.
     const padded = text.replace(/^\[(\w+)\]$/gm, '[$1],,,,').replace(/\n\[/g, '\n,,,\n[');
     const b = generateLeagueRosters(defaultTeams(), 99);
@@ -111,6 +111,17 @@ describe('league book (one spreadsheet)', () => {
     expect(b[5].coaches.hc.name).toBe(a[5].coaches.hc.name);
     expect(r.freeAgents).toBe(null);
     expect(r.problems.filter((p) => !/depth/i.test(p))).toEqual([]);
+  });
+  it('a [LEAGUE] section sets the league name and the league / conference logo images (links or logos/ files)', async () => {
+    const { LEAGUE, leagueInfoJSON, setLeagueInfo } = await import('../src/data/leagueInfo.js');
+    const { importLeagueBook } = await import('../src/data/leagueBook.js');
+    const before = leagueInfoJSON();
+    const t = generateLeagueRosters(defaultTeams(), 5);
+    const r = importLeagueBook(t, '[TEAMS]\nid,city,name,abbr,conference\n0,Aa,Bb,AAB,East\n1,Cc,Dd,CCD,West\n[LEAGUE]\nkey,value\nname,Test League\nlogo_image,https://x.test/l.png\nEast logo,e.png\nconference2_logo,https://x.test/w.png\n');
+    expect(LEAGUE.name).toBe('Test League');
+    expect(r.leagueImages).toEqual([{ target: 'league', file: 'https://x.test/l.png' }, { target: 0, file: 'e.png' }, { target: 1, file: 'https://x.test/w.png' }]);
+    expect(leagueInfoJSON().confLogos).toEqual([{ image: 'e.png' }, { image: 'https://x.test/w.png' }]);
+    setLeagueInfo(before);
   });
 });
 

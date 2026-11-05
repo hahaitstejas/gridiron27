@@ -9,14 +9,17 @@
 //   [ROSTER]
 //   team,first,last,pos,...
 //
-// Sections: TEAMS, ROSTER, DEPTH, COACHES, UNIFORMS, STADIUMS, RETIRED_NUMBERS, FREE_AGENTS, SCHEDULE. Any can be left
+// Sections: LEAGUE (key,value rows: name, championship, logo_image, conference logos), TEAMS, ROSTER, DEPTH, COACHES, UNIFORMS, STADIUMS, RETIRED_NUMBERS, FREE_AGENTS, SCHEDULE. Any can be left
 // out; they're applied in that order. Spreadsheet apps pad short rows with commas ("[TEAMS],,,,"), which is fine.
 // Pure logic (Node-importable): logo images and the franchise-only sections are handed back to the caller.
 import { parseCSV, importRosterRows, importTeamsRows, importDepthRows, exportRosterCSV, exportTeamsCSV, exportDepthCSV, freeAgentsFromRows, toCSV } from './csv.js';
 import { importRetired, importCoaches, importUniforms, importStadiums, exportRetired, exportCoaches, exportUniforms, exportStadiums, scheduleFromRows, exportSchedule } from './extraCSV.js';
 import { RATINGS } from './positions.js';
+import { LEAGUE } from './leagueInfo.js';
+import { CONFERENCES } from './teams.js';
+import { PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 
-export const BOOK_SECTIONS = ['TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE'];
+export const BOOK_SECTIONS = ['LEAGUE', 'TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE'];
 const MARK = /^\s*"?\[([A-Za-z_ ]+)\]"?\s*(,.*)?$/;
 const norm = (s) => s.trim().toUpperCase().replace(/\s+/g, '_').replace(/^RETIRED$/, 'RETIRED_NUMBERS').replace(/^FREEAGENTS$/, 'FREE_AGENTS');
 
@@ -48,6 +51,7 @@ export function exportLeagueBook(teams, { playAs = null, sites = null, schedule 
   const faHead = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'face', 'skin'];
   const fa = toCSV(freeAgents?.length ? parseCSV(exportRosterCSV([{ abbr: 'FA', roster: freeAgents }])) : [], faHead);
   const sec = {
+    LEAGUE: exportLeagueSection(),
     TEAMS: exportTeamsCSV(teams, playAs),
     ROSTER: exportRosterCSV(teams),
     DEPTH: exportDepthCSV(teams),
@@ -68,10 +72,12 @@ export function exportLeagueBook(teams, { playAs = null, sites = null, schedule 
  */
 export function importLeagueBook(teams, text, { league = {} } = {}) {
   const secs = splitLeagueBook(text);
-  const res = { lines: [], problems: [], playAs: null, logoImages: [], freeAgents: null, schedule: null };
+  const res = { lines: [], problems: [], playAs: null, logoImages: [], leagueImages: [], freeAgents: null, schedule: null };
   const rows = (k) => (secs[k] ? parseCSV(secs[k]) : null);
   const t = rows('TEAMS');
   if (t?.length) { const r = importTeamsRows(teams, t); res.playAs = r.playAs; res.logoImages = r.logoImages; res.problems.push(...r.skipped); res.lines.push(`Teams: ${t.length}`); }
+  const lg = rows('LEAGUE');
+  if (lg?.length) { const o = importLeagueSection(lg); res.leagueImages = o.images; res.problems.push(...o.skipped); res.lines.push(`League: ${o.count}`); }
   const r = rows('ROSTER');
   if (r?.length) { const s = importRosterRows(teams, r); res.problems.push(...s.skipped); res.lines.push(`Roster: ${s.imported} players`); if (res.playAs === null && s.teams.length === 1) res.playAs = teams.find((x) => x.abbr === s.teams[0])?.id ?? null; }
   const d = rows('DEPTH');
@@ -86,4 +92,41 @@ export function importLeagueBook(teams, text, { league = {} } = {}) {
   if (sc?.length) { const o = scheduleFromRows(teams, sc); res.schedule = o.weeks; res.problems.push(...o.skipped.map((p) => `Schedule: ${p}`)); if (o.weeks) res.lines.push(`Schedule: ${o.weeks.length} weeks (used when a franchise starts)`); }
   for (const k of Object.keys(secs)) if (!BOOK_SECTIONS.includes(k)) res.problems.push(`Unknown section [${k}] skipped`);
   return res;
+}
+
+// [LEAGUE]: one setting per row (key,value). Images are a web link or a file name in logos/, like a team's logo_image.
+//   name / championship: the league's and the title game's names; logo_image: the league logo;
+//   conference1_logo / conference2_logo (or "<conference name> logo", e.g. "East logo"): the end-zone conference logos.
+const LEAGUE_HEAD = ['key', 'value'];
+const keyOf = (k) => String(k || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
+
+/** Apply LEAGUE rows. Returns { count, skipped, images: [{ target: 'league' | 0 | 1, file }] } (images for the caller to load). */
+export function importLeagueSection(rows) {
+  const out = { count: 0, skipped: [], images: [] };
+  const confKey = (k) => {
+    const m = /^conf(?:erence)?_?([12])_?logo(?:_image)?$/.exec(k);
+    if (m) return +m[1] - 1;
+    const i = CONFERENCES.findIndex((c) => k === `${keyOf(c)}_logo` || k === `${keyOf(c)}_logo_image`);
+    return i >= 0 ? i : null;
+  };
+  for (const r of rows) {
+    const k = keyOf(r.key ?? r.setting ?? r.field), v = String(r.value ?? '').trim();
+    if (!k) continue;
+    if (!v) continue; // blank = keep what's there
+    if (k === 'name' || k === 'league' || k === 'league_name') LEAGUE.name = v;
+    else if (k === 'championship' || k === 'championship_name') { LEAGUE.championship = v; PLAYOFF_ROUND_NAMES[PLAYOFF_ROUND_NAMES.length - 1] = v; }
+    else if (k === 'logo' || k === 'logo_image' || k === 'league_logo') { LEAGUE.logo.image = v; delete LEAGUE.logo.dataUrl; out.images.push({ target: 'league', file: v }); }
+    else if (confKey(k) !== null) { const i = confKey(k); LEAGUE.confLogos ||= [null, null]; LEAGUE.confLogos[i] = { image: v }; out.images.push({ target: i, file: v }); }
+    else { out.skipped.push(`League: unknown setting "${r.key}"`); continue; }
+    out.count++;
+  }
+  return out;
+}
+
+/** The LEAGUE section (images only when they're links / files; uploaded images live in the save). */
+export function exportLeagueSection() {
+  const rows = [{ key: 'name', value: LEAGUE.name }, { key: 'championship', value: LEAGUE.championship },
+    { key: 'logo_image', value: LEAGUE.logo?.image || '' },
+    ...[0, 1].map((i) => ({ key: `conference${i + 1}_logo`, value: LEAGUE.confLogos?.[i]?.image || '' }))];
+  return toCSV(rows, LEAGUE_HEAD);
 }

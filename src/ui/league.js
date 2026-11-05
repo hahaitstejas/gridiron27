@@ -10,8 +10,15 @@ export async function attachLogos(teams) {
   await Promise.all([...teams.map(async (t) => {
     const src = t.logo?.dataUrl || (t.logo?.image ? (/^(https?:|data:)/i.test(t.logo.image) ? t.logo.image : `/local/logos/${t.logo.image}`) : null);
     t.logo._img = src ? await loadImage(src) : null;
-  }), (async () => { LEAGUE.logo._img = LEAGUE.logo.dataUrl ? await loadImage(LEAGUE.logo.dataUrl) : null; })(),
-    ...(LEAGUE.confLogos || []).map(async (c) => { if (c?.dataUrl) c._img = await loadImage(c.dataUrl); })]);
+  }), (async () => { const s = logoSrc(LEAGUE.logo); LEAGUE.logo._img = s ? await loadImage(s) : null; })(),
+    ...(LEAGUE.confLogos || []).map(async (c) => { const s = logoSrc(c); if (s) c._img = await loadImage(s); })]);
+}
+
+/** Where a logo's image comes from: an uploaded data URL, a web link, or a file name in /local/logos/. */
+export function logoSrc(l) {
+  if (l?.dataUrl) return l.dataUrl;
+  if (!l?.image) return null;
+  return /^(https?:|data:)/i.test(l.image) ? l.image : `/local/logos/${l.image}`;
 }
 
 /**

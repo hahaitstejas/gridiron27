@@ -744,7 +744,9 @@ see the IP rule at the top.**
 - `depth.csv`: `team,slot,players[,names]` — `players` = jersey numbers in order, space separated;
   `names` is informational only. Slots: QB HB FB WR TE LT LG C RG RT LE RE DT LOLB MLB ROLB CB FS SS K P KR PR.
   Formations use WR1–3, TE1–2, CB1–3 (CB3 = nickel), DT1–2, etc. Unlisted slots are filled automatically.
-- `league.csv` (one file for everything, `data/leagueBook.js`): sections TEAMS, ROSTER, DEPTH, COACHES, UNIFORMS, STADIUMS,
+- `league.csv` (one file for everything, `data/leagueBook.js`): sections LEAGUE (`key,value` rows: name, championship, logo_image,
+  conference1_logo / conference2_logo or `<conference> logo`; images are links or files in logos/, kept as `LEAGUE.logo.image` /
+  `confLogos[i].image`, loaded by `attachLogos` / localLeague), TEAMS, ROSTER, DEPTH, COACHES, UNIFORMS, STADIUMS,
   RETIRED_NUMBERS, FREE_AGENTS, SCHEDULE, each starting with a `[NAME]` marker row followed by that sheet's own header and
   rows (padding commas and blank rows are fine). Loaded instead of the separate files when present; FREE_AGENTS / SCHEDULE
   are used when a franchise starts (`localBook`). League → Spreadsheets exports / imports it; `npm run export-league` writes it.

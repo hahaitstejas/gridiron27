@@ -418,7 +418,7 @@ The kick hint shows the wind (arrow from the camera's view). `npm run games -- -
 `~/Documents/Gridiron27`, created with a read-me; app menu → Open / Choose League Folder…, stored in userData config.json).
 `preload.cjs` + `prompt.html` replace `window.prompt` (Electron has none; the editors use it) with a modal dialog via
 `ipcRenderer.sendSync`. electron-builder config is the `build` key in package.json (arm64 dmg + zip, ad-hoc signed
-`identity: "-"`, icon `build/icon.png`); output in `release/` (git-ignored).
+`identity: "-"`, icon `build/icon.png`, or a personal `public/local/app-icon.png` when present: tools/app-build.mjs); output in `release/` (git-ignored).
 
 ### Offline single file
 `npm run build:offline` (vite mode `offline`, `vite-plugin-singlefile`, then `tools/offline.mjs` renames it) inlines all JS,

@@ -17,7 +17,7 @@
     "export-league": "node tools/export-league.js",
     "fetch-faces": "node tools/fetch-faces.mjs",
     "app": "vite build --mode app && electron .",
-    "app:build": "vite build --mode app && electron-builder --mac --arm64"
+    "app:build": "node tools/app-build.mjs"
   },
   "engines": {
     "node": ">=20.19"

@@ -577,6 +577,10 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   players.js posing (`B`), `bindOrigin` and the gait's IK (`LEG` getters) all read; joints don't scale with build when it's
   active (w = 1). Gear sits on `hg` = head × T(0, helmY, helmZ). The procedural body (`buildBodyGeometry`) is the fallback.
   Rebuild after changing the tool: `node tools/buildhuman.mjs` (needs a clone of makehumancommunity/makehuman's data dir).
+  Seam-free coordinates: the jersey angle is stored with its wrap under the left arm (front = PI/2; the shader takes PI/2
+  off), each leg's with its wrap on the inside (0 = outside = the stripe), and the shader skips triangles that straddle a
+  seam (`dFdx`). The chest bends at `BIND.spineY` (lower spine, 0.17 yd above the hips), not the hip joints; pad-displaced
+  vertices ride on the chest bone; lineman build capped at 0.35; mocap arm roll is not applied (candy-wrapper skinning).
 - Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK
   (x flipped: CMU's frame is mirrored vs ours) → our pose parameters in the runner's heading frame (`LAYOUT`: rootY, lean,
   twist, head, both arms' pitch/out/elbow/twist, both legs' hip/knee/out); gait cycles cut at alternating footfalls (half

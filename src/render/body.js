@@ -21,7 +21,7 @@ export const REGION = { jersey: 0, sleeve: 1, pants: 2, stripe: 3, socks: 4, ski
 
 // Bind-pose joint positions (yards) for width w: kept in sync with PlayerRenderer.drawPlayer's frames.
 // Procedural defaults; applySkeleton() replaces them with the MakeHuman body's (src/assets/human.json) at boot.
-export const BIND = { hipH: 1.0, hipX: 0.125, thigh: 0.48, shin: 0.47, torso: 0.66, shX: 0.27, shY: 0.66 * 0.84, shZ: 0, upper: 0.34, fore: 0.32, headY: 0.86, headZ: 0.02, helmY: 0, helmZ: 0 };
+export const BIND = { spineY: 0, hipH: 1.0, hipX: 0.125, thigh: 0.48, shin: 0.47, torso: 0.66, shX: 0.27, shY: 0.66 * 0.84, shZ: 0, upper: 0.34, fore: 0.32, headY: 0.86, headZ: 0.02, helmY: 0, helmZ: 0 };
 /** Use a body's skeleton (yards). Everything that poses or skins players reads BIND, so this is the one switch. */
 export function applySkeleton(sk) { Object.assign(BIND, sk); }
 /** Bind-space origin of bone b for width w (the bind pose has no rotations, so bind = a translation). */
@@ -124,7 +124,7 @@ export function buildBodyGeometry() {
     const w = 1 - smooth(1.04, 1.32, y);
     return { a: BONE.hips, b: BONE.chest, w, region };
   };
-  const numberUv = (y, a) => [a, (y - 1.06) / (1.64 - 1.06)];
+  const numberUv = (y, a) => [a + Math.PI / 2, (y - 1.06) / (1.64 - 1.06)]; // same convention as the MakeHuman body
   tube(out, 0, torsoRings, 40, torsoW, KIND_CHEST, { exp: 2.5, capBottom: true, capTop: true, bodyUv: numberUv });
   // Neck: chest to head.
   tube(out, 0, [{ y: top - 0.06, rx: 0.088, rz: 0.088, cz: 0.0 }, { y: top + 0.04, rx: 0.08, rz: 0.08, cz: 0.012 }, { y: top + 0.13, rx: 0.075, rz: 0.075, cz: 0.02 }], 12,
@@ -160,7 +160,7 @@ export function buildBodyGeometry() {
       const region = y > kneeY - 0.07 ? REGION.pants : REGION.socks;
       if (y > B.hipH - 0.08) return { a: hp, b: BONE.hips, w: 1 - 0.5 * smooth(B.hipH - 0.08, B.hipH + 0.04, y), region };
       return { a: hp, b: kn, w: 1 - smooth(kneeY + 0.06, kneeY - 0.06, y), region };
-    }, KIND_LIMB, { flatSide: 0.15, bodyUv: (y, a) => [a, side < 0 ? -2 : -3] });
+    }, KIND_LIMB, { flatSide: 0.15, bodyUv: (y, a) => [a - side * Math.PI / 2, side < 0 ? -2 : -3] }); // 0 = the outside of the leg
   }
 
   const g = new THREE.BufferGeometry();
@@ -241,28 +241,30 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       if (region == 0 && vBody.y > -0.5) {
         vec4 nb = tex(${COL_NUMBER});
         vec3 ncol = tex(${COL_NUMCOL}).rgb;
-        float a = vBody.x; // 0 = front, PI = back
-        if (nb.w > 0.5) {
+        float a = vBody.x - 1.5708; // stored with the seam under the left arm: 0 = front, PI = back
+        // A triangle that straddles the seam under the left arm interpolates the angle all the way round: skip it.
+        float seamJump = abs(dFdx(vBody.x)) + abs(dFdy(vBody.x));
+        if (nb.w > 0.5 && seamJump < 0.6) {
           // Front number (chest) and back number (bigger), name above it across the shoulders.
           vec2 st = vec2(-1.0);
           float fa = a > 3.14159 ? a - 6.28318 : a;
-          if (abs(fa) < 0.62 && vBody.y > 0.32 && vBody.y < 0.8) st = vec2(fa / 1.24 + 0.5, (vBody.y - 0.32) / 0.48);
+          if (abs(fa) < 0.85 && vBody.y > 0.28 && vBody.y < 0.82) st = vec2(fa / 1.7 + 0.5, (vBody.y - 0.28) / 0.54);
           float ba = a - 3.14159;
-          if (abs(ba) < 0.78 && vBody.y > 0.14 && vBody.y < 0.74) st = vec2(ba / 1.56 + 0.5, (vBody.y - 0.14) / 0.6);
+          if (abs(ba) < 1.0 && vBody.y > 0.1 && vBody.y < 0.74) st = vec2(ba / 2.0 + 0.5, (vBody.y - 0.1) / 0.64);
           if (st.x >= 0.0) {
             vec2 uvN = vec2((st.x + nb.x) / 10.0, 1.0 - ((1.0 - st.y) + nb.y) / 10.0);
             vec4 t = texture2D(numTex, uvN);
             if (t.a > 0.4) col = mix(ncol * 0.12, ncol, t.r);
           }
-          if (abs(ba) < 0.62 && vBody.y > 0.76 && vBody.y < 0.9 && nb.z >= 0.0) {
-            vec2 s2 = vec2(ba / 1.24 + 0.5, (vBody.y - 0.76) / 0.14);
+          if (abs(ba) < 0.85 && vBody.y > 0.76 && vBody.y < 0.92 && nb.z >= 0.0) {
+            vec2 s2 = vec2(ba / 1.7 + 0.5, (vBody.y - 0.76) / 0.16);
             vec4 t = texture2D(nameTex, vec2(s2.x, 1.0 - (nb.z + 1.0 - s2.y) / nameRows));
             if (t.a > 0.45) col = ncol;
           }
         }
       }
       // Pants stripe down the outside of each leg (vBody.y = -2 left leg, -3 right leg; x = angle around it).
-      if (region == 2 && vBody.y < -1.5) { float sd = vBody.y < -2.5 ? 1.0 : -1.0; if (sin(vBody.x) * sd > 0.972) col = tex(${COL_COLORS} + 3).rgb; }
+      if (region == 2 && vBody.y < -1.5 && cos(vBody.x) > 0.972 && abs(dFdx(vBody.x)) + abs(dFdy(vBody.x)) < 0.6) col = tex(${COL_COLORS} + 3).rgb; // leg angle: 0 = outside
       // Face photo (8 x 8 atlas, cell = instance) on the front of the MakeHuman head (vBody.y > 5 marks it), faded into the skin.
       if (region == 5 && vBody.y > 5.0 && flg.w > 0.5) {
         vec2 st = vec2(vBody.x, vBody.y - 10.0);

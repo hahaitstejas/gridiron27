@@ -307,7 +307,7 @@ export class PlayerRenderer {
       // Bare hands match the skin; gloves only when the uniform sets a glove color (Team editor → uniform details).
       this.region(i, REGION.gloves, uni.gloves || skin);
       this.number(i, p.number, uni.number, named[i] ? i : -1);
-      flags(i, false, Math.min(0.6, p.bulk * 0.75), 1, img ? 1 : 0); // linemen: up to 60% of the heavy shape (powerful, not obese)
+      flags(i, false, Math.min(0.35, p.bulk * 0.45), 1, img ? 1 : 0); // linemen: up to 35% of the heavy shape (its belly and seat grow faster than its frame)
       this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
@@ -479,7 +479,8 @@ export class PlayerRenderer {
     // Bones (render/body.js): hips (upright), chest (leans and twists through the waist), head, arms, legs.
     const w = official || this.human ? 1 : wide; // the MakeHuman body's joints don't move with build (bulk is a shape delta)
     const hips = cl(root).multiply(trans(0, B.hipH + pose.crouch, 0));
-    const pel = cl(hips).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
+    // The torso bends at the lower spine (spineY above the hips: the MakeHuman body's), not at the hip joints.
+    const pel = B.spineY ? cl(hips).multiply(trans(0, B.spineY, 0)).multiply(rotX(pose.lean)).multiply(rotY(pose.twist)).multiply(trans(0, -B.spineY, 0)) : cl(hips).multiply(rotX(pose.lean)).multiply(rotY(pose.twist));
     const head = cl(pel).multiply(trans(0, B.headY, B.headZ)).multiply(rotY(-(pose.headYaw || 0))).multiply(rotX(pose.head));
     this.bone(i, BONE.hips, hips, w);
     this.bone(i, BONE.chest, pel, w);

@@ -111,7 +111,7 @@ export class Gait {
       for (let s2 = 0; s2 < 2; s2++) {
         if (carry === s2 || carry === 2) continue;
         const a = pose.arms[s2], o = 4 + s2 * 4;
-        a.pitch = mix(a.pitch, m[o]); a.out = mix(a.out, m[o + 1]); a.elbow = mix(a.elbow, m[o + 2]); a.twist = mix(a.twist || 0, m[o + 3]);
+        a.pitch = mix(a.pitch, m[o]); a.out = mix(a.out, m[o + 1]); a.elbow = mix(a.elbow, m[o + 2]); a.twist = mix(a.twist || 0, 0); // the clip's upper-arm roll wrings the skinned arm: keep it square
       }
       for (let s2 = 0; s2 < 2; s2++) { const l = pose.legs[s2], o = 12 + s2 * 3; l.hip = mix(l.hip, m[o]); l.knee = mix(l.knee, m[o + 1]); l.out = mix(l.out || 0, m[o + 2]); }
     }

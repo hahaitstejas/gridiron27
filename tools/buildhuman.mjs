@@ -150,6 +150,8 @@ const Bk = {
   shX: avg(sh[0][0], sh[1][0]), shY: (sh[0][1] + sh[1][1]) / 2 - hipH, shZ: (sh[0][2] + sh[1][2]) / 2,
   upper: (sh[0][1] - el[0][1] + sh[1][1] - el[1][1]) / 2, fore: (el[0][1] - wr[0][1] + el[1][1] - wr[1][1]) / 2,
   headY: headJ[1] - hipH, headZ: headJ[2],
+  // Where the torso bends (the lower spine), above the hip joints: the chest bone pivots here.
+  spineY: J(head(ATH, 'spine03'))[1] - hipH,
 };
 // Legs: put each knee / ankle straight under its hip (the x of each joint snaps to ±hipX).
 console.log('skeleton (yd):', Object.fromEntries(Object.entries(Bk).map(([k, v]) => [k, +v.toFixed(3)])));
@@ -184,6 +186,20 @@ const pad = A.map((p, i) => {
   return [Math.sign(p[0]) * k * 0.13 * Math.min(1, ax * 1.15), k * 0.055 * Math.min(1, ax + 0.35), Math.sign(p[2] || 1) * k * 0.055];
 });
 
+// Shoulder pads ride on the torso, not the arm: vertices the pads push out move most of their upper-arm weight onto the
+// chest, so raising an arm doesn't drag the pad (and the jersey over it) with it.
+for (let i = 0; i < A.length; i++) {
+  const pd = len(pad[i]);
+  if (pd < 0.01) continue;
+  const k = Math.min(0.85, pd / 0.09);
+  let moved = 0;
+  for (let q = 0; q < 4; q++) if (skinIdx[i][q] === BONE.shL || skinIdx[i][q] === BONE.shR) { const m = skinW[i][q] * k; skinW[i][q] -= m; moved += m; }
+  if (!moved) continue;
+  let ci = skinIdx[i].findIndex((b, q) => b === BONE.chest && skinW[i][q] > 0);
+  if (ci < 0) { ci = skinW[i].indexOf(Math.min(...skinW[i])); skinIdx[i][ci] = BONE.chest; skinW[i][ci] = 0; }
+  skinW[i][ci] += moved;
+}
+
 // ---------- regions, number / photo coordinates ----------
 const REGION = { jersey: 0, sleeve: 1, pants: 2, stripe: 3, socks: 4, skin: 5, forearm: 6, gloves: 7, shoe: 8 };
 const ankleY = (an[0][1] + an[1][1]) / 2, kneeY = (kn[0][1] + kn[1][1]) / 2, wristY = (wr[0][1] + wr[1][1]) / 2;
@@ -208,15 +224,38 @@ for (let i = 0; i < A.length; i++) {
   else if (leg + shin > 0.5 || p[1] < waistY) {
     r = REGION.pants;
     const side = p[0] < 0 ? -1 : 1;
-    b = [Math.atan2(p[0] - side * Bk.hipX, p[2]), side < 0 ? -2 : -3];
+    b = [0, side < 0 ? -2 : -3]; // angle around the leg's own center: filled in below
     if (leg + shin < 0.3) b = [-1, -1]; // the seat of the pants: no stripe
   } else {
     r = REGION.jersey;
-    let a = Math.atan2(p[0], p[2] - 0.0);
+    // Angle around the torso with the seam under the left arm (no number there): front = PI/2, back = 3PI/2; the shader
+    // takes PI/2 off, so its front is 0 and back PI with no wrap inside either number patch.
+    let a = Math.atan2(p[0], p[2]) + Math.PI / 2;
     if (a < 0) a += Math.PI * 2;
     b = [a, (p[1] - waistY) / (collarY - waistY)];
   }
   region.push(r); body.push(b);
+}
+
+// The pants stripe angle: around the leg's real center at each height (the mean of that leg's vertices in a 3 cm slab),
+// so the stripe runs down the outside of the thigh, not wherever the hip joint's x happens to be.
+{
+  const slab = (i) => Math.round(A[i][1] / 0.03);
+  const centers = new Map();
+  for (const i of ids) if (body[i][1] === -2 || body[i][1] === -3) {
+    const key = `${body[i][1]}:${slab(i)}`;
+    const c = centers.get(key) || [0, 0, 0];
+    c[0] += A[i][0]; c[1] += A[i][2]; c[2]++;
+    centers.set(key, c);
+  }
+  for (const i of ids) if (body[i][1] === -2 || body[i][1] === -3) {
+    const c = centers.get(`${body[i][1]}:${slab(i)}`);
+    // 0 = the outside of this leg (where the stripe runs), ±PI = the inside: the wrap sits between the legs, never on the stripe.
+    const side = body[i][1] === -2 ? -1 : 1;
+    let a = Math.atan2((A[i][0] - c[0] / c[2]) * side, A[i][2] - c[1] / c[2]) - Math.PI / 2;
+    if (a <= -Math.PI) a += Math.PI * 2;
+    body[i][0] = a;
+  }
 }
 
 // ---------- clothing: the jersey hangs off the pads, sleeves and padded pants sit off the skin (part of the pads delta) ----------

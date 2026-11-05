@@ -405,9 +405,22 @@ export class PlayerRenderer {
 
   drawPlayer(sim, p, i, alpha, time, dt = 1 / 60, official = false) {
     const P = this.parts;
-    const x = p.px + (p.x - p.px) * alpha;
-    const z = p.pz + (p.z - p.pz) * alpha;
+    let x = p.px + (p.x - p.px) * alpha;
+    let z = p.pz + (p.z - p.pz) * alpha;
     let f = p.pfacing + angDiff(p.facing, p.pfacing) * alpha;
+    // Contact: a tackler closes to wrap distance on the runner he's bringing down and faces him, so the two bodies
+    // go down together (the sim already moves them together; it keeps them a little apart for collisions).
+    if (!official && (p.anim === 'tackle' || p.anim === 'tackle_dive') && sim?.players) {
+      const c = this.wrapTarget(sim, p, x, z);
+      if (c) {
+        const cx = c.px + (c.x - c.px) * alpha, cz = c.pz + (c.z - c.pz) * alpha;
+        const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz) || 1;
+        const k = Math.min(1, (p.animT || 0) / 0.12); // ease in over the first frames of the hit
+        const want = 0.5 * (p.height / 2.06);
+        if (d > want) { x += (dx / d) * (d - want) * k; z += (dz / d) * (d - want) * k; }
+        f += angDiff(Math.atan2(dz, dx), f) * k;
+      }
+    }
     const sc = p.height / 2.06;
     const wide = 1 + p.bulk * 0.28;
     const limb = 0.88 + p.bulk * 0.42; // linemen are thick through the arms and legs, receivers and DBs lean
@@ -437,6 +450,17 @@ export class PlayerRenderer {
     const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
     this.gait.apply(p, i, pose, x, z, f, sc, official ? 1 : wide, dt, look);
     if (b && REACH_ANIMS.has(p.anim) && (b.state === 'air' || b.state === 'kick')) reachForBall(pose, p, b, x, z, f, sc, wide, alpha);
+    // Blocks: hands on the other man's chest. Arms straighten or fold with the distance between them, both sides square up.
+    const eg = p.engagement;
+    if (!official && eg && p.anim === 'block' && eg.b && eg.d) {
+      const o = eg.b === p ? eg.d : eg.b;
+      const ox = o.px + (o.x - o.px) * alpha, oz = o.pz + (o.z - o.pz) * alpha;
+      const d = Math.hypot(ox - x, oz - z) / sc;
+      const reach = Math.max(0.05, d - 0.34), L = B.upper + B.fore;
+      const bend = Math.min(1.9, Math.max(0.12, 2 * Math.acos(Math.min(1, reach / L))));
+      for (const a of pose.arms) { a.pitch = 1.32 + Math.sin(time * 11 + i) * 0.06; a.elbow = bend; a.out = -0.12; a.twist = 0; }
+      f += angDiff(Math.atan2(oz - z, ox - x), f) * 0.8;
+    }
     const yaw = Math.PI / 2 - f;
 
     poolI = 0;
@@ -539,6 +563,17 @@ export class PlayerRenderer {
     }
     packPose(target, last);
     return target;
+  }
+
+  /** The runner a tackler is wrapping: the nearest opponent going down within 2.2 yd (the carrier, usually). */
+  wrapTarget(sim, p, x, z) {
+    let best = null, bd = 2.2;
+    for (const o of sim.players) {
+      if (o.team === p.team || !(o.anim === 'falling' || o.anim === 'down' || o.state === 'tackled')) continue;
+      const d = Math.hypot(o.x - x, o.z - z);
+      if (d < bd) { bd = d; best = o; }
+    }
+    return best;
   }
 
   /** World position for the ball when it's carried by player i. */

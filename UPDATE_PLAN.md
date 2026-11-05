@@ -205,9 +205,12 @@ environment's network policy (the user can allow them in the environment setting
       matched), with the gait's planted feet and IK on top; procedural poses stay for stances, signals and anything without a clip.
       Done: 7 forward clips 1.65-5.77 yd/s (CMU tops out there; faster = the top clip exaggerated). TODO later: backpedal /
       shuffle clips (69_34.., 69_42..).
-- [ ] B3 Action clips: throw (CMU football throw), catch, jump, fall / stumble, celebrations; blended into the current poses.
-- [ ] C1 Paired contact: tackles where both bodies move together (wrap, drive back, twist down), blocks with hands on the
-      chest and leverage, gang tackles / piles; render-side alignment of the two players.
+- [x] B3 Action clips: throw (CMU football throw), catch, jump, fall / stumble, celebrations; blended into the current poses. Done: action-clip pipeline
+      in tools/mocap.mjs (`ACTIONS`, key = peak hand speed); no CMU throw is a usable QB release (33_01/34_01 underhand,
+      33_02's peak is a catch), so the hand-built throw stays; catches use the arm IK.
+- [x] C1 Paired contact: tackles where both bodies move together (wrap, drive back, twist down), blocks with hands on the
+      chest and leverage, gang tackles / piles; render-side alignment of the two players. Done: tacklers close to wrap distance and face the runner (`wrapTarget`,
+      gang tacklers too), blockers' hands reach the other man's chest by distance and both square up.
 - [ ] C2 Physics falls: simple per-body ragdoll-ish fall (momentum + ground contact) so no two tackles look the same.
 - [ ] D1 Stadium: upper deck, suites ring, roof fascia, sideline benches / tents / cameras, end-zone seating detail.
 - [ ] D2 Broadcast: camera cuts between plays (huddle close-up, sideline, crowd, coach), better replay angles, a lower-third

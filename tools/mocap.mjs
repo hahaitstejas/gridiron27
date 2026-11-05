@@ -202,6 +202,41 @@ function processCycle(spec) {
   return { name: spec.name, kind: 'cycle', speed: +speed.toFixed(3), cycle: +T.toFixed(3), samples: acc.map((r) => r.map((v) => Math.round(v * 1e4) / 1e4)) };
 }
 
+/**
+ * A one-off action (non-cyclic): the window around its key moment, sampled at 30 fps. For a throw the key is the release
+ * (peak hand speed); a left-handed thrower is mirrored so every clip throws right-handed like the game's QBs.
+ */
+function processAction(spec) {
+  const b = parseBVH(fs.readFileSync(path.join(DATA, spec.file), 'utf8'));
+  const J = Object.fromEntries(b.joints.map((j, k) => [j.name, k]));
+  const P = Array.from({ length: b.frames }, (_, f) => fk(b, f));
+  const legLen = len(sub(P[0][J.LeftLeg], P[0][J.LeftUpLeg])) + len(sub(P[0][J.LeftFoot], P[0][J.LeftLeg]));
+  const legScale = OUR_LEG / legLen;
+  const hipStand = P.reduce((s, p) => s + p[J.Hips][1], 0) / b.frames;
+  const speed = (s, f) => len(sub(P[Math.min(b.frames - 1, f + 1)][J[`${s}Hand`]], P[Math.max(0, f - 1)][J[`${s}Hand`]])) / (2 * b.dt);
+  let best = { v: 0, f: 0, s: 'Right' };
+  const lo = Math.floor(spec.from / b.dt || 0), hi = Math.min(b.frames - 1, spec.to ? Math.floor(spec.to / b.dt) : b.frames - 1);
+  for (const s of ['Right', 'Left']) for (let f = Math.max(lo, 2); f < hi - 2; f++) { const v = speed(s, f); if (v > best.v) best = { v, f, s }; }
+  const pre = spec.pre ?? 0.5, post = spec.post ?? 0.35, FPS = 30;
+  const n = Math.round((pre + post) * FPS);
+  const mirror = (r) => [r[0], r[1], -r[2], r[3], ...r.slice(8, 12), ...r.slice(4, 8), ...r.slice(15, 18), ...r.slice(12, 15)];
+  const samples = [];
+  for (let k = 0; k <= n; k++) {
+    const f = Math.max(0, Math.min(b.frames - 1, Math.round(best.f + (k / FPS - pre) / b.dt)));
+    let r = KEYS(poseFrom(P[f], J, legScale, hipStand).pose);
+    if (best.s === 'Left') r = mirror(r);
+    samples.push(r.map((v) => Math.round(v * 1e4) / 1e4));
+  }
+  const y0 = samples[0][0];
+  for (const r of samples) r[0] = Math.round((r[0] - y0) * 1e4) / 1e4;
+  console.log(`${spec.name.padEnd(6)} ${spec.file}: key at ${(best.f * b.dt).toFixed(2)} s (${best.s} hand ${(best.v * legScale).toFixed(1)} yd/s), ${samples.length} samples`);
+  return { name: spec.name, kind: 'action', fps: FPS, key: pre, samples };
+}
+// QB throws: an overhand throw (the CMU football clips 33_01 / 34_01 are underhand tosses: not usable).
+// None of the CMU throws is a usable QB release (33_01 / 34_01 are underhand tosses, 33_02's peak is a catch, the
+// baseball pitches are pitches), so the game keeps its hand-built throw. ACTIONS='[{"name","file","pre","post"}]' to try one.
+const ACTIONS = process.env.ACTIONS ? JSON.parse(process.env.ACTIONS) : [];
+
 // --scan 09_01 16_35 ...: report each clip's speed (to pick clips), write nothing.
 if (process.argv.includes('--scan')) {
   const ids = process.argv.slice(process.argv.indexOf('--scan') + 1);
@@ -215,6 +250,7 @@ const out = { source: 'CMU Graphics Lab Motion Capture Database (mocap.cs.cmu.ed
 for (const c of CLIPS) {
   try { out.clips.push(processCycle(c)); } catch (e) { console.warn('skip', c.name, e.message); }
 }
-out.clips.sort((a, b) => a.speed - b.speed);
+for (const a of ACTIONS) { try { out.clips.push(processAction(a)); } catch (e) { console.warn('skip', a.name, e.message); } }
+out.clips.sort((a, b) => (a.speed ?? 99) - (b.speed ?? 99));
 fs.writeFileSync(OUT, JSON.stringify(out));
 console.log('wrote', OUT, (fs.statSync(OUT).size / 1024).toFixed(0), 'KB');

@@ -110,9 +110,9 @@ export function statRing(pct, label, sub, size = 140) {
 
 const clockShort = (c) => `${Math.floor(c / 60)}:${String(Math.floor(c % 60)).padStart(2, '0')}`;
 
-/** Team indexes sorted by city + name (every team list in the game uses this order). */
+/** Team indexes sorted by team name (Bears, Bengals, Bills…), then city (every team list in the game uses this order). */
 export function alphaOrder(teams) {
-  return teams.map((t, i) => i).sort((a, b) => `${teams[a].city} ${teams[a].name}`.localeCompare(`${teams[b].city} ${teams[b].name}`));
+  return teams.map((t, i) => i).sort((a, b) => `${teams[a].name} ${teams[a].city}`.localeCompare(`${teams[b].name} ${teams[b].city}`));
 }
 
 /** A team's star players: the best few with their traits (the "X-factor" look, our own names). */

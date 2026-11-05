@@ -10,7 +10,8 @@ export async function attachLogos(teams) {
   await Promise.all([...teams.map(async (t) => {
     const src = t.logo?.dataUrl || (t.logo?.image ? (/^(https?:|data:)/i.test(t.logo.image) ? t.logo.image : `/local/logos/${t.logo.image}`) : null);
     t.logo._img = src ? await loadImage(src) : null;
-  }), (async () => { LEAGUE.logo._img = LEAGUE.logo.dataUrl ? await loadImage(LEAGUE.logo.dataUrl) : null; })()]);
+  }), (async () => { LEAGUE.logo._img = LEAGUE.logo.dataUrl ? await loadImage(LEAGUE.logo.dataUrl) : null; })(),
+    ...(LEAGUE.confLogos || []).map(async (c) => { if (c?.dataUrl) c._img = await loadImage(c.dataUrl); })]);
 }
 
 /**

@@ -153,7 +153,9 @@ export function leagueEditor(ctx, focus = 0) {
     const g = preview.getContext('2d');
     g.clearRect(0, 0, 150, 150);
     drawLogo(g, LEAGUE.logo, 75, 75, 69);
+    [0, 1].forEach((i) => { const c = confPrev[i].getContext('2d'); c.clearRect(0, 0, 70, 70); const cl = LEAGUE.confLogos?.[i]; if (cl?._img) drawLogo(c, { shape: 'circle', text: '', _img: cl._img, dataUrl: cl.dataUrl }, 35, 35, 32); });
   };
+  const confPrev = [0, 1].map(() => { const c = document.createElement('canvas'); c.width = c.height = 70; return c; });
   const changed = () => { redraw(); ctx.onChange(); };
   const { row, textRow, colorRow, choice } = rowKit(changed);
   const confRow = (i) => row(`Conference ${i + 1} name`, () => CONFERENCES[i], () => {}, () => {
@@ -189,12 +191,29 @@ export function leagueEditor(ctx, focus = 0) {
     changed();
     leagueEditor(ctx, rows.length);
   }));
+  // Conference logos: uploaded images shown in the end zones next to the team name (else an initials badge).
+  rows.push(el('div.dc-head', { text: 'Conference logos (end zones)' }));
+  LEAGUE.confLogos ||= [null, null];
+  [0, 1].forEach((i) => {
+    const has = !!LEAGUE.confLogos[i]?.dataUrl;
+    rows.push(action(`${CONFERENCES[i]}: ${has ? 'replace logo image…' : 'upload a logo image…'}`, async () => {
+      const f = await pickFile('image/*', true);
+      if (!f) return;
+      const img = await loadImage(f.data);
+      if (!img) { window.alert("That file couldn't be read as an image."); return; }
+      const dataUrl = await shrinkImage(img, 256);
+      LEAGUE.confLogos[i] = { dataUrl, _img: await loadImage(dataUrl) };
+      changed();
+      leagueEditor(ctx, screens.nav.index);
+    }));
+    if (has) rows.push(action(`${CONFERENCES[i]}: remove logo image`, () => { LEAGUE.confLogos[i] = null; changed(); leagueEditor(ctx, screens.nav.index); }));
+  });
   const done = el('div.start-btn', { text: 'Done' });
   done.activate = ctx.onBack;
   const items = [...rows.filter((r) => r.activate), done];
   redraw();
   screens.frame('depth-screen', title,
-    el('div.te-layout', {}, el('div.te-preview', {}, preview), el('div.setup-opts.card-opts', {}, rows, done)),
+    el('div.te-layout', {}, el('div.te-preview', {}, preview, el('div', { style: { display: 'flex', gap: '10px', justifyContent: 'center' } }, ...confPrev)), el('div.setup-opts.card-opts', {}, rows, done)),
     el('div.setup-help', { html: '◀▶ change &nbsp; <b class="btn A">A</b> type / choose &nbsp; <b class="btn B">B</b> back' }));
   screens.nav.set(items, { columns: 1, index: Math.min(focus, items.length - 1), onBack: ctx.onBack });
 }

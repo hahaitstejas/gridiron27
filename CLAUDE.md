@@ -379,7 +379,7 @@ offline); main.js waits for `document.fonts.load` before the renderer paints its
 `LEAGUE = { name, championship, logo }` plus the two conference names (written into `CONFERENCES` in place, so every
 screen picks them up; the last `PLAYOFF_ROUND_NAMES` entry follows `championship`). Saved in the league file (`info`,
 applied by `deserializeLeague` → `setLeagueInfo`). Edited in League → Teams & Logos → "League & Conferences" card
-(`leagueEditor` in teamEditor.js, shares `rowKit` with the team editor; logo builder or uploaded image). The field
+(`leagueEditor` in teamEditor.js, shares `rowKit` with the team editor; logo builder or uploaded image; conference logo uploads `LEAGUE.confLogos[i] = { dataUrl }`, saved in `info`, shown in the end zones instead of the initials badge). The field
 (`makeFieldCanvas(home, away, { championship })`) paints the league logo at both 25-yard lines and, in the
 championship game (`renderer.setTeams(..., { championship })` from startGame), at midfield.
 

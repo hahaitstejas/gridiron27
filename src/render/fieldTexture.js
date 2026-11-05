@@ -52,6 +52,9 @@ export function makeFieldCanvas(home, away, opts = {}) {
   // logo on either side of the lettering. In the championship game each end zone belongs to one of the two teams
   // (its name and its logo).
   const confLogo = (t) => {
+    // An uploaded conference logo (League & Conferences editor), else a badge with the conference's initials.
+    const up = LEAGUE.confLogos?.[t.conference];
+    if (up?._img) return { shape: 'circle', bg: '#000000', fg: '#ffffff', border: '#ffffff', text: '', dataUrl: up.dataUrl, _img: up._img };
     const name = CONFERENCES[t.conference] || '';
     const initials = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 3).toUpperCase() || 'C';
     return { shape: 'shield', bg: '#1b1b1b', fg: '#ffffff', border: '#ffffff', text: initials };

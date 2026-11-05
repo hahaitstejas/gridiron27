@@ -7,7 +7,8 @@ import { PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
 const DEFAULT_CONFERENCES = [...CONFERENCES];
 const defaults = () => ({ name: 'Gridiron League', championship: 'Gridiron Championship', logo: { shape: 'shield', bg: '#10224a', fg: '#ffffff', border: '#c9a64b', text: 'GL' } });
 
-export const LEAGUE = { ...defaults(), sites: { championship: {}, international: [] } };
+// confLogos[i]: an uploaded image ({ dataUrl }) for conference i, shown in the end zones; null = the built initials badge.
+export const LEAGUE = { ...defaults(), sites: { championship: {}, international: [] }, confLogos: [null, null] };
 
 /** Apply a saved info block (or null for the defaults). */
 export function setLeagueInfo(info) {
@@ -19,6 +20,7 @@ export function setLeagueInfo(info) {
   // Neutral sites (stadiums.csv): championship venue by season year, international games.
   LEAGUE.sites = info?.sites ? JSON.parse(JSON.stringify(info.sites)) : { championship: {}, international: [] };
   delete LEAGUE.logo._img;
+  LEAGUE.confLogos = [0, 1].map((i) => (info?.confLogos?.[i]?.dataUrl ? { dataUrl: info.confLogos[i].dataUrl } : null));
   const conf = info?.conferences || DEFAULT_CONFERENCES;
   for (let i = 0; i < CONFERENCES.length; i++) CONFERENCES[i] = conf[i] || DEFAULT_CONFERENCES[i];
 }
@@ -26,5 +28,6 @@ export function setLeagueInfo(info) {
 /** Plain JSON for the save file. */
 export function leagueInfoJSON() {
   const { _img, ...logo } = LEAGUE.logo;
-  return { name: LEAGUE.name, championship: LEAGUE.championship, conferences: [...CONFERENCES], logo, sites: LEAGUE.sites || null };
+  return { name: LEAGUE.name, championship: LEAGUE.championship, conferences: [...CONFERENCES], logo, sites: LEAGUE.sites || null,
+    confLogos: (LEAGUE.confLogos || []).map((c) => (c?.dataUrl ? { dataUrl: c.dataUrl } : null)) };
 }

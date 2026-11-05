@@ -1,5 +1,5 @@
 import { injuryLine } from '../franchise/health.js';
-import { UNIFORM_NAMES } from '../data/uniforms.js';
+import { UNIFORM_NAMES, UNIFORM_KINDS, uniformFor, uniformsClash, isDark as uniDark } from '../data/uniforms.js';
 import { passerRating } from '../game/boxscore.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
@@ -138,6 +138,54 @@ function starCards(t) {
   }));
 }
 
+/** The team's starting QB (depth chart), else its best one. */
+function startingQB(t) {
+  const id = t.depth?.QB?.[0];
+  return t.roster.find((q) => q.id === id) || [...t.roster].filter((q) => q.pos === 'QB').sort((a, b) => b.ovr - a.ovr)[0] || t.roster[0];
+}
+
+/** A head-to-toe drawing of a player in a uniform (helmet, facemask, jersey with name and number, pants, socks, cleats). */
+function uniformFigure(t, uni, p) {
+  const c = t.colors, u = uni;
+  const facemask = u.facemask || (uniDark(u.helmet) ? '#cfcfcf' : '#333333');
+  const socks = u.socks || (uniDark(u.pants) ? '#f2f2f2' : c.primary);
+  const stripe = u.stripe === 'none' ? u.pants : (u.stripe || (uniDark(u.pants) ? c.secondary : c.primary));
+  const sleeve = u.sleeves || u.jersey;
+  const skin = p?.skinColor || ['#f1c9a5', '#e0ac85', '#c68a62', '#a0663f', '#7a4a2c', '#53321e'][(p?.skin ?? 2) % 6];
+  const num = p?.number ?? 1, last = (p?.last || '').toUpperCase();
+  return `<svg viewBox="0 0 160 300" class="uni-fig">
+    <ellipse cx="80" cy="292" rx="46" ry="6" fill="rgba(0,0,0,0.5)"/>
+    <path d="M58 220 L54 278 L72 280 L78 222 Z M102 220 L106 278 L88 280 L82 222 Z" fill="${socks}"/>
+    <path d="M50 280 L76 280 L76 290 L46 290 Z M84 280 L110 280 L114 290 L84 290 Z" fill="${u.cleats || '#151515'}"/>
+    <path d="M52 150 L108 150 L112 228 L84 230 L80 186 L76 230 L48 228 Z" fill="${u.pants}"/>
+    <path d="M50 158 L53 226 M110 158 L107 226" stroke="${stripe}" stroke-width="4"/>
+    <path d="M26 82 Q30 64 52 60 L108 60 Q130 64 134 82 L138 126 L120 130 L114 100 L112 156 L48 156 L46 100 L40 130 L22 126 Z" fill="${u.jersey}"/>
+    <path d="M26 82 Q30 64 52 60 L58 62 L46 100 L40 130 L22 126 Z M134 82 Q130 64 108 60 L102 62 L114 100 L120 130 L138 126 Z" fill="${sleeve}"/>
+    <path d="M22 126 L40 130 L38 150 L24 148 Z M138 126 L120 130 L122 150 L136 148 Z" fill="${u.gloves || skin}"/>
+    <path d="M68 60 L80 74 L92 60" fill="none" stroke="${u.outline || c.secondary}" stroke-width="4"/>
+    <text x="80" y="128" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="46" fill="${u.number}" stroke="${u.outline || '#000'}" stroke-width="2">${num}</text>
+    <rect x="70" y="44" width="20" height="18" fill="${skin}"/>
+    <path d="M52 30 Q52 6 80 6 Q108 6 108 30 L108 46 Q100 52 92 50 L68 50 Q60 52 52 46 Z" fill="${u.helmet}"/>
+    <path d="M80 6 L80 46" stroke="${stripe}" stroke-width="3" opacity="0.9"/>
+    <path d="M64 34 L96 34 M64 42 L96 42 M70 30 L70 50 M90 30 L90 50" stroke="${facemask}" stroke-width="3"/>
+  </svg>${last ? `<div class="uni-name">${last}</div>` : ''}`;
+}
+
+/** Team Select: both starting QBs side by side in the chosen uniforms, and whether the jerseys clash. */
+function uniformPreview(teams, p) {
+  const sides = [['away', 1], ['home', 0]].map(([key, ti]) => {
+    const t = teams[p[key]], uni = uniformFor(t, p.uniforms[ti]), qb = startingQB(t);
+    return { t, uni, qb, key, ti };
+  });
+  const clash = uniformsClash(sides[0].uni, sides[1].uni);
+  return el('div.uni-prev', {},
+    el('div.uni-pair', {}, ...sides.map((s) => el('div.uni-side', {},
+      el('small', { text: `${s.key.toUpperCase()} · ${UNIFORM_NAMES[p.uniforms[s.ti]]}` }),
+      el('div', { html: uniformFigure(s.t, s.uni, s.qb) }),
+      el('div.uni-who', { text: s.qb ? `QB #${s.qb.number} ${s.qb.first[0]}. ${s.qb.last}` : '' })))),
+    el(`div.uni-clash${clash ? '.bad' : ''}`, { text: clash ? 'Jerseys too close: the away team switches sets at kickoff' : 'No color clash' }));
+}
+
 function starPanel(t) {
   const stars = [...t.roster].map((p) => ({ p, tr: traitsOf(p) })).sort((a, b) => (b.tr.length - a.tr.length) || (b.p.ovr - a.p.ovr)).slice(0, 6);
   return el('div.ts-stars', {}, ...stars.map(({ p, tr }) => el('div.ts-star', {}, ...[faceImg(p, 'ts-face')].filter(Boolean), el('b', { text: `${p.pos} ${p.first[0]}. ${p.last}` }), el('span', { text: `${p.ovr} OVR` }),
@@ -271,6 +319,7 @@ export class Screens {
         const items = sideMenu(m.player);
         const panel = el(`div.ts-menu.${sideKey(st.cols[m.player])}`, {}, ...items.map((x, i) => el(`div.ts-mi${i === m.idx ? '.on' : ''}`, { text: x.label })));
         if (m.sub) panel.append(el('div.ts-sub-panel', {}, m.sub));
+        else if (items[m.idx]?.preview) panel.append(el('div.ts-sub-panel', {}, uniformPreview(teams, p)));
         menuHost.append(panel);
       }
     };
@@ -296,10 +345,24 @@ export class Screens {
         { label: 'Star Players', go: () => { st.menu.sub = starPanel(teams[p[key]]); } },
         { label: `Playbook: ${STYLE_NAMES[p.styles[ti]]}`, spin: (d) => { p.styles[ti] = STYLES[(STYLES.indexOf(p.styles[ti]) + d + STYLES.length) % STYLES.length]; } },
         { label: `Coin toss: ${COIN[p.coin]}`, spin: (d) => { const k = Object.keys(COIN); p.coin = k[(k.indexOf(p.coin) + d + k.length) % k.length]; } },
-        { label: `Uniform: ${UNI[p.uniforms[ti]]}`, spin: (d) => { const k = Object.keys(UNI); p.uniforms[ti] = k[(k.indexOf(p.uniforms[ti]) + d + k.length) % k.length]; } },
+        { label: `Uniform: ${UNI[p.uniforms[ti]]}`, preview: true, spin: (d) => {
+          // Skip any set whose jersey clashes with the other team's current one.
+          const k = UNIFORM_KINDS, other = uniformFor(teams[p[ti === 0 ? 'away' : 'home']], p.uniforms[1 - ti]);
+          let i = k.indexOf(p.uniforms[ti]);
+          for (let n = 0; n < k.length; n++) { i = (i + d + k.length) % k.length; if (!uniformsClash(uniformFor(teams[p[key]], k[i]), other)) break; }
+          p.uniforms[ti] = k[i];
+        } },
       ];
     };
+    // Never start with clashing jerseys: if they do, the away team goes to the first set that doesn't.
+    const fixClash = () => {
+      const h = teams[p.home], a = teams[p.away];
+      if (!uniformsClash(uniformFor(h, p.uniforms[0]), uniformFor(a, p.uniforms[1]))) return;
+      const ok = UNIFORM_KINDS.find((k) => !uniformsClash(uniformFor(h, p.uniforms[0]), uniformFor(a, k)));
+      if (ok) p.uniforms[1] = ok;
+    };
     const finish = () => {
+      fixClash();
       const on = players().filter((i) => st.cols[i] !== 1);
       // Both controllers on the same side = co-op (one team, two players); on opposite sides = head to head.
       p.side = !on.length ? 'cpu' : on.length === 2 ? (st.cols[on[0]] === st.cols[on[1]] ? 'coop' : '2p') : sideKey(st.cols[on[0]]);

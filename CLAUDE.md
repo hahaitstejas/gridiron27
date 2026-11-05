@@ -476,7 +476,7 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - In-game injuries are "questionable to return" or "out"; the human decides on a return (session state `injury`, risk from
   `franchise/health.js`), the diagnosis shows after the game (post-game Injuries panel).
 - Menus: no outlines anywhere; Team Select is driven by `screens.custom` with both controllers (each pad moves its own
-  icon; side menu: Ready, Star Players, playbook style, coin toss, uniform); `alphaOrder` sorts every team list; pause and
+  icon; side menu: Ready, Star Players, playbook style, coin toss, uniform — with `uniformPreview`: both starting QBs drawn in the chosen sets, clashing sets (`uniformsClash` in uniforms.js) skipped while spinning and fixed at kickoff by `fixClash`); `alphaOrder` sorts every team list; pause and
   post-game screens with `statRing`; sortable tables (`ui/sortable.js`: ◀▶ column, X sort).
 - Franchise: `nflSchedule.js` (17 games / 18 weeks, NFL formula, byes, kickoff times, prime time, Thanksgiving / Christmas,
   international games, short weeks), `health.js` (specific injuries, Out/Doubtful/Questionable/IR, practice injuries),

@@ -40,3 +40,13 @@ export function uniformFor(team, kind = 'home') {
   const d = defaultUniforms(team)[kind] || defaultUniforms(team).home;
   return { ...d, ...(team.uniforms?.[kind] || {}) };
 }
+
+/** How different two colors look (0 = identical, ~1.7 = black vs white), weighting brightness like the eye does. */
+export function colorGap(a, b) {
+  const rgb = (c) => { const h = hex(c); return [0, 2, 4].map((k) => parseInt(h.slice(k, k + 2), 16) / 255); };
+  const [x, y] = [rgb(a), rgb(b)];
+  const lum = (c) => 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+  return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]) * 0.6 + Math.abs(lum(x) - lum(y)) * 1.4;
+}
+/** Two uniforms clash when the jerseys are too close to tell the teams apart on the field. */
+export function uniformsClash(a, b) { return colorGap(a.jersey, b.jersey) < 0.45; }

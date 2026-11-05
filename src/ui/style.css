@@ -1041,3 +1041,15 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .tsc-num { font: 800 44px var(--fd); color: rgba(255,255,255,0.85); line-height: 1; padding-bottom: 6px; }
 .tsc-foot { padding: 3px 6px; font: 600 11px var(--fd); letter-spacing: 1.5px; background: rgba(0,0,0,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1100px) { .ts-stars3 { display: none; } }
+
+/* Team Select uniform preview (screens.js uniformPreview): both starting QBs in the chosen sets. */
+.uni-prev { display: flex; flex-direction: column; gap: 6px; }
+.uni-pair { display: flex; gap: 8px; justify-content: center; }
+.uni-side { display: flex; flex-direction: column; align-items: center; width: 150px; max-height: 250px; padding: 6px 0; background: radial-gradient(ellipse at 50% 60%, #2f6b2a 0%, #16310f 70%); }
+.uni-side small { font: 600 11px var(--fd); letter-spacing: 1.5px; color: #ddd; }
+.uni-fig { width: 92px; height: 172px; }
+.uni-name { margin-top: -2px; font: 700 12px var(--fd); letter-spacing: 1px; }
+.uni-who { font: 600 11px var(--fd); color: #bbb; }
+.uni-clash { text-align: center; font: 600 12px var(--fd); letter-spacing: 1px; padding: 4px; color: #9fe39f; }
+.uni-clash.bad { color: #ff8a80; }
+.ts-menu:has(.uni-prev) { top: 12%; }

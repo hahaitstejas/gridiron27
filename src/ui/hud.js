@@ -205,7 +205,9 @@ export class Hud {
     el.style.borderColor = session.teams[p.team].colors.primary;
     el.style.display = 'block';
     // Never under the score bug at the bottom of the screen.
-    const bugTop = this.$('scorebug').getBoundingClientRect().top || innerHeight;
+    // The score bug's top is measured once per HUD update (update()), not here: reading layout right after the
+    // previous tag's style writes forced a full page layout for every tag, every frame.
+    const bugTop = this._bugTop || innerHeight;
     const y = Math.min(s.y + 10, bugTop - 30);
     el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translateX(-50%)`;
   }
@@ -270,6 +272,7 @@ export class Hud {
 
   /** Update everything that depends on the game state. */
   update(session, renderer, dt, frameMs, playcallOpen) {
+    this._bugTop = this.$('scorebug').getBoundingClientRect().top; // read layout before this frame's writes
     const m = session.match;
     const sim = session.sim;
     this.renderBug(session);
@@ -289,7 +292,8 @@ export class Hud {
       const human = session.humanSide;
       const play = human === 'offense' ? sim.offPlay : sim.defPlay;
       const hot = play.hot ? Object.entries(play.hot).map(([s, r]) => `${s} ${r.replace('_', ' ')}`).join(', ') : '';
-      pn.innerHTML = `<small>${human === 'offense' ? play.concept || 'Offense' : 'Defense'}</small><b>${play.name}</b>${hot ? `<em>Hot: ${hot}</em>` : ''}`;
+      const html = `<small>${human === 'offense' ? play.concept || 'Offense' : 'Defense'}</small><b>${play.name}</b>${hot ? `<em>Hot: ${hot}</em>` : ''}`;
+      if (pn._h !== html) { pn._h = html; pn.innerHTML = html; }
     }
     const hint = this.$('hint');
     let h = '';
@@ -343,7 +347,7 @@ export class Hud {
       }
       h = '';
     } else au.dataset.key = '';
-    hint.innerHTML = h;
+    if (hint._h !== h) { hint._h = h; hint.innerHTML = h; } // unchanged text: no re-parse / relayout every frame
     hint.classList.toggle('hidden', !h || playcallOpen);
     this.$('pbp').style.visibility = playcallOpen ? 'hidden' : '';
 

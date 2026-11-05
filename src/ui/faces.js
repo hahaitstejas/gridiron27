@@ -58,10 +58,32 @@ export function faceImage(p, onLoad) {
   const entry = { img: new Image(), ok: false };
   cache.set(src, entry);
   if (/^https?:/i.test(src)) entry.img.crossOrigin = 'anonymous';
-  entry.img.onload = () => { entry.ok = true; onLoad?.(entry.img); };
-  entry.img.onerror = () => { entry.ok = false; };
-  entry.img.src = src;
+  const img = entry.img;
+  img.onload = async () => {
+    // Decode off the main thread, then keep only a small square copy: headshots are often ~1000 px PNGs, and drawing
+    // the full image into the face atlas / skin sampler every time a player comes on the field decoded and scaled it
+    // on the main thread (a visible hitch per substitution with a league full of photos).
+    try { await img.decode?.(); } catch { /* already decoded or not decodable: drawImage still works */ }
+    entry.img = thumb(img);
+    entry.ok = true;
+    onLoad?.(entry.img);
+  };
+  img.onerror = () => { entry.ok = false; };
+  img.src = src;
   return null;
+}
+
+/** A FACE_PX square copy of a photo (crop from the top-middle, where a headshot's face is). Falls back to the image. */
+const FACE_PX = 96;
+function thumb(img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = FACE_PX;
+    const s = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+    const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    c.getContext('2d').drawImage(img, (w - s) / 2, Math.max(0, (h - s) * 0.2), s, s, 0, 0, FACE_PX, FACE_PX);
+    return c;
+  } catch { return img; }
 }
 
 /**
@@ -69,7 +91,15 @@ export function faceImage(p, onLoad) {
  * look like skin (the usual YCbCr skin range), then the median by brightness so hair, eyes and shadows don't pull it.
  * Returns '#rrggbb', or null if the image can't be read (cross-origin without CORS) or no skin is found.
  */
+const toneMemo = new WeakMap();
 export function skinToneFromImage(img) {
+  // Memoized per image: the renderer asks again for every player whose photo has no usable skin pixels.
+  if (img && typeof img === 'object' && toneMemo.has(img)) return toneMemo.get(img);
+  const tone = readTone(img);
+  if (img && typeof img === 'object') toneMemo.set(img, tone);
+  return tone;
+}
+function readTone(img) {
   try {
     const N = 48, c = document.createElement('canvas');
     c.width = c.height = N;

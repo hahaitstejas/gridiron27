@@ -191,7 +191,7 @@ export class PlayerRenderer {
    */
   faceMaterial(m) {
     this.faceCanvas = document.createElement('canvas');
-    this.faceCanvas.width = this.faceCanvas.height = 1024;
+    this.faceCanvas.width = this.faceCanvas.height = 512; // 64 px cells: a 1 MB re-upload when faces change, not 4 MB
     this.faceTex = new THREE.CanvasTexture(this.faceCanvas);
     this.faceTex.colorSpace = THREE.SRGBColorSpace;
     BODY_UNIFORMS.faceTex.value = this.faceTex; // the body shader paints photos on the MakeHuman face from the same atlas
@@ -219,8 +219,8 @@ export class PlayerRenderer {
   /** Paint player i's photo into his atlas cell (square crop from the top-middle, like the menus). */
   paintFace(i, img) {
     const g = this.faceCanvas.getContext('2d');
-    const x = (i % 8) * 128, y = Math.floor(i / 8) * 128, s = Math.min(img.width, img.height);
-    g.drawImage(img, (img.width - s) / 2, Math.max(0, (img.height - s) * 0.2), s, s, x, y, 128, 128);
+    const x = (i % 8) * 64, y = Math.floor(i / 8) * 64, s = Math.min(img.width, img.height);
+    g.drawImage(img, (img.width - s) / 2, Math.max(0, (img.height - s) * 0.2), s, s, x, y, 64, 64);
   }
 
   /**

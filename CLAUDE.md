@@ -581,6 +581,12 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   off), each leg's with its wrap on the inside (0 = outside = the stripe), and the shader skips triangles that straddle a
   seam (`dFdx`). The chest bends at `BIND.spineY` (lower spine, 0.17 yd above the hips), not the hip joints; pad-displaced
   vertices ride on the chest bone; lineman build capped at 0.35; mocap arm roll is not applied (candy-wrapper skinning).
+  Printed numbers / name plate are their own skinned patches (`human.json` `decals`, built by projecting a grid onto the padded
+  shirt; `buildDecalGeometry` / `decalMaterial`, mesh `parts.printed`): front number, back number, name; twill outline in the
+  trim color (the pants-stripe color when it contrasts). The body shader's old in-surface numbers only run without them
+  (`uDecals`). Uniform edges are per-pixel from the bind-pose height inside each body part (`aPart`: torso / arm / leg /
+  head; `uRegY` waist, sleeve end, wrist, sock top + `uShoeY`, `uCollarY`), sock stripes in the trim color; pants have
+  thigh / knee pad bumps; shoulder pads are squarer (0.085 out).
 - Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK
   (x flipped: CMU's frame is mirrored vs ours) → our pose parameters in the runner's heading frame (`LAYOUT`: rootY, lean,
   twist, head, both arms' pitch/out/elbow/twist, both legs' hip/knee/out); gait cycles cut at alternating footfalls (half

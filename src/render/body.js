@@ -177,6 +177,7 @@ export function buildBodyGeometry() {
   g.setAttribute('aAxis', new THREE.Float32BufferAttribute(out.axis, 3));
   g.setAttribute('aKind', new THREE.Float32BufferAttribute(out.kind, 1));
   g.setAttribute('aBody', new THREE.Float32BufferAttribute(out.body, 2));
+  g.setAttribute('aPart', new THREE.Float32BufferAttribute(new Float32Array(out.pos.length / 3).fill(-1), 1));
   g.setIndex(out.idx);
   g.computeVertexNormals();
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
@@ -194,9 +195,12 @@ attribute vec3 aPadD;
 attribute vec3 aAxis;
 attribute float aKind;
 attribute vec2 aBody;
+attribute float aPart;
 flat varying float vInst;
 flat varying float vRegion;
 varying vec2 vBody;
+flat varying float vPart;
+varying float vBindY;
 mat4 boneMat(int b) {
   int c = b * 4;
   return mat4(texelFetch(boneTex, ivec2(c, gl_InstanceID), 0), texelFetch(boneTex, ivec2(c + 1, gl_InstanceID), 0),
@@ -216,11 +220,12 @@ function patchVertex(sh, normals = true) {
   sh.uniforms.boneTex = BODY_UNIFORMS.boneTex;
   let v = VERT_HEAD + 'mat4 gSk;\n' + sh.vertexShader;
   if (normals) v = v.replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\ngSk = skinMat();\nobjectNormal = normalize(mat3(gSk) * objectNormal);');
-  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aRegion; vBody = aBody;`);
+  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;`);
   sh.vertexShader = v;
 }
 
-export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 } };
+export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 },
+  regionY: { value: new THREE.Vector4(1.156, 1.531, 1.113, 0.488) }, shoeY: { value: 0.109 }, collarY: { value: 1.79 }, decals: { value: 0 } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
@@ -229,16 +234,31 @@ export function bodyMaterial(envMap, fabric) {
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
+    sh.uniforms.uRegY = BODY_UNIFORMS.regionY; sh.uniforms.uShoeY = BODY_UNIFORMS.shoeY; sh.uniforms.uCollarY = BODY_UNIFORMS.collarY; sh.uniforms.uDecals = BODY_UNIFORMS.decals;
     sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform float uSweat;
-flat varying float vInst; flat varying float vRegion; varying vec2 vBody;
+uniform vec4 uRegY; uniform float uShoeY; uniform float uCollarY; uniform float uDecals;
+flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 ` + sh.fragmentShader
       .replace('#include <color_fragment>', `#include <color_fragment>
       int region = int(floor(vRegion + 0.5));
+      // MakeHuman body: each part's uniform edges come from the bind-pose height per pixel (clean lines, not triangle zigzags).
+      // uRegY = (waist, sleeve end, wrist, sock top), uShoeY = top of the cleat.
+      bool band = false;
+      if (vPart > -0.5) {
+        int part = int(floor(vPart + 0.5));
+        float y = vBindY;
+        if (part == 0) region = y > uCollarY ? 5 : y > uRegY.x ? (region == 1 ? 1 : 0) : 2;
+        else if (part == 1) region = y > uRegY.y ? 1 : (y > uRegY.z ? 6 : 7);
+        else if (part == 2) { region = y > uRegY.w ? 2 : (y > uShoeY ? 4 : 8); float d = uRegY.w - y; band = region == 4 && ((d > 0.05 && d < 0.066) || (d > 0.08 && d < 0.096)); }
+        else region = y > uCollarY - 0.03 ? 5 : 0; // the head part's lowest ring is the collar
+      }
       vec3 col = tex(${COL_COLORS} + region).rgb;
+      // Sleeve and sock stripes in the trim color (the pants stripe's), when it differs from the base.
+      if (band) { vec3 tc = tex(${COL_COLORS} + 3).rgb; if (distance(tc, col) > 0.08) col = tc; }
       vec4 flg = tex(${COL_FLAGS});
       if (flg.x > 0.5 && (region == 0 || region == 1)) { float a = vBody.x; col *= fract(a * 1.909) < 0.5 ? 1.0 : 0.05; }
-      if (region == 0 && vBody.y > -0.5) {
+      if (region == 0 && vBody.y > -0.5 && uDecals < 0.5) {
         vec4 nb = tex(${COL_NUMBER});
         vec3 ncol = tex(${COL_NUMCOL}).rgb;
         float a = vBody.x - 1.5708; // stored with the seam under the left arm: 0 = front, PI = back
@@ -289,7 +309,7 @@ export function bodyDepthMaterial() {
   const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh, false);
-    sh.fragmentShader = 'flat varying float vInst; flat varying float vRegion; varying vec2 vBody;\n' + sh.fragmentShader;
+    sh.fragmentShader = 'flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;\n' + sh.fragmentShader;
   };
   return m;
 }
@@ -329,6 +349,7 @@ export function buildHumanGeometry(h) {
   g.setAttribute('aWt', new THREE.BufferAttribute(dec(h.skinWeight, Float32Array), 4));
   g.setAttribute('aRegion', new THREE.BufferAttribute(Float32Array.from(dec(h.region, Uint8Array)), 1));
   g.setAttribute('aBody', new THREE.BufferAttribute(dec(h.body, Float32Array), 2));
+  g.setAttribute('aPart', new THREE.BufferAttribute(h.part ? Float32Array.from(dec(h.part, Uint8Array)) : new Float32Array(n).fill(-1), 1));
   g.setAttribute('aKind', new THREE.BufferAttribute(new Float32Array(n).fill(5), 1));
   g.setAttribute('aAxis', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   // Fabric UVs for the knit normal map: a simple cylindrical wrap (only the tiling matters).
@@ -339,4 +360,65 @@ export function buildHumanGeometry(h) {
   g.computeVertexNormals();
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
   return g;
+}
+
+/** The printed numbers / name plate (tools/buildhuman.mjs decals): thin skinned patches on the chest and back. */
+export function buildDecalGeometry(h) {
+  const d = h.decals;
+  const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const g = new THREE.BufferGeometry(), n = d.count;
+  g.setAttribute('position', new THREE.BufferAttribute(dec(d.position, Float32Array), 3));
+  g.setAttribute('aBulkD', new THREE.BufferAttribute(dec(d.bulk, Float32Array), 3));
+  g.setAttribute('aPadD', new THREE.BufferAttribute(dec(d.pad, Float32Array), 3));
+  g.setAttribute('aIdx', new THREE.BufferAttribute(Float32Array.from(dec(d.skinIndex, Uint8Array)), 4));
+  g.setAttribute('aWt', new THREE.BufferAttribute(dec(d.skinWeight, Float32Array), 4));
+  g.setAttribute('aRegion', new THREE.BufferAttribute(Float32Array.from(dec(d.kind, Uint8Array)), 1)); // 0 front number, 1 back number, 2 name
+  g.setAttribute('aBody', new THREE.BufferAttribute(dec(d.uv, Float32Array), 2));
+  g.setAttribute('aKind', new THREE.BufferAttribute(new Float32Array(n).fill(5), 1));
+  g.setAttribute('aAxis', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  g.setAttribute('aPart', new THREE.BufferAttribute(new Float32Array(n).fill(-1), 1));
+  g.setIndex(new THREE.BufferAttribute(dec(d.index, Uint16Array), 1));
+  g.computeVertexNormals();
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
+  return g;
+}
+
+/**
+ * Lettering material: the instance's number (filled in its number color, outlined in the trim color like a twill
+ * number) or its name, with soft anti-aliased edges; everything else on the patch is transparent.
+ */
+export function decalMaterial(envMap) {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0, envMap, envMapIntensity: 0.3, transparent: true,
+    depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+  m.onBeforeCompile = (sh) => {
+    patchVertex(sh);
+    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
+    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows;
+flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;
+vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
+` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      vec4 nb = tex(${COL_NUMBER});
+      vec3 ncol = tex(${COL_NUMCOL}).rgb, jersey = tex(${COL_COLORS}).rgb, trim = tex(${COL_COLORS} + 3).rgb;
+      // The outline: the trim color when it stands out from both the jersey and the number, else a dark edge.
+      vec3 edge = (distance(trim, jersey) > 0.15 && distance(trim, ncol) > 0.15) ? trim : ncol * 0.15;
+      int kind = int(floor(vRegion + 0.5));
+      vec2 st = 1.0 - vBody; // the patch's grid runs the other way round from the atlas cell
+      float alpha = 0.0; vec3 col = ncol;
+      if (nb.w > 0.5) {
+        if (kind < 2) {
+          vec2 sc = vec2(0.07 + st.x * 0.86, 0.2 + (1.0 - st.y) * 0.64);
+          vec4 t = texture2D(numTex, vec2((sc.x + nb.x) / 10.0, 1.0 - (sc.y + nb.y) / 10.0));
+          alpha = smoothstep(0.25, 0.6, t.a);
+          // Only inside the digits' box: keeps mip bleed from the neighbouring cells off the shirt.
+          alpha *= step(0.0, st.x) * step(st.x, 1.0) * step(0.02, st.y) * step(st.y, 0.98);
+          col = mix(edge, ncol, smoothstep(0.35, 0.75, t.r));
+        } else if (nb.z >= 0.0) {
+          vec4 t = texture2D(nameTex, vec2(st.x, 1.0 - (nb.z + 1.0 - st.y) / nameRows));
+          alpha = smoothstep(0.3, 0.65, t.a);
+        }
+      }
+      if (alpha < 0.02) discard;
+      diffuseColor = vec4(col, alpha);`);
+  };
+  return m;
 }

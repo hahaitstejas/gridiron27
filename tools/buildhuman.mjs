@@ -183,7 +183,7 @@ const pad = A.map((p, i) => {
   const ax = Math.abs(p[0]) / (Bk.shX + 0.08);
   const k = ky * ky * (3 - 2 * ky);
   // Outward over the shoulder caps, a bit forward / back over the chest and shoulder blades, a little up on top.
-  return [Math.sign(p[0]) * k * 0.13 * Math.min(1, ax * 1.15), k * 0.055 * Math.min(1, ax + 0.35), Math.sign(p[2] || 1) * k * 0.055];
+  return [Math.sign(p[0]) * k * 0.085 * Math.min(1, ax * 1.15), k * 0.025 * Math.min(1, ax + 0.35), Math.sign(p[2] || 1) * k * 0.04];
 });
 
 // Shoulder pads ride on the torso, not the arm: vertices the pads push out move most of their upper-arm weight onto the
@@ -302,7 +302,69 @@ for (let i = 0; i < A.length; i++) {
     // The jersey drapes: thicker over the belly and back than the sides.
     const k = region[i] === 0 ? t * (0.8 + 0.4 * Math.abs(n[2])) : t;
     pad[i] = add(pad[i], mul(n, k));
+    // Thigh and knee pads under the pants: low bumps on the front of each leg.
+    if (region[i] === 2 && n[2] > 0.25) {
+      const y = A[i][1];
+      const thigh = Math.max(0, 1 - Math.abs(y - (kneeY + 0.24)) / 0.12), knee = Math.max(0, 1 - Math.abs(y - (kneeY + 0.02)) / 0.05);
+      pad[i] = add(pad[i], mul(n, (thigh * 0.014 + knee * 0.012) * Math.min(1, (n[2] - 0.25) * 2.5)));
+    }
   }
+}
+
+// ---------- body part per vertex (the shader draws the uniform's edges from the bind-pose height inside each part) ----------
+const part = A.map((p, i) => {
+  const arm = wOf(i, 'shL') + wOf(i, 'shR') + wOf(i, 'elL') + wOf(i, 'elR');
+  const leg = wOf(i, 'hipL') + wOf(i, 'hipR') + wOf(i, 'kneeL') + wOf(i, 'kneeR') + wOf(i, 'footL') + wOf(i, 'footR');
+  if (region[i] === REGION.skin) return 3;
+  // Only the arm tube itself counts as arm (shoulder caps and the trapezius stay torso, so sleeve stripes can't land there).
+  if (region[i] === REGION.forearm || region[i] === REGION.gloves || (region[i] === REGION.sleeve && arm > 0.8)) return 1;
+  if (region[i] === REGION.socks || region[i] === REGION.shoe || (region[i] === REGION.pants && leg > 0.5)) return 2;
+  return 0;
+});
+Bk.waistY = waistY; Bk.collarY = collarY + 0.02; Bk.sleeveY = shY - 0.13; Bk.wristY = wristY + 0.01; Bk.sockY = kneeY - 0.07; Bk.shoeY = ankleY + 0.02;
+
+// ---------- printed numbers and name: thin patches lying on the chest / back, with their own clean UVs ----------
+// Each grid point takes the surface (and its pad / bulk deltas and skin weights) from the nearest jersey vertices, so the
+// patch moves exactly like the shirt under it; only the lettering is drawn on it.
+const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], idx: [] };
+{
+  const jersey = ids.filter((i) => region[i] === REGION.jersey);
+  const czAt = (y) => { let s2 = 0, n = 0; for (const i of jersey) if (Math.abs(A[i][1] - y) < 0.03) { s2 += A[i][2]; n++; } return n ? s2 / n : 0; };
+  const patch = (kind, side, yc, hw, hh, nx, ny) => {
+    const base = decal.pos.length / 3;
+    const cz = czAt(yc);
+    const pool = jersey.filter((i) => Math.sign(A[i][2] - cz) === side && Math.abs(A[i][1] - yc) < hh + 0.08 && Math.abs(A[i][0]) < hw + 0.1);
+    for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
+      const x = -hw + (2 * hw * gx) / (nx - 1), y = yc - hh + (2 * hh * gy) / (ny - 1);
+      // The 4 nearest vertices by where they actually are on the padded shirt.
+      const near = pool.map((i) => [i, Math.hypot(A[i][0] + pad[i][0] - x, A[i][1] + pad[i][1] - y)]).sort((a, b) => a[1] - b[1]).slice(0, 4);
+      let wsum = 0; const z = [0, 0, 0], pd = [0, 0, 0], bk = [0, 0, 0], bones = {};
+      for (const [i, d] of near) {
+        const w = 1 / (d + 0.004); wsum += w;
+        for (let k = 0; k < 3; k++) { pd[k] += pad[i][k] * w; bk[k] += (Hv[i][k] - A[i][k]) * w; }
+        z[2] += A[i][2] * w;
+        for (let q = 0; q < 4; q++) if (skinW[i][q] > 0) bones[skinIdx[i][q]] = (bones[skinIdx[i][q]] || 0) + skinW[i][q] * w;
+      }
+      for (let k = 0; k < 3; k++) { pd[k] /= wsum; bk[k] /= wsum; }
+      // Base position such that base + pad lands on (x, y) on the shirt, a few mm out from it.
+      decal.pos.push(x - pd[0], y - pd[1], z[2] / wsum + side * 0.014);
+      decal.pad.push(...pd); decal.bulk.push(...bk);
+      const top = Object.entries(bones).sort((a, b) => b[1] - a[1]).slice(0, 4), tw = top.reduce((t, e) => t + e[1], 0);
+      for (let q = 0; q < 4; q++) { decal.si.push(top[q] ? +top[q][0] : 0); decal.sw.push(top[q] ? top[q][1] / tw : 0); }
+      // Seen from the front the player's right is on the viewer's left: the front reads with u running toward -x.
+      // (The front patch is built facing the other way from the back one: both its axes run reversed.)
+      decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 ? 1 - gy / (ny - 1) : gy / (ny - 1));
+      decal.kind.push(kind);
+    }
+    for (let gy = 0; gy < ny - 1; gy++) for (let gx = 0; gx < nx - 1; gx++) {
+      const a = base + gy * nx + gx, b = a + 1, c = a + nx, d = c + 1;
+      decal.idx.push(a, b, c, b, d, c);
+    }
+  };
+  const shAbs = hipH + Bk.shY;
+  patch(0, 1, shAbs - 0.11, 0.15, 0.115, 22, 18); // front number, across the chest
+  patch(1, -1, shAbs - 0.2, 0.19, 0.16, 26, 22); // back number
+  patch(2, -1, shAbs + 0.025, 0.17, 0.04, 26, 6); // name plate across the shoulders
 }
 
 // ---------- decimate ----------
@@ -334,8 +396,11 @@ const out = {
   skinIndex: u8(src.flatMap((i) => skinIdx[i])),
   skinWeight: f32(src.flatMap((i) => skinW[i])),
   region: u8(src.map((i) => region[i])),
+  part: u8(src.map((i) => part[i])),
   body: f32(src.flatMap((i) => body[i])),
   index: u16(outIdx),
+  decals: { count: decal.pos.length / 3, position: f32(decal.pos), bulk: f32(decal.bulk), pad: f32(decal.pad), skinIndex: u8(decal.si),
+    skinWeight: f32(decal.sw), uv: f32(decal.uv), kind: u8(decal.kind), index: u16(decal.idx) },
 };
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, JSON.stringify(out));

@@ -4,7 +4,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
 import { Gait, setClips } from './gait.js';
 import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
-import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry } from './body.js';
+import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry, buildDecalGeometry, decalMaterial } from './body.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
 // players). Poses are computed procedurally from the sim's animation state every frame.
@@ -57,7 +57,7 @@ function numberAtlas() {
     // Widen to block proportions, but keep two digits inside the cell.
     const wide = Math.min(1.35, (C * 0.9) / Math.max(1, g.measureText(s).width));
     g.save(); g.translate(cx, cy); g.scale(wide, 1);
-    g.lineWidth = 14; g.strokeStyle = 'rgba(0,0,0,1)'; g.strokeText(s, 0, 0);
+    g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,1)'; g.strokeText(s, 0, 0);
     g.fillStyle = '#ffffff'; g.fillText(s, 0, 0);
     g.restore();
   }
@@ -70,6 +70,7 @@ function numberAtlas() {
 export class PlayerRenderer {
   constructor(scene, envMap = null) {
     this.scene = scene;
+    this.envMap = envMap;
     // Physically based materials (lit by the scene's environment map): matte jerseys, glossy helmets.
     const mat = (roughness = 0.75, metalness = 0, env = 0.3) => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness, metalness, envMap, envMapIntensity: env });
     const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
@@ -234,6 +235,15 @@ export class PlayerRenderer {
       old.dispose();
       this.human = true;
       this.colorsKey = '';
+      // Uniform edges from the body's own heights, and the printed numbers / name plate as their own patches.
+      const sk = h.skeleton;
+      if (sk.waistY) { BODY_UNIFORMS.regionY.value.set(sk.waistY, sk.sleeveY, sk.wristY, sk.sockY); BODY_UNIFORMS.shoeY.value = sk.shoeY; if (sk.collarY) BODY_UNIFORMS.collarY.value = sk.collarY; }
+      if (h.decals?.count) {
+        const printed = part(buildDecalGeometry(h), decalMaterial(this.envMap), MAX, false);
+        this.scene.add(printed);
+        this.parts.printed = printed;
+        BODY_UNIFORMS.decals.value = 1;
+      }
       setClips((await import('../assets/clips.json')).default); // CMU motion capture (tools/mocap.mjs)
     } catch (e) { console.warn('[Gridiron 27] human body not loaded, using the procedural one', e); }
   }

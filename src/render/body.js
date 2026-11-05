@@ -250,7 +250,7 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
           float fa = a > 3.14159 ? a - 6.28318 : a;
           if (abs(fa) < 0.85 && vBody.y > 0.28 && vBody.y < 0.82) st = vec2(fa / 1.7 + 0.5, (vBody.y - 0.28) / 0.54);
           float ba = a - 3.14159;
-          if (abs(ba) < 1.0 && vBody.y > 0.1 && vBody.y < 0.74) st = vec2(ba / 2.0 + 0.5, (vBody.y - 0.1) / 0.64);
+          if (abs(ba) < 1.05 && vBody.y > 0.2 && vBody.y < 0.74) st = vec2(ba / 2.1 + 0.5, (vBody.y - 0.2) / 0.54);
           if (st.x >= 0.0) {
             vec2 uvN = vec2((st.x + nb.x) / 10.0, 1.0 - ((1.0 - st.y) + nb.y) / 10.0);
             vec4 t = texture2D(numTex, uvN);

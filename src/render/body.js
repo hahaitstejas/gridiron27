@@ -256,6 +256,24 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       vec3 col = tex(${COL_COLORS} + region).rgb;
       // Sleeve and sock stripes in the trim color (the pants stripe's), when it differs from the base.
       if (band) { vec3 tc = tex(${COL_COLORS} + 3).rgb; if (distance(tc, col) > 0.08) col = tc; }
+      if (vPart > -0.5) {
+        vec3 jer = tex(${COL_COLORS}).rgb, tr = tex(${COL_COLORS} + 3).rgb;
+        vec3 trimC = distance(tr, jer) > 0.12 ? tr : (dot(jer, vec3(0.33)) > 0.5 ? vec3(0.08) : vec3(0.92));
+        float y = vBindY;
+        // Sleeve stripes: two bands just above the sleeve's end, on the arm tube and the shoulder cap alike.
+        if (region == 1 && vPart > 0.5 && vPart < 1.5) { float d = y - uRegY.y; if ((d > 0.018 && d < 0.032) || (d > 0.044 && d < 0.058)) col = trimC; }
+        // Jersey neckline: a V in front with a trim edge and the undershirt inside, a trim collar band all round.
+        if (region == 0 && vBody.y > 0.5) {
+          float a = vBody.x - 1.5708; float fa = a > 3.14159 ? a - 6.28318 : a;
+          float depth = 1.0 - vBody.y;
+          float vee = 0.17 * max(0.0, 1.0 - abs(fa) / 0.4);
+          if (depth < vee - 0.03) col = jer * 0.3;
+          else if (depth < vee || depth < 0.022) col = trimC;
+        }
+        // Wristband above a glove (only when he wears gloves).
+        vec3 glv = tex(${COL_COLORS} + 7).rgb, skn = tex(${COL_COLORS} + 5).rgb;
+        if (region == 6 && distance(glv, skn) > 0.06) { float d = y - uRegY.z; if (d > 0.004 && d < 0.042) col = vec3(0.93); }
+      }
       vec4 flg = tex(${COL_FLAGS});
       if (flg.x > 0.5 && (region == 0 || region == 1)) { float a = vBody.x; col *= fract(a * 1.909) < 0.5 ? 1.0 : 0.05; }
       if (region == 0 && vBody.y > -0.5 && uDecals < 0.5) {
@@ -389,7 +407,7 @@ export function buildDecalGeometry(h) {
  */
 export function decalMaterial(envMap) {
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0, envMap, envMapIntensity: 0.3, transparent: true,
-    depthWrite: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
+    depthWrite: false, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40 });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
@@ -406,8 +424,8 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       float alpha = 0.0; vec3 col = ncol;
       if (nb.w > 0.5) {
         if (kind < 2) {
-          vec2 sc = vec2(0.07 + st.x * 0.86, 0.2 + (1.0 - st.y) * 0.64);
-          vec4 t = texture2D(numTex, vec2((sc.x + nb.x) / 10.0, 1.0 - (sc.y + nb.y) / 10.0));
+          vec2 sc = vec2(0.12 + st.x * 0.76, 0.2 + (1.0 - st.y) * 0.64);
+          vec4 t = texture(numTex, vec2((sc.x + nb.x) / 10.0, 1.0 - (sc.y + nb.y) / 10.0), -1.0);
           alpha = smoothstep(0.25, 0.6, t.a);
           // Only inside the digits' box: keeps mip bleed from the neighbouring cells off the shirt.
           alpha *= step(0.0, st.x) * step(st.x, 1.0) * step(0.02, st.y) * step(st.y, 0.98);

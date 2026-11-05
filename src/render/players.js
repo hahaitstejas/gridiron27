@@ -55,7 +55,7 @@ function numberAtlas() {
     const cx = (n % 10) * C + C / 2, cy = Math.floor(n / 10) * C + C * 0.53;
     const s = String(n);
     // Widen to block proportions, but keep two digits inside the cell.
-    const wide = Math.min(1.35, (C * 0.9) / Math.max(1, g.measureText(s).width));
+    const wide = Math.min(1.3, (C * 0.76) / Math.max(1, g.measureText(s).width)); // margin so blurrier mips don't bleed into the next cell
     g.save(); g.translate(cx, cy); g.scale(wide, 1);
     g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,1)'; g.strokeText(s, 0, 0);
     g.fillStyle = '#ffffff'; g.fillText(s, 0, 0);
@@ -118,14 +118,15 @@ export class PlayerRenderer {
     this.body = part(buildBodyGeometry(), bodyMaterial(envMap, fabricNormal()), MAX);
     this.body.customDepthMaterial = bodyDepthMaterial();
     this.body.receiveShadow = true;
-    const helmetMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08, envMap, envMapIntensity: 0.9 });
+    const helmetMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.22, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08, envMap, envMapIntensity: 0.9 });
     this.parts = {
       body: this.body,
       shoe: part(cleatGeometry(), mat(0.45, 0, 0.8), MAX * 2),
       helmet: part(helmetGeometry(), helmetMat, MAX),
       face: part(new THREE.SphereGeometry(0.085, 18, 14).scale(0.95, 1.15, 1), this.faceMaterial(mat(0.55)), MAX, false),
       stripe: part(helmetStripeGeometry(), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false),
-      mask: part(facemaskGeometry(), mat(0.35, 0.6, 1), MAX, false),
+      mask: part(facemaskGeometry(), mat(0.3, 0.55, 1), MAX, false),
+      chin: part(chinGeometry(), mat(0.4, 0, 0.6), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
       // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
       visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), mat(0.1, 0.3, 1.2), MAX, false),
@@ -323,14 +324,22 @@ export class PlayerRenderer {
       const sl = p.look?.sleeves;
       this.region(i, REGION.forearm, sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin);
       // Bare hands match the skin; gloves only when the uniform sets a glove color (Team editor → uniform details).
-      this.region(i, REGION.gloves, uni.gloves || skin);
+      // Gloves: the uniform's, else what most players wear: skill players and backers white (dark on a white uniform),
+      // linemen the dark team color, quarterbacks and kickers bare-handed.
+      const bare = ['QB', 'K', 'P'].includes(p.pos), line = ['T', 'G', 'C', 'DT', 'DE'].includes(p.pos);
+      const lightJersey = !isDark(jersey);
+      this.region(i, REGION.gloves, uni.gloves || (bare ? skin : line ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : lightJersey ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : '#f2f2f2'));
       this.number(i, p.number, uni.number, named[i] ? i : -1);
       flags(i, false, Math.min(0.35, p.bulk * 0.45), 1, img ? 1 : 0); // linemen: up to 35% of the heavy shape (its belly and seat grow faster than its frame)
       this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
       const hstripe = uni.stripe === 'none' ? helmet : uni.stripe || (u.helmetStripe ? team.colors.secondary : helmet);
-      const facemask = uni.facemask || (isDark(helmet) ? '#cfcfcf' : '#333333');
+      // Facemask: the uniform's, else the team's secondary color when it stands out from the shell (most teams), else gray.
+      const sec = team.colors.secondary, hc = new THREE.Color(helmet), scc = new THREE.Color(sec);
+      const contrast = Math.abs((hc.r + hc.g + hc.b) - (scc.r + scc.g + scc.b)) > 0.45 || Math.hypot(hc.r - scc.r, hc.g - scc.g, hc.b - scc.b) > 0.5;
+      const facemask = uni.facemask || (contrast ? sec : isDark(helmet) ? '#cfcfcf' : '#333333');
+      P.chin.setColorAt(i, c.set('#f2f2f2'));
       P.stripe.setColorAt(i, c.set(hstripe));
       P.mask.setColorAt(i, c.set(facemask));
       const vl = p.look?.visor;
@@ -352,7 +361,7 @@ export class PlayerRenderer {
       this.number(i, (r * 13 + 7) % 100, '#111111');
       flags(i, true, 0.15, 0);
       this.region(i, REGION.shoe, '#0e0e0e');
-      P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap));
+      P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap)); P.chin.setColorAt(i, c.set(cap));
       for (let k = 0; k < 2; k++) P.shoe.setColorAt(i * 2 + k, c.set('#0e0e0e'));
     }
     // Sideline players and coaches (Presentation.bench) after the officials.
@@ -374,7 +383,7 @@ export class PlayerRenderer {
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
       P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
-      P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333'));
+      P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333')); P.chin.setColorAt(i, c.set('#f2f2f2'));
       for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); P.shoe.setColorAt(i * 2 + s2, c.set('#151515')); }
     });
     for (let i = sim.players.length; i < MAX; i++) this.faceAttr.setX(i, 0);
@@ -513,7 +522,7 @@ export class PlayerRenderer {
       P.helmet.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, 0.01, 0.01)).multiply(scaleM(0.23, 0.27, 0.25)));
       P.towel.setMatrixAt(i, cl(hg).multiply(trans(0, this.human ? 0.115 : 0.185, this.human ? -0.01 : 0)).multiply(scaleM(2.3, 0.33, 16.5)));
       P.stripe.setMatrixAt(i, cl(hg).multiply(trans(0, this.human ? 0.075 : 0.07, this.human ? 0.1 : 0.07)).multiply(scaleM(0.5, 0.2, 0.3)));
-      P.mask.setMatrixAt(i, ZERO); P.face.setMatrixAt(i, ZERO);
+      P.mask.setMatrixAt(i, ZERO); P.chin.setMatrixAt(i, ZERO); P.face.setMatrixAt(i, ZERO);
       P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
       P.visor.setMatrixAt(i, ZERO);
     } else {
@@ -527,6 +536,7 @@ export class PlayerRenderer {
       P.decal.setMatrixAt(i * 2 + 1, cl(hg).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
       P.stripe.setMatrixAt(i, cl(hg).multiply(scaleM(0.33, 0.33, 0.33)));
       P.mask.setMatrixAt(i, hg);
+      P.chin.setMatrixAt(i, hg);
     }
 
     // Arms.
@@ -1082,58 +1092,84 @@ function isDark(hex) {
  * rounded crown, jaw flaps that come down and forward at the sides, a lower back, and an open face below the brow.
  */
 function helmetGeometry() {
-  const NU = 36, NV = 20;
-  const pos = [], idx = [];
+  // A modern shell (helmet unit space: radius ~0.5, scaled 0.33 per player so the decals still sit on it): longer front to
+  // back, a raised center ridge, a front bumper over the brow, jaw guards that wrap forward along the cheeks, a lower
+  // back, and darker vent recesses (vertex color; the instance color is the shell color).
+  const NU = 64, NV = 34, VMAX = Math.PI * 0.9;
+  const pos = [], col = [], idx = [];
+  const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   for (let j = 0; j <= NV; j++) {
-    const v = (j / NV) * Math.PI * 0.86;
+    const v = (j / NV) * VMAX;
     for (let k = 0; k <= NU; k++) {
       const u = (k / NU) * Math.PI * 2;
       const f = Math.cos(u), sd = Math.sin(u);
-      // A slightly longer crown front to back, a flared rim at the bottom.
-      const r = 0.5 * (1 + Math.max(0, v - Math.PI * 0.6) * 0.12);
-      let x = Math.sin(v) * sd * r * 0.95, y = Math.cos(v) * r * 0.95, z = Math.sin(v) * f * r * 1.08;
-      // Jaw flaps pull forward along the cheeks.
-      if (v > Math.PI * 0.55 && Math.abs(sd) > 0.5 && f > -0.2) z += (v - Math.PI * 0.55) * 0.18 * Math.abs(sd);
+      let r = 0.5 * (1 + Math.max(0, v - Math.PI * 0.62) * 0.1);
+      const x0 = Math.sin(v) * sd, y0 = Math.cos(v), z0 = Math.sin(v) * f;
+      // Center ridge running front to back over the crown.
+      r += 0.022 * (1 - sm(0.03, 0.09, Math.abs(x0))) * (1 - sm(0.55, 0.7, v / Math.PI)) * (f > -0.85 ? 1 : 0.5);
+      // Front bumper above the face opening.
+      r += 0.03 * sm(0.45, 0.75, f) * sm(0.24, 0.32, v / Math.PI) * (1 - sm(0.38, 0.43, v / Math.PI));
+      let x = x0 * r * 0.95, y = y0 * r * 0.95, z = z0 * r * 1.1;
+      // Jaw guards: the lower sides sweep forward and in toward the chin.
+      if (v > Math.PI * 0.5 && Math.abs(sd) > 0.3 && f > -0.15) {
+        const k2 = (v - Math.PI * 0.5) * Math.abs(sd);
+        z += k2 * 0.42; x *= 1 - k2 * 0.12;
+      }
       pos.push(x, y, z);
+      // Vents: two slots each side of the ridge toward the front, and a pair at the back.
+      const vent = (Math.abs(x0) > 0.1 && Math.abs(x0) < 0.2 && v > Math.PI * 0.14 && v < Math.PI * 0.3 && f > 0.3)
+        || (Math.abs(x0) > 0.12 && Math.abs(x0) < 0.26 && v > Math.PI * 0.3 && v < Math.PI * 0.42 && f < -0.5);
+      const c = vent ? 0.18 : 1;
+      col.push(c, c, c);
     }
   }
   const keep = (u, v) => {
-    const f = Math.cos(u), a = Math.abs(f + 0.05);
-    if (f > 0.42) return v < Math.PI * 0.44; // the face opening below the brow
-    if (f < -0.55) return v < Math.PI * 0.72; // the back sits above the neck
-    return v < Math.PI * (0.86 - a * 0.1);
+    const f = Math.cos(u), sd = Math.abs(Math.sin(u));
+    if (f > 0.5) return v < Math.PI * 0.43; // the face opening below the brow
+    if (f < -0.55) return v < Math.PI * 0.74; // the back sits above the neck
+    return v < Math.PI * (0.9 - Math.max(0, 0.35 - f) * 0.15 * (1 - sd * 0.3));
   };
   for (let j = 0; j < NV; j++) for (let k = 0; k < NU; k++) {
-    const u = ((k + 0.5) / NU) * Math.PI * 2, v = ((j + 0.5) / NV) * Math.PI * 0.86;
+    const u = ((k + 0.5) / NU) * Math.PI * 2, v = ((j + 0.5) / NV) * VMAX;
     if (!keep(u, v)) continue;
     const a = j * (NU + 1) + k, b = a + 1, c = a + NU + 1, d = c + 1;
     idx.push(a, c, b, b, c, d);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
 }
 
-/** Facemask cage in head space (yards): three bars across the face and two uprights, joined to the shell at the sides. */
+/** Facemask in head space (yards): thick bars across the face, a nose bar pair, side struts down the jaw guards. */
 function facemaskGeometry() {
   const geos = [];
-  const bar = (pts, r = 0.0075) => geos.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z))), 16, r, 5, false));
+  const bar = (pts, r = 0.0082) => geos.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z))), 20, r, 7, false));
   const arc = (y, rad, a0, a1, fwd = 0) => {
     const pts = [];
-    for (let k = 0; k <= 8; k++) { const a = a0 + (a1 - a0) * (k / 8); pts.push([Math.sin(a) * rad, y, Math.cos(a) * rad * 1.05 + fwd]); }
+    for (let k = 0; k <= 10; k++) { const a = a0 + (a1 - a0) * (k / 10); pts.push([Math.sin(a) * rad, y, Math.cos(a) * rad * 1.05 + fwd]); }
     return pts;
   };
-  bar(arc(-0.02, 0.172, -1.25, 1.25));
-  bar(arc(-0.075, 0.19, -1.05, 1.05));
-  bar(arc(-0.13, 0.175, -0.85, 0.85, -0.005));
+  bar(arc(-0.01, 0.168, -1.3, 1.3));
+  bar(arc(-0.064, 0.184, -1.1, 1.1));
+  bar(arc(-0.122, 0.174, -0.9, 0.9, -0.004));
   for (const s of [-1, 1]) {
-    bar([[s * 0.06, -0.02, 0.176], [s * 0.065, -0.075, 0.19], [s * 0.055, -0.13, 0.172]]);
-    bar([[s * 0.16, -0.02, 0.07], [s * 0.165, -0.075, 0.085], [s * 0.13, -0.13, 0.11]]);
+    bar([[s * 0.036, -0.01, 0.176], [s * 0.04, -0.064, 0.193], [s * 0.034, -0.122, 0.182]], 0.0075); // nose bars
+    bar([[s * 0.158, -0.01, 0.065], [s * 0.168, -0.064, 0.085], [s * 0.14, -0.122, 0.115]]); // struts along the jaw guards
   }
   const g = mergeGeometries(geos);
   geos.forEach((x) => x.dispose());
+  return g;
+}
+
+/** Chin cup and straps (head space), white. */
+function chinGeometry() {
+  const cup = new THREE.SphereGeometry(0.038, 12, 8).scale(1.25, 0.8, 0.75).translate(0, -0.172, 0.125);
+  const strap = (s) => new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(s * 0.04, -0.17, 0.12), new THREE.Vector3(s * 0.11, -0.15, 0.08), new THREE.Vector3(s * 0.155, -0.11, 0.035)]), 10, 0.007, 5, false);
+  const g = mergeGeometries([cup.toNonIndexed(), strap(-1).toNonIndexed(), strap(1).toNonIndexed()]);
+  g.computeVertexNormals();
   return g;
 }
 

@@ -329,41 +329,54 @@ Bk.waistY = waistY; Bk.collarY = collarY + 0.02; Bk.sleeveY = shY - 0.13; Bk.wri
 const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], idx: [] };
 {
   const jersey = ids.filter((i) => region[i] === REGION.jersey);
+  const Pp = A.map((p, i) => add(p, pad[i])); // the shirt as worn (pads + clothing)
   const czAt = (y) => { let s2 = 0, n = 0; for (const i of jersey) if (Math.abs(A[i][1] - y) < 0.03) { s2 += A[i][2]; n++; } return n ? s2 / n : 0; };
   const patch = (kind, side, yc, hw, hh, nx, ny) => {
     const base = decal.pos.length / 3;
     const cz = czAt(yc);
     const pool = jersey.filter((i) => Math.sign(A[i][2] - cz) === side && Math.abs(A[i][1] - yc) < hh + 0.08 && Math.abs(A[i][0]) < hw + 0.1);
+    const inPool = new Set(pool);
+    const tris = faces.filter((f) => f.some((v) => inPool.has(v)) && f.every((v) => region[v] === REGION.jersey));
     for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
       const x = -hw + (2 * hw * gx) / (nx - 1), y = yc - hh + (2 * hh * gy) / (ny - 1);
-      // The 4 nearest vertices by where they actually are on the padded shirt.
-      const near = pool.map((i) => [i, Math.hypot(A[i][0] + pad[i][0] - x, A[i][1] + pad[i][1] - y)]).sort((a, b) => a[1] - b[1]).slice(0, 4);
-      let wsum = 0; const z = [0, 0, 0], pd = [0, 0, 0], bk = [0, 0, 0], bones = {};
-      for (const [i, d] of near) {
-        const w = 1 / (d + 0.004); wsum += w;
-        for (let k = 0; k < 3; k++) { pd[k] += pad[i][k] * w; bk[k] += (Hv[i][k] - A[i][k]) * w; }
-        z[2] += A[i][2] * w;
-        for (let q = 0; q < 4; q++) if (skinW[i][q] > 0) bones[skinIdx[i][q]] = (bones[skinIdx[i][q]] || 0) + skinW[i][q] * w;
+      // Drop the point straight onto the padded shirt along z (front: from +z, back: from -z): the outermost triangle under
+      // (x, y), and take its exact surface attributes by barycentric interpolation.
+      let hit = null;
+      for (const [ia, ib, ic] of tris) {
+        const P0 = Pp[ia], P1 = Pp[ib], P2 = Pp[ic];
+        const d = (P1[1] - P2[1]) * (P0[0] - P2[0]) + (P2[0] - P1[0]) * (P0[1] - P2[1]);
+        if (Math.abs(d) < 1e-12) continue;
+        const w0 = ((P1[1] - P2[1]) * (x - P2[0]) + (P2[0] - P1[0]) * (y - P2[1])) / d;
+        const w1 = ((P2[1] - P0[1]) * (x - P2[0]) + (P0[0] - P2[0]) * (y - P2[1])) / d;
+        const w2 = 1 - w0 - w1;
+        if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+        const zz = w0 * P0[2] + w1 * P1[2] + w2 * P2[2];
+        if (!hit || zz * side > hit.z * side) hit = { z: zz, v: [ia, ib, ic], w: [w0, w1, w2] };
       }
-      for (let k = 0; k < 3; k++) { pd[k] /= wsum; bk[k] /= wsum; }
-      // Base position such that base + pad lands on (x, y) on the shirt, a few mm out from it.
-      decal.pos.push(x - pd[0], y - pd[1], z[2] / wsum + side * 0.014);
+      if (!hit) { const n = pool.map((i) => [i, Math.hypot(Pp[i][0] - x, Pp[i][1] - y)]).sort((q, r) => q[1] - r[1])[0][0]; hit = { z: Pp[n][2], v: [n, n, n], w: [1, 0, 0] }; }
+      const lerp3 = (arr) => [0, 1, 2].map((k) => hit.w[0] * arr(hit.v[0])[k] + hit.w[1] * arr(hit.v[1])[k] + hit.w[2] * arr(hit.v[2])[k]);
+      const base = lerp3((i) => A[i]), pd = lerp3((i) => pad[i]), bk = lerp3((i) => sub(Hv[i], A[i]));
+      decal.pos.push(base[0], base[1], base[2] + side * 0.012);
       decal.pad.push(...pd); decal.bulk.push(...bk);
-      const top = Object.entries(bones).sort((a, b) => b[1] - a[1]).slice(0, 4), tw = top.reduce((t, e) => t + e[1], 0);
+      // Exactly the shirt's own skinning at that spot, so print and shirt bend together.
+      const bones = {};
+      hit.v.forEach((i, k) => { for (let q = 0; q < 4; q++) if (skinW[i][q] > 0) bones[skinIdx[i][q]] = (bones[skinIdx[i][q]] || 0) + skinW[i][q] * hit.w[k]; });
+      const top = Object.entries(bones).sort((q, r) => r[1] - q[1]).slice(0, 4), tw = top.reduce((t, e) => t + e[1], 0);
       for (let q = 0; q < 4; q++) { decal.si.push(top[q] ? +top[q][0] : 0); decal.sw.push(top[q] ? top[q][1] / tw : 0); }
       // Seen from the front the player's right is on the viewer's left: the front reads with u running toward -x.
       // (The front patch is built facing the other way from the back one: both its axes run reversed.)
-      decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 ? 1 - gy / (ny - 1) : gy / (ny - 1));
+      decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 || kind === 1 ? 1 - gy / (ny - 1) : gy / (ny - 1));
       decal.kind.push(kind);
     }
     for (let gy = 0; gy < ny - 1; gy++) for (let gx = 0; gx < nx - 1; gx++) {
       const a = base + gy * nx + gx, b = a + 1, c = a + nx, d = c + 1;
-      decal.idx.push(a, b, c, b, d, c);
+      // Wound to face outward (front: +z, back: -z), so only the visible side draws.
+      if (side > 0) decal.idx.push(a, b, c, b, d, c); else decal.idx.push(a, c, b, b, c, d);
     }
   };
   const shAbs = hipH + Bk.shY;
   patch(0, 1, shAbs - 0.11, 0.15, 0.115, 22, 18); // front number, across the chest
-  patch(1, -1, shAbs - 0.2, 0.19, 0.16, 26, 22); // back number
+  patch(1, -1, shAbs - 0.19, 0.165, 0.15, 26, 22); // back number
   patch(2, -1, shAbs + 0.025, 0.17, 0.04, 26, 6); // name plate across the shoulders
 }
 

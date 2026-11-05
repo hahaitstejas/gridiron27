@@ -587,6 +587,12 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   (`uDecals`). Uniform edges are per-pixel from the bind-pose height inside each body part (`aPart`: torso / arm / leg /
   head; `uRegY` waist, sleeve end, wrist, sock top + `uShoeY`, `uCollarY`), sock stripes in the trim color; pants have
   thigh / knee pad bumps; shoulder pads are squarer (0.085 out).
+  Number patches are dropped onto the padded shirt's triangles along z (barycentric: exact surface position, pad / bulk
+  deltas and skin weights), wound outward and drawn FrontSide (DoubleSide showed the front number through the body).
+  Helmet: modern shell (ridge, front bumper, jaw guards, dark vents via vertex color), thicker facemask with nose bars in the
+  team's secondary color when it contrasts with the shell, chin cup + straps (`parts.chin`). Jersey: V-neck with trim and
+  undershirt, sleeve stripes (arm part only). Gloves by position (QB/K/P bare, linemen dark, others white or dark on white
+  uniforms) with a white wristband.
 - Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK
   (x flipped: CMU's frame is mirrored vs ours) → our pose parameters in the runner's heading frame (`LAYOUT`: rootY, lean,
   twist, head, both arms' pitch/out/elbow/twist, both legs' hip/knee/out); gait cycles cut at alternating footfalls (half

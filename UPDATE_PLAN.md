@@ -199,10 +199,12 @@ environment's network policy (the user can allow them in the environment setting
       grass from a CC0 texture set if reachable (else improved procedural), painted-line roughness; GTAO ambient occlusion
       (High), contact shadows. Done: contact shadows (instanced soft patch per figure), sweat sheen (`setSweat`); GTAO skipped (its
       depth pass would ignore our GPU skinning), textures blocked (see above).
-- [ ] B1 Mocap pipeline: tools/mocap.js reads CMU BVH (data from github.com/una-dinosauria/cmu-mocap, free for any use),
+- [x] B1 Mocap pipeline: tools/mocap.js reads CMU BVH (data from github.com/una-dinosauria/cmu-mocap, free for any use),
       retargets to our skeleton (joint angles per bone), loops / trims, writes compact clips to src/render/clips/*.json.
-- [ ] B2 Locomotion from mocap: walk / jog / run / sprint / backpedal / shuffle clips blended by speed and direction (phase
+- [x] B2 Locomotion from mocap: walk / jog / run / sprint / backpedal / shuffle clips blended by speed and direction (phase
       matched), with the gait's planted feet and IK on top; procedural poses stay for stances, signals and anything without a clip.
+      Done: 7 forward clips 1.65-5.77 yd/s (CMU tops out there; faster = the top clip exaggerated). TODO later: backpedal /
+      shuffle clips (69_34.., 69_42..).
 - [ ] B3 Action clips: throw (CMU football throw), catch, jump, fall / stumble, celebrations; blended into the current poses.
 - [ ] C1 Paired contact: tackles where both bodies move together (wrap, drive back, twist down), blocks with hands on the
       chest and leverage, gang tackles / piles; render-side alignment of the two players.

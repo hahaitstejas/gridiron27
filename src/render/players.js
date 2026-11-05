@@ -2,7 +2,7 @@ import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
-import { Gait } from './gait.js';
+import { Gait, setClips } from './gait.js';
 import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
 import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry } from './body.js';
 
@@ -226,6 +226,7 @@ export class PlayerRenderer {
       old.dispose();
       this.human = true;
       this.colorsKey = '';
+      setClips((await import('../assets/clips.json')).default); // CMU motion capture (tools/mocap.mjs)
     } catch (e) { console.warn('[Gridiron 27] human body not loaded, using the procedural one', e); }
   }
 
@@ -975,7 +976,8 @@ function computePose(p, time, sim) {
     const left = p.ballArm === -1;
     const a = pose.arms[left ? 0 : 1];
     a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;
-    if (p.protect) { const l = pose.arms[left ? 1 : 0]; l.pitch = 0.75; l.elbow = 1.9; l.out = -0.35; }
+    pose.carryArm = left ? 0 : 1; // the gait's mocap leaves this arm alone
+    if (p.protect) { const l = pose.arms[left ? 1 : 0]; l.pitch = 0.75; l.elbow = 1.9; l.out = -0.35; pose.carryArm = 2; }
   }
   return pose;
 }

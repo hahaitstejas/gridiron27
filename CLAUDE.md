@@ -576,6 +576,14 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   players.js posing (`B`), `bindOrigin` and the gait's IK (`LEG` getters) all read; joints don't scale with build when it's
   active (w = 1). Gear sits on `hg` = head × T(0, helmY, helmZ). The procedural body (`buildBodyGeometry`) is the fallback.
   Rebuild after changing the tool: `node tools/buildhuman.mjs` (needs a clone of makehumancommunity/makehuman's data dir).
+- Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK
+  (x flipped: CMU's frame is mirrored vs ours) → our pose parameters in the runner's heading frame (`LAYOUT`: rootY, lean,
+  twist, head, both arms' pitch/out/elbow/twist, both legs' hip/knee/out); gait cycles cut at alternating footfalls (half
+  cycles, a missing half is mirrored) and phase-resampled (32 samples, phase 0 = left foot down = render/gait.js `g.ph`).
+  `--scan 09_01 16_46 …` prints clip speeds. In game (`gait.js` `setClips` / `sampleLoco`): forward running (`MOCAP_ANIMS`,
+  moving along his facing, > 1 yd/s) blends the two clips around his speed, above 5.8 yd/s the top clip's swing is scaled up;
+  it drives arms, torso, head and the bob (faded by `g.mw`), the carrying arm keeps its cradle (`pose.carryArm`), and the
+  planted-feet IK still owns the legs. Clips load with the human body (`loadHuman`).
 
 ## File layout
 

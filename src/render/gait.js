@@ -10,6 +10,44 @@ const LEG = { get thigh() { return BIND.thigh; }, get shin() { return BIND.shin;
 // Gaits that plant their feet. Everything else (falls, dives, jumps, celebrations) keeps its authored legs.
 export const GAIT_ANIMS = new Set(['run', 'idle', 'backpedal', 'shuffle', 'passset', 'block', 'juke', 'stiffarm', 'truck', 'strip', 'catch', 'reach', 'swat', 'stumble', 'fair_catch', 'sig_flag', 'tired']);
 
+// ---------- motion capture (CMU, tools/mocap.mjs → src/assets/clips.json) ----------
+let LOCO = null; // forward locomotion clips sorted by speed: { speed, samples[N][18] }
+let LAYOUT = null;
+/** Install the clips (main.js at boot). */
+export function setClips(data) {
+  LAYOUT = data.layout;
+  LOCO = data.clips.filter((c) => c.kind === 'cycle').sort((a, b) => a.speed - b.speed);
+}
+const MOCAP_ANIMS = new Set(['run', 'strip']);
+const TMPA = new Float32Array(18), TMPB = new Float32Array(18);
+/** One clip at gait phase ph (0..1, 0 = left foot down), linearly interpolated, into out. */
+function sampleClip(c, ph, out) {
+  const n = c.samples.length, f = ph * n, i0 = Math.floor(f) % n, i1 = (i0 + 1) % n, t = f - Math.floor(f);
+  const a = c.samples[i0], b = c.samples[i1];
+  for (let k = 0; k < 18; k++) out[k] = a[k] + (b[k] - a[k]) * t;
+  return out;
+}
+/** Locomotion at speed sp: the two clips around it blended; above the fastest, its swing is exaggerated (a sprint). */
+function sampleLoco(sp, ph, out) {
+  let hi = LOCO.findIndex((c) => c.speed >= sp);
+  if (hi === 0) return sampleClip(LOCO[0], ph, out);
+  if (hi < 0) {
+    const top = LOCO[LOCO.length - 1];
+    sampleClip(top, ph, out);
+    const k = Math.min(1.5, 1 + ((sp - top.speed) / top.speed) * 0.55);
+    // Exaggerate around the cycle's mean: bigger arm pump, more torso rotation, a deeper bob.
+    const mean = top.mean || (top.mean = top.samples[0].map((_, j) => top.samples.reduce((s2, r) => s2 + r[j], 0) / top.samples.length));
+    for (const j of [0, 2, 4, 6, 8, 10, 12, 13, 15, 16]) out[j] = mean[j] + (out[j] - mean[j]) * k;
+    out[1] += (k - 1) * 0.15; // sprinters lean a little further forward
+    return out;
+  }
+  const a = LOCO[hi - 1], b = LOCO[hi], t = (sp - a.speed) / (b.speed - a.speed);
+  sampleClip(a, ph, TMPA); sampleClip(b, ph, TMPB);
+  for (let k = 0; k < 18; k++) out[k] = TMPA[k] + (TMPB[k] - TMPA[k]) * t;
+  return out;
+}
+const MC = new Float32Array(18);
+
 /** Step length (yards) and the stance share of each leg's cycle, by speed (yd/s): walk → jog → sprint. */
 const stepLen = (v) => Math.min(2.45, 0.42 + 0.19 * v);
 const dutyOf = (v) => Math.min(0.62, Math.max(0.26, 0.62 - 0.036 * v));
@@ -59,6 +97,24 @@ export class Gait {
     const L = stepLen(sp), duty = sp > 0.35 ? dutyOf(sp) : 1;
     const cycleT = sp > 0.35 ? (2 * L) / sp : 1;
     if (sp > 0.35) g.ph = (g.ph + dt / cycleT) % 1;
+    // Motion capture for running: arms, torso, head and the bob come from the clip at this phase (legs: the IK below,
+    // which keeps them planted). Faded in and out so changes of animation don't pop.
+    const fwd = sp > 0.01 ? (vx * cos + vz * sin) / sp : 0;
+    const wantMc = LOCO && MOCAP_ANIMS.has(p.anim) && sp > 1.0 && fwd > 0.5 ? 1 : 0;
+    g.mw = (g.mw || 0) + (wantMc - (g.mw || 0)) * Math.min(1, dt * 7);
+    if (g.mw > 0.01 && LOCO) {
+      const m = sampleLoco(sp, g.ph, MC), k = g.mw * g.w;
+      const mix = (a, b) => a + (b - a) * k;
+      pose.rootY = mix(pose.rootY, m[0]); pose.lean = mix(pose.lean, Math.min(0.42, m[1] + g.lean * 0.6)); // the clip already leans; cap it so nobody runs like he's falling pose.twist = mix(pose.twist, m[2]);
+      pose.head = mix(pose.head, m[3]);
+      const carry = pose.carryArm; // the ball arm keeps its cradle (computePose set it; 2 = both arms protect it)
+      for (let s2 = 0; s2 < 2; s2++) {
+        if (carry === s2 || carry === 2) continue;
+        const a = pose.arms[s2], o = 4 + s2 * 4;
+        a.pitch = mix(a.pitch, m[o]); a.out = mix(a.out, m[o + 1]); a.elbow = mix(a.elbow, m[o + 2]); a.twist = mix(a.twist || 0, m[o + 3]);
+      }
+      for (let s2 = 0; s2 < 2; s2++) { const l = pose.legs[s2], o = 12 + s2 * 3; l.hip = mix(l.hip, m[o]); l.knee = mix(l.knee, m[o + 1]); l.out = mix(l.out || 0, m[o + 2]); }
+    }
     const crouch = pose.crouch, hipY = (BIND.hipH + crouch + pose.rootY) * sc;
     for (let s = 0; s < 2; s++) {
       const side = s ? 1 : -1, ft = g.feet[s];

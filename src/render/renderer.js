@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { makeSimPlayer } from '../sim/entities.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -270,61 +269,6 @@ export class GameRenderer {
     // Shadow camera follows the action.
     this.key.position.set(bm.position.x - 25, 60, bm.position.z + 30);
     this.key.target.position.set(bm.position.x, 0, bm.position.z);
-  }
-
-  /**
-   * Main-menu hero: one player in his home uniform at midfield, doing celebrations on a loop, shot from a low close
-   * camera. rect = the screen box (px) he should stand in (the featured card); the camera's view offset slides him there
-   * while the stadium fills the rest of the screen behind the menu.
-   */
-  renderShowcase(dt, show, rect) {
-    const P = this.players;
-    if (this._showSim?.src !== show) {
-      const e = makeSimPlayer(0, show.p, 0, 'O', 'X');
-      Object.assign(e, { x: 0, z: 0, px: 0, pz: 0, facing: Math.PI / 2, pfacing: Math.PI / 2, state: 'active', anim: 'cel_spike', animT: 0 });
-      this._showSim = { src: show, players: [e], ball: { state: 'presnap', carrier: -1, x: 0, y: 0, z: 0, px: 0, py: 0, pz: 0, vx: 0, vy: 0, vz: 0 }, state: 'dead', t: 0, k: 0, toLocal: () => ({ down: 0, lat: 0 }) };
-      P.extra = null; P.colorsKey = null; P.wear = ['home', 'away'];
-      P.setColors(this._showSim, [show.team, show.team]);
-    }
-    const sim = this._showSim, e = sim.players[0];
-    const MOVES = ['cel_spike', 'cel_flex', 'cel_point', 'cel_spike', 'cel_leap'];
-    sim.t += dt; e.animT += dt;
-    if (e.animT > 3.2) { sim.k = (sim.k + 1) % MOVES.length; e.anim = MOVES[sim.k]; e.animT = 0; }
-    P.display = null;
-    P.update(sim, 1, sim.t, -1, null);
-    P.ring.visible = P.ring2.visible = false;
-    // The ball: in his right hand for the spike's wind-up, then slammed down and bouncing; tucked otherwise.
-    const bm = this.ball, h = P.handPos[0];
-    bm.visible = e.anim === 'cel_spike' || e.anim === 'cel_point';
-    if (bm.visible && h) {
-      const rel = e.anim === 'cel_spike' ? 0.32 : 99;
-      if (e.animT < rel) { bm.position.copy(h); bm.rotation.set(0, 0, 1.2); }
-      else {
-        const t = e.animT - rel, bounce = Math.abs(Math.sin(t * 5)) * Math.exp(-t * 1.6) * 1.3;
-        bm.position.set(0.35 + t * 0.4, 0.12 + bounce, 0.3 + t * 0.15);
-        bm.rotation.set(t * 9, 0.4, t * 4);
-      }
-    }
-    this.ballShadow.visible = false; this.aim.visible = false;
-    this.precip.update(dt, this.rig.camera.position);
-    this.stadium.update(dt, 0.25);
-    const cam = this.rig.camera, W = this.container.clientWidth, H = this.container.clientHeight;
-    // Facing the camera from 4.6 yd, a little below eye level; a slow drift so the scene breathes.
-    const sway = Math.sin(sim.t * 0.25) * 0.5;
-    // Far enough that he (arms up ~2.7 yd) fits the card's box: visible height at distance d = 2 d tan(fov / 2).
-    const frac = rect && rect.height > 0 ? rect.height / H : 0.5;
-    const d = 2.7 / (frac * 2 * Math.tan((cam.fov * Math.PI) / 360));
-    cam.position.set(sway, 1.3, d);
-    cam.lookAt(0, 1.3, 0);
-    // A key light on him (the menu shot is otherwise lit for the whole stadium at night).
-    this.key.position.set(2.5, 9, 7); this.key.target.position.set(0, 1, 0);
-    if (rect && rect.width > 0) {
-      // Slide the image so the player (screen center) lands in the middle of rect.
-      const cx = rect.left + rect.width / 2, cy = rect.top + rect.height * 0.47;
-      cam.setViewOffset(W, H, W / 2 - cx, H / 2 - cy, W, H);
-    } else cam.clearViewOffset();
-    this.draw(cam);
-    cam.clearViewOffset();
   }
 
   hidePlayers() {

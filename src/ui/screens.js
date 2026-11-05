@@ -81,10 +81,16 @@ function featuredCard(teams, screens) {
   if (!top.length) return el('div.mm-feature');
   // The menu is UI, not the sim: Math.random is fine here (a different star each visit).
   const { p, t } = top[Math.floor(Math.random() * top.length)];
-  // The 3D player (main.js renderShowcase) stands in the hero box: home uniform, his number, face photo, celebrating.
+  // The menu's field behind the card becomes his team's home field (main.js).
   if (screens) screens.featured = { p, team: t };
-  return el('div.mm-feature', {}, el('div.mm-hero'),
-    el('div.mm-player', {}, el('small', { text: `${p.pos} · #${p.number} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
+  const c = t.colors;
+  const jersey = `<svg viewBox="0 0 200 220" class="mm-jersey"><path d="M58 14 L82 6 Q100 22 118 6 L142 14 L192 44 L172 96 L150 86 L150 214 L50 214 L50 86 L28 96 L8 44 Z" fill="${c.primary}" stroke="${c.secondary}" stroke-width="5"/>
+    <path d="M82 6 Q100 22 118 6" fill="none" stroke="${c.secondary}" stroke-width="8"/>
+    <text x="100" y="${p.last.length > 9 ? 62 : 64}" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="800" font-size="${p.last.length > 9 ? 17 : 21}" fill="${c.secondary}" letter-spacing="2">${p.last.toUpperCase()}</text>
+    <text x="100" y="168" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="96" fill="${c.secondary}" stroke="${c.accent || '#fff'}" stroke-width="2">${p.number}</text></svg>`;
+  const face = faceImg(p, 'mm-face');
+  return el('div.mm-feature', {}, el('div.mm-jersey-wrap', { html: jersey }),
+    el('div.mm-player', {}, ...(face ? [face] : []), el('small', { text: `${p.pos} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
       el('div.mm-ovr', {}, el('b', { text: String(p.ovr) }), el('small', { text: 'OVR' }))));
 }
 

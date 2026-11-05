@@ -125,7 +125,7 @@ const league = new LeagueUI({
   onLeagueReplaced: () => {
     prefs.home = Math.min(prefs.home, teams.length - 1);
     if (prefs.away === prefs.home || prefs.away >= teams.length) prefs.away = (prefs.home + 8) % teams.length;
-    renderer.setTeams(teams[prefs.home], teams[prefs.away]);
+    renderer.setTeams(teams[prefs.home], teams[prefs.away]); menuFieldTeam = null;
   },
 });
 if (saved) { league.name = saved.name; league.franchise = saved.franchise; }
@@ -138,7 +138,7 @@ loadAudiblePackages(); // Playbook → Audibles
 const pickTeam = (title, onPick, onBack, focus = prefs.home) => screens.teamPicker(teams, focus, { title, onPick, onBack });
 const rosterCtx = { screens, teams, onBack: () => league.menu(0), onChange: () => league.changed(), pickTeam };
 const teamCtx = { screens, teams, prefs, pickTeam, onChange: () => { savePrefs(prefs); league.changed(); },
-  onBack: () => { renderer.setTeams(teams[prefs.home], teams[prefs.away]); league.onTeams(); } };
+  onBack: () => { renderer.setTeams(teams[prefs.home], teams[prefs.away]); menuFieldTeam = null; league.onTeams(); } };
 league.onTeams = (focus = prefs.home) => screens.teamPicker(teams, focus, {
   title: 'Teams & logos: pick a team', onPick: (i) => teamEditor(teamCtx, i), onBack: () => league.menu(1),
   extra: { label: 'League & Conferences', sub: `${LEAGUE.name} · logo, names`, logo: LEAGUE.logo,
@@ -272,6 +272,7 @@ function startGame(p, opts = {}) {
   const f = league.franchise;
   const championship = !!(opts.franchise && f?.phase === 'playoffs' && f.playoffs.rounds.length >= PLAYOFF_ROUND_NAMES.length);
   renderer.setTeams(home, away, { championship, neutral: !!session.settings.neutral });
+  menuFieldTeam = null;
   renderer.setConditions(conditions);
   hud.ticker(conditionsText(conditions));
   screens.clear();
@@ -292,6 +293,7 @@ function startGame(p, opts = {}) {
 }
 
 let intro = null;
+let menuFieldTeam = null; // the team whose field the main menu shows (reset when a game sets its own)
 function updateIntro(f, dt) {
   intro.t += dt;
   if (intro.t >= INTRO_T || f.pressed.A || f.pressed.B || f.pressed.Menu || f.pressed.X) endIntro();
@@ -822,10 +824,10 @@ function frameBody(now) {
     renderer.playArt.update(null, 1);
     renderer.lines.set(null, null);
     attract += dt * 0.05;
-    // Main menu: the featured player standing in his card (Screens.mainMenu sets screens.featured + its hero box).
-    const hero = app === 'menu' && screens.featured && document.querySelector('.mm-hero');
-    if (hero) renderer.renderShowcase(dt, screens.featured, hero.getBoundingClientRect());
-    else { renderer._showSim = null; renderer.renderOrbit(dt, attract); }
+    // Main menu: the dark orbit over the featured player's home field (his team's end zones and midfield logo).
+    const ft = app === 'menu' && screens.featured?.team;
+    if (ft && ft !== menuFieldTeam) { menuFieldTeam = ft; renderer.setTeams(ft, ft); }
+    renderer.renderOrbit(dt, attract);
   }
   if (consumed) { input.consume(); input2.consume(); }
   renderer.adapt(frameMs);

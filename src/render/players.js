@@ -304,7 +304,8 @@ export class PlayerRenderer {
       // Arm sleeves (roster editor): white / black / team color, else bare forearms.
       const sl = p.look?.sleeves;
       this.region(i, REGION.forearm, sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin);
-      this.regionC(i, REGION.gloves, uni.gloves ? c.set(uni.gloves) : c.set(team.colors.secondary).lerp(WHITE, 0.2));
+      // Bare hands match the skin; gloves only when the uniform sets a glove color (Team editor → uniform details).
+      this.region(i, REGION.gloves, uni.gloves || skin);
       this.number(i, p.number, uni.number, named[i] ? i : -1);
       flags(i, false, Math.min(0.6, p.bulk * 0.75), 1, img ? 1 : 0); // linemen: up to 60% of the heavy shape (powerful, not obese)
       this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
@@ -348,7 +349,7 @@ export class PlayerRenderer {
       const numColor = isDark(top) ? (isDark(team.colors.secondary) ? '#ffffff' : team.colors.secondary) : (isDark(team.colors.primary) ? team.colors.primary : '#111111');
       this.region(i, REGION.jersey, top); this.region(i, REGION.sleeve, top); this.region(i, REGION.pants, bottom); this.region(i, REGION.stripe, bottom);
       this.region(i, REGION.socks, b.coach ? '#b9a77c' : u.pants === 'white' ? team.colors.primary : '#f2f2f2');
-      this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, b.coach ? skin : team.colors.secondary);
+      this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, skin);
       this.number(i, b.coach ? -1 : b.number, numColor);
       flags(i, false, b.coach ? 0.35 : 0.3, b.coach ? 0 : 1);
       this.region(i, REGION.shoe, '#151515');

@@ -5,3 +5,5 @@ dist/
 test-output/
 public/local/
 dist-offline/
+release/
+dist-app/

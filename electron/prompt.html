@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Gridiron 27</title>
+<style>body{margin:0;padding:18px;background:#111;color:#fff;font:15px -apple-system,system-ui,sans-serif}
+p{margin:0 0 10px;white-space:pre-wrap}input{width:100%;box-sizing:border-box;padding:8px;font-size:15px;background:#000;color:#fff;border:1px solid #888}
+div{margin-top:12px;text-align:right}button{margin-left:8px;padding:6px 16px;font-size:14px}</style></head>
+<body><p id="m"></p><input id="v"><div><button id="c">Cancel</button><button id="o">OK</button></div>
+<script>
+const { ipcRenderer } = require('electron');
+const q = new URLSearchParams(location.search);
+document.getElementById('m').textContent = q.get('m') || '';
+const v = document.getElementById('v'); v.value = q.get('v') || ''; v.focus(); v.select();
+const done = (r) => ipcRenderer.send('g27-prompt-done', r);
+document.getElementById('o').onclick = () => done(v.value);
+document.getElementById('c').onclick = () => done(null);
+addEventListener('keydown', (e) => { if (e.key === 'Enter') done(v.value); if (e.key === 'Escape') done(null); });
+</script></body></html>

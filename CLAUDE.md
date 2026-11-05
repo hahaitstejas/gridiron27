@@ -20,6 +20,7 @@ npm run bot          # scripted 'human' exploits vs CPU defense  (-- --difficult
 npm run fuzz         # random-input (button masher) human / career / 2-player games: no crashes, every game ends
 npm run build        # production build to dist/
 npm run build:offline  # ONE self-contained file: dist-offline/Gridiron27.html (double-click, no server, no wifi)
+npm run app          # run the Mac app shell (Electron) on the current build;  npm run app:build → release/Gridiron 27-*.dmg (on a Mac)
 ```
 
 URL flags (dev server):
@@ -410,6 +411,14 @@ flight (`WIND_PUSH`, landing prediction included) and adds drift + scatter to de
 sets lights, fog, sky gradient (stadium `sky` uniforms), light-tower lamps, the snow layer on the field and
 `Precipitation` (rain streaks / snow points, one draw call each, animated in the vertex shader around the camera).
 The kick hint shows the wind (arrow from the camera's view). `npm run games -- --weather rain` measures the effect.
+
+### Mac app (`electron/`)
+`electron/main.cjs` serves `dist-app/` (`vite build --mode app`: no `public/` copied) from a local server on 127.0.0.1:27027
+(fixed, so IndexedDB / localStorage saves persist between launches) and the user's league folder as `/local/` (default
+`~/Documents/Gridiron27`, created with a read-me; app menu → Open / Choose League Folder…, stored in userData config.json).
+`preload.cjs` + `prompt.html` replace `window.prompt` (Electron has none; the editors use it) with a modal dialog via
+`ipcRenderer.sendSync`. electron-builder config is the `build` key in package.json (arm64 dmg + zip, ad-hoc signed
+`identity: "-"`, icon `build/icon.png`); output in `release/` (git-ignored).
 
 ### Offline single file
 `npm run build:offline` (vite mode `offline`, `vite-plugin-singlefile`, then `tools/offline.mjs` renames it) inlines all JS,

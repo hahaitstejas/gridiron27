@@ -4,6 +4,7 @@
 // /local/ — those files stay on your Mac, never inside the app or the repo.
 const { app, BrowserWindow, Menu, dialog, shell, ipcMain } = require('electron');
 const http = require('node:http');
+const { remoteImages } = require('../tools/remote-images.cjs');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -49,7 +50,9 @@ function serveFrom(root, rel, res) {
 
 function startServer(port) {
   return new Promise((resolve, reject) => {
+    const relay = remoteImages(path.join(app.getPath('userData'), 'image-cache'));
     const server = http.createServer((req, res) => {
+      if (relay(req, res)) return; // web logos / face photos (tools/remote-images.cjs)
       const url = decodeURIComponent((req.url || '/').split('?')[0]);
       if (url.startsWith('/local/')) return serveFrom(leagueFolder(), url.slice('/local/'.length), res);
       serveFrom(GAME_DIR, url === '/' ? 'index.html' : url.slice(1), res);

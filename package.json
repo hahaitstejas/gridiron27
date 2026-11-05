@@ -46,6 +46,7 @@
     "files": [
       "electron/**",
       "dist-app/**",
+      "tools/remote-images.cjs",
       "package.json"
     ],
     "mac": {

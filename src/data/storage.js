@@ -116,15 +116,26 @@ export function pickFile(accept = '.json', asDataUrl = false) {
 }
 
 /** Load an image (data URL or path) as an HTMLImageElement, or null. */
+/**
+ * A web image's address as the game should load it: through the game's own server (/remote, tools/remote-images.cjs) when
+ * there is one (dev server, Mac app), so hosts that don't allow cross-site use still work. Other addresses unchanged.
+ */
+export function viaRelay(src) {
+  if (!src || !/^https?:\/\//i.test(src) || typeof location === 'undefined' || !/^https?:$/.test(location.protocol)) return src;
+  if (src.startsWith(location.origin)) return src;
+  return `/remote?u=${encodeURIComponent(src)}`;
+}
+
 export function loadImage(src) {
   return new Promise((resolve) => {
     if (!src) { resolve(null); return; }
     const img = new Image();
     // Logos from the web (a URL in teams.csv / league.csv): ask for CORS so they can be drawn into textures; a site
     // that doesn't allow it just falls back to the generated logo.
-    if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous';
+    const url = viaRelay(src);
+    if (/^https?:/i.test(url)) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = src;
+    img.src = url;
   });
 }

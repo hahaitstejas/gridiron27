@@ -1,3 +1,4 @@
+import { viaRelay } from '../data/storage.js';
 // Player face photos (optional): roster.csv `face` column (also `photo` / `headshot`) = a file name in
 // public/local/faces/ (git-ignored, like logos), a web link, or an image uploaded in the roster editor (a small JPEG
 // data URL kept in the save). Shown next to the name wherever a player is featured; nothing changes without one.
@@ -6,7 +7,8 @@
 export function faceSrc(p) {
   const f = p?.face;
   if (!f || typeof f !== 'string') return null;
-  if (/^(https?:|data:|blob:)/i.test(f)) return f;
+  if (/^(data:|blob:)/i.test(f)) return f;
+  if (/^https?:/i.test(f)) return viaRelay(f); // through the game's server: works for the 3D face and skin tone too
   // A bare file name lives in public/local/faces/ (only served by the dev server / a hosted build, not file:).
   if (typeof location !== 'undefined' && location.protocol === 'file:') return null;
   return `/local/faces/${f.replace(/^\/+/, '').replace(/^faces\//i, '')}`;

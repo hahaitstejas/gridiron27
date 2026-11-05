@@ -1,3 +1,4 @@
+import { viaRelay } from './storage.js';
 import { parseCSV, importRosterRows, importTeamsRows, importDepthRows } from './csv.js';
 import { importRetired, importCoaches, importUniforms, importStadiums } from './extraCSV.js';
 import { LEAGUE } from './leagueInfo.js';
@@ -31,10 +32,11 @@ async function fetchCSV(path, firstCol) {
 function loadImage(src) {
   return new Promise((resolve) => {
     const img = new Image();
-    if (/^https?:/i.test(src)) img.crossOrigin = 'anonymous'; // a web URL in logo_image (see storage.js loadImage)
+    const url = viaRelay(src); // a web URL in logo_image goes through the game's own server (storage.js)
+    if (/^https?:/i.test(url)) img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
-    img.src = src;
+    img.src = url;
   });
 }
 

@@ -160,7 +160,7 @@ export function buildBodyGeometry() {
       const region = y > kneeY - 0.07 ? REGION.pants : REGION.socks;
       if (y > B.hipH - 0.08) return { a: hp, b: BONE.hips, w: 1 - 0.5 * smooth(B.hipH - 0.08, B.hipH + 0.04, y), region };
       return { a: hp, b: kn, w: 1 - smooth(kneeY + 0.06, kneeY - 0.06, y), region };
-    }, KIND_LIMB, { flatSide: 0.15, bodyUv: (y, a) => [a - side * Math.PI / 2, side < 0 ? -2 : -3] }); // 0 = the outside of the leg
+    }, KIND_LIMB, { flatSide: 0.15, bodyUv: (y, a) => [Math.cos(a - side * Math.PI / 2), side < 0 ? -2 : -3] }); // 0 = the outside of the leg
   }
 
   const g = new THREE.BufferGeometry();
@@ -317,7 +317,7 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
         }
       }
       // Pants stripe down the outside of each leg (vBody.y = -2 left leg, -3 right leg; x = angle around it).
-      if (region == 2 && vBody.y < -1.5 && cos(vBody.x) > 0.972 && abs(dFdx(vBody.x)) + abs(dFdy(vBody.x)) < 0.6) col = tex(${COL_COLORS} + 3).rgb; // leg angle: 0 = outside
+      if (region == 2 && vBody.y < -1.5 && vBody.x > 0.972) col = tex(${COL_COLORS} + 3).rgb; // leg angle: 0 = outside
       // Face photo (8 x 8 atlas, cell = instance) on the front of the MakeHuman head (vBody.y > 5 marks it), faded into the skin.
       if (region == 5 && vBody.y > 5.0 && flg.w > 0.5) {
         vec2 st = vec2(vBody.x, vBody.y - 10.0);

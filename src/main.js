@@ -812,6 +812,7 @@ function frameBody(now) {
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15 + noise * 0.7;
     boardFrame(m, dt);
     renderer.updateLighting(dt, (Math.min(m.quarter, 4) - 1 + (1 - m.clock / Math.max(1, m.periodLength()))) / 4);
+    renderer.rig.onDefense = !playerCam && session.humanSide === 'defense' && !(sim?.isKick);
     renderer.render(dt, focus, camDir, phase, snapCam, excite);
     snapCam = false;
     hud.update(session, renderer, dt, frameMs, playcall.open);
@@ -821,7 +822,10 @@ function frameBody(now) {
     renderer.playArt.update(null, 1);
     renderer.lines.set(null, null);
     attract += dt * 0.05;
-    renderer.renderOrbit(dt, attract);
+    // Main menu: the featured player standing in his card (Screens.mainMenu sets screens.featured + its hero box).
+    const hero = app === 'menu' && screens.featured && document.querySelector('.mm-hero');
+    if (hero) renderer.renderShowcase(dt, screens.featured, hero.getBoundingClientRect());
+    else { renderer._showSim = null; renderer.renderOrbit(dt, attract); }
   }
   if (consumed) { input.consume(); input2.consume(); }
   renderer.adapt(frameMs);

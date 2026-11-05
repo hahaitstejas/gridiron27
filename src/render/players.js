@@ -273,23 +273,34 @@ export class PlayerRenderer {
     const P = this.parts;
     const c = this._col;
     // Logo atlas: home in the left half, away in the right.
-    const lg = this.logoCanvas.getContext('2d');
-    lg.clearRect(0, 0, 512, 256);
-    teams.forEach((t, k) => drawLogo(lg, t.logo, 128 + k * 256, 128, 118));
-    this.logoTex.needsUpdate = true;
+    // Texture uploads hitch the frame: repaint / re-upload an atlas only when what's in it changed (logos per matchup,
+    // a name row or a face cell per player), not on every play's new lineup.
+    const logoKey = teams.map((t) => JSON.stringify(t.logo) + (t.logo._img ? 'img' : '')).join('|');
+    if (logoKey !== this._logoKey) {
+      this._logoKey = logoKey;
+      const lg = this.logoCanvas.getContext('2d');
+      lg.clearRect(0, 0, 512, 256);
+      teams.forEach((t, k) => drawLogo(lg, t.logo, 128 + k * 256, 128, 118));
+      this.logoTex.needsUpdate = true;
+    }
     const ng = this.nameCanvas.getContext('2d');
-    ng.clearRect(0, 0, 512, MAX * 32);
-    ng.font = '700 26px "Saira Condensed", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
+    this._names ||= [];
+    let namesDirty = false;
+    ng.font = '800 29px "Saira Condensed", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
     const paintName = (i, name) => {
       if (i >= MAX || !name) return false;
+      if (this._names[i] === name) return true;
+      this._names[i] = name; namesDirty = true;
+      ng.clearRect(0, i * 32, 512, 32);
       const last = name.replace(/^\S+\.\s*/, '').toUpperCase();
       // The name patch is ~4.5:1 but a row is 16:1, so stretch the text across (less for long names, to fit).
-      const sx = Math.min(16 / 4.5, 496 / Math.max(1, ng.measureText(last).width));
+      const sx = Math.min(16 / 3.6, 492 / Math.max(1, ng.measureText(last).width));
       ng.save(); ng.translate(256, i * 32 + 17); ng.scale(sx, 1); ng.fillText(last, 0, 0); ng.restore();
       return true;
     };
     const named = sim.players.map((p, i) => paintName(i, p.name));
-    this.nameTex.needsUpdate = true;
+    if (namesDirty) this.nameTex.needsUpdate = true;
+    this._facesDirty = false;
     const pick = (team, which) => (which === 'white' ? '#f4f4f4' : which === 'secondary' ? team.colors.secondary : which === 'accent' ? team.colors.accent : team.colors.primary);
     // Flags: officials' stripes, lineman build (MakeHuman bulk delta), shoulder pads, face photo.
     const flags = (i, stripes, bulk = 0, pads = 1, photo = 0) => this.texel(i, COL_FLAGS, stripes ? 1 : 0, bulk, pads, photo);
@@ -309,7 +320,7 @@ export class PlayerRenderer {
         if (tone) { p.skinColor = tone; if (rp && !rp.skinManual && !rp.skinColor) { rp.skinColor = tone; rp.skin = nearestSkin(tone); } }
       }
       this.faceAttr.setX(i, img ? 1 : 0);
-      if (img) this.paintFace(i, img);
+      if (img && this._faceCell?.[i] !== p.photo) { this.paintFace(i, img); (this._faceCell ||= [])[i] = p.photo; this._facesDirty = true; }
       const skin = p.skinColor || SKIN[p.skin % SKIN.length];
       // Mud / grass stains build up over the game (this.dirt 0..1, set from the weather and the clock).
       const dirt = (this.dirt || 0) * (p.id % 3 === 0 ? 0.42 : 0.28);
@@ -389,7 +400,7 @@ export class PlayerRenderer {
     });
     for (let i = sim.players.length; i < MAX; i++) this.faceAttr.setX(i, 0);
     this.faceAttr.needsUpdate = true;
-    this.faceTex.needsUpdate = true;
+    if (this._facesDirty) this.faceTex.needsUpdate = true;
     this.decalAttr.needsUpdate = true;
     this.boneTex.needsUpdate = true;
     for (const m of Object.values(P)) if (m.instanceColor) m.instanceColor.needsUpdate = true;
@@ -1096,7 +1107,7 @@ function helmetGeometry() {
   // A modern shell (helmet unit space: radius ~0.5, scaled 0.33 per player so the decals still sit on it): longer front to
   // back, a raised center ridge, a front bumper over the brow, jaw guards that wrap forward along the cheeks, a lower
   // back, and darker vent recesses (vertex color; the instance color is the shell color).
-  const NU = 64, NV = 34, VMAX = Math.PI * 0.9;
+  const NU = 44, NV = 24, VMAX = Math.PI * 0.9;
   const pos = [], col = [], idx = [];
   const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   for (let j = 0; j <= NV; j++) {

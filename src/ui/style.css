@@ -1024,3 +1024,23 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .pz-face { width: 92px; height: 92px; }
 .pz-face.small { width: 56px; height: 56px; }
 .ts-face { width: 36px; height: 36px; float: left; margin-right: 8px; border-width: 1px; }
+
+/* Main-menu hero: an empty box the 3D featured player is rendered into (renderer.renderShowcase). */
+.mm-hero { width: 230px; height: 330px; }
+.screen.mono-main { background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.15) 24%, rgba(0,0,0,0.78) 42%, rgba(0,0,0,0.88) 100%) !important; }
+
+/* Team Select star cards (screens.js starCards): three headline players beside each logo. */
+.ts-show { display: flex; align-items: center; gap: 18px; }
+.ts-show.home { flex-direction: row-reverse; }
+.ts-stars3 { display: flex; flex-direction: column; gap: 8px; }
+.tsc { width: 150px; border: 1px solid rgba(255,255,255,0.5); background: rgba(0,0,0,0.55); }
+.tsc-name { padding: 3px 6px; font: 700 13px var(--fd); letter-spacing: 1px; color: #000; background: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tsc-body { display: flex; align-items: flex-end; justify-content: space-between; height: 76px; padding: 4px 6px 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.06), color-mix(in srgb, var(--team) 45%, transparent)); }
+.tsc-pos { align-self: flex-start; display: flex; flex-direction: column; line-height: 1; }
+.tsc-pos b { font: 800 17px var(--fd); } .tsc-pos small { font: 600 13px var(--fd); color: #ddd; }
+.tsc-pic { width: 76px; height: 72px; display: grid; place-items: end center; overflow: hidden; }
+.tsc-face { width: 76px; height: 76px; object-fit: cover; object-position: 50% 15%; border-radius: 0 !important; border: 0 !important; background: transparent !important; }
+.tsc-num { font: 800 44px var(--fd); color: rgba(255,255,255,0.85); line-height: 1; padding-bottom: 6px; }
+.tsc-foot { padding: 3px 6px; font: 600 11px var(--fd); letter-spacing: 1.5px; background: rgba(0,0,0,0.75); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 1100px) { .ts-stars3 { display: none; } }

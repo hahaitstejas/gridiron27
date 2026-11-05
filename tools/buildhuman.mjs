@@ -254,7 +254,7 @@ for (let i = 0; i < A.length; i++) {
     const side = body[i][1] === -2 ? -1 : 1;
     let a = Math.atan2((A[i][0] - c[0] / c[2]) * side, A[i][2] - c[1] / c[2]) - Math.PI / 2;
     if (a <= -Math.PI) a += Math.PI * 2;
-    body[i][0] = a;
+    body[i][0] = Math.cos(a); // the cosine (1 = the outside): smooth across triangles, no wrap to interpolate through
   }
 }
 
@@ -365,7 +365,7 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
       for (let q = 0; q < 4; q++) { decal.si.push(top[q] ? +top[q][0] : 0); decal.sw.push(top[q] ? top[q][1] / tw : 0); }
       // Seen from the front the player's right is on the viewer's left: the front reads with u running toward -x.
       // (The front patch is built facing the other way from the back one: both its axes run reversed.)
-      decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 || kind === 1 ? 1 - gy / (ny - 1) : gy / (ny - 1));
+      decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 || kind >= 1 ? 1 - gy / (ny - 1) : gy / (ny - 1));
       decal.kind.push(kind);
     }
     for (let gy = 0; gy < ny - 1; gy++) for (let gx = 0; gx < nx - 1; gx++) {
@@ -377,7 +377,7 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
   const shAbs = hipH + Bk.shY;
   patch(0, 1, shAbs - 0.11, 0.15, 0.115, 22, 18); // front number, across the chest
   patch(1, -1, shAbs - 0.19, 0.165, 0.15, 26, 22); // back number
-  patch(2, -1, shAbs + 0.025, 0.17, 0.04, 26, 6); // name plate across the shoulders
+  patch(2, -1, shAbs + 0.02, 0.17, 0.05, 30, 8); // name plate across the shoulders
 }
 
 // ---------- decimate ----------

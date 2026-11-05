@@ -18,6 +18,9 @@ const HEX = /^#?[0-9a-f]{6}$/i;
  */
 const uniformKind = {}; // which uniform set the editor shows, per team
 
+/** A menu row that runs fn on A (shared by the team and league editors). */
+const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
+
 export function teamEditor(ctx, ti, focus = 0) {
   const { screens, teams, prefs } = ctx;
   const t = teams[ti];
@@ -92,7 +95,6 @@ export function teamEditor(ctx, ti, focus = 0) {
     choice('End zones', Object.values(EZ), () => EZ[sd.endzone || 'color'], (v) => { sd.endzone = Object.keys(EZ).find((k) => EZ[k] === v); }),
     choice('Midfield logo', ['On', 'Off'], () => (sd.midLogo === false ? 'Off' : 'On'), (v) => { sd.midLogo = v === 'On'; }),
     colorRow('Seat color', seatsView, 'seats'));
-  const action = (label, fn) => { const a = el('div.opt-row.action', {}, el('span.opt-label', { text: label })); a.activate = fn; return a; };
   rows.push(action(`Reset the ${UNIFORM_NAMES[kind].toLowerCase()} uniform to the team colors`, () => { delete t.uniforms[kind]; ctx.onChange(); teamEditor(ctx, ti, screens.nav.index); }));
   rows.push(
     action('Use team colors for the logo', () => {

@@ -214,9 +214,9 @@ export function buildStadium(renderer, home, away) {
   // Each fan: a torso (shirt = instance color) and a head (skin tone, sometimes a cap) from one merged
   // geometry; aHead marks the head's vertices so the shader colors it.
   // Rounded, people-shaped fans: tapered torso, head, and two arms that go up when the crowd gets loud.
-  const torsoG = new THREE.CylinderGeometry(0.2, 0.16, 0.56, 6, 1, true).scale(1, 1, 0.68); torsoG.translate(0, 0.3, 0);
-  const headG = new THREE.IcosahedronGeometry(0.115, 0); headG.translate(0, 0.72, 0.02);
-  const armG = (side) => { const g = new THREE.CylinderGeometry(0.05, 0.045, 0.44, 4, 1, true); g.translate(side * 0.235, 0.36, 0.02); return g; };
+  const torsoG = new THREE.CylinderGeometry(0.2, 0.16, 0.56, 5, 1, true).scale(1, 1, 0.68); torsoG.translate(0, 0.3, 0);
+  const headG = new THREE.OctahedronGeometry(0.115, 0); headG.translate(0, 0.72, 0.02);
+  const armG = (side) => { const g = new THREE.CylinderGeometry(0.05, 0.045, 0.44, 3, 1, true); g.translate(side * 0.235, 0.36, 0.02); return g; };
   const tag = (g, head, arm) => {
     const n = g.attributes.position.count;
     g.setAttribute('aHead', new THREE.Float32BufferAttribute(new Float32Array(n).fill(head), 1));

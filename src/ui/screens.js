@@ -72,22 +72,19 @@ export const ICONS = {
 };
 
 /** A random top-rated player for the main menu (from the league's rosters), shown on his jersey. */
-function featuredCard(teams) {
+function featuredCard(teams, screens) {
   const pool = [];
   teams.forEach((t) => t.roster?.forEach((p) => { if (!['K', 'P', 'T', 'G', 'C', 'FB'].includes(p.pos)) pool.push({ p, t }); }));
   pool.sort((a, b) => (b.p.ovr ?? 0) - (a.p.ovr ?? 0));
   const top = pool.slice(0, 40);
+  if (screens) screens.featured = null;
   if (!top.length) return el('div.mm-feature');
   // The menu is UI, not the sim: Math.random is fine here (a different star each visit).
   const { p, t } = top[Math.floor(Math.random() * top.length)];
-  const c = t.colors;
-  const jersey = `<svg viewBox="0 0 200 220" class="mm-jersey"><path d="M58 14 L82 6 Q100 22 118 6 L142 14 L192 44 L172 96 L150 86 L150 214 L50 214 L50 86 L28 96 L8 44 Z" fill="${c.primary}" stroke="${c.secondary}" stroke-width="5"/>
-    <path d="M82 6 Q100 22 118 6" fill="none" stroke="${c.secondary}" stroke-width="8"/>
-    <text x="100" y="${p.last.length > 9 ? 62 : 64}" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="800" font-size="${p.last.length > 9 ? 17 : 21}" fill="${c.secondary}" letter-spacing="2">${p.last.toUpperCase()}</text>
-    <text x="100" y="168" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="96" fill="${c.secondary}" stroke="${c.accent || '#fff'}" stroke-width="2">${p.number}</text></svg>`;
-  const face = faceImg(p, 'mm-face');
-  return el('div.mm-feature', {}, el('div.mm-jersey-wrap', { html: jersey }),
-    el('div.mm-player', {}, ...(face ? [face] : []), el('small', { text: `${p.pos} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
+  // The 3D player (main.js renderShowcase) stands in the hero box: home uniform, his number, face photo, celebrating.
+  if (screens) screens.featured = { p, team: t };
+  return el('div.mm-feature', {}, el('div.mm-hero'),
+    el('div.mm-player', {}, el('small', { text: `${p.pos} · #${p.number} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
       el('div.mm-ovr', {}, el('b', { text: String(p.ovr) }), el('small', { text: 'OVR' }))));
 }
 
@@ -113,6 +110,28 @@ export function alphaOrder(teams) {
 }
 
 /** A team's star players: the best few with their traits (the "X-factor" look, our own names). */
+/**
+ * Team Select: the team's three headline players as cards (name, position and number, face photo or a jersey-number
+ * badge, top trait or the overall). Our own layout; picks the best players with the most traits, one per position.
+ */
+function starCards(t) {
+  const seen = new Set();
+  // The faces of the team: the QB, then the best playmakers (no kickers / punters), at most one per position.
+  const bonus = { QB: 12, WR: 4, HB: 4, TE: 2, DE: 3, OLB: 2, CB: 2, MLB: 1, FS: 1, SS: 1 };
+  const stars = [...t.roster].filter((p) => !['K', 'P'].includes(p.pos)).map((p) => ({ p, tr: traitsOf(p) }))
+    .sort((a, b) => (b.p.ovr + b.tr.length * 3 + (bonus[b.p.pos] || 0)) - (a.p.ovr + a.tr.length * 3 + (bonus[a.p.pos] || 0)))
+    .filter(({ p }) => { const g = ['T', 'G', 'C'].includes(p.pos) ? 'OL' : p.pos; if (seen.has(g)) return false; seen.add(g); return true; }).slice(0, 3);
+  return el('div.ts-stars3', {}, ...stars.map(({ p, tr }) => {
+    const face = faceImg(p, 'tsc-face');
+    const pic = el('div.tsc-pic', {}, face || el('span.tsc-num', { text: String(p.number) }));
+    if (face) face.onerror = () => { face.replaceWith(el('span.tsc-num', { text: String(p.number) })); };
+    return el('div.tsc', { style: { '--team': t.colors.primary } },
+      el('div.tsc-name', { text: `${p.first} ${p.last}`.toUpperCase() }),
+      el('div.tsc-body', {}, el('div.tsc-pos', {}, el('b', { text: p.pos }), el('small', { text: face ? `#${p.number}` : `${p.ovr} OVR` })), pic),
+      el('div.tsc-foot', { text: tr.length ? `★ ${TRAITS[tr[0]].name.toUpperCase()}` : (p.college || `${p.age} yrs`).toUpperCase() }));
+  }));
+}
+
 function starPanel(t) {
   const stars = [...t.roster].map((p) => ({ p, tr: traitsOf(p) })).sort((a, b) => (b.tr.length - a.tr.length) || (b.p.ovr - a.p.ovr)).slice(0, 6);
   return el('div.ts-stars', {}, ...stars.map(({ p, tr }) => el('div.ts-star', {}, ...[faceImg(p, 'ts-face')].filter(Boolean), el('b', { text: `${p.pos} ${p.first[0]}. ${p.last}` }), el('span', { text: `${p.ovr} OVR` }),
@@ -173,7 +192,7 @@ export class Screens {
       return t;
     });
     const hint = el('div.mm-hint');
-    this.frame('mono-main', el('div.mm-stage', {}, featuredCard(info.teams || []),
+    this.frame('mono-main', el('div.mm-stage', {}, featuredCard(info.teams || [], this),
       el('div.mm-league', {}, info.leagueLogo ? logoCanvas(info.leagueLogo, 150) : null),
       el('div.mm-title', { text: 'GRIDIRON 27' })),
       el('div.mm-tabs', {}, tabs), hint,
@@ -214,7 +233,7 @@ export class Screens {
         const t = teams[p[key]];
         const r = teamRatings(t);
         it.innerHTML = '';
-        it.append(el('div.ts-side', { text: label }), el('div.ts-logo.gloss', {}, logoCanvas(t.logo, 200)),
+        it.append(el('div.ts-side', { text: label }), el(`div.ts-show.${key}`, {}, starCards(t), el('div.ts-logo.gloss', {}, logoCanvas(t.logo, 200))),
           el(`div.ts-card.${key}`, {}, el('div.ts-ovr', {}, el('b', { text: String(r.ovr) }), el('small', { text: 'OVR' })),
             el('div.ts-name', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() })),
             el('div.ts-sub', { text: `OFF ${r.off} · DEF ${r.def}` })));

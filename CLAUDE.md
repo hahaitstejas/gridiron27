@@ -593,6 +593,12 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   team's secondary color when it contrasts with the shell, chin cup + straps (`parts.chin`). Jersey: V-neck with trim and
   undershirt, sleeve stripes (arm part only). Gloves by position (QB/K/P bare, linemen dark, others white or dark on white
   uniforms) with a white wristband.
+  Main menu hero (`GameRenderer.renderShowcase`): the featured player (`screens.featured`, set by `featuredCard`) is a one-player
+  display sim at midfield in his home uniform looping celebrations (spike with a bouncing ball, flex, point, leap); the camera's
+  `setViewOffset` puts him inside the card's `.mm-hero` box. Team Select: `starCards(t)` (QB + playmakers, no K/P, one per
+  position; face photo or number, trait). Defense camera: `CameraRig.onDefense` (human on defense, not kicks) pulls the
+  broadcast view back to 20 / 9.5 presnap so the backfield is in frame. Atlases (logos, names, faces) only re-upload
+  when their content changes (texture uploads were hitching every play); crowd fans ~30 tris; helmet shell 44×24.
 - Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK
   (x flipped: CMU's frame is mirrored vs ours) → our pose parameters in the runner's heading frame (`LAYOUT`: rootY, lean,
   twist, head, both arms' pitch/out/elbow/twist, both legs' hip/knee/out); gait cycles cut at alternating footfalls (half

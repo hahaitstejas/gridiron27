@@ -82,14 +82,13 @@ export function makeFieldCanvas(home, away, opts = {}) {
     g.strokeText(text, 0, 0);
     g.fillStyle = team.colors.secondary;
     g.fillText(text, 0, 0);
-    // Logos either side of the word (rotated with it): conference left, league right — or, in the championship, the
+    // Logos either side of the word, turned with it: conference left, league right — or, in the championship, the
     // team's own logo on both sides.
     const off = HALF_WIDTH * S * 0.78;
     const L = side.left, R = side.right;
-    g.rotate(-rot);
-    const ax = Math.cos(rot), az = Math.sin(rot);
-    drawLogo(g, L, -off * ax, -off * az, 2.6 * S);
-    drawLogo(g, R, off * ax, off * az, 2.6 * S);
+    // Same frame as the lettering, so they read upright from the same side as the word (like a real end zone).
+    drawLogo(g, L, -off, 0, 2.6 * S);
+    drawLogo(g, R, off, 0, 2.6 * S);
     g.restore();
     g.strokeStyle = 'rgba(255,255,255,0.18)';
     g.lineWidth = 0.15 * S;

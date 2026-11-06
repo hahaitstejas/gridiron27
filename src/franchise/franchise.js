@@ -14,7 +14,8 @@ import { makeConditions } from '../game/weather.js';
 import { addNews, gameNews, checkGameRecords, checkSeasonRecords, giveAwards } from './extras.js';
 import { healWeek, weeklyHealth, cpuInjuredReserve, unavailableIds, injuryLine } from './health.js';
 import { updateMorale, developmentTick } from './development.js';
-import { revertElevations, cpuElevations, release as releaseToWaivers, processWaivers, waiverOrder, resetPSSeason } from './practiceSquad.js';
+import { revertElevations, cpuElevations, release as releaseToWaivers, processWaivers, waiverOrder, resetPSSeason, addToPS } from './practiceSquad.js';
+import { cutDown } from './offseason.js';
 import { cpuSignFreeAgents, addFreeAgent, ensureSpecialists } from './freeAgents.js';
 import { fits } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
@@ -52,7 +53,28 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
   ensureDraftClass(f);
   seedFreeAgents(f, seed * 17 + year); // in-season free agents (freeAgents.js)
   ensureSpecialists(f, teams, new RNG(f.seed + 3), teams.map((_, i) => i)); // a league file without kickers still kicks
+  trimRosters(f, teams);
+  f.trimmed = true;
   return f;
+}
+
+/**
+ * Opening cut-down: a league file can give a team 66 players, but only 53 dress. The least valuable go down to the
+ * practice squad (up to 16, as on cut-down day), the rest to free agency. Your team's moves are logged.
+ */
+export function trimRosters(f, teams) {
+  teams.forEach((t, ti) => {
+    if (t.roster.length <= 53) return;
+    const cut = cutDown(t, 53).sort((a, b) => (a.age ?? 25) - (b.age ?? 25)); // the youngest get the practice-squad spots
+    const toPS = [], toFA = [];
+    for (const p of cut) { if (addToPS(t, p)) toPS.push(p); else { addFreeAgent(f, p); toFA.push(p); } }
+    if (ti === f.userTeam) {
+      const names = (l) => l.map((p) => `${p.pos} ${p.first} ${p.last}`).join(', ');
+      if (toPS.length) logTransaction(f, `${t.abbr} cut-down: to the practice squad ${names(toPS)}`);
+      if (toFA.length) logTransaction(f, `${t.abbr} cut-down: released ${names(toFA)}`);
+      addNews(f, `${t.city} ${t.name} trim to 53: ${toPS.length} to the practice squad, ${toFA.length} released`, 'signing');
+    }
+  });
 }
 
 /**
@@ -111,6 +133,8 @@ function rememberFinish(f, teams) {
 /** Older franchise saves: add money (salaries + cap) and the transaction log. */
 export function upgradeFranchise(f, teams) {
   if (!f.cap) f.cap = setupMoney(teams, f.seed);
+  // Saves made before the opening cut-down: trim once, before the first game.
+  if (!f.trimmed && f.phase === 'regular') { f.trimmed = true; trimRosters(f, teams); }
   f.transactions ||= [];
   f.news ||= [];
   f.records ||= { game: {}, season: {} };

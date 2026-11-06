@@ -43,7 +43,6 @@ import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
 import { logoCanvas } from './render/logo.js';
 import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS } from './ui/screens.js';
-import { updateSoundtrack } from './ui/soundtrack.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
@@ -659,11 +658,7 @@ let acc = 0;
 let last = performance.now();
 let time = 0;
 let attract = 0;
-let musicSig = '';
 function frameBody(now) {
-  // Soundtrack follows the app state (menus vs game) and the settings.
-  const ms = `${app}|${prefs.music}|${prefs.musicLink}|${prefs.musicShuffle}|${prefs.musicVolume}`;
-  if (ms !== musicSig && app !== 'title') { musicSig = ms; updateSoundtrack(prefs, app); }
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;
@@ -824,7 +819,9 @@ function frameBody(now) {
     else if (me && me.slot !== 'QB' && sim.ball.carrier !== me.id && sim.state === 'live') focus = { x: (focus.x + me.x) / 2, z: (focus.z + me.z) / 2 };
     renderer.rig.mode = artView ? 'art' : playerCam ? 'follow' : camMode();
     // A human returner sees the field from behind himself, facing the coverage coming at him.
-    const humanReturn = phase === 'return' && session.humanSide === 'defense';
+    // From the line on (not once the return starts), and the stick follows the camera (sim.camDir) so up = upfield.
+    const humanReturn = sim && sim.isKick && sim.offPlay.type !== 'fg' && session.humanSide === 'defense' && !session.watching;
+    if (humanReturn && sim.camDir !== -sim.dir) sim.camDir = -sim.dir;
     const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : humanReturn ? -sim.dir : m.dirOf(m.possession);
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;

@@ -70,7 +70,7 @@ async function createWindow() {
   win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 960, minHeight: 600, backgroundColor: '#000000', title: 'Gridiron 27', show: false,
     // contextIsolation off so the preload can replace window.prompt (local game only, no Node in the page).
-    webPreferences: { backgroundThrottling: false, spellcheck: false, autoplayPolicy: 'no-user-gesture-required', preload: path.join(__dirname, 'preload.cjs'), contextIsolation: false, nodeIntegration: false },
+    webPreferences: { backgroundThrottling: false, spellcheck: false, preload: path.join(__dirname, 'preload.cjs'), contextIsolation: false, nodeIntegration: false },
   });
   win.once('ready-to-show', () => win.show());
   win.loadURL(`http://127.0.0.1:${port}/`);

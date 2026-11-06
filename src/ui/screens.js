@@ -11,12 +11,10 @@ import { KEY_HELP } from '../input/keyboard.js';
 import { gameXP, lineText } from '../franchise/career.js';
 import { DRILLS, DRILL_IDS, MEDALS, medalFor } from '../game/drills.js';
 import { SCENARIOS } from '../game/scenarios.js';
-import { parseMusicLink } from './soundtrack.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
   nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
-  music: 'menus', musicLink: '', musicShuffle: true, musicVolume: 60,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
 
 // Gameplay sliders (0..100, 50 = default); `user` applies to human teams, `cpu` to the CPU's.
@@ -694,22 +692,6 @@ export class Screens {
       option('Pregame intro', [true, false], 'intro', (v) => (v ? 'On' : 'Off')),
       option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
     ];
-    // Soundtrack (ui/soundtrack.js): a YouTube / YouTube Music playlist link.
-    const musicLink = el('div.opt-row.action');
-    const drawLink = () => { musicLink.innerHTML = ''; musicLink.append(el('span.opt-label', { text: 'Soundtrack playlist' }), el('span.opt-val', { text: p.musicLink ? (parseMusicLink(p.musicLink) ? 'Set (A to change)' : 'Not a YouTube link') : 'Paste a YouTube Music / YouTube playlist link…' })); };
-    musicLink.activate = () => {
-      const v = window.prompt('YouTube Music or YouTube playlist link (music.youtube.com/playlist?list=… or youtube.com/playlist?list=…). Leave empty to clear.', p.musicLink || '');
-      if (v === null) return;
-      p.musicLink = v.trim();
-      drawLink();
-    };
-    drawLink();
-    rows.push(
-      option('Soundtrack', ['off', 'menus', 'always'], 'music', (v) => ({ off: 'Off', menus: 'Menus only', always: 'Menus and games' })[v]),
-      musicLink,
-      option('Shuffle', [true, false], 'musicShuffle', (v) => (v ? 'On' : 'Off')),
-      option('Music volume', [10, 20, 30, 40, 50, 60, 70, 80, 90, 100], 'musicVolume', (v) => `${v}`),
-    );
     const sliders = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Gameplay sliders…' }));
     sliders.activate = () => this.sliders(p, { onSave: (sl) => { p.sliders = sl; this.settings(p, { onSave, onBack }); }, onBack: () => this.settings(p, { onSave, onBack }) });
     const save = el('div.start-btn', { text: 'Save' });

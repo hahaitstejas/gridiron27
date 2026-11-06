@@ -2,8 +2,8 @@ import { RNG } from '../core/rng.js';
 
 /** Seconds after a play is set for the players to break the huddle and line up (the renderer animates it). */
 export const LINEUP_T = 1.3;
-/** Both bumpers held (one of them just pressed): the timeout shortcut. */
-export const bothBumpers = (f) => f.down?.LB && f.down?.RB && (f.pressed.LB || f.pressed.RB);
+/** Both triggers held (one of them just pressed): the timeout shortcut. Bumpers page the play-call screen, so not them. */
+export const bothTriggers = (f) => f.down?.LT && f.down?.RT && (f.pressed.LT || f.pressed.RT);
 import { addFoul } from '../sim/fouls.js';
 import { STEP } from '../core/constants.js';
 import { PlaySim } from '../sim/play.js';
@@ -618,13 +618,13 @@ export class GameSession {
       if (this.audible) {
         // Audible / hot-route menus are modal: the play waits (the play clock doesn't).
         const f = this.inputFor(input, this.audible.team);
-        if (f && bothBumpers(f)) { const t = this.audible.team; this.audible = null; if (this.callTimeout(t)) return; }
+        if (f && bothTriggers(f)) { const t = this.audible.team; this.audible = null; if (this.callTimeout(t)) return; }
         else if (f) this.audibleInput(f);
         if (this.state === 'presnap') this.sim.tick(dt, null);
         return;
       }
-      // Hold both bumpers = timeout (same as View).
-      for (const [team, f] of [[off, offIn], [def, defIn]]) if (f && bothBumpers(f) && this.calls(team) && this.callTimeout(team)) return;
+      // Hold both triggers = timeout (same as View).
+      for (const [team, f] of [[off, offIn], [def, defIn]]) if (f && bothTriggers(f) && this.calls(team) && this.callTimeout(team)) return;
       for (const [team, f] of [[off, offIn], [def, defIn]]) {
         if (!f || sim.isKick || !this.calls(team)) continue;
         const scrim = this.match.phase === 'scrimmage';

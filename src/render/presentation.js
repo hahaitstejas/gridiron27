@@ -219,7 +219,8 @@ export class Presentation {
   startHuddle(sim) {
     sim.players.forEach((p, i) => {
       const d = (this.disp[i] = proxyOf(p));
-      if (p.state === 'down' || p.state === 'tackled') { d.anim = 'down'; d.down = true; }
+      if (p.kneeling) { d.anim = 'kneel'; d.down = false; } // victory formation: he just stands back up
+      else if (p.state === 'down' || p.state === 'tackled') { d.anim = 'down'; d.down = true; }
     });
   }
 

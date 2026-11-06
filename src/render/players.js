@@ -960,6 +960,14 @@ function computePose(p, time, sim) {
       pose.lean = -0.1; pose.head = -0.35; pose.arms[1].pitch = 3.0; pose.arms[1].elbow = 0.05; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.3;
       pose.rootY = Math.abs(Math.sin(t * 4)) * 0.05;
       break;
+    case 'kneel':
+      // Victory formation: down on the right knee, left foot planted, ball tucked; hips drop straight down, no lunge.
+      pose.crouch = -0.5; pose.lean = 0.12; pose.head = -0.15;
+      pose.legs[0].hip = 1.45; pose.legs[0].knee = 1.5; pose.legs[0].out = 0.08;
+      pose.legs[1].hip = -0.08; pose.legs[1].knee = 1.55; pose.legs[1].out = 0.05; pose.legs[1].flat = 0;
+      pose.arms[1].pitch = 0.55; pose.arms[1].elbow = 1.9; pose.arms[1].out = -0.3;
+      pose.arms[0].pitch = 0.35; pose.arms[0].elbow = 0.5; pose.arms[0].out = 0.1;
+      break;
     case 'huddle':
       // Hands on knees in the huddle, listening for the call.
       pose.crouch = -0.12; pose.lean = 0.55; pose.head = -0.1;

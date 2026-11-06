@@ -762,7 +762,7 @@ export class PlaySim {
     const qb = this.bySlot(this.offIdx, 'QB');
     if (!qb || this.ball.carrier !== qb.id || this.ball.state !== 'held') return;
     const t = qb.task?.type;
-    if (t === 'kneel' && this.t > 0.35 && qb.state === 'active') { qb.anim = 'down'; this.tackleCarrier(qb, null, 0); qb.fallT = 0.15; qb.vx = qb.vz = 0; }
+    if (t === 'kneel' && this.t > 0.35 && qb.state === 'active') { qb.kneeling = true; qb.anim = 'kneel'; this.tackleCarrier(qb, null, 0); qb.fallT = 0.15; qb.vx = qb.vz = 0; }
     else if (t === 'spike' && this.t > 0.3 && qb.state === 'active') { this.ball.vx = this.ball.vz = 0; this.ball.vy = -6; this.ball.y = 1.6; qb.anim = 'throw'; qb.animT = 0.2; this.stats.spike = true; incomplete(this, 'spike'); }
     // Designed QB runs ride the mesh with the back for a beat so the blocks set up (draws sell the pass longer).
     else if (t === 'qb_keep' && this.t > (this.offPlay.run.style === 'draw' ? 1.0 : qb.task.option || this.toLocal(qb.x, qb.z).down > -2 ? 0.15 : 0.6)) {

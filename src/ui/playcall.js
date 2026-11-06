@@ -4,7 +4,7 @@ import { listOffPlays, listDefPlays, getOffFormation, getDefFormation, getOffPla
 import { hurryUp, chooseOffense, chooseDefense } from '../ai/playcaller.js';
 import { downText, yardLineText, clockText } from '../game/match.js';
 import { fgDistance } from '../sim/kicking.js';
-import { bothBumpers } from '../game/session.js';
+import { bothTriggers } from '../game/session.js';
 import { RNG } from '../core/rng.js';
 
 // Console-style play call: tabs (LB/RB) -> formation -> play. X flips (offense), View = timeout.
@@ -158,7 +158,7 @@ export class PlayCallScreen {
       `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> formation &nbsp; ◀▶ more plays &nbsp; ▲▼ group &nbsp; <b class="btn X">X</b> <b class="btn A">A</b> <b class="btn Y">Y</b> call play` +
       (this.side === 'offense' ? ` &nbsp; <b class="btn RB">RT</b> flip${this.flipped ? ' (on)' : ''}` : '') +
       (this.side === 'offense' && this.session.lastOffPlay && m.phase === 'scrimmage' && !m.justWarned ? ` &nbsp; <b class="btn LB">LS</b> no huddle (${this.session.lastOffPlay.name})` : '') +
-      ` &nbsp; <b class="btn view">View</b> timeout (${m.timeouts[s.humanTeam]})` });
+      ` &nbsp; <b class="btn view">View</b> / <b class="btn LB">LT</b>+<b class="btn RB">RT</b> timeout (${m.timeouts[s.humanTeam]})` });
     this.root.append(top, strip, el('div.pc2-body', {}, crumb, el('div.pc2-cards', {}, cards)), pager, help);
     this.root.querySelector('.pc2-pill.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
     this.nav.clear();
@@ -197,10 +197,10 @@ export class PlayCallScreen {
     if (dir !== this.held) { this.held = dir; this.repT = 0.38; if (dir) this.step(dir); }
     else if (dir && (this.repT -= dt) <= 0) { this.repT = 0.14; this.step(dir); }
     for (const [i, b] of ['X', 'A', 'Y'].entries()) if (f.pressed[b] && this.cards?.[i]) { this.cards[i].activate(); return; }
+    if (f.pressed.View || bothTriggers(f)) { this.rtHeld = true; this.session.callTimeout(this.session.humanTeam); this.render(); return; }
     const rt = f.rt > 0.6;
-    if (rt && !this.rtHeld && this.side === 'offense') { this.flipped = !this.flipped; this.render(); }
+    if (rt && !this.rtHeld && this.side === 'offense' && !f.down?.LT) { this.flipped = !this.flipped; this.render(); } // LT held: that's the timeout combo
     this.rtHeld = rt;
-    if (f.pressed.View || bothBumpers(f)) { this.session.callTimeout(this.session.humanTeam); this.render(); return; }
     if (f.pressed.LS && this.side === 'offense' && this.session.noHuddle()) { this.hide(); return; }
     const c = this.root.querySelector('#pc-clock');
     if (c) {

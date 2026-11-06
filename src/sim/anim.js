@@ -19,7 +19,8 @@ export function updateAnimations(sim, dt) {
       }
       if (p.move && p.move.type === 'spin') p.facing = p.move.startFacing + (p.move.t / p.move.dur) * Math.PI * 2;
     }
-    if (p.state === 'down') { if (p.anim !== 'tackle' || p.animT > 0.6) p.anim = 'down'; continue; }
+    if (p.state === 'down') { if (p.kneeling) p.anim = 'kneel'; else if (p.anim !== 'tackle' || p.animT > 0.6) p.anim = 'down'; continue; }
+    if (p.kneeling && p.state === 'tackled') { p.anim = 'kneel'; continue; }
     if (p.state === 'tackled') { p.anim = 'falling'; continue; }
     if (sim.state === 'presnap') continue;
     if (p.engagement) { p.anim = 'block'; continue; }

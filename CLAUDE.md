@@ -302,6 +302,8 @@ rounds}, history[], seed, offseason{step, …} }`.
   offensive/defensive rookie of the year from `p.rookieYear`; `f.awards[year]`), draft scouting (`setupScouting`: each
   prospect's shown overall is a range around a hidden error, potential '?', `SCOUT_POINTS` per draft reveal the truth
   with X; the CPU drafts on true value). Hub: News, Awards & Records (awards, season/game records, champions).
+- Opening cut-down (`trimRosters`, at `createFranchise` and once for older saves via `upgradeFranchise` / `f.trimmed`): teams
+  over 53 send the least valuable (`cutDown`) to the practice squad (youngest first, `addToPS`), the rest to free agency.
 - `offseason.js`: steps summary → progression (`progressPlayers`: age +1, growth/decline by age and hidden `pot`,
   retirements, contract `years`--) → resign (`expiring`, `resign`, `finishResigning` → free-agent pool) →
   freeagency (`signFreeAgent`, `cpuFreeAgency` by `needs`) → draft (`makeDraft`: 224 picks, worst record first,
@@ -358,7 +360,7 @@ Oswald (`@fontsource/oswald`, `--fo`) for display type (wordmark, titles, tabs, 
 navy gradients, filled panels with no outlines, the focused item white; team colors come back on team-specific screens
 (`el()` sets CSS custom properties with `setProperty`, so `style: { '--tc': … }` works).
 - Load-in (`Screens.title(padName, LEAGUE.logo)`): black, `brandMark()` = GRIDIRON [league logo] 27, PRESS ANY BUTTON (any key / pad button).
-- Home (`Screens.mainMenu`): the wordmark down the top-left, Quick Play / Franchise / Edit League over the live stadium orbit; the focused
+- Home (`Screens.mainMenu`): mostly dark (the stadium soft behind), the wordmark down the top-left, Quick Play / Franchise / Edit League over the live stadium orbit; the focused
   mode opens a right panel (crumbs, big title, blurb, entry cards: Play Now / Practice / Skills Drills / Scenarios; Create / Load;
   Rosters / Teams & League / Playbook / Settings / Saves). Y Controls, X Saves.
 - Play call: a see-through band (field + huddle visible), `TEAM / SELECT A PLAY` rail, pill help bar; the situation is in the scorebug.
@@ -400,11 +402,6 @@ play clock | down & distance, which turns into a yellow FLAG while a foul is on 
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays
 (touchdowns, interceptions, big hits, onside recoveries; not in practice).
-
-Soundtrack (`ui/soundtrack.js`, Settings → Soundtrack / playlist / shuffle / volume): a YouTube or YouTube Music playlist
-link plays in a hidden YouTube embed (IFrame Player API) in menus, or menus and games (quieter in games); the browser's own
-YouTube sign-in is the login (no YouTube Music API exists). Menus show a now-playing chip (click = play / pause, and starts
-sound a browser blocked); the Mac app allows autoplay. Not in the offline file without wifi.
 
 Gameplay sliders (Settings → Gameplay sliders, `prefs.sliders`, `SLIDER_KEYS`/`defaultSliders()` in `ui/screens.js`):
 `{ user: {...}, cpu: {...}, penalties, fatigue }`, 0–100 with 50 = default. The session hands each `PlaySim` per-team
@@ -483,7 +480,8 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   net punts) and a drive-level Monte Carlo win probability (seeded from the state) for late in Q4 / OT. Used by
   `fourthDecision` (playcaller.js; coach `aggr` shifts the margin) and penalty accept/decline (`stateVal` in penalties.js).
 - Clock: between plays the runoff ticks visibly (`session.runoffBudget()`, `realtimePresnap` fast-forwards); the CPU offense
-  waits 5-7.5 s at the line vs a human defense (`cpuSnapAt`). Timeouts send both teams back to the play call; both bumpers
+  waits 5-7.5 s at the line vs a human defense (`cpuSnapAt`). A human returner (kickoffs / punts) gets the camera and the stick
+  turned upfield from the line (main.js `humanReturn` sets `sim.camDir = -sim.dir`). Kneel-downs use the `kneel` pose (`p.kneeling`). Timeouts send both teams back to the play call; both triggers
   held = timeout. No-huddle keeps the same eleven (`lastLineup` → `cfg.keep`), not right after the two-minute warning.
 - Trick plays (`sim/tricks.js`, formation family "Trick Plays"): Hail Mary, flea flicker, hook and ladder, throwback, swap
   special, reverse; laterals (LB as a carrier, CPU last-gasp `cfg.lastGasp`); defenses don't fall for the same trick twice

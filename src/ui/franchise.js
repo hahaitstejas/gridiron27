@@ -4,6 +4,7 @@ import { el } from './nav.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { ICONS, alphaOrder } from './screens.js';
 import { teamPickScreen } from './teamPick.js';
+import { faceImg } from './faces.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
@@ -441,15 +442,17 @@ export class FranchiseUI {
     const teams = this.teams, rows = standings(teams, this.f.schedule);
     let body;
     if (tab === 2) body = this.playoffPicture(rows, this.f.playoffs?.seeds || [0, 1].map((c) => seeds(teams, rows, c)), !this.f.playoffs);
-    else body = el('div.fr-divs', {}, DIVISIONS.map((d, di) => {
-      const r = rank(rows.filter((x) => teams[x.team].conference === tab && teams[x.team].division === di));
-      return el('div.fr-div', {}, el('div.dc-head', { text: `${CONFERENCES[tab]} ${d}` }),
-        el('div.st-row.st-head', {}, el('span.st-name', { text: 'Team' }), ...['W-L', 'PF', 'PA', 'DIV'].map((c) => el('span.st-num', { text: c }))),
-        r.map((x) => el(`div.st-row${x.team === this.f.userTeam ? '.mine' : ''}`, { style: { borderLeftColor: teams[x.team].colors.primary } },
-          el('span.st-name', {}, el('b', { text: `${teams[x.team].city} ${teams[x.team].name}` })),
-          el('span.st-num', { text: recText(x) }), el('span.st-num', { text: String(x.pf) }), el('span.st-num', { text: String(x.pa) }),
-          el('span.st-num', { text: `${x.divW}-${x.divL}` }))));
-    }));
+    else {
+      // Slide 9: four division columns of team-colored rows: seed, logo, abbreviation, record.
+      const seedOf = new Map((this.f.playoffs?.seeds?.[tab] || seeds(teams, rows, tab)).map((t, i) => [t, i + 1]));
+      body = el('div.sd-grid', {}, DIVISIONS.map((d, di) => {
+        const r = rank(rows.filter((x) => teams[x.team].conference === tab && teams[x.team].division === di));
+        return el('div.sd-div', {}, el('div.sd-head', { text: `${CONFERENCES[tab]} ${d}`.toUpperCase() }),
+          r.map((x) => el(`div.sd-row${x.team === this.f.userTeam ? '.mine' : ''}`, { style: { '--tc': teams[x.team].colors.primary } },
+            el('span.sd-seed', { text: seedOf.has(x.team) ? String(seedOf.get(x.team)) : '' }), logoCanvas(teams[x.team].logo, 30),
+            el('b.sd-ab', { text: teams[x.team].abbr }), el('span.sd-rec', { text: recText(x) }), el('small.sd-pd', { text: `${x.pf - x.pa >= 0 ? '+' : ''}${x.pf - x.pa}` }))));
+      }));
+    }
     const back = el('div.start-btn', { text: 'Back' });
     back.activate = () => this.hub();
     const tabs = [...CONFERENCES, 'Playoff Picture'];
@@ -576,8 +579,9 @@ export class FranchiseUI {
   }
 
   // ---------- leaders ----------
-  leadersScreen(tab = 0) {
+  leadersScreen(tab = -1) {
     const { screens } = this.ctx;
+    if (tab < 0) { this.leadersOverview(); return; }
     const cats = [['Passing yards', 'passYds'], ['Passing TD', 'passTD'], ['Rushing yards', 'rushYds'], ['Rushing TD', 'rushTD'],
       ['Receiving yards', 'recYds'], ['Receptions', 'rec'], ['Receiving TD', 'recTD'], ['Tackles', 'tackles'], ['Sacks', 'sacks'], ['Interceptions', 'defInt'], ['Field goals', 'fgMade']];
     const [label, field] = cats[tab];
@@ -590,6 +594,32 @@ export class FranchiseUI {
       el('div.pc-tabs', {}, cats.map(([l], i) => el(`div.pc-tab${i === tab ? '.on' : ''}`, { text: l }))),
       el('div.st-table', {}, rows.length ? rows : empty),
       el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> category &nbsp; <b class="btn B">B</b> back' }));
-    screens.nav.set(rows.length ? rows : [empty], { columns: 1, onBack: () => this.hub(), onTab: (d) => this.leadersScreen((tab + d + cats.length) % cats.length) });
+    screens.nav.set(rows.length ? rows : [empty], { columns: 1, onBack: () => this.hub(), onTab: (d) => { const n = tab + d; this.leadersScreen(n < 0 || n >= cats.length ? -1 : n); } });
+  }
+
+  /** League leaders at a glance (slide 9): six categories, top three each with photos; LB/RB into the full lists. */
+  leadersOverview() {
+    const { screens } = this.ctx;
+    const f = this.f, teams = this.teams;
+    const byId = new Map(teams.flatMap((t) => t.roster.map((p) => [p.id, p])));
+    const CATS = [['Passing Yards', 'passYds', ['CMP', 'passCmp'], ['TD', 'passTD']], ['Sacks', 'sacks', ['TKL', 'tackles'], ['TFL', 'tfl']], ['Rushing Yards', 'rushYds', ['ATT', 'rushAtt'], ['TD', 'rushTD']],
+      ['Interceptions', 'defInt', ['TKL', 'tackles'], ['FF', 'ff']], ['Receiving Yards', 'recYds', ['REC', 'rec'], ['TD', 'recTD']], ['Tackles', 'tackles', ['TFL', 'tfl'], ['SACK', 'sacks']]];
+    const mine = teams[f.userTeam].abbr;
+    const blocks = CATS.map(([label, field, a, b]) => {
+      const list = leaders(f, field, 3);
+      return el('div.ld-cat', {}, el('div.ld-head', {}, el('span', { text: label.toUpperCase() }), el('small', { text: `${a[0]}   ${b[0]}   ${label.split(' ')[0] === 'Sacks' || label === 'Interceptions' || label === 'Tackles' ? label.slice(0, 3).toUpperCase() : 'YDS'}` })),
+        list.length ? list.map((x) => {
+          const p = byId.get(x.rid);
+          const face = p ? faceImg(p, 'ld-face') : null;
+          return el(`div.ld-row${x.team === mine ? '.mine' : ''}`, {}, el('div.ld-pic', {}, face || el('span', { text: p ? String(p.number) : '' })),
+            el('div.ld-nm', {}, el('small', { text: `${x.team} · ${x.pos}` }), el('b', { text: x.name.toUpperCase() })),
+            el('span.ld-n', { text: String(Math.round(x.s[a[1]] || 0)) }), el('span.ld-n', { text: String(Math.round(x.s[b[1]] || 0)) }), el('b.ld-v', { text: String(Math.round(x.value)) }));
+        }) : el('div.ld-empty', { text: 'No games yet' }));
+    });
+    const back = el('div.start-btn', { text: 'Back' });
+    back.activate = () => this.hub();
+    screens.frame('stats-screen ld-screen', el('h1', { text: 'League Leaders' }), el('div.ld-grid', {}, blocks), back,
+      el('div.setup-help', { html: '<b class="btn RB">RB</b> full lists by category &nbsp; <b class="btn B">B</b> back' }));
+    screens.nav.set([back], { onBack: () => this.hub(), onTab: (d) => this.leadersScreen(d > 0 ? 0 : 10) });
   }
 }

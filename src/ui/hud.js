@@ -223,6 +223,46 @@ export class Hud {
     el.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(y)}px) translateX(-50%)`;
   }
 
+  /**
+   * Hold-RT play art (slide 4): last names under your eleven and a down & distance / play clock badge by the ball.
+   * Elements are pooled; text is only rewritten when it changes (no per-frame layout work).
+   */
+  artOverlay(sim, renderer, session) {
+    if (!this._art) {
+      const box = document.createElement('div');
+      box.id = 'artlayer';
+      this.root.append(box);
+      this._art = { box, names: [], dd: Object.assign(document.createElement('div'), { className: 'art-dd' }) };
+      box.append(this._art.dd);
+    }
+    const A = this._art;
+    if (!sim) { A.box.style.display = 'none'; return; }
+    A.box.style.display = 'block';
+    const team = session.humanTeam;
+    // Skill players and the QB (linemen bunch up and their names would pile on each other).
+    const mine = sim.players.filter((p) => p.team === team && !['T', 'G', 'C', 'DT'].includes(p.pos));
+    while (A.names.length < mine.length) { const d = document.createElement('div'); d.className = 'art-name'; A.box.append(d); A.names.push(d); }
+    const bugTop = this._bugTop || innerHeight;
+    A.names.forEach((d, i) => {
+      const p = mine[i];
+      const s = p && renderer.project(p.x, 0, p.z);
+      if (!p || !s.visible) { d.style.display = 'none'; return; }
+      const words = (p.name || '').split(' ').filter((w) => !/^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(w));
+      const last = (words.slice(-1)[0] || '').toUpperCase();
+      if (d.textContent !== last) d.textContent = last;
+      d.style.display = 'block';
+      d.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(Math.min(s.y + 8, bugTop - 24))}px) translateX(-50%)`;
+    });
+    // Badge: just behind the ball on the side away from the camera's center line.
+    const m = session.match;
+    const ord = ['', 'st', 'nd', 'rd', 'th'][m.down] || 'th';
+    const html = `<div class="ad-dd">${m.down}<sup>${ord}</sup><small>&amp;</small>${m.yardLine + m.toGo >= 100 ? 'GOAL' : Math.round(m.toGo)}</div><div class="ad-pc">:${String(Math.ceil(m.playClock)).padStart(2, '0')}</div>`;
+    if (A.dd._h !== html) { A.dd._h = html; A.dd.innerHTML = html; }
+    const s = renderer.project(sim.losX - sim.dir * 4.5, 0, sim.ballZ - 6);
+    A.dd.style.display = s.visible ? 'block' : 'none';
+    A.dd.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(Math.min(s.y, bugTop - 90))}px) translate(-100%, -50%) skewX(-12deg)`;
+  }
+
   /** Instant replay overlay (null hides it). */
   replayView(r) {
     const el = this.$('replay');
@@ -436,11 +476,13 @@ export class Hud {
 
     // Name tags under the player you control and, if it's someone else, the ball carrier.
     const [tagMe, tagOther] = this.root.querySelectorAll('.tag');
-    const showTags = sim && this.prefs?.nameTags !== false && session.humanTeam !== null && !playcallOpen && session.state !== 'playcall';
+    const showTags = sim && !this.artOn && this.prefs?.nameTags !== false && session.humanTeam !== null && !playcallOpen && session.state !== 'playcall';
     const me = showTags ? sim.players[sim.controlledId] : null;
     const carrier = showTags && sim.state !== 'presnap' ? sim.carrier() : null;
     this.placeTag(tagMe, me && me.team === session.humanTeam ? me : null, renderer, session);
     this.placeTag(tagOther, carrier && carrier !== me ? carrier : null, renderer, session);
+
+    this.artOverlay(this.artOn && !playcallOpen ? sim : null, renderer, session);
 
     // Receiver icons while the human QB can still throw.
     const showIcons = sim && !playcallOpen && sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass' && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';

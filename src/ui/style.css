@@ -1128,3 +1128,12 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .sb3-take img { height: 80%; }
 .sb3-take b { font: 700 34px/1 var(--fo); letter-spacing: 6px; }
 @keyframes sb3take { from { clip-path: inset(0 50% 0 50%); } to { clip-path: inset(0 0 0 0); } }
+
+/* Hold-RT play art (slide 4): names under your players, a slanted down & distance / play clock badge. */
+#artlayer { position: absolute; inset: 0; pointer-events: none; }
+#artlayer .art-name { position: absolute; left: 0; top: 0; font: 600 12px/1 var(--fo); letter-spacing: 0.8px; color: #fff; text-shadow: 0 1px 3px #000, 0 0 6px rgba(0,0,0,0.8); white-space: nowrap; }
+#artlayer .art-dd { position: absolute; left: 0; top: 0; text-align: center; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5)); }
+#artlayer .ad-dd { background: #0d1118; color: #fff; padding: 6px 14px 4px; font: 700 26px/0.95 var(--fo); }
+#artlayer .ad-dd sup { font-size: 13px; vertical-align: top; }
+#artlayer .ad-dd small { display: block; font-size: 13px; }
+#artlayer .ad-pc { background: #d3202a; color: #fff; font: 700 20px/1 var(--fo); padding: 3px 0 4px; }

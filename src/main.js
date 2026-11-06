@@ -832,6 +832,7 @@ function frameBody(now) {
     renderer.rig.wideView = !playerCam && (session.humanSide === 'defense' || session.humanSide === 'offense');
     renderer.render(dt, focus, camDir, phase, snapCam, excite);
     snapCam = false;
+    hud.artOn = artView;
     hud.update(session, renderer, dt, frameMs, playcall.open);
   } else {
     // Menus: slow orbit over the empty stadium.

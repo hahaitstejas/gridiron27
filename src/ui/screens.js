@@ -113,6 +113,12 @@ export function statRing(pct, label, sub, size = 140) {
 const clockShort = (c) => `${Math.floor(c / 60)}:${String(Math.floor(c % 60)).padStart(2, '0')}`;
 
 /** Team indexes sorted by team name (Bears, Bengals, Bills…), then city (every team list in the game uses this order). */
+/** GRIDIRON [league logo] 27 wordmark (the user's design): `big` on the load-in screen, `side` running down the home menu. */
+export function brandMark(logo, size = 'big') {
+  const px = size === 'big' ? 96 : 30;
+  return el(`div.brand.brand-${size}`, {}, el('span', { text: 'GRIDIRON' }), logo ? el('span.brand-logo', {}, logoCanvas(logo, px, false)) : null, el('span', { text: '27' }));
+}
+
 export function alphaOrder(teams) {
   return teams.map((t, i) => i).sort((a, b) => `${teams[a].name} ${teams[a].city}`.localeCompare(`${teams[b].name} ${teams[b].city}`));
 }
@@ -214,46 +220,72 @@ export class Screens {
     this.root.append(...kids.filter((k) => k !== null && k !== undefined && k !== false)); // optional pieces may be absent
   }
 
-  title(padName) {
-    this.frame('title-screen',
-      el('div.title', { html: 'GRIDIRON <span>27</span>' }),
-      el('div.sub', { html: 'Press <b class="btn A">A</b> on your Xbox controller to start' }),
-      el('div.sub.small', { html: 'or press <b>Enter</b> to play with the keyboard' }),
-      el('div.sub.tiny#padname', { text: padName ? `Connected: ${padName}` : '' }));
+  title(padName, leagueLogo = null) {
+    // Load-in screen (UPDATE 3.1 slide 1): black, the wordmark with the league logo, PRESS ANY BUTTON.
+    this.frame('t31-screen',
+      brandMark(leagueLogo, 'big'),
+      el('div.t31-press', { text: 'PRESS ANY BUTTON' }),
+      el('div.t31-pad#padname', { text: padName ? `Connected: ${padName}` : '' }));
     this.nav.clear();
   }
 
   /**
-   * Main menu hub: a featured Play Now tile with tonight's matchup, then tiles for the other modes.
-   * info = { home, away (teams), mine (your team), franchise: { team, year } | null, leagueName }.
+   * Home (UPDATE 3.1 slide 2): the wordmark running down the top-left, three modes, and the live stadium behind.
+   * The focused mode opens a panel on the right (slide 9): its name, a line about it and its entries as cards.
    */
-  /**
-   * Main menu (the user's layout): a featured player (a random top-rated one, new each visit), the league logo
-   * and the title, then a row of tabs. Black / white / gray; only logos and the jersey carry color.
-   */
-  mainMenu({ onPlayNow, onPractice, onFranchise, onRosters, onLeague, onPlaybook, onControls, onSettings, onSaves }, info = {}) {
+  mainMenu(acts, info = {}) {
+    const { onPlayNow, onPractice, onDrills, onScenarios, onFranchise, onRosters, onLeague, onPlaybook, onControls, onSettings, onSaves } = acts;
     const fr = info.franchise;
-    const tabs = [
-      ['Quick Play', 'Pick two teams and play', onPlayNow],
-      ['Training', 'Practice, skills drills, scenarios', onPractice],
-      ['Franchise', fr ? `Continue: ${fr.team} · ${fr.year}` : 'Franchise, season, career, tournament', onFranchise],
-      ['Rosters', 'Players, ratings, trades, signings', onRosters],
-      ['Edit League', 'Teams, logos, depth charts, saves, spreadsheets', onLeague],
-      ['Playbook', 'Design your own plays', onPlaybook],
-      ['Settings', 'Camera, sliders, game options', onSettings],
-    ].map(([label, sub, action]) => {
-      const t = el('div.mm-tab', {}, el('span', { text: label }));
-      t.activate = action;
-      t.onfocusitem = () => { hint.textContent = sub; };
-      return t;
+    featuredCard(info.teams || [], this); // picks the star whose home field turns behind the menu (main.js)
+    const MODES = [
+      { key: 'quick', label: 'Quick Play', icon: 'ball', crumbs: ['Play Now', 'Training', 'Two Players'],
+        blurb: 'Pick any two teams and kick it off, alone, against a friend or side by side. Sharpen up first in practice, skills drills and late-game scenarios.',
+        cards: [['Play Now', 'play', onPlayNow], ['Practice', 'cone', onPractice], ['Skills Drills', 'clock', onDrills], ['Scenarios', 'clipboard', onScenarios]] },
+      { key: 'franchise', label: 'Franchise', icon: 'star', crumbs: ['Franchise', 'Season', 'Career', 'Tournament'],
+        blurb: 'Run a team year after year: schedule, trades, free agency, the draft and the playoffs. Or play one season, a career as one player, or a tournament.',
+        cards: [[fr ? `Continue · ${fr.team}` : 'Create / Load', 'trophy', onFranchise]] },
+      { key: 'league', label: 'Edit League', icon: 'board', crumbs: ['Rosters', 'Teams', 'Playbook', 'Settings'],
+        blurb: 'Your league, your way: rosters and ratings, teams, logos and uniforms, depth charts, spreadsheets and saves, your own plays and the game settings.',
+        cards: [['Rosters', 'people', onRosters], ['Teams & League', 'shield', onLeague], ['Playbook', 'clipboard', onPlaybook], ['Settings', 'gear', onSettings], ['Saves', 'disk', onSaves]] },
+    ];
+    let cur = -1;
+    const panel = el('div.h31-panel');
+    const left = MODES.map((m, i) => {
+      const it = el('div.h31-mode', {}, el('span.h31-ico', { html: ICONS[m.icon] || '' }), el('span.h31-lbl', { text: m.label }));
+      it.activate = () => { const c = cards[0]; if (c) this.nav.focus(this.nav.items.indexOf(c)); };
+      it.onfocusitem = () => show(i);
+      return it;
     });
-    const hint = el('div.mm-hint');
-    this.frame('mono-main', el('div.mm-stage', {}, featuredCard(info.teams || [], this),
-      el('div.mm-league', {}, info.leagueLogo ? logoCanvas(info.leagueLogo, 150) : null),
-      el('div.mm-title', { text: 'GRIDIRON 27' })),
-      el('div.mm-tabs', {}, tabs), hint,
-      el('div.setup-help', { html: '<b class="btn A">A</b> Select &nbsp; ◀▶ Move &nbsp; <b class="btn Y">Y</b> Controls &nbsp; <b class="btn X">X</b> Saves &nbsp;&nbsp; <span class="tiny">An original football game · not affiliated with any league or team</span>' }));
-    this.nav.set(tabs, { spatial: true, index: info.focus ?? 0 });
+    let cards = [];
+    const show = (i) => {
+      if (i === cur) return;
+      cur = i;
+      const m = MODES[i];
+      left.forEach((it, j) => it.classList.toggle('on', j === i));
+      cards = m.cards.filter((c) => c[2]).map(([label, icon, act]) => {
+        const c = el(`div.h31-card${m.cards.length === 1 ? '.wide' : ''}`, {}, el('div.h31-cico', { html: ICONS[icon] || '' }), el('div.h31-clbl', { text: label }));
+        c.activate = act;
+        return c;
+      });
+      panel.innerHTML = '';
+      panel.append(
+        el('div.h31-crumbs', {}, m.crumbs.map((c, k) => el('span', { text: c + (k < m.crumbs.length - 1 ? '' : '') }))),
+        el('div.h31-title', { text: m.label }),
+        el('div.h31-blurb', { text: m.blurb }),
+        el('div.h31-cards', {}, cards));
+      panel.classList.remove('h31-in'); void panel.offsetWidth; panel.classList.add('h31-in');
+      // Left list + this mode's cards; focus stays on the mode row.
+      const keep = this.nav.items[this.nav.index];
+      this.nav.set([...left, ...cards], { spatial: true, index: Math.max(0, [...left, ...cards].indexOf(keep)), onBack: () => { const k = this.nav.items.indexOf(left[cur]); if (this.nav.index >= left.length) this.nav.focus(k); } });
+    };
+    this.frame('h31-screen',
+      el('div.h31-side', {}, el('div.h31-brand', {}, brandMark(info.leagueLogo, 'side')), el('div.h31-modes', {}, left)),
+      panel,
+      el('div.h31-help', { html: '<b class="btn A">A</b> Select &nbsp; <b class="btn B">B</b> Back &nbsp; <b class="btn Y">Y</b> Controls &nbsp; <b class="btn X">X</b> Saves' }));
+    const start = Math.max(0, Math.min(2, info.focus ?? 0));
+    this.nav.set(left, { spatial: true, index: start });
+    show(start);
+    this.nav.focus(start);
     this.extraButtons = (f) => { if (f.pressed.Y) { this.extraButtons = null; onControls(); } else if (f.pressed.X) { this.extraButtons = null; onSaves(); } };
   }
 

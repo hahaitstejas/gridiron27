@@ -95,7 +95,12 @@ export class Nav {
 
   moveSpatial(dx, dy) {
     // Layout boxes (offsetLeft/Top), not getBoundingClientRect: slanted or scaled tiles overlap on screen.
-    const box = (el) => ({ l: el.offsetLeft, t: el.offsetTop, r: el.offsetLeft + el.offsetWidth, b: el.offsetTop + el.offsetHeight });
+    // Offsets summed up the offsetParent chain, so items in different positioned panels share one frame.
+    const box = (el) => {
+      let l = 0, t = 0;
+      for (let n = el; n; n = n.offsetParent) { l += n.offsetLeft - (n !== el ? n.scrollLeft : 0); t += n.offsetTop - (n !== el ? n.scrollTop : 0); }
+      return { l, t, r: l + el.offsetWidth, b: t + el.offsetHeight };
+    };
     const r0 = box(this.current);
     const cx = (r0.l + r0.r) / 2, cy = (r0.t + r0.b) / 2;
     let best = -1, bestS = Infinity;

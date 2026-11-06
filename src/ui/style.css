@@ -1060,3 +1060,49 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 #musicchip.hidden { display: none; }
 #musicchip .mc-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #musicchip .mc-note { opacity: 0.8; }
+
+/* ===================== UPDATE 3.1 design (the user's slides) =====================
+   Oswald for display type (wordmark, titles, tabs), Saira Condensed for body text. Dark, flat, generous space; the
+   3D stadium shows through wherever a screen isn't a full page. */
+:root { --fo: "Oswald", "Saira Condensed", "Arial Narrow", sans-serif; --ink: #0b0d12; --ink2: rgba(14, 17, 24, 0.86); --rule: rgba(255, 255, 255, 0.14); --dim: rgba(255, 255, 255, 0.62); }
+
+.brand { display: inline-flex; align-items: center; font-family: var(--fo); font-weight: 500; color: #fff; letter-spacing: 1px; line-height: 1; }
+.brand .brand-logo { display: inline-flex; margin: 0 0.12em; }
+.brand-big { font-size: 112px; gap: 4px; }
+.brand-side { font-size: 30px; writing-mode: vertical-rl; gap: 6px; }
+.brand-side .brand-logo canvas { transform: rotate(90deg); }
+
+/* Load-in screen (slide 1). */
+.screen.t31-screen { background: #000 !important; justify-content: center; gap: 30px; }
+.t31-press { font: 600 22px/1 var(--fo); letter-spacing: 1px; color: #6d6d6d; background: #e6e6e6; padding: 6px 28px; border-radius: 3px; animation: t31pulse 1.8s ease-in-out infinite; }
+.t31-pad { position: absolute; bottom: 26px; font: 500 14px var(--fb); color: #555; }
+@keyframes t31pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* Home (slides 2 + 9): side column over the live stadium, a panel for the focused mode. */
+.screen.h31-screen { background: linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.55) 26%, rgba(0,0,0,0) 48%, rgba(0,0,0,0.35) 100%); align-items: stretch; justify-content: flex-start; flex-direction: row; }
+.h31-side { width: 300px; padding: 26px 0 0 26px; display: flex; flex-direction: column; gap: 46px; }
+.h31-brand { height: 210px; }
+.h31-modes { display: flex; flex-direction: column; gap: 8px; }
+.h31-mode { display: flex; align-items: center; gap: 14px; padding: 8px 14px 8px 4px; color: #fff; cursor: pointer; transition: transform 0.15s, background 0.15s; }
+.h31-mode .h31-ico svg { width: 38px; height: 38px; stroke: #fff; }
+.h31-mode .h31-lbl { font: 500 24px/1 var(--fo); letter-spacing: 1.5px; text-transform: uppercase; }
+.h31-mode.on .h31-lbl { color: #fff; }
+.h31-mode:not(.on) { opacity: 0.6; }
+.h31-mode.focused { background: #fff; color: #000; opacity: 1; transform: translateX(6px); }
+.h31-mode.focused svg { stroke: #000; }
+.h31-panel { position: absolute; right: 4vw; bottom: 9vh; width: min(60vw, 900px); padding: 22px 26px 26px; background: linear-gradient(180deg, rgba(10,12,18,0.55), rgba(10,12,18,0.9)); }
+.h31-panel.h31-in { animation: h31in 0.28s ease-out; }
+@keyframes h31in { from { opacity: 0; transform: translateX(26px); } to { opacity: 1; transform: none; } }
+.h31-crumbs { display: flex; gap: 0; font: 500 14px var(--fo); letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+.h31-crumbs span + span::before { content: '|'; margin: 0 12px; opacity: 0.5; }
+.h31-title { font: 700 84px/1 var(--fo); text-transform: uppercase; letter-spacing: 2px; margin: 6px 0 4px; }
+.h31-blurb { font: 500 19px/1.35 var(--fb); color: rgba(255,255,255,0.88); max-width: 720px; margin-bottom: 18px; }
+.h31-cards { display: flex; gap: 12px; }
+.h31-card { position: relative; flex: 1; min-width: 0; height: 150px; border-radius: 14px; overflow: hidden; cursor: pointer;
+  background: radial-gradient(ellipse at 70% 20%, rgba(255,255,255,0.16), rgba(255,255,255,0) 60%), linear-gradient(160deg, #22324a, #0d121c); transition: transform 0.15s, box-shadow 0.15s; }
+.h31-card.wide { flex: 0 0 60%; }
+.h31-card .h31-cico { position: absolute; right: 14px; top: 12px; opacity: 0.35; }
+.h31-card .h31-cico svg { width: 96px; height: 96px; stroke: #fff; }
+.h31-card .h31-clbl { position: absolute; left: 16px; bottom: 12px; font: 600 24px/1 var(--fo); letter-spacing: 1px; text-transform: uppercase; }
+.h31-card.focused { transform: translateY(-4px); box-shadow: 0 0 0 3px #fff, 0 12px 30px rgba(0,0,0,0.5); }
+.h31-help { position: absolute; left: 26px; bottom: 18px; font: 500 15px var(--fb); color: var(--dim); }

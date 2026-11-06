@@ -8,6 +8,10 @@ import '@fontsource/saira-condensed/500.css';
 import '@fontsource/saira-condensed/600.css';
 import '@fontsource/saira-condensed/700.css';
 import '@fontsource/saira-condensed/800.css';
+import '@fontsource/oswald/400.css';
+import '@fontsource/oswald/500.css';
+import '@fontsource/oswald/600.css';
+import '@fontsource/oswald/700.css';
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
@@ -212,6 +216,8 @@ function toMenu() {
   screens.mainMenu({
     onPlayNow: () => { screens._ts = null; screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu, p2: () => input2.connected }); },
     onPractice: showPractice,
+    onDrills: showDrills,
+    onScenarios: showScenarios,
     onLeague: () => league.menu(),
     onRosters: () => league.onRosters(),
     onFranchise: () => franchiseUI.open(),
@@ -558,7 +564,8 @@ input.onConnect = (id) => {
   if (app === 'title') toMenu();
 };
 window.addEventListener('keydown', (e) => {
-  if (app === 'title' && (e.code === 'Enter' || e.code === 'Space')) { input.keyboard.tapped.delete(e.code); input.keyboard.keys.delete(e.code); toMenu(); return; }
+  if (app === 'title' && !e.repeat && !['ShiftLeft', 'ShiftRight', 'MetaLeft', 'MetaRight', 'AltLeft', 'AltRight', 'ControlLeft', 'ControlRight', 'Backquote'].includes(e.code)) { // press any button
+    input.keyboard.tapped.delete(e.code); input.keyboard.keys.delete(e.code); toMenu(); return; }
   if (e.code === 'KeyH' && app === 'game') hud.toggleHelp();
   if (e.code === 'Backquote') hud.fpsShow = !hud.fpsShow;
 });
@@ -572,7 +579,7 @@ if (params.has('home')) prefs.home = teamArg(params.get('home'));
 if (params.has('away')) prefs.away = teamArg(params.get('away'));
 if (params.has('auto')) startGame({ ...prefs, side: 'cpu', quarterMinutes: +(params.get('q') || prefs.quarterMinutes) }, { speed: Math.max(1, +(params.get('speed') || 1)), seed: +(params.get('seed') || 1) });
 else if (params.has('play')) startGame({ ...prefs, side: params.get('side') || 'home' }, { seed: +(params.get('seed') || Date.now() % 1e9) });
-else screens.title(padName);
+else screens.title(padName, LEAGUE.logo);
 
 /** Make it obvious who ended up with a pass: a call-out with the player and a ring flash in his team's color. */
 function passCallout(e) {
@@ -665,7 +672,7 @@ function frameBody(now) {
   let consumed = false;
 
   if (app === 'title') {
-    if (f.pressed.A || f.pressed.Menu) toMenu();
+    if (Object.values(f.pressed).some(Boolean)) toMenu(); // press any button
     consumed = true;
   } else if (app === 'menu' || app === 'paused' || app === 'halftime' || (app === 'over' && !screens.root.classList.contains('hidden'))) {
     // Team Select reads every controller itself; elsewhere in 2-player games either controller drives the menus.

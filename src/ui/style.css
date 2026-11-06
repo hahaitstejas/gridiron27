@@ -1154,3 +1154,35 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 @keyframes wpslideL { from { transform: translateX(8%); } to { transform: translateX(-8%); } }
 @keyframes wpslideR { from { transform: translateX(-8%); } to { transform: translateX(8%); } }
 @keyframes wpcard { 0% { transform: translate(-50%, -50%) scale(0.86); opacity: 0; } 25%, 75% { transform: translate(-50%, -50%) scale(1); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.06); opacity: 0; } }
+
+/* Team pick (slide 6). */
+.screen.tp-screen { background: radial-gradient(ellipse at 70% 80%, rgba(30,50,120,0.55), rgba(0,0,0,0) 60%), linear-gradient(180deg, #07090f, #0b1020) !important; justify-content: flex-start; align-items: stretch; padding: 22px 34px; }
+.tp-head h1 { font: 600 22px var(--fo); letter-spacing: 2px; text-transform: uppercase; margin: 0 0 14px; color: var(--dim); font-style: normal; }
+.tp-body { flex: 1; min-height: 0; display: flex; gap: 22px; }
+.tp-grid { width: 380px; flex: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; overflow-y: auto; padding: 6px; align-content: start; scrollbar-width: none; }
+.tp-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 10px; cursor: pointer; transition: transform 0.12s, background 0.12s; }
+.tp-cell.focused { background: rgba(255,255,255,0.16) !important; box-shadow: 0 0 0 2px #fff; transform: scale(1.06); }
+.tp-right { flex: 1; min-width: 0; }
+.tp-panel { height: 100%; display: flex; flex-direction: column; animation: h31in 0.22s ease-out; }
+.tp-banner { display: flex; align-items: center; gap: 22px; padding: 16px 24px; background: linear-gradient(100deg, color-mix(in srgb, var(--tc) 85%, #000), var(--tc)); }
+.tp-names small { display: block; font: 500 15px var(--fo); letter-spacing: 1.5px; opacity: 0.85; }
+.tp-names b { font: 700 58px/1 var(--fo); letter-spacing: 1px; }
+.tp-badges { margin-left: auto; display: flex; gap: 10px; }
+.tp-badge { width: 62px; text-align: center; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.35); border-radius: 6px; padding: 6px 0 4px; }
+.tp-badge b { display: block; font: 700 26px/1 var(--fo); } .tp-badge small { font: 500 11px var(--fo); letter-spacing: 1px; opacity: 0.8; }
+.tp-players { display: flex; gap: 12px; padding: 14px 24px; background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 35%, #000), rgba(0,0,0,0.2)); }
+.tp-pl { flex: 1; text-align: center; min-width: 0; }
+.tp-pic { height: 110px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; }
+.tp-pic img { height: 110px; object-fit: cover; }
+.tp-num { font: 700 64px/1 var(--fo); color: var(--tc2); opacity: 0.9; padding-bottom: 8px; }
+.tp-pos { font: 500 12px var(--fo); letter-spacing: 1px; opacity: 0.75; margin-top: 6px; }
+.tp-nm { font: 600 16px var(--fo); letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-cols { display: flex; gap: 40px; padding: 16px 24px; background: rgba(4,8,20,0.6); flex: 1; }
+.tp-col { flex: 1; }
+.tp-col h4 { margin: 0 0 8px; font: 500 13px var(--fo); letter-spacing: 1.5px; text-transform: uppercase; color: var(--dim); }
+.tp-row { display: flex; justify-content: space-between; padding: 4px 0; font: 500 17px var(--fb); border-bottom: 1px solid rgba(255,255,255,0.06); }
+.tp-row b { font-weight: 700; } .tp-row b.good { color: #4fd17a; } .tp-row b.bad { color: #ff6b6b; }
+.tp-tiers { display: flex; gap: 14px; margin-top: 14px; }
+.tp-tier { text-align: center; } .tp-tier small { display: block; font: 500 11px var(--fo); opacity: 0.7; } .tp-tier b { font: 600 20px var(--fo); }
+.tp-help { margin-top: 10px; font: 500 14px var(--fb); color: var(--dim); }
+.tp-head h1::after { display: none !important; }

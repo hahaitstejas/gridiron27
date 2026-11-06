@@ -152,7 +152,7 @@ export function el(spec, attrs = {}, ...kids) {
   for (const [k, v] of Object.entries(attrs || {})) {
     if (k === 'html') node.innerHTML = v;
     else if (k === 'text') node.textContent = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(node.style, v);
+    else if (k === 'style' && typeof v === 'object') { for (const [sk, sv] of Object.entries(v)) { if (sk.startsWith('--')) node.style.setProperty(sk, sv); else node.style[sk] = sv; } } // custom properties need setProperty
     else if (k.startsWith('on') && typeof v === 'function') node[k.toLowerCase()] = v;
     else if (v !== undefined && v !== null && v !== false) node.setAttribute(k, v);
   }

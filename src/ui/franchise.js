@@ -3,6 +3,7 @@ import { cpuFillPS } from '../franchise/practiceSquad.js';
 import { el } from './nav.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { ICONS, alphaOrder } from './screens.js';
+import { teamPickScreen } from './teamPick.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
@@ -113,6 +114,12 @@ export class FranchiseUI {
     const opts = preset || { userTeam: prefs.home, weeks: mode === 'season' ? 10 : 17, difficulty: prefs.difficulty, quarterMinutes: prefs.quarterMinutes, rosters: 'current' };
     opts.rosters ||= 'current';
     opts.extraFA ??= true;
+    // First the team (slide 6: logo grid + team card), then these advanced settings.
+    if (!opts.picked) {
+      teamPickScreen(screens, this.teams, { title: mode === 'season' ? 'New Season: Pick Your Team' : 'New Franchise: Pick Your Team', focus: opts.userTeam,
+        onPick: (ti) => this.newFranchise(mode, { ...opts, userTeam: ti, picked: true }), onBack: this.ctx.onExit });
+      return;
+    }
     const option = (label, values, key, fmt) => {
       const row = el('div.opt-row');
       const draw = () => { row.innerHTML = ''; row.append(el('span.opt-label', { text: label }), el('span.opt-val', { html: `◀ ${fmt(opts[key])} ▶` })); };
@@ -123,7 +130,8 @@ export class FranchiseUI {
     };
     const teamIdx = alphaOrder(this.teams);
     const rows = [
-      option('Your team', teamIdx, 'userTeam', (i) => `${this.teams[i].city} ${this.teams[i].name}`),
+      Object.assign(el('div.opt-row.action', {}, el('span.opt-label', { text: 'Your team' }), el('span.opt-val', { text: `${this.teams[opts.userTeam].city} ${this.teams[opts.userTeam].name} (change…)` })),
+        { activate: () => this.newFranchise(mode, { ...opts, picked: false }) }),
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length (games you play)', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`),
       option('Rosters', ['current', 'fantasy'], 'rosters', (v) => (v === 'fantasy' ? 'Fantasy draft: every team drafts from scratch' : 'Keep the current rosters')),
@@ -156,7 +164,7 @@ export class FranchiseUI {
       el('div.league-status', { text: mode === 'season' ? 'One season with your current league: the schedule, the playoffs and a champion. No offseason.' : 'Starts from your current league (rosters, teams, logos) in a new save slot.' }),
       el('div.setup-opts', {}, ...rows, start),
       el('div.setup-help', { html: '<b class="btn A">A</b>/◀▶ change &nbsp; <b class="btn B">B</b> back' }));
-    screens.nav.set([...rows, start], { columns: 1, onBack: this.ctx.onExit, index: rows.length });
+    screens.nav.set([...rows, start], { columns: 1, onBack: () => this.newFranchise(mode, { ...opts, picked: false }), index: rows.length });
   }
 
   // ---------- hub ----------

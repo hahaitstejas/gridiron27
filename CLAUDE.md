@@ -360,9 +360,10 @@ Oswald (`@fontsource/oswald`, `--fo`) for display type (wordmark, titles, tabs, 
 navy gradients, filled panels with no outlines, the focused item white; team colors come back on team-specific screens
 (`el()` sets CSS custom properties with `setProperty`, so `style: { '--tc': … }` works).
 - Load-in (`Screens.title(padName, LEAGUE.logo)`): black, `brandMark()` = GRIDIRON [league logo] 27, PRESS ANY BUTTON (any key / pad button).
-- Home (`Screens.mainMenu`): mostly dark (the stadium soft behind), the wordmark down the top-left, Quick Play / Franchise / Edit League over the live stadium orbit; the focused
-  mode opens a right panel (crumbs, big title, blurb, entry cards: Play Now / Practice / Skills Drills / Scenarios; Create / Load;
-  Rosters / Teams & League / Playbook / Settings / Saves). Y Controls, X Saves.
+- Home (`Screens.mainMenu`, the user's reference in black / white): a thin icon rail (wordmark on top, Quick Play / Franchise /
+  Edit League icons, Settings at the bottom), the focused mode's crumbs, big title and one line, its sub-modes as big cards
+  (Play Now / Practice / Skills Drills / Scenarios; Create / Load; Rosters / Teams & League / Playbook / Saves; Settings /
+  Controls) on the darkened stadium, black hint bar. Items can pin a direction with `el.navTo = { left: el }` (nav.js).
 - Play call: a see-through band (field + huddle visible), `TEAM / SELECT A PLAY` rail, pill help bar; the situation is in the scorebug.
 - Scorebug: GRIDIRON [league logo] 27; scores take over the middle (`hud.bugTake`: TOUCHDOWN / FIELD GOAL in the team's color, 5 s).
 - Hold RT: names under your skill players + slanted down & distance / play-clock badge (`Hud.artOverlay`, `hud.artOn`).

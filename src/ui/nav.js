@@ -79,6 +79,9 @@ export class Nav {
   move(dx, dy) {
     const el = this.current;
     if (dx && el?.spin) { el.spin(dx); return; }
+    // An item can name where a direction goes (navTo: { left: el }), e.g. a card back to its own mode on a rail.
+    const to = el?.navTo?.[dx < 0 ? 'left' : dx > 0 ? 'right' : dy < 0 ? 'up' : 'down'];
+    if (to && this.items.includes(to)) { this.focus(this.items.indexOf(to)); return; }
     if (this.spatial) { this.moveSpatial(dx, dy); return; }
     const c = this.columns;
     let i = this.index;

@@ -1332,3 +1332,36 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .screen .h31-card.nav-item.focused { background: linear-gradient(160deg, #fff, #dfe6f2) !important; box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important; transform: translateY(-3px) !important; }
 .screen .h31-card.nav-item.focused svg { stroke: #0b0d12 !important; }
 .h31-brand .brand-side { font-size: 34px; }
+
+/* ===== Home, take 3 (the user's reference, kept black / white): icon rail, summary + sub-mode cards on the stadium, hint bar. ===== */
+.screen.mm2-screen { background: linear-gradient(90deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.72) 35%, rgba(0,0,0,0.45) 70%, rgba(0,0,0,0.55) 100%), linear-gradient(0deg, rgba(0,0,0,0.85), rgba(0,0,0,0) 40%) !important;
+  display: block; padding: 0; filter: none; }
+.mm2-rail { position: absolute; left: 0; top: 0; bottom: 44px; width: 76px; display: flex; flex-direction: column; align-items: center; padding-top: 22px; }
+.mm2-brand .brand-side { font-size: 26px; }
+.mm2-icons { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 34px; }
+.mm2-icons.low { margin-top: auto; margin-bottom: 18px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.18); }
+.mm2-ico { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 10px; cursor: pointer; opacity: 0.55; transition: opacity 0.15s, background 0.15s; }
+.mm2-ico svg { width: 26px; height: 26px; stroke: #fff; }
+.mm2-ico.on { opacity: 1; background: rgba(255,255,255,0.14); }
+.screen .mm2-ico.nav-item.focused { opacity: 1; background: #fff !important; border-radius: 10px !important; }
+.screen .mm2-ico.nav-item.focused svg { stroke: #000 !important; }
+.mm2-body { position: absolute; left: 96px; right: 4vw; top: 38%; }
+.mm2-body.mm2-in { animation: mm2in 0.26s ease-out; }
+@keyframes mm2in { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: none; } }
+.mm2-crumbs { font: 400 13px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.75); }
+.mm2-crumbs span + span::before { content: '|'; margin: 0 12px; opacity: 0.5; }
+.mm2-title { font: 700 76px/1.05 var(--fo); letter-spacing: 3px; text-transform: uppercase; margin: 8px 0 6px; }
+.mm2-blurb { font: 400 18px/1.35 var(--fb); color: rgba(255,255,255,0.85); max-width: 620px; margin-bottom: 26px; }
+.mm2-cards { display: flex; gap: 14px; }
+.mm2-card { position: relative; width: 290px; height: 170px; border-radius: 14px; overflow: hidden; cursor: pointer;
+  background: radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.14), rgba(255,255,255,0) 60%), linear-gradient(160deg, #2a2a2e, #0e0e10) !important;
+  border: 3px solid transparent !important; transition: transform 0.15s; }
+.mm2-art { position: absolute; inset: 0 0 40px 0; display: flex; align-items: center; justify-content: center; }
+.mm2-art svg { width: 90px; height: 90px; stroke: rgba(255,255,255,0.75); }
+.mm2-lbl { position: absolute; left: 0; right: 0; bottom: 0; height: 42px; display: flex; align-items: center; padding: 0 16px; font: 500 18px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+.screen .mm2-card.nav-item.focused { background: radial-gradient(ellipse at 70% 30%, rgba(255,255,255,0.22), rgba(255,255,255,0) 60%), linear-gradient(160deg, #3a3a3e, #141416) !important;
+  border-color: #fff !important; border-radius: 14px !important; transform: translateY(-3px) !important; }
+.screen .mm2-card.nav-item.focused .mm2-lbl { background: #f2f2f2; color: #000 !important; font-weight: 600; }
+.screen .mm2-card.nav-item.focused svg { stroke: #fff !important; }
+.mm2-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; display: flex; align-items: center; gap: 26px; padding: 0 30px; background: #000; font: 500 14px var(--fo); letter-spacing: 1px; }
+.mm2-bar span { display: inline-flex; align-items: center; gap: 8px; }

@@ -232,56 +232,61 @@ export class Screens {
    * The focused mode opens a panel on the right (slide 9): its name, a line about it and its entries as cards.
    */
   mainMenu(acts, info = {}) {
+    // The user's reference: a thin icon rail on the left (wordmark on top, one icon per mode, settings at the bottom), the
+    // focused mode's summary (crumbs, big title, one line) with its sub-modes as big cards right on the darkened stadium,
+    // and a black hint bar along the bottom. Black / white / gray.
     const { onPlayNow, onPractice, onDrills, onScenarios, onFranchise, onRosters, onLeague, onPlaybook, onControls, onSettings, onSaves } = acts;
     const fr = info.franchise;
     featuredCard(info.teams || [], this); // picks the star whose home field turns behind the menu (main.js)
     const MODES = [
-      { key: 'quick', label: 'Quick Play', icon: 'ball', crumbs: ['Play Now', 'Training', 'Two Players'],
-        blurb: 'Pick any two teams and kick it off, alone, against a friend or side by side. Sharpen up first in practice, skills drills and late-game scenarios.',
+      { label: 'Quick Play', icon: 'ball', crumbs: ['Play Now', 'Training', 'Two Players'],
+        blurb: 'Pick any two teams and kick it off: alone, against a friend or side by side. Sharpen up first in practice, skills drills and late-game scenarios.',
         cards: [['Play Now', 'play', onPlayNow], ['Practice', 'cone', onPractice], ['Skills Drills', 'clock', onDrills], ['Scenarios', 'clipboard', onScenarios]] },
-      { key: 'franchise', label: 'Franchise', icon: 'star', crumbs: ['Franchise', 'Season', 'Career', 'Tournament'],
-        blurb: 'Run a team year after year: schedule, trades, free agency, the draft and the playoffs. Or play one season, a career as one player, or a tournament.',
+      { label: 'Franchise', icon: 'star', crumbs: ['Franchise', 'Season', 'Career', 'Tournament'],
+        blurb: 'Run a team year after year: the schedule, trades, free agency, the draft and the playoffs. Or one season, a career as one player, or a tournament.',
         cards: [[fr ? `Continue · ${fr.team}` : 'Create / Load', 'trophy', onFranchise]] },
-      { key: 'league', label: 'Edit League', icon: 'board', crumbs: ['Rosters', 'Teams', 'Playbook', 'Settings'],
-        blurb: 'Your league, your way: rosters and ratings, teams, logos and uniforms, depth charts, spreadsheets and saves, your own plays and the game settings.',
-        cards: [['Rosters', 'people', onRosters], ['Teams & League', 'shield', onLeague], ['Playbook', 'clipboard', onPlaybook], ['Settings', 'gear', onSettings], ['Saves', 'disk', onSaves]] },
+      { label: 'Edit League', icon: 'board', crumbs: ['Rosters', 'Teams', 'Depth Charts', 'Playbook'],
+        blurb: 'Your league, your way: rosters and ratings, teams, logos and uniforms, depth charts, spreadsheets and saves, and your own plays.',
+        cards: [['Rosters', 'people', onRosters], ['Teams & League', 'shield', onLeague], ['Playbook', 'clipboard', onPlaybook], ['Saves', 'disk', onSaves]] },
+      { label: 'Settings', icon: 'gear', bottom: true, crumbs: ['Camera', 'Gameplay', 'Controls'],
+        blurb: 'Camera, graphics, name tags, replays, difficulty, quarter length and the gameplay sliders. Controls shows every button.',
+        cards: [['Settings', 'gear', onSettings], ['Controls', 'pad', onControls]] },
     ];
-    let cur = -1;
-    const panel = el('div.h31-panel');
-    const left = MODES.map((m, i) => {
-      const it = el('div.h31-mode', {}, el('span.h31-ico', { html: ICONS[m.icon] || '' }), el('span.h31-lbl', { text: m.label }));
-      it.activate = () => { const c = cards[0]; if (c) this.nav.focus(this.nav.items.indexOf(c)); };
+    let cur = -1, cards = [];
+    const body = el('div.mm2-body');
+    const rail = MODES.map((m, i) => {
+      const it = el(`div.mm2-ico${m.bottom ? '.bottom' : ''}`, { html: ICONS[m.icon] || '', title: m.label });
+      it.activate = () => { if (cards[0]) this.nav.focus(this.nav.items.indexOf(cards[0])); };
       it.onfocusitem = () => show(i);
       return it;
     });
-    let cards = [];
     const show = (i) => {
       if (i === cur) return;
       cur = i;
       const m = MODES[i];
-      left.forEach((it, j) => it.classList.toggle('on', j === i));
+      rail.forEach((it, j) => it.classList.toggle('on', j === i));
       cards = m.cards.filter((c) => c[2]).map(([label, icon, act]) => {
-        const c = el(`div.h31-card${m.cards.length === 1 ? '.wide' : ''}`, {}, el('div.h31-cico', { html: ICONS[icon] || '' }), el('div.h31-clbl', { text: label }));
+        const c = el('div.mm2-card', {}, el('div.mm2-art', { html: ICONS[icon] || '' }), el('div.mm2-lbl', { text: label }));
         c.activate = act;
         return c;
       });
-      panel.innerHTML = '';
-      panel.append(
-        el('div.h31-crumbs', {}, m.crumbs.map((c, k) => el('span', { text: c + (k < m.crumbs.length - 1 ? '' : '') }))),
-        el('div.h31-title', { text: m.label }),
-        el('div.h31-blurb', { text: m.blurb }),
-        el('div.h31-cards', {}, cards));
-      panel.classList.remove('h31-in'); void panel.offsetWidth; panel.classList.add('h31-in');
-      // Left list + this mode's cards; focus stays on the mode row.
+      if (cards[0]) cards[0].navTo = { left: rail[i] };
+      rail[i].navTo = { right: cards[0] };
+      body.innerHTML = '';
+      body.append(el('div.mm2-crumbs', {}, m.crumbs.map((c) => el('span', { text: c }))), el('div.mm2-title', { text: m.label }),
+        el('div.mm2-blurb', { text: m.blurb }), el('div.mm2-cards', {}, cards));
+      body.classList.remove('mm2-in'); void body.offsetWidth; body.classList.add('mm2-in');
       const keep = this.nav.items[this.nav.index];
-      this.nav.set([...left, ...cards], { spatial: true, index: Math.max(0, [...left, ...cards].indexOf(keep)), onBack: () => { const k = this.nav.items.indexOf(left[cur]); if (this.nav.index >= left.length) this.nav.focus(k); } });
+      const items = [...rail, ...cards];
+      this.nav.set(items, { spatial: true, index: Math.max(0, items.indexOf(keep)), onBack: () => { if (this.nav.index >= rail.length) this.nav.focus(cur); } });
     };
-    this.frame('h31-screen',
-      el('div.h31-side', {}, el('div.h31-brand', {}, brandMark(info.leagueLogo, 'side')), el('div.h31-modes', {}, left)),
-      panel,
-      el('div.h31-help', { html: '<b class="btn A">A</b> Select &nbsp; <b class="btn B">B</b> Back &nbsp; <b class="btn Y">Y</b> Controls &nbsp; <b class="btn X">X</b> Saves' }));
-    const start = Math.max(0, Math.min(2, info.focus ?? 0));
-    this.nav.set(left, { spatial: true, index: start });
+    this.frame('mm2-screen',
+      el('div.mm2-rail', {}, el('div.mm2-brand', {}, brandMark(info.leagueLogo, 'side')), el('div.mm2-icons', {}, rail.filter((_, i) => !MODES[i].bottom)),
+        el('div.mm2-icons.low', {}, rail.filter((_, i) => MODES[i].bottom))),
+      body,
+      el('div.mm2-bar', { html: '<span><b class="btn A">A</b> SELECT</span><span><b class="btn B">B</b> BACK</span><span><b class="btn Y">Y</b> CONTROLS</span><span><b class="btn X">X</b> SAVES</span>' }));
+    const start = Math.max(0, Math.min(MODES.length - 1, info.focus ?? 0));
+    this.nav.set(rail, { spatial: true, index: start });
     show(start);
     this.nav.focus(start);
     this.extraButtons = (f) => { if (f.pressed.Y) { this.extraButtons = null; onControls(); } else if (f.pressed.X) { this.extraButtons = null; onSaves(); } };

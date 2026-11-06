@@ -4,7 +4,7 @@ import { RNG } from '../core/rng.js';
 
 export const SEASON_LENGTHS = [6, 10, 17];
 export const STAT_FIELDS = ['passAtt', 'passCmp', 'passYds', 'passTD', 'int', 'rushAtt', 'rushYds', 'rushTD', 'rec', 'tgt', 'recYds', 'recTD',
-  'tackles', 'sacks', 'defInt', 'ff', 'fgAtt', 'fgMade', 'xpAtt', 'xpMade', 'punts', 'puntYds'];
+  'tackles', 'tfl', 'sacks', 'defInt', 'ff', 'fum', 'fumLost', 'fgAtt', 'fgMade', 'xpAtt', 'xpMade', 'punts', 'puntYds'];
 
 /**
  * Weekly schedule: every team plays once a week, never the same opponent twice in a row, at most twice
@@ -157,7 +157,7 @@ export function addStats(season, lines, info) {
   for (const [rid, line] of Object.entries(lines)) {
     const s = (season.stats[rid] ||= { gp: 0, ...Object.fromEntries(STAT_FIELDS.map((f) => [f, 0])), ...info(rid) });
     s.gp++;
-    for (const f of STAT_FIELDS) s[f] += line[f] || 0;
+    for (const f of STAT_FIELDS) s[f] = (s[f] || 0) + (line[f] || 0); // older saves lack newer fields (tfl, fum)
   }
 }
 

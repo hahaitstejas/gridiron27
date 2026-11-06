@@ -153,7 +153,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
     }
   }
   // Midfield: the home team's logo (the league's in the championship game).
-  if (opts.championship || sd.midLogo !== false) drawLogo(g, opts.championship ? LEAGUE.logo : home.logo, px(0), pz(0), 4.2 * S);
+  if (opts.championship || sd.midLogo !== false) drawLogo(g, opts.championship ? LEAGUE.logo : home.logo, px(0), pz(0), 6 * S); // ~12 yds across, like a real midfield logo
   // League logo at both 25-yard lines.
   for (const x of [-25, 25]) {
     g.save();

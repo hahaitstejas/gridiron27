@@ -15,7 +15,7 @@ export function archiveSeason(f, champion) {
     c.name = s.name; c.pos = s.pos; c.team = s.team; c.last = f.year;
     c.seasons++;
     c.gp += s.gp || 0;
-    for (const k of STAT_FIELDS) c[k] += s[k] || 0;
+    for (const k of STAT_FIELDS) c[k] = (c[k] || 0) + (s[k] || 0);
     if (champion !== null && champion !== undefined && s.teamIdx === champion) c.rings++;
   }
   for (const a of awards) {

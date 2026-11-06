@@ -287,8 +287,9 @@ export class Hud {
 
     const pre = session.state === 'presnap' && sim && sim.state === 'presnap' && !playcallOpen;
     const pn = this.$('playname');
-    pn.classList.toggle('hidden', !pre || session.humanTeam === null || session.twoPlayer); // 2 players: don't show your call to the other guy
-    if (pre && session.humanTeam !== null) {
+    // The user's call: the play name isn't shown on screen (it gave the play away and cluttered the broadcast look).
+    pn.classList.add('hidden');
+    if (false) {
       const human = session.humanSide;
       const play = human === 'offense' ? sim.offPlay : sim.defPlay;
       const hot = play.hot ? Object.entries(play.hot).map(([s, r]) => `${s} ${r.replace('_', ' ')}`).join(', ') : '';

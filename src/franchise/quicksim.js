@@ -120,6 +120,11 @@ function teamLines(rng, side, mine, theirs, lines) {
   const oppInts = Math.max(0, Math.round(rng.gauss(0.8 + edge * 0.03, 0.8)));
   split(rng, [[at('CB', 0), 0.3], [at('CB', 1), 0.25], [at('FS'), 0.2], [at('SS'), 0.12], [at('CB', 2), 0.08], [at('MLB'), 0.05]].filter(([id]) => id !== undefined), oppInts, (id, n) => add(id, 'defInt', n));
   if (rng.chance(0.4)) add(rng.pick(tacklers)[0], 'ff', 1);
+  // Tackles for loss (sacks count as one, as in the NFL) and the offense's fumbles.
+  const tfl = sacks + Math.max(0, Math.round(rng.gauss(3.2, 1.3)));
+  split(rng, tacklers.map(([id, w], i) => [id, i >= 8 ? w * 2.2 : w]), tfl, (id, n) => add(id, 'tfl', n));
+  const fum = Math.max(0, Math.round(rng.gauss(0.6, 0.7)));
+  split(rng, [...runners, ...targets.map(([id, w]) => [id, w * 0.4])], fum, (id, n) => { add(id, 'fum', n); if (rng.chance(0.5)) add(id, 'fumLost', n); });
 }
 
 /** Split an integer total among weighted ids (multinomial-ish with noise). */

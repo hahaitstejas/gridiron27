@@ -534,7 +534,7 @@ function newStats(teams) {
 
 function pstat(m, team, rid) {
   const key = `${team}:${rid}`;
-  return (m.stats.players[key] ||= { team, rid, snaps: 0, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 0, rushYds: 0, rushTD: 0, rec: 0, tgt: 0, recYds: 0, recTD: 0, tackles: 0, sacks: 0, defInt: 0, ff: 0, fr: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, krYds: 0, prYds: 0 });
+  return (m.stats.players[key] ||= { team, rid, snaps: 0, passAtt: 0, passCmp: 0, passYds: 0, passTD: 0, int: 0, rushAtt: 0, rushYds: 0, rushTD: 0, rec: 0, tgt: 0, recYds: 0, recTD: 0, tackles: 0, tfl: 0, sacks: 0, defInt: 0, ff: 0, fr: 0, fum: 0, fumLost: 0, fgAtt: 0, fgMade: 0, xpAtt: 0, xpMade: 0, punts: 0, puntYds: 0, krYds: 0, prYds: 0 });
 }
 
 function recordStats(m, r, sim) {
@@ -564,7 +564,7 @@ function recordStats(m, r, sim) {
       T[off].sacks++;
       T[off].passYds += yds; T[off].yards += yds;
       const t = rid(r.tackler);
-      if (t !== null) pstat(m, 1 - off, t).sacks++;
+      if (t !== null) { const ds = pstat(m, 1 - off, t); ds.sacks++; ds.tfl++; }
     } else if (qb !== null) {
       const s = pstat(m, off, qb);
       s.passAtt++; T[off].passAtt++;
@@ -590,7 +590,15 @@ function recordStats(m, r, sim) {
   if (r.fumbleLost) T[off].turnovers++;
   if (r.fumble && r.forcedBy !== null && r.forcedBy !== undefined) { const f = rid(r.forcedBy); if (f !== null) pstat(m, 1 - off, f).ff++; }
   const tk = rid(r.tackler);
-  if (tk !== null && !r.sack && team(r.tackler) !== undefined) pstat(m, team(r.tackler), tk).tackles++;
+  if (tk !== null && !r.sack && team(r.tackler) !== undefined) {
+    const ts = pstat(m, team(r.tackler), tk);
+    ts.tackles++;
+    // Tackle for loss: the defense stops the offense's runner / receiver behind the line.
+    if (team(r.tackler) !== off && !r.incomplete && !r.interception && !r.fumbleLost && yds < 0 && team(r.carrierId) === off) ts.tfl++;
+  }
+  // Fumbles go on the player who put the ball on the ground (lost = the other team recovered).
+  const fb = sim.stats?.fumbleBy;
+  if (r.fumble && fb !== undefined && team(fb) === off) { const fs = pstat(m, off, rid(fb)); fs.fum++; if (r.fumbleLost) fs.fumLost++; }
 }
 
 /**

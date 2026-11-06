@@ -18,6 +18,15 @@ export class Nav {
 
   set(items, { columns = 1, onBack = null, onTab = null, index = 0, spatial = false } = {}) {
     this.items = items.filter(Boolean);
+    // Coming back to a list you left with A (edit a player, then back out) puts you on the row you picked, not
+    // at the top. Lists are told apart by their screen and title; the row by its text (else its old index).
+    // A caller that asks for a specific row (index > 0) still gets it.
+    this.key = this.listKey();
+    const mem = Nav.memory.get(this.key);
+    if (mem && !index) {
+      const j = this.items.findIndex((el) => el.textContent === mem.text);
+      index = j >= 0 ? j : mem.index;
+    }
     this.columns = columns;
     this.spatial = spatial; // free layouts (tile grids): move to the nearest item in the stick's direction
     this.onBack = onBack;
@@ -52,7 +61,20 @@ export class Nav {
 
   get current() { return this.items[this.index]; }
 
-  activate() { this.current?.activate?.(); }
+  activate() {
+    const el = this.current;
+    if (el && this.key) Nav.memory.set(this.key, { index: this.index, text: el.textContent });
+    el?.activate?.();
+  }
+
+  listKey() {
+    const scr = this.items[0]?.closest?.('.screen');
+    if (!scr) return null;
+    return `${scr.className.replace(/\s*(hidden|focused)\b/g, '')}|${scr.querySelector('h1,h2')?.textContent || ''}|${this.items.length}`;
+  }
+
+  // Last row picked in each list (see set()).
+  static memory = new Map();
 
   move(dx, dy) {
     const el = this.current;
@@ -102,7 +124,7 @@ export class Nav {
     if (dir !== this.held) { this.held = dir; this.repeatT = 0.38; if (dir) this.step(dir); }
     else if (dir) { this.repeatT -= dt; if (this.repeatT <= 0) { this.repeatT = 0.11; this.step(dir); } }
     if (f.pressed.A) { this.activate(); return true; }
-    if (f.pressed.B && this.onBack) { this.onBack(); return true; }
+    if (f.pressed.B && this.onBack) { Nav.memory.delete(this.key); this.onBack(); return true; } // backing out of a list: next visit starts fresh
     if (this.onTab && (f.pressed.LB || f.pressed.RB)) { this.onTab(f.pressed.LB ? -1 : 1); return true; }
     return !!dir;
   }

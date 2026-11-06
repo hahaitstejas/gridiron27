@@ -2,7 +2,7 @@ import { addGeneratedFreeAgents } from '../franchise/freeAgents.js';
 import { cpuFillPS } from '../franchise/practiceSquad.js';
 import { el } from './nav.js';
 import { LEAGUE } from '../data/leagueInfo.js';
-import { ICONS } from './screens.js';
+import { ICONS, alphaOrder } from './screens.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
@@ -121,7 +121,7 @@ export class FranchiseUI {
       draw();
       return row;
     };
-    const teamIdx = this.teams.map((_, i) => i);
+    const teamIdx = alphaOrder(this.teams);
     const rows = [
       option('Your team', teamIdx, 'userTeam', (i) => `${this.teams[i].city} ${this.teams[i].name}`),
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),

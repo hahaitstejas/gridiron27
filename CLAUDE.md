@@ -45,7 +45,8 @@ Rendering (`src/render`), UI (`src/ui`), input and audio only *read* sim state.
 - All randomness goes through the seeded `RNG` (`core/rng.js`). **Never use `Math.random()` in sim/ai/game
   code** — determinism is what makes the autosim reproducible and replays possible.
 - Input edges (pressed/released/flick) are latched until a sim step consumes them, so taps aren't lost.
-- Menus (`ui/nav.js`): only real mouse movement takes focus (`onmousemove` compared with the last pointer position), so
+- Menus (`ui/nav.js`): backing out of a screen you opened with A lands on the row you picked (`Nav.memory`, keyed by
+  screen + title + row count; B out of a list forgets it); only real mouse movement takes focus (`onmousemove` compared with the last pointer position), so
   rows sliding under a resting pointer while the stick scrolls a list don't yank focus back.
 
 ### Coordinates
@@ -297,7 +298,7 @@ rounds}, history[], seed, offseason{step, …} }`.
   Old saves get money on load (`upgradeFranchise`).
 - `extras.js`: news feed (`addNews`, `f.news`: notable results, your games, injuries to your players / stars, trades,
   awards, records, draft headlines, the champion), records (`f.records.game/season` for `RECORD_CATS`, announced only
-  after the first season, `recordsSince`), awards at the end of the regular season (`giveAwards`: MVP, OPOY, DPOY,
+  after the first season, `recordsSince`), awards at the end of the regular season (title-game MVP: `championshipMVP` from `recordGame`) (`giveAwards`: MVP, OPOY, DPOY,
   offensive/defensive rookie of the year from `p.rookieYear`; `f.awards[year]`), draft scouting (`setupScouting`: each
   prospect's shown overall is a range around a hidden error, potential '?', `SCOUT_POINTS` per draft reveal the truth
   with X; the CPU drafts on true value). Hub: News, Awards & Records (awards, season/game records, champions).
@@ -316,7 +317,8 @@ carry `traits` (entities.js); hooks use `has(p, id)` in passing.js (accuracy, pP
 
 ### Career mode (`franchise/career.js`, `ui/career.js`)
 A franchise with `f.career = { rid, xp, points, spent, games[] }` (Franchise menu → New Career: name, position from
-`CAREER_POSITIONS`, number, team). `createCareerPlayer` adds a 21-year-old starter flagged `p.career` (never retired, cut,
+`CAREER_POSITIONS`, number, team). `createCareerPlayer` adds a 21-year-old flagged `p.career`, slotted into his position's depth chart by overall
+(`slotCareer`; training moves him up past anyone he now out-rates — he earns the start) (never retired, cut,
 CPU-traded or offered in your trades; re-signs himself; only age fades him, growth comes from points). Every game he
 plays or sims gives `gameXP(line)` (`awardCareerGame` from `recordGame`), `XP_PER_POINT` = 100; My Player (hub) spends
 points on `careerKeys(pos)` at `upgradeCost(v)`. In games `settings.lockPlayer = rid`: `session.calls(team)` — the human

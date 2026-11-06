@@ -470,7 +470,7 @@ export class Screens {
       draw();
       return row;
     };
-    const teamIdx = teams.map((_, i) => i);
+    const teamIdx = alphaOrder(teams);
     const tname = (i) => `${teams[i].city} ${teams[i].name}`;
     const rows = [
       option('Your team', teamIdx, 'home', tname),

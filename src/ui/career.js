@@ -1,6 +1,7 @@
 // Career mode screens: create your player (New Career) and the My Player card in the franchise hub
 // (ratings, skill points to spend, game log). Logic lives in franchise/career.js.
 import { el } from './nav.js';
+import { alphaOrder } from './screens.js';
 import { RNG } from '../core/rng.js';
 import { RATINGS } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
@@ -39,7 +40,7 @@ export function newCareer(ui) {
   text('Last name', 'last');
   option('Position', CAREER_POSITIONS, 'pos', (p) => POS_NAMES[p]);
   option('Number', Array.from({ length: 99 }, (_, i) => i + 1), 'number', (n) => `#${n}`);
-  option('Team', ui.teams.map((_, i) => i), 'team', (i) => `${ui.teams[i].city} ${ui.teams[i].name}`);
+  option('Team', alphaOrder(ui.teams), 'team', (i) => `${ui.teams[i].city} ${ui.teams[i].name}`);
   option('Season length', SEASON_LENGTHS, 'weeks', (w) => `${w} games`);
   option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label);
   option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`);
@@ -76,7 +77,7 @@ export function careerScreen(ui, focus = 0) {
     const v = p.ratings[k] ?? 40, cost = upgradeCost(v);
     const row = el(`div.cr-row${c.points >= cost && v < 99 ? '' : '.dim'}`, {},
       el('span.cr-k', { text: label(k) }), el('span.cr-bar', {}, el('i', { style: { width: `${v}%` } })), el('b', { text: String(v) }), el('small', { text: v >= 99 ? 'MAX' : `+1 · ${cost} pt${cost > 1 ? 's' : ''}` }));
-    row.activate = () => { if (trainRating(f, p, k)) { ui.save(); careerScreen(ui, rows.indexOf(row)); } };
+    row.activate = () => { if (trainRating(f, p, k, ui.teams.find((t) => t.roster.includes(p)))) { ui.save(); careerScreen(ui, rows.indexOf(row)); } };
     return row;
   });
   // Traits: the ones he has, and what the others at his position need (a goal for the skill points).

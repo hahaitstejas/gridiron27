@@ -9,12 +9,16 @@ import { STEP } from '../src/core/constants.js';
 import { emptyFrame } from '../src/input/actions.js';
 
 describe('career mode', () => {
-  it('creates a starter flagged as the career player', () => {
+  it('creates a career player who slots into the depth chart by overall', () => {
     const teams = generateLeagueRosters(defaultTeams(), 11);
     const p = createCareerPlayer(teams[4], { first: 'Test', last: 'Player', pos: 'WR', number: 88 }, new RNG(3));
     expect(p.career).toBe(true);
     expect(teams[4].roster).toContain(p);
-    expect(teams[4].depth.WR[0]).toBe(p.id);
+    const wr = teams[4].depth.WR, ovr = (id) => teams[4].roster.find((q) => q.id === id).ovr;
+    const at = wr.indexOf(p.id);
+    expect(at).toBeGreaterThanOrEqual(0);
+    if (at > 0) expect(ovr(wr[at - 1])).toBeGreaterThanOrEqual(p.ovr); // everyone ahead of him is rated higher
+    if (at < wr.length - 1) expect(ovr(wr[at + 1])).toBeLessThanOrEqual(p.ovr);
     expect(p.age).toBe(21);
     expect(careerKeys('WR').slice(0, 3)).toEqual(expect.arrayContaining(['speed', 'catching']));
   });
@@ -40,6 +44,7 @@ describe('career mode', () => {
   it('locks control to the player: CPU snaps, he never switches, off-field snaps run CPU vs CPU', () => {
     const teams = generateLeagueRosters(defaultTeams(), 13);
     const p = createCareerPlayer(teams[0], { first: 'C', last: 'D', pos: 'WR', number: 81 }, new RNG(5));
+    teams[0].depth.WR = [p.id, ...teams[0].depth.WR.filter((id) => id !== p.id)]; // he's earned the start
     const s = new GameSession({ teams: [teams[0], teams[1]], settings: { quarterMinutes: 2, lockPlayer: p.id, sliders: { injuries: 0 } }, humanTeam: 0, seed: 9 });
     const f = emptyFrame();
     let onField = 0, watched = 0, plays = 0, lastSim = null;
@@ -205,4 +210,15 @@ describe('career over several seasons', () => {
     expect(f.year).toBe(2030);
     expect(f.career.points * 100 + f.career.xp).toBeGreaterThan(300);
   }, 120000);
+});
+
+describe('championship MVP', () => {
+  it('goes to the best game on the winning side', async () => {
+    const { championshipMVP } = await import('../src/franchise/franchise.js');
+    const f = { year: 2027, news: [] };
+    const info = (rid) => ({ 1: { name: 'A. One', pos: 'QB', team: 'AAA', teamIdx: 0 }, 2: { name: 'B. Two', pos: 'HB', team: 'BBB', teamIdx: 1 }, 3: { name: 'C. Three', pos: 'WR', team: 'AAA', teamIdx: 0 } })[rid];
+    const a = championshipMVP(f, { home: 0, away: 1 }, [24, 17], { 1: { passAtt: 30, passCmp: 20, passYds: 250, passTD: 1 }, 2: { rushYds: 300, rushTD: 3 }, 3: { rec: 9, recYds: 160, recTD: 2 } }, info);
+    expect(a.rid).toBe(3);
+    expect(f.awards[2027][0].award).toMatch(/MVP/);
+  });
 });

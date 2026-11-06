@@ -36,9 +36,26 @@ export function createCareerPlayer(team, { first, last, pos, number }, rng) {
   p.career = true;
   p.potential = 90;
   addPlayer(team, p);
-  for (const slot of Object.keys(DEPTH_SLOTS)) if (DEPTH_SLOTS[slot][0] === pos) placeInDepth(team, slot, p.id, 0);
   p.ovr = overall(p);
+  slotCareer(team, p);
   return p;
+}
+
+/**
+ * He isn't handed the job: he slides into his position's depth chart behind everyone rated higher.
+ * upOnly: after training, he only moves past players he now out-rates (never dropped by it).
+ */
+export function slotCareer(team, p, upOnly = false) {
+  const ovrOf = (id) => team.roster.find((q) => q.id === id)?.ovr ?? 0;
+  for (const slot of Object.keys(DEPTH_SLOTS)) {
+    if (DEPTH_SLOTS[slot][0] !== p.pos) continue;
+    const list = (team.depth[slot] || []).filter((id) => id !== p.id);
+    let at = list.findIndex((id) => ovrOf(id) < p.ovr);
+    if (at < 0) at = list.length;
+    const cur = (team.depth[slot] || []).indexOf(p.id);
+    if (upOnly && cur >= 0 && cur <= at) continue;
+    placeInDepth(team, slot, p.id, at);
+  }
 }
 
 export function startCareer(f, p) {
@@ -81,7 +98,7 @@ export function awardCareerGame(f, teams, g, lines) {
 }
 
 /** Spend points on one rating. Returns false when he can't afford it or it's maxed. */
-export function trainRating(f, p, key) {
+export function trainRating(f, p, key, team = null) {
   const v = p.ratings[key] ?? 40;
   const cost = upgradeCost(v);
   if (v >= 99 || f.career.points < cost) return false;
@@ -89,6 +106,7 @@ export function trainRating(f, p, key) {
   f.career.spent += cost;
   p.ratings[key] = v + 1;
   p.ovr = overall(p);
+  if (team) slotCareer(team, p, true); // earn the promotion
   return true;
 }
 

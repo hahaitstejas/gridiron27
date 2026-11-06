@@ -1,7 +1,7 @@
 // Tournament screens: setup, the bracket (logos, scores, your path) and the champion. State lives in localStorage
 // `g27.tournament` (franchise/tournament.js is the logic).
 import { el } from './nav.js';
-import { ICONS } from './screens.js';
+import { ICONS, alphaOrder } from './screens.js';
 import { logoCanvas } from '../render/logo.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
 import { createTournament, TOURNAMENT_SIZES, roundName, userGame, winnerOf, eliminated, simTournamentGame, advanceTournament, currentRound, seedOf, recordResult } from '../franchise/tournament.js';
@@ -32,7 +32,7 @@ export class TournamentUI {
       return row;
     };
     const rows = [
-      option('Your team', teams.map((_, i) => i), 'userTeam', (i) => `${teams[i].city} ${teams[i].name}`),
+      option('Your team', alphaOrder(teams), 'userTeam', (i) => `${teams[i].city} ${teams[i].name}`),
       option('Bracket', TOURNAMENT_SIZES, 'size', (n) => `${n} teams`),
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`),

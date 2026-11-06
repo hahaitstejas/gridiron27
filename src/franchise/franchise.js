@@ -165,6 +165,7 @@ export function recordGame(f, teams, g, score, lines, injuries = []) {
   addStats(f, lines, info);
   gameNews(f, teams, g);
   checkGameRecords(f, lines, info);
+  if (f.playoffs?.rounds?.[3]?.[0] === g) championshipMVP(f, g, score, lines, info);
   if (f.career && (g.home === f.userTeam || g.away === f.userTeam)) awardCareerGame(f, teams, g, lines);
   // Lines since the last development tick (development.js grows players every two weeks).
   for (const [rid, l] of Object.entries(lines || {})) ((f.recentLines ||= {})[rid] ||= []).push(l);
@@ -182,6 +183,29 @@ export function recordGame(f, teams, g, score, lines, injuries = []) {
     }
   }
   if (f.injuryReport?.length > 40) f.injuryReport.length = 40;
+}
+
+/** The title game's MVP: the best game on the winning side (stat-line game score). */
+export function championshipMVP(f, g, score, lines, info) {
+  const win = score[0] >= score[1] ? g.home : g.away;
+  const gs = (l) => (l.passYds || 0) * 0.04 + (l.passTD || 0) * 4 - (l.int || 0) * 3 + (l.rushYds || 0) * 0.1 + (l.rushTD || 0) * 6
+    + (l.recYds || 0) * 0.1 + (l.recTD || 0) * 6 + (l.tackles || 0) * 0.8 + (l.sacks || 0) * 4 + (l.defInt || 0) * 6 + (l.ff || 0) * 4;
+  let best = null, bs = -Infinity;
+  for (const [rid, l] of Object.entries(lines || {})) {
+    const i = info(rid);
+    if (i.teamIdx !== win) continue;
+    const v = gs(l);
+    if (v > bs) { bs = v; best = { rid: +rid, i, l }; }
+  }
+  if (!best) return null;
+  const l = best.l, n = (v) => Math.round(v || 0);
+  const line = best.i.pos === 'QB' ? `${l.passCmp || 0}/${l.passAtt || 0}, ${n(l.passYds)} yds, ${l.passTD || 0} TD`
+    : (l.rushYds || 0) > (l.recYds || 0) ? `${l.rushAtt || 0} car, ${n(l.rushYds)} yds, ${(l.rushTD || 0) + (l.recTD || 0)} TD`
+      : (l.recYds || 0) > 0 ? `${l.rec || 0} rec, ${n(l.recYds)} yds, ${l.recTD || 0} TD` : `${l.tackles || 0} tkl, ${l.sacks || 0} sacks, ${l.defInt || 0} INT`;
+  const a = { award: `${LEAGUE.championship || 'Championship'} MVP`, rid: best.rid, name: best.i.name, pos: best.i.pos, team: best.i.team, line };
+  ((f.awards ||= {})[f.year] ||= []).push(a);
+  addNews(f, `${a.award}: ${a.name}, ${a.pos}, ${a.team} (${line})`, 'award');
+  return a;
 }
 
 /** A week passes: injured players get a week closer to returning (IR players serve at least 4 games). */

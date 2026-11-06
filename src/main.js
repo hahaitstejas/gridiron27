@@ -546,9 +546,12 @@ function pauseInfo(s) {
   const ord = (q) => q > 4 ? 'OT' : ['1st', '2nd', '3rd', '4th'][q - 1];
   const down = m.phase === 'scrimmage' ? `${downText(m)} · ${m.teams[m.possession].abbr} ball on the ${yardLineText(m)}` : m.phase === 'try' ? 'Extra point try' : 'Kickoff';
   const mine = s.humanTeam !== null ? m.teams[s.humanTeam] : home;
-  // Each side's starting quarterback and his game so far (the pause screen's matchup).
+  // Each side's quarterback in this game and his line so far (the pause screen's matchup): whoever has thrown the
+  // most, else the first healthy QB on the depth chart (a starter hurt before the game isn't the one playing).
   const qbs = [0, 1].map((t) => {
-    const id = s.teams[t].depth.QB?.[0];
+    const out = new Set([...(s.settings.unavailable?.[t] || []), ...s.injuries.filter((i) => i.team === t && i.status !== 'returned').map((i) => i.rid)]);
+    const thrown = Object.values(m.stats.players).filter((x) => x.team === t && x.passAtt > 0).sort((x, y) => y.passAtt - x.passAtt)[0];
+    const id = thrown ? thrown.rid : (s.teams[t].depth.QB || []).find((q) => !out.has(q));
     const p = s.teams[t].roster.find((q) => q.id === id);
     if (!p) return null;
     const st = m.stats.players[`${t}:${p.id}`] || {};

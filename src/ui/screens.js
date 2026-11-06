@@ -348,7 +348,7 @@ export class Screens {
         })));
       }
       const onSide = players().filter((i) => st.cols[i] !== 1);
-      note.textContent = !onSide.length ? 'Watch: CPU vs CPU' : onSide.length === 2 ? (st.cols[onSide[0]] === st.cols[onSide[1]] ? `Co-op: both players on the ${sideKey(st.cols[onSide[0]])} team (P2 runs a receiver / a defender)` : 'Two players, head to head') : `P${onSide[0] + 1} plays the ${sideKey(st.cols[onSide[0]])} team`;
+      note.textContent = (players().length < 2 ? 'P2: press A on a second controller to join · ' : '') + (!onSide.length ? 'Watch: CPU vs CPU' : onSide.length === 2 ? (st.cols[onSide[0]] === st.cols[onSide[1]] ? `Co-op: both players on the ${sideKey(st.cols[onSide[0]])} team (P2 runs a receiver / a defender)` : 'Two players, head to head') : `P${onSide[0] + 1} plays the ${sideKey(st.cols[onSide[0]])} team`);
       pads.append(note);
       menuHost.innerHTML = '';
       if (st.menu) {
@@ -422,7 +422,9 @@ export class Screens {
     this.nav.set([]);
     draw();
     this.custom = (frames) => {
-      let changed = false;
+      // A controller that just joined (its A press is swallowed) shows up at once.
+      let changed = players().length !== st.seen;
+      st.seen = players().length;
       for (const i of players()) {
         const f = frames[i];
         if (!f) continue;

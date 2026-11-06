@@ -1365,3 +1365,9 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .screen .mm2-card.nav-item.focused svg { stroke: #fff !important; }
 .mm2-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; display: flex; align-items: center; gap: 26px; padding: 0 30px; background: #000; font: 500 14px var(--fo); letter-spacing: 1px; }
 .mm2-bar span { display: inline-flex; align-items: center; gap: 8px; }
+/* Team Select: the controller note floats just above the pad icons (below them it hid behind the hint bar). */
+.ts-pads { position: relative; }
+.ts-pads .ts-padnote { position: absolute; left: 0; right: 0; top: -14px; margin: 0; font-size: 14px; }
+.screen.ts-screen { padding: 34px 3vw 60px; }
+.screen.ts-screen .ts-pads { margin-top: 18px; padding-top: 2px; padding-bottom: 2px; }
+.screen.ts-screen .ts-padcol { min-height: 54px; }

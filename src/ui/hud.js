@@ -263,6 +263,24 @@ export class Hud {
     A.dd.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(Math.min(s.y, bugTop - 90))}px) translate(-100%, -50%) skewX(-12deg)`;
   }
 
+  /**
+   * Replay bumper (slide 5): chevron stripes in the two teams' colors sweep in around a GRIDIRON 27 card and out again,
+   * covering the cut into and out of an instant replay. Lives on <body> so hideAll() can't cut it short.
+   */
+  wipe(c1 = '#173a8a', c2 = '#c8102e') {
+    let w = document.getElementById('wipe');
+    if (!w) {
+      w = document.createElement('div');
+      w.id = 'wipe';
+      w.innerHTML = `<div class="wp-top"></div><div class="wp-bot"></div><div class="wp-card"><span>GRIDIRON</span><img alt=""/><span>27</span></div>`;
+      document.body.append(w);
+    }
+    w.querySelector('img').src = this.leagueLogo();
+    w.style.setProperty('--c1', c1);
+    w.style.setProperty('--c2', c2);
+    w.classList.remove('go'); void w.offsetWidth; w.classList.add('go');
+  }
+
   /** Instant replay overlay (null hides it). */
   replayView(r) {
     const el = this.$('replay');

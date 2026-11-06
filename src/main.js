@@ -337,6 +337,8 @@ function startReplay(auto = false, reel = null) {
   if (!rec) { reel?.onEnd?.(); return; }
   const player = new ReplayPlayer(rec);
   const dir = player.ghost.dir;
+  const tc = session.teams.map((t) => t.colors.primary);
+  hud.wipe(tc[1], tc[0]); // away color on top, home below
   replay = { player, playing: true, speed: 1, yaw: dir > 0 ? Math.PI - 0.55 : -0.55, pitch: 0.42, dist: 24, fresh: true, auto: auto || !!reel, endT: 0, dir, angle: 0, reel };
   if (reel) hud.ticker(`Highlight ${(reel.i ?? 0) + 1} of ${reel.items.length}: ${reel.items[reel.i ?? 0].label}`);
   app = 'replay';
@@ -349,6 +351,7 @@ function startReplay(auto = false, reel = null) {
 
 function endReplay(skipAll = false) {
   const reel = replay?.reel;
+  if (session) { const tc = session.teams.map((t) => t.colors.primary); hud.wipe(tc[1], tc[0]); }
   if (reel) {
     reel.i = (reel.i ?? 0) + 1;
     replay = null;

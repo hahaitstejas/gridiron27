@@ -152,7 +152,7 @@ export class PlayCallScreen {
     const ch = Math.round(cw * 0.46);
     const cards = grp.plays.slice(this.page * 3, this.page * 3 + 3).map((p, i) => this.playCard(p, ['X', 'A', 'Y'][i], cw, ch));
     this.cards = cards;
-    const crumb = el('div.pc2-crumb', { text: `${sideLabel} / ${grp.family} / ${grp.name}`.toUpperCase() });
+    const crumb = el('div.pc2-crumb', { text: `${m.teams[s.humanTeam]?.abbr || sideLabel} / SELECT A PLAY`.toUpperCase() });
     const pager = el('div.pc2-pager', { html: pages > 1 ? `◀ ${this.page + 1} / ${pages} ▶` : '' });
     const help = el('div.pc-help', { html:
       `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> formation &nbsp; ◀▶ more plays &nbsp; ▲▼ group &nbsp; <b class="btn X">X</b> <b class="btn A">A</b> <b class="btn Y">Y</b> call play` +

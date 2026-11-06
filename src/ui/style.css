@@ -1106,3 +1106,25 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .h31-card .h31-clbl { position: absolute; left: 16px; bottom: 12px; font: 600 24px/1 var(--fo); letter-spacing: 1px; text-transform: uppercase; }
 .h31-card.focused { transform: translateY(-4px); box-shadow: 0 0 0 3px #fff, 0 12px 30px rgba(0,0,0,0.5); }
 .h31-help { position: absolute; left: 26px; bottom: 18px; font: 500 15px var(--fb); color: var(--dim); }
+
+/* Play call (slide 3): a see-through band over the field, so the huddle stays in view; situation lives in the scorebug. */
+#playcall { background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.38) 18%, rgba(0,0,0,0.55) 100%) !important; min-height: 0 !important; max-height: 56vh; padding: 8px 26px 6px !important; }
+#playcall .pc2-top { display: none; }
+#playcall .pc2-strip { margin: 0 0 8px; }
+#playcall .pc2-pill { font: 500 15px var(--fo); letter-spacing: 0.5px; color: rgba(255,255,255,0.8); }
+#playcall .pc2-pill.on { background: #fff; color: #000; border-radius: 3px; }
+#playcall .pc2-count { font: 500 13px var(--fo); }
+#playcall .pc2-art { background: transparent; border: 0; box-shadow: none; border-radius: 2px; }
+#playcall .pc2-name { font: 600 19px/1.05 var(--fo); letter-spacing: 0.5px; }
+#playcall .pc2-sub { font: 500 12px var(--fo); }
+#playcall .pc2-crumb { font: 500 11px var(--fo); opacity: 0.7; }
+#playcall .pc-help { display: table; margin: 6px auto 0; padding: 5px 16px; border-radius: 16px; background: rgba(0,0,0,0.72); font: 500 12px var(--fo); letter-spacing: 0.5px; text-transform: uppercase; }
+
+/* Scorebug (slides 3 + 6): league logo in the wordmark; a score takes over the middle in the scoring team's color. */
+.sb3-brand { display: flex; align-items: center; gap: 2px; font-family: var(--fo); font-weight: 500; }
+.sb3-brand .sb3-lg { width: 26px; height: 26px; object-fit: contain; }
+.sb3-take { flex: 5 1 0; display: flex; align-items: center; justify-content: center; gap: 18px; color: #fff; overflow: hidden;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 70%, #000), var(--tc) 50%, color-mix(in srgb, var(--tc) 70%, #000)); animation: sb3take 0.35s ease-out; }
+.sb3-take img { height: 80%; }
+.sb3-take b { font: 700 34px/1 var(--fo); letter-spacing: 6px; }
+@keyframes sb3take { from { clip-path: inset(0 50% 0 50%); } to { clip-path: inset(0 0 0 0); } }

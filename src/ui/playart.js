@@ -18,7 +18,8 @@ function setup(w, h, dark = false) {
   if (dark) {
     // Play-call style: dark field, faint yard lines with sideways numbers, gold line of scrimmage.
     const grd = g.createLinearGradient(0, 0, 0, h);
-    grd.addColorStop(0, '#15191f'); grd.addColorStop(1, '#0b0e12');
+    // Translucent: the field and the huddle show through the play-call overlay (UPDATE 3.1 slide 3).
+    grd.addColorStop(0, 'rgba(21,25,31,0.62)'); grd.addColorStop(1, 'rgba(11,14,18,0.78)');
     g.fillStyle = grd;
     g.fillRect(0, 0, w, h);
     g.strokeStyle = 'rgba(255,255,255,0.16)';

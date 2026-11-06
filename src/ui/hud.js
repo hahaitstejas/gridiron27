@@ -4,6 +4,7 @@ import { DRILLS } from '../game/drills.js';
 import { crowdNoise } from '../game/penalties.js';
 import { KEY_HELP } from '../input/keyboard.js';
 import { logoDataURL } from '../render/logo.js';
+import { LEAGUE } from '../data/leagueInfo.js';
 import { downText, yardLineText, clockText } from '../game/match.js';
 import { METER } from '../sim/kicking.js';
 
@@ -128,6 +129,13 @@ export class Hud {
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
   hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
+  leagueLogo() {
+    const l = LEAGUE.logo;
+    const key = ['league', l.shape, l.text, l.bg, l.fg, l.border, l._img ? l._img.src.length + l._img.src.slice(-16) : ''].join('|');
+    if (!this._logos.has(key)) this._logos.set(key, logoDataURL(l, 48, false));
+    return this._logos.get(key);
+  }
+
   logoFor(team) {
     const l = team.logo;
     const key = [team.id, l.shape, l.text, l.bg, l.fg, l.border, l._img ? l._img.src.length + l._img.src.slice(-16) : ''].join('|');
@@ -142,6 +150,9 @@ export class Hud {
       const what = session.match.lastScore?.what || 'Score';
       const big = /touchdown|pick six/i.test(what) ? (/pick six/i.test(what) ? 'PICK SIX!' : 'TOUCHDOWN!') : /field goal/i.test(what) ? 'FIELD GOAL' : /safety/i.test(what) ? 'SAFETY' : /PAT/.test(what) ? 'EXTRA POINT' : /2-point/.test(what) ? 'TWO-POINT CONVERSION' : what.toUpperCase();
       this.banner(big, msg.text.replace(/^[^!]*!\s*/, ''), 2.6, 'score');
+      // The scorebug's middle turns into the scoring team's TOUCHDOWN / FIELD GOAL bar for a few seconds (slide 6).
+      const st = session.match.lastScore?.team;
+      if (st !== undefined && !/PAT|2-point/.test(what)) { this.bugTake = { text: big.replace(/!$/, ''), team: st, until: performance.now() + 5000 }; this._bugKey = null; }
     } else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
     else if (k === 'penalty') this.flag(msg.text);
     else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
@@ -510,7 +521,8 @@ export class Hud {
     const flag = !m.over && (session.state === 'penalty' || ((session.state === 'live') && sim?.fouls?.length > 0));
     const recs = session.records || ['0-0', '0-0'];
     const blink = this.toBlink && performance.now() < this.toBlink.until ? this.toBlink.team : -1;
-    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink].join('|');
+    const take = this.bugTake && performance.now() < this.bugTake.until ? this.bugTake : null;
+    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
     // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
@@ -528,10 +540,10 @@ export class Hud {
     const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? downText(m).toUpperCase().replace(/(\d)(ST|ND|RD|TH)/, '$1<sup>$2</sup>') : downText(m).toUpperCase();
     const pc = m.over || m.phase !== 'scrimmage' ? '' : `<span class="sb3-pc${m.playClock <= 10 ? ' low' : ''}">:${String(Math.ceil(m.playClock)).padStart(2, '0')}</span>`;
     bug.innerHTML = `<div class="sb3">
-      <div class="sb3-brand">GRIDIRON 27</div>
-      ${logo(1)}
+      <div class="sb3-brand">GRIDIRON<img class="sb3-lg" src="${this.leagueLogo()}" alt=""/>27</div>
+      ${take ? `<div class="sb3-take" style="--tc:${m.teams[take.team].colors.primary}"><img src="${this.logoFor(m.teams[take.team])}" alt=""/><b>${take.text}</b></div>` : `${logo(1)}
       <div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>
-      ${logo(0)}
+      ${logo(0)}`}
       <div class="sb3-clock">${m.over ? '' : `<span class="sb3-q">${ord(m.quarter)}</span><b>${clockText(m.clock)}</b>`}${pc}</div>
       <div class="sb3-dd${flag ? ' flag' : ''}">${flag ? 'FLAG' : dd}</div>
     </div>`;

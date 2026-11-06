@@ -374,6 +374,14 @@ navy gradients, filled panels with no outlines, the focused item white; team col
   week strip, both teams big with OVR/OFF/DEF, kickoff time / venue / weather, Play / Sim / Preview / Advance / Sim to Playoffs.
   Standings = team-colored division columns with seeds; League Leaders opens on an overview (six categories, top three with photos).
   Draft: clock panel, the focused prospect's header, the board, the wall of picks so far, your roster needs.
+- UPDATE 3.2 (the user's reference screenshots, black / white): Edit League and Rosters are tile hubs (`rx-tile`: title top-left,
+  big line icon bottom-right; `rosterHub` in rosterEditor.js: Manage Players, Create Player, Order Depth Chart, Trade Players,
+  Spreadsheets). Manage Players (`rosterScreen`, ti -1 = all teams) is one sortable table (LB/RB team, LT/RT position, ◀▶ column,
+  X sort; rating columns = SPD STR AGI ACC AWR + the position's `OVERALL_WEIGHTS` keys) under the focused player's header
+  (`playerHero`: team-colored photo panel, first name thin / last name bold, bio, traits); A = Actions panel (Edit / Trade /
+  Release). Player card (`playerCard`) = header + LB/RB tabs Player Info / Ratings (attribute tiles with bars) / Appearance.
+  Depth chart (`depthChartScreen`) = one screen: positions on the left, the picked position's order + available on the right.
+  Class prefixes rx- / rt- / rh- / pcd- / dx- (pc2- belongs to the play-call screen).
 - Quick Play Team Select, pause, post-game etc. keep their layouts with the new type / panels.
 Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest item in that direction by on-screen
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'

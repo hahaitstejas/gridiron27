@@ -1,4 +1,5 @@
 import { el } from './nav.js';
+import { ICONS } from './screens.js';
 import { serializeLeague, deserializeLeague } from '../data/league.js';
 import { LEAGUE, setLeagueInfo } from '../data/leagueInfo.js';
 import { defaultTeams } from '../data/teams.js';
@@ -92,19 +93,25 @@ export class LeagueUI {
     const S = this.screens;
     this.savesBack = null;
     S.extraButtons = null;
-    const item = (label, sub, fn) => S.menuItem(label, sub, fn);
+    // Tiles like the Rosters hub (title top-left, line icon bottom-right, focused one white).
+    const item = (label, sub, icon, fn) => {
+      const t = el('div.rx-tile', {}, el('div.rx-title', { text: label }), el('div.rx-sub', { text: sub }), el('div.rx-ico', { html: ICONS[icon] || '' }));
+      t.activate = fn;
+      return t;
+    };
     const items = [
-      item('Rosters', 'Edit players and ratings, add, release or trade', () => this.onRosters?.()),
-      item('Teams & Logos', 'Names, colors, conference, logo builder', () => this.onTeams?.()),
-      item('Depth Charts', 'Starters and rotation for any team', () => this.onDepth?.()),
-      item('Playbook', 'Design your own plays (My Plays)', () => this.onPlaybook?.()),
-      item('Spreadsheets', 'Export or import teams, rosters and depth charts as CSV', () => this.onSpreadsheets?.()),
-      item('Saves & Files', 'Save slots, back up to a file, start over', () => this.saves()),
+      item('Rosters', 'Players and ratings: edit, create, trade, release', 'people', () => this.onRosters?.()),
+      item('Teams & Logos', 'Names, colors, conference, logo builder', 'shield', () => this.onTeams?.()),
+      item('Depth Charts', 'Starters and rotation for any team', 'list', () => this.onDepth?.()),
+      item('Playbook', 'Design your own plays (My Plays)', 'clipboard', () => this.onPlaybook?.()),
+      item('Spreadsheets', 'Export or import teams, rosters and depth charts', 'chart', () => this.onSpreadsheets?.()),
+      item('Saves & Files', 'Save slots, back up to a file, start over', 'disk', () => this.saves()),
     ];
-    S.frame('menu-screen', el('div.logo-small', { html: 'LEAGUE' }),
-      el('div.league-status', { text: `${this.name}${this.slot ? '' : ' (not saved yet)'}${this.status ? ' · ' + this.status : ''}` }),
-      el('div.menu-list', {}, items));
-    S.nav.set(items, { onBack: this.onExit, index: focus });
+    S.frame('mono-screen rx-screen', el('h1', { text: 'Edit League' }),
+      el('div.rx-status', { text: `${this.name}${this.slot ? '' : ' (not saved yet)'}${this.status ? ' · ' + this.status : ''}` }),
+      el('div.rx-grid', {}, items),
+      el('div.mm2-bar', { html: '<span><b class="btn A">A</b> SELECT</span><span><b class="btn B">B</b> BACK</span>' }));
+    S.nav.set(items, { spatial: true, onBack: this.onExit, index: focus });
   }
 
   async saves(focus = 0, back = null) {

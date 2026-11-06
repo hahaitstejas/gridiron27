@@ -19,7 +19,7 @@ import { loadLocalLeague } from './data/localLeague.js';
 import { deserializeLeague } from './data/league.js';
 import { activeSlot, readSave, setActiveSlot } from './data/storage.js';
 import { LeagueUI, attachLogos, baseLeagueSlot } from './ui/league.js';
-import { rosterScreen } from './ui/rosterEditor.js';
+import { rosterScreen, rosterHub } from './ui/rosterEditor.js';
 import { teamEditor, leagueEditor } from './ui/teamEditor.js';
 import { LEAGUE } from './data/leagueInfo.js';
 import { spreadsheetScreen } from './ui/spreadsheets.js';
@@ -175,7 +175,13 @@ const franchiseUI = new FranchiseUI({
 });
 league.onPlaybook = () => playbookScreen({ screens, teams, onBack: () => league.menu(3) });
 league.onSpreadsheets = () => spreadsheetScreen({ screens, teams, prefs, onBack: () => league.menu(4), onChange: () => { savePrefs(prefs); league.changed(); } });
-league.onRosters = () => pickTeam('Rosters: pick a team', (i) => rosterScreen(rosterCtx, i), () => league.menu(0));
+// Rosters hub (Manage Players, Create Player, Depth Chart, Trade, Spreadsheets); B goes back where it was opened from.
+league.onRosters = (back = () => league.menu(0)) => {
+  const ctx = { ...rosterCtx, onBack: back,
+    onDepth: (b) => screens.teamPicker(teams, prefs.home, { title: 'Depth chart: pick a team', onPick: (i) => depthChartScreen(screens, teams[i], { onDone: b, onChange: () => league.changed() }), onBack: b }),
+    onSpreadsheets: (b) => spreadsheetScreen({ screens, teams, prefs, onBack: b, onChange: () => { savePrefs(prefs); league.changed(); } }) };
+  rosterHub(ctx);
+};
 league.onDepth = () => {
   // Pick a team, then edit its depth chart.
   const pick = (i) => depthChartScreen(screens, teams[i], { onDone: () => league.menu(2), onChange: () => league.changed() });
@@ -203,6 +209,7 @@ let snapCam = true;
 let lastSim = null;
 let padName = '';
 
+let menuFocus = 0; // which home-menu mode to open on (set just before toMenu by screens that came from one)
 function toMenu() {
   restoreDepth();
   // Leaving a franchise: its trades and signings stay in its save; the menus get the real league back.
@@ -218,16 +225,17 @@ function toMenu() {
     onDrills: showDrills,
     onScenarios: showScenarios,
     onLeague: () => league.menu(),
-    onRosters: () => league.onRosters(),
+    onRosters: () => league.onRosters(() => { menuFocus = 2; toMenu(); }),
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
     onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
     onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
     onSaves: () => league.saves(0, toMenu),
   }, {
-    home: teams[prefs.home], away: teams[prefs.away], mine: teams[prefs.home], leagueName: league.slot ? league.name : null, teams, leagueLogo: LEAGUE.logo,
+    focus: menuFocus, home: teams[prefs.home], away: teams[prefs.away], mine: teams[prefs.home], leagueName: league.slot ? league.name : null, teams, leagueLogo: LEAGUE.logo,
     franchise: league.franchise ? { team: teams[league.franchise.userTeam]?.name, year: league.franchise.year } : null,
   });
+  menuFocus = 0;
 }
 
 let lastStart = null;

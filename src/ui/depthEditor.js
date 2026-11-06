@@ -1,4 +1,5 @@
 import { el } from './nav.js';
+import { playerHero } from './rosterEditor.js';
 import { DEPTH_SLOTS, eligibleForSlot, slotRating, placeInDepth, removeFromDepth } from '../data/depthChart.js';
 
 const SLOT_NAMES = {
@@ -28,73 +29,82 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
     return el('span.dc-energy', {}, el('i', { style: { width: `${Math.round(e * 100)}%`, background: e > 0.75 ? '#3fbf3f' : e > 0.5 ? '#e8c32c' : '#e0403a' } }));
   };
 
-  function slots(focus = 0) {
-    screens.extraButtons = null;
-    const cards = Object.keys(DEPTH_SLOTS).map((slot) => {
-      const starter = byId.get(team.depth[slot]?.[0]);
-      const card = el(`div.dc-slot${starter && out(starter) ? '.hurt' : ''}`, {},
-        el('div.dc-slot-name', { text: slot }),
-        el('div.dc-slot-player', { text: starter ? who(starter) + hurt(starter) : '—' }),
-        el('div.dc-slot-sub', { text: starter ? `${SLOT_NAMES[slot]} · ${slotRating(starter, slot)} OVR` : SLOT_NAMES[slot] }));
-      card.activate = () => edit(slot);
-      return card;
-    });
-    screens.frame('depth-screen',
-      el('h1', { text: `${team.city} ${team.name}: depth chart` }),
-      inGame ? el('div.league-status', { text: 'Changes made here last for this game only; your saved depth chart is back for the next one. Players marked OUT are skipped automatically.' }) : null,
-      el('div.dc-grid', {}, cards),
-      el('div.setup-help', { html: `<b class="btn A">A</b> edit position &nbsp; <b class="btn X">X</b> play the backups &nbsp; <b class="btn Y">Y</b> ${inGame ? 'starters back in' : 'auto (best first)'} &nbsp; <b class="btn B">B</b> done` }));
-    screens.nav.set(cards, { columns: 6, onBack: () => { screens.extraButtons = null; onDone(); }, index: focus });
-    // Blowouts: X sends the backups in at every position (worst first, kickers and returners untouched); Y puts the
-    // best players back on top.
-    screens.extraButtons = (f) => {
-      if (!f.pressed.X && !f.pressed.Y) return;
-      const backups = !!f.pressed.X;
-      for (const slot of Object.keys(DEPTH_SLOTS)) {
-        if (['K', 'P', 'KR', 'PR'].includes(slot)) continue;
-        const ids = [...new Set([...(team.depth[slot] || []), ...eligibleForSlot(team, slot).map((p) => p.id)])].filter((id) => byId.has(id) && !byId.get(id).injury?.ir);
-        team.depth[slot] = ids.sort((a, b) => (slotRating(byId.get(a), slot) - slotRating(byId.get(b), slot)) * (backups ? 1 : -1)).slice(0, Math.max(team.depth[slot]?.length || 0, 3));
-      }
-      onChange();
-      slots(screens.nav.index);
-    };
-  }
+  // One screen (the user's reference): positions down the left, the picked position's depth order and the players
+  // who could play it on the right, with the starter's header on top. ▲▼ moves, ▶ goes into the order, ◀ back out.
+  const SLOTS = Object.keys(DEPTH_SLOTS);
+  let cur = 0;
+  function slots(focus = 0) { cur = Math.max(0, focus); draw('left'); }
+  function edit(slot, focusIdx = 0, holding = null) { cur = SLOTS.indexOf(slot); draw('right', focusIdx, holding); }
 
-  function edit(slot, focusIdx = 0, holding = null) {
+  function draw(side = 'left', focusIdx = 0, holding = null) {
+    screens.extraButtons = null;
+    const slot = SLOTS[cur];
+    const left = SLOTS.map((sl, i) => {
+      const starter = byId.get(team.depth[sl]?.[0]);
+      const it = el(`div.dx-pos${i === cur ? '.on' : ''}${starter && out(starter) ? '.hurt' : ''}`, {},
+        el('b', { text: sl }), el('span', { text: starter ? `${starter.first[0]}. ${starter.last}` : '—' }), el('em', { text: starter ? String(slotRating(starter, sl)) : '' }));
+      it.onfocusitem = () => { if (i !== cur && !holding) { cur = i; queueMicrotask(() => draw('left')); } };
+      it.activate = () => draw('right', 0);
+      return it;
+    });
     const list = team.depth[slot] || [];
-    const rows = [];
+    const row = (p, rank, cls = '') => el(`div.dx-row${cls}${out(p) ? '.hurt' : ''}`, {},
+      el('span.dx-rank', { text: rank }), el('span.dx-name', { text: who(p) + hurt(p) }), el('span.dx-c', { text: p.pos }), el('span.dx-c', { text: String(p.age) }),
+      el('span.dx-c.ovr', { text: String(slotRating(p, slot)) }), fresh(p) || el('span'));
     const depthRows = list.map((id, i) => {
       const p = byId.get(id);
-      const row = el(`div.dc-row${holding === id ? '.holding' : ''}${out(p) ? '.hurt' : ''}`, {},
-        el('span.dc-rank', { text: String(i + 1) }), el('span.dc-name', { text: who(p) + hurt(p) }), el('span.dc-pos', { text: p.pos }),
-        el('span.dc-ovr', { text: String(slotRating(p, slot)) }), fresh(p));
-      row.activate = () => edit(slot, i, holding === id ? null : id); // A: pick up / put down
-      row.onfocusitem = () => {
+      const r = row(p, String(i + 1), holding === id ? '.holding' : '');
+      r.activate = () => draw('right', i, holding === id ? null : id); // A: pick up / put down
+      r.onfocusitem = () => {
         // Moving the stick while holding a player carries him to the new spot.
-        if (holding && holding !== id) { placeInDepth(team, slot, holding, i); onChange(); edit(slot, i, holding); }
+        if (holding && holding !== id) { placeInDepth(team, slot, holding, i); onChange(); queueMicrotask(() => draw('right', i, holding)); }
       };
-      row.removePlayer = () => { removeFromDepth(team, slot, id); onChange(); edit(slot, Math.min(i, team.depth[slot].length - 1)); };
-      return row;
+      r.removePlayer = () => { removeFromDepth(team, slot, id); onChange(); draw('right', Math.min(i, team.depth[slot].length - 1)); };
+      r.navTo = { left: left[cur] };
+      return r;
     });
-    rows.push(...depthRows);
     const avail = eligibleForSlot(team, slot).slice(0, 12).map((p) => {
-      const row = el(`div.dc-row.avail${out(p) ? '.hurt' : ''}`, {},
-        el('span.dc-rank', { text: '+' }), el('span.dc-name', { text: who(p) + hurt(p) }), el('span.dc-pos', { text: p.pos }),
-        el('span.dc-ovr', { text: String(slotRating(p, slot)) }), fresh(p));
-      row.activate = () => { placeInDepth(team, slot, p.id, team.depth[slot]?.length ?? 0); onChange(); edit(slot, team.depth[slot].length - 1, p.id); };
-      return row;
+      const r = row(p, '+', '.avail');
+      r.activate = () => { placeInDepth(team, slot, p.id, team.depth[slot]?.length ?? 0); onChange(); draw('right', team.depth[slot].length - 1, p.id); };
+      r.navTo = { left: left[cur] };
+      return r;
     });
-    rows.push(...avail);
-    screens.frame('depth-screen',
-      el('h1', { text: `${SLOT_NAMES[slot]} (${slot})` }),
-      el('div.dc-list', {}, el('div.dc-head', { text: 'Depth order' }), depthRows, avail.length ? el('div.dc-head', { text: 'Available' }) : null, avail),
-      el('div.setup-help', { html: holding
-        ? '▲▼ move player &nbsp; <b class="btn A">A</b> drop here'
-        : '<b class="btn A">A</b> pick up / add &nbsp; <b class="btn X">X</b> remove &nbsp; <b class="btn B">B</b> back' }));
-    screens.nav.set(rows, { columns: 1, index: Math.min(focusIdx, rows.length - 1), onBack: () => (holding ? edit(slot, focusIdx) : slots(Object.keys(DEPTH_SLOTS).indexOf(slot))) });
-    // X removes the focused depth row (handled by the app loop through screens.extraButtons).
+    const right = [...depthRows, ...avail];
+    left[cur].navTo = { right: right[0] };
+    const starter = byId.get(list[0]);
+    const head = el('div.dx-row.dx-head', {}, el('span.dx-rank', { text: '#' }), el('span.dx-name', { text: 'PLAYER' }), el('span.dx-c', { text: 'POS' }),
+      el('span.dx-c', { text: 'AGE' }), el('span.dx-c.ovr', { text: 'OVR' }), el('span', { text: energy ? 'ENERGY' : '' }));
+    screens.frame('mono-screen dx-screen',
+      el('div.dx-top', {}, el('h1', { text: `${team.name} Depth Chart` }),
+        inGame ? el('div.dx-note', { text: 'Changes last for this game only. Players marked OUT are skipped automatically.' }) : null),
+      el('div.dx-main', {},
+        el('div.dx-left', {}, left),
+        el('div.dx-right', {}, starter ? playerHero(starter, team) : el('div.dx-empty', { text: SLOT_NAMES[slot] }),
+          el('div.dx-title', { text: `${SLOT_NAMES[slot]} (${slot})` }),
+          el('div.dx-table', {}, head, el('div.dx-h', { text: 'DEPTH ORDER' }), depthRows, avail.length ? el('div.dx-h', { text: 'AVAILABLE' }) : null, avail))),
+      el('div.mm2-bar', { html: holding
+        ? '<span>▲▼ MOVE PLAYER</span><span><b class="btn A">A</b> DROP HERE</span>'
+        : side === 'left'
+          ? `<span><b class="btn A">A</b> EDIT POSITION</span><span><b class="btn X">X</b> PLAY THE BACKUPS</span><span><b class="btn Y">Y</b> ${inGame ? 'STARTERS BACK IN' : 'AUTO (BEST FIRST)'}</span><span><b class="btn B">B</b> DONE</span>`
+          : '<span><b class="btn A">A</b> PICK UP / ADD</span><span><b class="btn X">X</b> REMOVE</span><span>◀ POSITIONS</span><span><b class="btn B">B</b> BACK</span>' }));
+    const items = [...left, ...right];
+    const index = side === 'left' ? cur : left.length + Math.min(focusIdx, right.length - 1);
+    screens.nav.set(items, { spatial: true, index: Math.max(0, index),
+      onBack: () => (holding ? draw('right', focusIdx) : side === 'right' || screens.nav.index >= left.length ? draw('left') : (screens.extraButtons = null, onDone())) });
     screens.extraButtons = (f) => {
-      if (f.pressed.X && !holding) depthRows.includes(screens.nav.current) && screens.nav.current.removePlayer();
+      const onLeft = screens.nav.index < left.length;
+      if (!onLeft) { if (f.pressed.X && !holding && depthRows.includes(screens.nav.current)) screens.nav.current.removePlayer(); return; }
+      if (!f.pressed.X && !f.pressed.Y) return;
+      // Blowouts: X sends the backups in at every position (worst first, kickers and returners untouched); Y puts the
+      // best players back on top.
+      const backups = !!f.pressed.X;
+      for (const sl of SLOTS) {
+        if (['K', 'P', 'KR', 'PR'].includes(sl)) continue;
+        const ids = [...new Set([...(team.depth[sl] || []), ...eligibleForSlot(team, sl).map((p) => p.id)])].filter((id) => byId.has(id) && !byId.get(id).injury?.ir);
+        team.depth[sl] = ids.sort((a, b) => (slotRating(byId.get(a), sl) - slotRating(byId.get(b), sl)) * (backups ? 1 : -1)).slice(0, Math.max(team.depth[sl]?.length || 0, 3));
+      }
+      onChange();
+      draw('left');
     };
   }
 

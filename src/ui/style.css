@@ -1053,3 +1053,10 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .uni-clash { text-align: center; font: 600 12px var(--fd); letter-spacing: 1px; padding: 4px; color: #9fe39f; }
 .uni-clash.bad { color: #ff8a80; }
 .ts-menu:has(.uni-prev) { top: 12%; }
+
+/* Soundtrack now-playing chip (ui/soundtrack.js), menus only. Click = play / pause. */
+#musicchip { position: fixed; right: 18px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 8px; max-width: 360px;
+  padding: 6px 12px; background: rgba(0, 0, 0, 0.72); color: #fff; font: 600 13px var(--fb, 'Saira Condensed', sans-serif); letter-spacing: 0.5px; cursor: pointer; }
+#musicchip.hidden { display: none; }
+#musicchip .mc-t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#musicchip .mc-note { opacity: 0.8; }

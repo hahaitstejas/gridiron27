@@ -397,6 +397,11 @@ Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.j
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays
 (touchdowns, interceptions, big hits, onside recoveries; not in practice).
 
+Soundtrack (`ui/soundtrack.js`, Settings → Soundtrack / playlist / shuffle / volume): a YouTube or YouTube Music playlist
+link plays in a hidden YouTube embed (IFrame Player API) in menus, or menus and games (quieter in games); the browser's own
+YouTube sign-in is the login (no YouTube Music API exists). Menus show a now-playing chip (click = play / pause, and starts
+sound a browser blocked); the Mac app allows autoplay. Not in the offline file without wifi.
+
 Gameplay sliders (Settings → Gameplay sliders, `prefs.sliders`, `SLIDER_KEYS`/`defaultSliders()` in `ui/screens.js`):
 `{ user: {...}, cpu: {...}, penalties, fatigue }`, 0–100 with 50 = default. The session hands each `PlaySim` per-team
 sets (`slidersFor(team)`: user set for human teams); `sim.sl(team, key)` maps a slider to -1..1. Effects: QB accuracy

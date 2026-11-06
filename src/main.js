@@ -39,6 +39,7 @@ import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
 import { logoCanvas } from './render/logo.js';
 import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS } from './ui/screens.js';
+import { updateSoundtrack } from './ui/soundtrack.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
@@ -648,7 +649,11 @@ let acc = 0;
 let last = performance.now();
 let time = 0;
 let attract = 0;
+let musicSig = '';
 function frameBody(now) {
+  // Soundtrack follows the app state (menus vs game) and the settings.
+  const ms = `${app}|${prefs.music}|${prefs.musicLink}|${prefs.musicShuffle}|${prefs.musicVolume}`;
+  if (ms !== musicSig && app !== 'title') { musicSig = ms; updateSoundtrack(prefs, app); }
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;

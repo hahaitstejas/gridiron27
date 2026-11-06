@@ -1186,3 +1186,64 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .tp-tier { text-align: center; } .tp-tier small { display: block; font: 500 11px var(--fo); opacity: 0.7; } .tp-tier b { font: 600 20px var(--fo); }
 .tp-help { margin-top: 10px; font: 500 14px var(--fb); color: var(--dim); }
 .tp-head h1::after { display: none !important; }
+
+/* Franchise hub (slides 7, 9, 10): tabs on top, the tab's page, News Center ticker at the bottom. */
+.screen.fh-screen { background: radial-gradient(ellipse at 50% 120%, color-mix(in srgb, var(--tc, #2a3a6a) 55%, transparent), transparent 65%), linear-gradient(180deg, #06080d, #0d1220) !important;
+  justify-content: flex-start; align-items: stretch; padding: 0; }
+.screen.fh-screen > * { --tc: inherit; --accent: inherit; }
+.fh-top { display: flex; align-items: center; justify-content: space-between; padding: 14px 26px 0; }
+.fh-tabs { display: flex; align-items: center; gap: 4px; }
+.fh-tab { padding: 5px 12px; font: 500 15px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+.fh-tab.on { background: #fff; color: #000; border-radius: 3px; }
+.fh-tabs .btn { margin: 0 6px; }
+.fh-me { display: flex; align-items: center; gap: 10px; text-align: right; }
+.fh-me b { display: block; font: 600 15px var(--fo); letter-spacing: 1px; } .fh-me small { font: 500 12px var(--fo); letter-spacing: 1px; color: var(--dim); }
+.fh-body { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 18px 26px 10px; }
+.fh-cards { display: flex; gap: 14px; overflow-x: auto; padding: 10px 4px 14px; scrollbar-width: none; align-items: stretch; flex: 1; max-height: 420px; }
+.screen .hub-tile.fh-card { flex: 0 0 230px; min-height: 300px; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 18px !important; position: relative; overflow: hidden;
+  border: 0 !important; border-radius: 14px !important; background: linear-gradient(170deg, color-mix(in srgb, var(--tc) 70%, #000) 0%, #0c1018 75%) !important; }
+.screen .hub-tile.fh-card .ht-icon { position: absolute; top: 20px; right: 16px; opacity: 0.3; width: 120px !important; height: 120px !important; overflow: visible; }
+.screen .hub-tile.fh-card .ht-icon svg { width: 120px; height: 120px; }
+.screen .hub-tile.fh-card .ht-label { font: 700 30px/1 var(--fo); text-transform: uppercase; letter-spacing: 0.5px; }
+.screen .hub-tile.fh-card .ht-sub { font: 500 14px/1.3 var(--fb); margin-top: 6px; opacity: 0.85; }
+.screen .hub-tile.fh-card.nav-item.focused { background: linear-gradient(170deg, color-mix(in srgb, var(--tc) 85%, #fff) 0%, #fff 55%) !important; box-shadow: 0 0 0 3px #fff !important; }
+.fh-news { display: flex; align-items: stretch; height: 40px; background: rgba(0,0,0,0.85); }
+.fh-news-tag { background: #c8102e; color: #fff; font: 600 18px/40px var(--fo); padding: 0 16px; letter-spacing: 0.5px; white-space: nowrap; clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%); padding-right: 26px; }
+.fh-news-run { flex: 1; overflow: hidden; position: relative; }
+.fh-news-txt { position: absolute; white-space: nowrap; font: 500 15px/40px var(--fb); padding-left: 100%; animation: fhnews 40s linear infinite; }
+@keyframes fhnews { from { transform: translateX(0); } to { transform: translateX(-100%); } }
+.fh-news-next { background: var(--tc, #333); font: 600 15px/40px var(--fo); letter-spacing: 1px; padding: 0 18px; white-space: nowrap; }
+.fh-help { padding: 6px 26px 8px; font: 500 13px var(--fb); color: var(--dim); background: #000; }
+
+/* Gameday (slide 10). */
+.gd { flex: 1; display: flex; flex-direction: column; }
+.gd-head { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.gd-title { font: 600 16px var(--fo); letter-spacing: 3px; color: var(--dim); }
+.gd-strip { display: flex; gap: 6px; }
+.gd-wk { width: 92px; text-align: center; padding: 4px 0; border: 1px solid rgba(255,255,255,0.25); }
+.gd-wk.on { background: #fff; color: #000; border-color: #fff; }
+.gd-wk-logo { height: 36px; display: flex; align-items: center; justify-content: center; font: 600 15px var(--fo); }
+.gd-wk small { font: 500 11px var(--fo); letter-spacing: 1px; }
+.gd-match { flex: 1; display: flex; align-items: center; justify-content: space-between; padding: 0 2vw; }
+.gd-match.empty { flex-direction: column; justify-content: center; }
+.gd-done { font: 700 54px var(--fo); letter-spacing: 1px; }
+.gd-team { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; align-items: center; column-gap: 18px; }
+.gd-team.r { direction: rtl; } .gd-team.r > * { direction: ltr; }
+.gd-logo { grid-row: 1; filter: drop-shadow(0 10px 30px rgba(0,0,0,0.6)); }
+.gd-badges { grid-row: 1; display: flex; flex-direction: column; gap: 6px; }
+.gd-badge { width: 52px; text-align: center; background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 3px 0; }
+.gd-badge b { display: block; font: 700 22px/1 var(--fo); } .gd-badge small { font: 500 10px var(--fo); letter-spacing: 1px; opacity: 0.75; }
+.gd-name { grid-column: 1 / span 2; margin-top: 10px; }
+.gd-team.r .gd-name { text-align: right; }
+.gd-name small { display: block; font: 500 15px var(--fo); letter-spacing: 1.5px; color: var(--dim); }
+.gd-name b { display: block; font: 700 66px/1 var(--fo); letter-spacing: 1px; }
+.gd-name span { font: 500 15px var(--fo); color: var(--dim); }
+.gd-mid { text-align: center; }
+.gd-at { font: 600 40px var(--fo); }
+.gd-when, .gd-slot, .gd-venue, .gd-wx { font: 500 15px var(--fb); color: rgba(255,255,255,0.85); }
+.gd-slot { color: #ffd34d; }
+.gd-btns { display: flex; justify-content: center; gap: 10px; padding: 8px 0 4px; }
+.gd-btn { display: flex; align-items: center; gap: 12px; padding: 10px 22px; min-width: 200px; justify-content: center; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.3);
+  font: 600 20px var(--fo); letter-spacing: 1px; text-transform: uppercase; cursor: pointer; }
+.gd-btn.main { min-width: 300px; }
+.screen .gd-btn.focused { background: #fff !important; color: #000 !important; }

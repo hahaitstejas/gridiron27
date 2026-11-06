@@ -7,6 +7,8 @@ import { teamPickScreen } from './teamPick.js';
 import { logoCanvas } from '../render/logo.js';
 import { CONFERENCES, DIVISIONS } from '../data/teams.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
+import { gameConditions } from '../franchise/franchise.js';
+import { teamRatings } from '../data/positions.js';
 import { createFranchise, currentGames, userGame, simGame, simOthers, advance, recordGame, matchToResult, recordOf, upgradeFranchise, tradeDeadlinePassed } from '../franchise/franchise.js';
 import { contractsScreen, tradeScreen, transactionsScreen, capLine, tradeBlockScreen, offersScreen } from './franchiseMoney.js';
 import { newsScreen, awardsScreen, latestHeadline, hallScreen } from './franchiseExtras.js';
@@ -266,21 +268,95 @@ export class FranchiseUI {
         ['Trade deadline', tradeDeadlinePassed(f) ? 'Passed' : `Week ${Math.ceil(f.weeks * 0.6)}`], me.roster.some((p) => p.tradeRequest) ? ['Trade requests', String(me.roster.filter((p) => p.tradeRequest).length)] : null]), officeTiles),
       box('news', 'League', 'News, awards, Hall of Fame', el('div.fr-boxnews', {}, ...(f.news || []).slice(0, 3).map((n) => el('div', { text: n.text }))), leagueTiles),
     ];
-    const col = (title, tiles, cls = '') => el(`div.fr-col${cls}`, {}, el('div.fr-col-head', { text: title }), ...tiles);
-    const top = el('div.hub-top', {}, el('div.hub-logo', { html: `FRANCHISE <span>${f.year}</span>` }),
-      el('div.hub-me', { style: { '--tc': me.colors.primary } }, logoCanvas(me.logo, 40),
-        el('div', {}, el('small', { text: `${stage.toUpperCase()} · ${recText(rec)}` }), el('b', { text: `${me.city} ${me.name}` }))));
-    screens.frame('hub-screen fr-hub-screen', top,
-      el('div.fr-hub.boxes', {}, el('div.fr-hero', {}, ...hero), el('div.fr-boxes', {}, ...season, ...team, ...league)),
-      el('div.hub-foot', { html: `<b class="btn A">A</b> Select &nbsp;&nbsp; <b class="btn B">B</b> Main menu <span class="tiny">${f.name || ''} · autosaves</span>` }));
+    // ---- UPDATE 3.1 hub (slides 7, 9, 10): tabs across the top (LB / RB), a news ticker along the bottom. ----
+    const TABS = [['Gameday', null], ['Weekly Hub', seasonTiles], ['Manage Roster', teamTiles], ['Front Office', officeTiles], ['League', leagueTiles]];
+    const BOX_TAB = { Season: 'Weekly Hub', Team: 'Manage Roster', 'Front Office': 'Front Office', League: 'League' };
+    if (typeof focus === 'string') {
+      if (BOX_TAB[focus]) { this._tab = BOX_TAB[focus]; focus = null; }
+      else for (const [name, fn] of TABS) if (fn && fn().some((t) => t.key === focus)) this._tab = name;
+    }
+    if (!TABS.some(([n]) => n === this._tab)) this._tab = 'Gameday';
+    const tabName = this._tab;
+    const tabsEl = el('div.fh-tabs', {}, el('b.btn.LB', { text: 'LB' }),
+      ...TABS.map(([n]) => el(`div.fh-tab${n === tabName ? '.on' : ''}`, { text: n })), el('b.btn.RB', { text: 'RB' }));
+    const meEl = el('div.fh-me', {}, logoCanvas(me.logo, 34), el('div', {}, el('b', { text: `${me.city} ${me.name}`.toUpperCase() }), el('small', { text: `${f.year} · ${stage.toUpperCase()} · ${recText(rec)}` })));
+    let body, items;
+    if (tabName === 'Gameday') {
+      ({ body, items } = this.gamedayPanel(g, stage, advance1));
+    } else {
+      // Weekly-hub style cards: a tall card per screen, the team color behind the line art.
+      items = TABS.find(([n]) => n === tabName)[1]();
+      for (const t of items) t.classList.add('fh-card');
+      body = el('div.fh-cards', {}, items);
+    }
+    // News Center: the latest headlines scrolling, and your next game on the right.
+    const heads = (f.news || []).slice(0, 6).map((n) => n.text);
+    const nextG = g && !g.score ? `${teams[g.away].abbr} @ ${teams[g.home].abbr}${g.date ? ` · ${gameWhen(g)}` : ''}` : stage;
+    const ticker = el('div.fh-news', {}, el('div.fh-news-tag', { text: 'NEWS CENTER' }),
+      el('div.fh-news-run', {}, el('div.fh-news-txt', { text: heads.length ? heads.join('     •     ') : 'Welcome to the season.' })),
+      el('div.fh-news-next', { text: nextG }));
+    screens.frame('fh-screen', el('div.fh-top', {}, tabsEl, meEl), el('div.fh-body', {}, body), ticker,
+      el('div.fh-help', { html: `<b class="btn A">A</b> Select &nbsp; <b class="btn LB">LB</b><b class="btn RB">RB</b> Tabs &nbsp; <b class="btn B">B</b> Main menu <span class="tiny">${f.name || ''} · autosaves</span>` }));
     screens.root.style.setProperty('--accent', me.colors.primary);
-    const items = [...hero, ...season, ...team, ...league];
+    screens.root.style.setProperty('--tc', me.colors.primary);
     const at = typeof focus === 'string' ? items.findIndex((t) => t.key === focus) : focus ?? 0;
-    screens.nav.set(items, { spatial: true, onBack: this.ctx.onExit, index: Math.max(0, Math.min(at, items.length - 1)) });
+    const go = (d) => { const i = TABS.findIndex(([n]) => n === this._tab); this._tab = TABS[(i + d + TABS.length) % TABS.length][0]; this.hub(); };
+    screens.nav.set(items, { spatial: true, onBack: this.ctx.onExit, onTab: go, index: Math.max(0, Math.min(at, items.length - 1)) });
+  }
+
+  /** Gameday tab (slide 10): the week strip, both teams big, kickoff details, Play / Sim / Preview / Advance. */
+  gamedayPanel(g, stage, advance1) {
+    const f = this.f, teams = this.teams;
+    const items = [];
+    const btn = (label, cls, act, logo = null) => { const b = el(`div.gd-btn${cls ? '.' + cls : ''}`, {}, el('span', { text: label }), logo); b.activate = act; b.key = label; items.push(b); return b; };
+    // Week strip: your games around this week.
+    const strip = [];
+    if (f.phase === 'regular') {
+      for (let w = Math.max(0, f.week - 1); w < Math.min(f.weeks, f.week + 4); w++) {
+        const ug = (f.schedule[w] || []).find((x) => x.home === f.userTeam || x.away === f.userTeam);
+        const opp = ug ? teams[ug.home === f.userTeam ? ug.away : ug.home] : null;
+        strip.push(el(`div.gd-wk${w === f.week ? '.on' : ''}`, {}, el('div.gd-wk-logo', {}, opp ? logoCanvas(opp.logo, 34) : el('b', { text: 'BYE' })),
+          el('small', { text: ug?.score ? `${ug.score[ug.home === f.userTeam ? 0 : 1]}-${ug.score[ug.home === f.userTeam ? 1 : 0]}` : `WEEK ${w + 1}` })));
+      }
+    }
+    let center;
+    if (g && !g.score) {
+      const side = (ti, al) => {
+        const t = teams[ti], r = teamRatings(t), rec = recordOf(f, teams, ti);
+        const badges = el('div.gd-badges', {}, [['OVR', r.ovr], ['OFF', r.off], ['DEF', r.def]].map(([l, v]) => el('div.gd-badge', {}, el('b', { text: String(v) }), el('small', { text: l }))));
+        return el(`div.gd-team.${al}`, { style: { '--tc': t.colors.primary } }, el('div.gd-logo', {}, logoCanvas(t.logo, 190)), badges,
+          el('div.gd-name', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() }), el('span', { text: recText(rec) })));
+      };
+      const cond = gameConditions(f, g);
+      const wx = cond ? `${{ clear: cond.time === 'night' ? 'Clear night' : 'Clear', rain: 'Rain', snow: 'Snow' }[cond.type] || ''}` : '';
+      const venue = g.venue ? `${g.venue.name || ''} ${g.venue.city || ''}`.trim() : teams[g.home].stadium?.name || `${teams[g.home].city}`;
+      center = el('div.gd-match', {}, side(g.away, 'l'),
+        el('div.gd-mid', {}, el('div.gd-at', { text: 'AT' }), el('div.gd-when', { text: g.date ? gameWhen(g) : stage }),
+          g.slot ? el('div.gd-slot', { text: slotName(g) }) : null, el('div.gd-venue', { text: venue }), wx ? el('div.gd-wx', { text: wx }) : null),
+        side(g.home, 'r'));
+      const me = teams[f.userTeam];
+      btn(f.phase === 'playoffs' ? 'Play Playoff Game' : 'Play Game', 'main', () => this.ctx.playGame(g), logoCanvas(me.logo, 34));
+      btn('Sim Game', '', () => { simGame(f, teams, g); this.afterUserGame(); });
+      btn('Game Preview', '', () => gamePreview(this, g));
+    } else {
+      const bye = f.phase === 'regular' && !g;
+      const done = g && g.score ? `FINAL: ${teams[g.away].abbr} ${g.score[1]} – ${g.score[0]} ${teams[g.home].abbr}` : bye ? 'BYE WEEK' : 'YOUR SEASON IS OVER';
+      center = el('div.gd-match.empty', {}, el('div.gd-done', { text: done }), el('div.gd-when', { text: stage }));
+      btn(f.phase === 'regular' ? 'Advance Week' : 'Finish the Round', 'main', advance1);
+    }
+    if (f.phase === 'regular') btn('Sim to Playoffs', '', () => {
+      while (f.phase === 'regular') { simOthers(f, teams); const ug = userGame(f); if (ug && !ug.score) simGame(f, teams, ug); advance(f, teams); }
+      this.save(); this.hub();
+    });
+    const body = el('div.gd', {}, el('div.gd-head', {}, el('div.gd-title', { text: 'GAMEDAY' }), el('div.gd-strip', {}, strip)), center, el('div.gd-btns', {}, items));
+    return { body, items };
   }
 
   /** One of the hub's boxes opened: its screens as tiles. */
   boxMenu(label, tiles) {
+    // UPDATE 3.1: the boxes are tabs of the hub now.
+    const TAB = { Season: 'Weekly Hub', Team: 'Manage Roster', 'Front Office': 'Front Office', League: 'League' };
+    if (TAB[label]) { this._tab = TAB[label]; this.hub(); return; }
     const { screens } = this.ctx;
     const f = this.f, me = this.teams[f.userTeam];
     screens.extraButtons = null;

@@ -353,21 +353,25 @@ default behind your player = rig mode `follow` for non-QBs; a defender's stick i
   LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
 
 ### Menus (look and navigation)
-Monochrome theme (the user's mockups): black / white / gray only, flat panels with thin white lines, the focused item
-inverted (white, black text), small italic titles top-left, monochrome controller glyphs and a black hint bar; only team
-logos and jerseys carry color. It's the "Monochrome theme" block at the end of style.css: it overrides the older styles
-(`--gold` → white, `--skew` 0, team `--accent`s neutralized on the screen's children), so every screen picks it up.
-- Main menu (`Screens.mainMenu`): a featured player (`featuredCard`: a random top-40 non-lineman/specialist from the league,
-  on an SVG jersey in his team's colors; new each visit), the league logo, GRIDIRON 27, and tabs Quick Play / Training
-  (practice, drills, scenarios) / Franchise / Rosters / Edit League / Playbook / Settings; Y Controls, X Saves.
-- Quick Play: `playNow` = Team Select (away and home logo boxes with OVR / city / name cards; ◀▶ changes the focused team;
-  the controller row puts P1 left = away, middle = watch, right = home, or both for 2 players) → A → `gameSettings`
-  (quarter length, accelerated clock, difficulty, stadium home / neutral → `settings.neutral`, weather, time, penalties).
-- Pause (`Screens.pause`): a list (Resume, Timeout, Challenge Play when a close call against you is open, Stats, Coaching,
-  Instant Replay, Settings, Controls, Controller Select, Restart, Quit; dimmed when not available) beside the two starting
-  QBs' game so far (`pauseInfo().qbs`: comp %, yards, TDs), the scorebug left visible below. Controller Select
-  (`controllerSelect()` in main.js → `session.setHumans()`) switches sides or watches, Quick Play only; Restart reruns
-  `lastStart`.
+UPDATE 3.1 design (the user's slides; the "UPDATE 3.1" blocks at the end of style.css override the older Monochrome theme):
+Oswald (`@fontsource/oswald`, `--fo`) for display type (wordmark, titles, tabs, buttons), Saira Condensed for body text; dark
+navy gradients, filled panels with no outlines, the focused item white; team colors come back on team-specific screens
+(`el()` sets CSS custom properties with `setProperty`, so `style: { '--tc': … }` works).
+- Load-in (`Screens.title(padName, LEAGUE.logo)`): black, `brandMark()` = GRIDIRON [league logo] 27, PRESS ANY BUTTON (any key / pad button).
+- Home (`Screens.mainMenu`): the wordmark down the top-left, Quick Play / Franchise / Edit League over the live stadium orbit; the focused
+  mode opens a right panel (crumbs, big title, blurb, entry cards: Play Now / Practice / Skills Drills / Scenarios; Create / Load;
+  Rosters / Teams & League / Playbook / Settings / Saves). Y Controls, X Saves.
+- Play call: a see-through band (field + huddle visible), `TEAM / SELECT A PLAY` rail, pill help bar; the situation is in the scorebug.
+- Scorebug: GRIDIRON [league logo] 27; scores take over the middle (`hud.bugTake`: TOUCHDOWN / FIELD GOAL in the team's color, 5 s).
+- Hold RT: names under your skill players + slanted down & distance / play-clock badge (`Hud.artOverlay`, `hud.artOn`).
+- Replays: `Hud.wipe(c1, c2)` chevron-stripe bumper with the GRIDIRON card in and out of every replay.
+- Franchise: New Franchise / Season start with `teamPickScreen` (ui/teamPick.js: logo grid + team card with OVR/OFF/DEF, five best
+  players, `leagueRanks`, franchise info, roster tiers) then the settings. Hub = tabs (LB/RB: Gameday, Weekly Hub, Manage Roster,
+  Front Office, League; `this._tab`, `boxMenu(label)` maps the old boxes to tabs) + News Center ticker; Gameday (`gamedayPanel`):
+  week strip, both teams big with OVR/OFF/DEF, kickoff time / venue / weather, Play / Sim / Preview / Advance / Sim to Playoffs.
+  Standings = team-colored division columns with seeds; League Leaders opens on an overview (six categories, top three with photos).
+  Draft: clock panel, the focused prospect's header, the board, the wall of picks so far, your roster needs.
+- Quick Play Team Select, pause, post-game etc. keep their layouts with the new type / panels.
 Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest item in that direction by on-screen
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
 menus or trade dress.

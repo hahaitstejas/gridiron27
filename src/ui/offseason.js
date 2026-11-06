@@ -1,4 +1,5 @@
 import { el } from './nav.js';
+import { logoCanvas } from '../render/logo.js';
 import { draftDayOffers, executeDeal, dealText } from '../franchise/trades.js';
 import { RNG } from '../core/rng.js';
 import { needsPanel } from './franchiseMore.js';
@@ -144,6 +145,7 @@ function draft(ctx, ui, f, focus = 0) {
     rows = board.map(({ p, v }) => {
       const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
         el(`span.st-num${v.scouted ? '.up' : ''}`, { text: v.ovr }), el('span.st-num', { text: v.pot })]);
+      r._pv = { p, v };
       r.activate = () => { makePick(f, teams, p.id); save(ctx); draft(ctx, ui, f); };
       r.scout = () => { if (scoutProspect(f, p.id)) { save(ctx); draft(ctx, ui, f, rows.indexOf(r)); } };
       return r;
@@ -156,10 +158,26 @@ function draft(ctx, ui, f, focus = 0) {
       button('Sim the rest of the draft', () => { finishDraft(f, teams); save(ctx); offseasonScreen(ctx, ui); }, '.secondary'),
     ];
   }
-  ctx.screens.frame('stats-screen', el('h1', { text: `Draft · Round ${pick.round}, Pick ${pick.pick}` }),
-    el('div.league-status', { text: mine ? `You are on the clock: A drafts a player · X scouts him (${d.scoutLeft ?? 0} scouting points left) to see his real overall and potential` : `${teams[pick.team].city} ${teams[pick.team].name} on the clock` }),
-    el('div.fr-sched', {}, el('div.st-table', {}, mine ? rows : myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' })),
-      el('div.fr-week', {}, el('div.dc-head', { text: 'Your roster' }), needsPanel(teams[f.userTeam]), el('div.dc-head', { text: 'Latest picks' }), recent)),
+  // Slide 8: the clock panel, the focused prospect's header, the board, and the wall of picks so far.
+  const ot = teams[pick.team];
+  const clock = el('div.dr-clock', { style: { '--tc': ot.colors.primary } }, logoCanvas(ot.logo, 54),
+    el('div', {}, el('small', { text: `RD ${pick.round} · PK ${pick.pick}` }), el('b', { text: mine ? 'YOU ARE ON THE CLOCK' : `${ot.abbr} ON THE CLOCK` })));
+  const head = el('div.dr-head');
+  const showProspect = (p, v) => {
+    head.innerHTML = '';
+    if (!p) { head.append(el('div.dr-hname', { text: mine ? 'Pick a prospect' : `${ot.city} ${ot.name}` })); return; }
+    head.append(el('div.dr-hpos', { text: p.pos }), el('div', {}, el('small', { text: `${p.age} yrs${p.college ? ` · ${p.college}` : ''}${p.height ? ` · ${Math.floor(p.height / 12)}'${p.height % 12}"` : ''}${p.weight ? ` · ${p.weight} lbs` : ''}`.toUpperCase() }),
+      el('div.dr-hname', { text: `${p.first} ${p.last}`.toUpperCase() })),
+      el('div.dr-hstats', {}, [['OVR', v.ovr], ['POTENTIAL', v.pot], ['SCOUTED', v.scouted ? '100%' : `${d.scoutLeft ?? 0} pts left`]].map(([l, x]) => el('div', {}, el('b', { text: x }), el('small', { text: l })))));
+  };
+  if (mine) rows.forEach((r, i) => { const { p, v } = r._pv; r.onfocusitem = () => showProspect(p, v); if (i === 0) showProspect(p, v); });
+  else showProspect(null);
+  const wall = el('div.dr-wall', {}, d.picks.slice(Math.max(0, d.at - 24), d.at).map((pk) => el('div.dr-tile', { style: { '--tc': teams[pk.team].colors.primary } },
+    logoCanvas(teams[pk.team].logo, 30), el('div', {}, el('small', { text: `R${pk.round} P${pk.pick} · ${pk.player.pos}` }), el('b', { text: (pk.player.first ? `${pk.player.first[0]}. ${pk.player.last}` : pk.player.name.replace(/^(\S)\S*\s/, '$1. ')).toUpperCase() })))));
+  ctx.screens.frame('stats-screen dr-screen', el('div.dr-top', {}, clock, head),
+    el('div.dr-body', {}, mine ? el('div.dr-board', {}, el('div.st-row.st-head', {}, ['POS', 'PROSPECT', 'AGE', 'OVR', 'POT'].map((h, i) => el(`span.${i === 1 ? 'st-name' : i === 0 ? 'dc-pos' : 'st-num'}`, { text: h }))), el('div.st-table', {}, rows))
+      : el('div.dr-board', {}, el('div.dc-head', { text: 'Your picks' }), el('div.st-table', {}, myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' }))),
+      el('div.dr-side', {}, el('div.dc-head', { text: 'Draft board' }), wall, el('div.dc-head', { text: 'Your roster' }), needsPanel(teams[f.userTeam]))),
     el('div.over-buttons', {}, buttons),
     el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; <b class="btn X">X</b> scout &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
   ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit, index: focus });

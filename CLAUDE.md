@@ -642,6 +642,9 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Realism pass (render-only): the helmet assembly (shell, mask, chin, decals, visor) is scaled `HELM_K` 0.9 and sits a touch
   lower / forward; shoulder pads at 1.3 (`COL_FLAGS.z`); the body shader darkens down-facing surfaces and lower legs (cheap
   occlusion) and keeps whites just under pure white; day / dusk / night ambient (hemi) lowered, key light up; shadow camera ±26 yd.
+  Body shape (body.js `buildPos`): lineman bulk only ~45% below the waist, hips / seat / thighs taken in toward each leg's center
+  (seat most); the pants stripe comes from the bind-pose normal (`vBindN`, clean edges). Turf: stronger mowing bands, a deeper
+  olive green on the grass only.
   Tackles: `PlayerRenderer.wrap[i]` keeps a tackler on the runner he hit through the fall and on the ground (over his legs, `pileLift`),
   easing back when he gets up; `down` lies on a shoulder with a knee drawn up (ball arm tucked). Catches (`reachForBall`): both hands to
   the ball, a jump for high balls and a bend for low ones, a lean on wide ones; `catch` = give, then tuck.

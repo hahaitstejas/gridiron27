@@ -106,12 +106,15 @@ export function buildStadium(renderer, home, away) {
         // Mowing sheen: 5-yard bands, brighter when you look along the cut, darker against it.
         float band = mod(floor((vGW.x + 50.0) / 5.0), 2.0) * 2.0 - 1.0;
         float look = clamp((cameraPosition.x - vGW.x) / 25.0, -1.0, 1.0);
-        float sheen = 1.0 + band * look * 0.1 * onGrass;
+        float sheen = 1.0 + band * look * 0.16 * onGrass;
         float grainK = mix(0.35, 1.0, step(0.32, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.8)); // less on paint
         // Patchy color over a few yards (real grass is never one flat green): darker clumps, lighter dry spots.
         float macro = texture2D(tDetail, vGW.xz * 0.018 + 0.11).r * 0.6 + texture2D(tDetail, vGW.xz * 0.043 + 0.53).r * 0.4;
         float gPatch = mix(1.0, 0.86 + macro * 0.3, grainK * onGrass);
-        diffuseColor.rgb *= sheen * gPatch * mix(1.0, 0.76 + dGrain * 0.44, grainK);`);
+        diffuseColor.rgb *= sheen * gPatch * mix(1.0, 0.76 + dGrain * 0.44, grainK);
+        // Broadcast turf is a deeper, slightly olive green than the paint chart: pull the grass (not the paint) down a touch.
+        float gl = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+        diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(gl), diffuseColor.rgb, 0.82) * 0.9, grainK * onGrass);`);
   };
   const field = new THREE.Mesh(new THREE.PlaneGeometry(FX * 2, FZ * 2), fieldMat);
   field.rotation.x = -Math.PI / 2;

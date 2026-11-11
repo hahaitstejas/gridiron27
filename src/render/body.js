@@ -201,6 +201,7 @@ flat varying float vRegion;
 varying vec2 vBody;
 flat varying float vPart;
 varying float vBindY;
+varying vec3 vBindN;
 mat4 boneMat(int b) {
   int c = b * 4;
   return mat4(texelFetch(boneTex, ivec2(c, gl_InstanceID), 0), texelFetch(boneTex, ivec2(c + 1, gl_InstanceID), 0),
@@ -210,7 +211,19 @@ vec3 buildPos(vec3 p) {
   vec4 prm = texelFetch(boneTex, ivec2(${COL_PARAMS}, gl_InstanceID), 0); // width, limb, chest depth
   if (aKind < 0.5) { float pad = mix(1.0, prm.w, smoothstep(1.38, 1.56, p.y)); return vec3(p.x * prm.x * pad, p.y, p.z * prm.z); }
   if (aKind < 1.5) { vec3 ax = vec3(aAxis.x * prm.x, aAxis.y, aAxis.z); return ax + (p - aAxis) * vec3(prm.y, 1.0, prm.y); }
-  if (aKind > 4.5) { vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID), 0); return p + aBulkD * fl.y + aPadD * fl.z; } // the MakeHuman body: lineman build and pads as shape deltas
+  if (aKind > 4.5) {
+    // The MakeHuman body: lineman build and pads as shape deltas (bulk mostly in the upper body: a lineman's legs and
+    // seat stay athletic, not inflated), then the hips, seat and thighs taken in toward each leg's center so the
+    // shoulder pads read wider than the hips the way a player in uniform does on TV.
+    vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID), 0);
+    float lower = smoothstep(1.24, 1.08, p.y);
+    vec3 q = p + aBulkD * fl.y * (1.0 - 0.55 * lower) + aPadD * fl.z;
+    float t = lower * smoothstep(0.32, 0.6, p.y);
+    float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
+    q.x = cx + (q.x - cx) * (1.0 - 0.15 * t);
+    q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.4 * t) : q.z * (1.0 - 0.08 * t);
+    return q;
+  }
   return vec3(p.x * prm.x, p.y, p.z * prm.x);
 }
 mat4 skinMat() { return boneMat(int(aIdx.x)) * aWt.x + boneMat(int(aIdx.y)) * aWt.y + boneMat(int(aIdx.z)) * aWt.z + boneMat(int(aIdx.w)) * aWt.w; }
@@ -220,7 +233,7 @@ function patchVertex(sh, normals = true) {
   sh.uniforms.boneTex = BODY_UNIFORMS.boneTex;
   let v = VERT_HEAD + 'mat4 gSk;\n' + sh.vertexShader;
   if (normals) v = v.replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\ngSk = skinMat();\nobjectNormal = normalize(mat3(gSk) * objectNormal);');
-  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;`);
+  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;${normals ? ' vBindN = normal;' : ''}`);
   sh.vertexShader = v;
 }
 
@@ -230,14 +243,14 @@ export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
   const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.35,
-    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.55, 0.55) });
+    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.8, 0.8) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
     sh.uniforms.uRegY = BODY_UNIFORMS.regionY; sh.uniforms.uShoeY = BODY_UNIFORMS.shoeY; sh.uniforms.uCollarY = BODY_UNIFORMS.collarY; sh.uniforms.uDecals = BODY_UNIFORMS.decals;
     sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform float uSweat;
 uniform vec4 uRegY; uniform float uShoeY; uniform float uCollarY; uniform float uDecals;
-flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;
+flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 ` + sh.fragmentShader
       .replace('#include <color_fragment>', `#include <color_fragment>
@@ -317,7 +330,13 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
         }
       }
       // Pants stripe down the outside of each leg (vBody.y = -2 left leg, -3 right leg; x = angle around it).
-      if (region == 2 && vBody.y < -1.5 && vBody.x > 0.972) col = tex(${COL_COLORS} + 3).rgb; // leg angle: 0 = outside
+      // The bind-pose normal pointing straight out to the side (smooth per pixel, so the edges are clean lines, not blotches
+      // from the per-vertex angle), a thin trim line on either side when the stripe matches the jersey trim.
+      if (region == 2 && vBody.y < -1.5) {
+        vec3 bn = normalize(vBindN);
+        float o = bn.x * (vBody.y < -2.5 ? 1.0 : -1.0) / max(0.2, length(bn.xz));
+        if (o > 0.9) col = tex(${COL_COLORS} + 3).rgb;
+      }
       // Face photo (8 x 8 atlas, cell = instance) on the front of the MakeHuman head (vBody.y > 5 marks it), faded into the skin.
       if (region == 5 && vBody.y > 5.0 && flg.w > 0.5) {
         vec2 st = vec2(vBody.x, vBody.y - 10.0);
@@ -337,7 +356,7 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       float ao = mix(0.6, 1.0, smoothstep(-0.8, 0.35, wN.y));
       if (vPart > -0.5) ao *= mix(0.8, 1.0, smoothstep(0.25, 1.15, vBindY));
       float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
-      diffuseColor.rgb *= ao * mix(1.0, 0.88, smoothstep(0.7, 0.95, lum));`);
+      diffuseColor.rgb *= ao * mix(1.0, 0.85, smoothstep(0.7, 0.95, lum));`);
   };
   return m;
 }
@@ -438,7 +457,7 @@ export function decalMaterial(envMap) {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
     sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows;
-flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;
+flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
       vec4 nb = tex(${COL_NUMBER});

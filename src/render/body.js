@@ -330,7 +330,14 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       diffuseColor.rgb = col;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
       roughnessFactor = region == 5 ? 0.5 - uSweat * 0.22 : region == 7 ? 0.55 : region == 8 ? 0.35 : region == 2 || region == 3 ? 0.62 : 0.78 - uSweat * 0.08;`)
-      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>`);
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+      // Cheap occlusion: surfaces facing the turf (under the arms, the undersides of the pads, inside the legs) and the
+      // lower legs get less of the sky; whites are cloth, not paint (a touch under pure white so folds and shading read).
+      vec3 wN = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
+      float ao = mix(0.6, 1.0, smoothstep(-0.8, 0.35, wN.y));
+      if (vPart > -0.5) ao *= mix(0.8, 1.0, smoothstep(0.25, 1.15, vBindY));
+      float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+      diffuseColor.rgb *= ao * mix(1.0, 0.88, smoothstep(0.7, 0.95, lum));`);
   };
   return m;
 }

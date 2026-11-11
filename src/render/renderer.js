@@ -15,9 +15,9 @@ import { Presentation } from './presentation.js';
 
 // Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
 const TIME_LOOKS = {
-  day: { hemi: [0xdfeaff, 0x3a4a2a, 1.5], key: [0xfff2dc, 3.0], rim: [0xffffff, 0.4], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1 },
-  dusk: { hemi: [0xffc9a8, 0x2a2a20, 1.2], key: [0xffb070, 2.6], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5 },
-  night: { hemi: [0xb8c8ff, 0x203018, 1.1], key: [0xfff4e0, 2.4], rim: [0xaabbff, 0.6], fog: [0x0b1020, 160, 420], sky: [[0.015, 0.03, 0.08], [0.06, 0.09, 0.2], [0.22, 0.2, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.15 },
+  day: { hemi: [0xdfeaff, 0x3a4a2a, 1.1], key: [0xfff2dc, 3.3], rim: [0xffffff, 0.4], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1 },
+  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.95], key: [0xffb070, 2.6], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5 },
+  night: { hemi: [0xb8c8ff, 0x203018, 0.85], key: [0xfff4e0, 2.7], rim: [0xaabbff, 0.6], fog: [0x0b1020, 160, 420], sky: [[0.015, 0.03, 0.08], [0.06, 0.09, 0.2], [0.22, 0.2, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.15 },
 };
 
 /** Owns the WebGL renderer, scene, lights and all visual sub-systems. */
@@ -52,7 +52,7 @@ export class GameRenderer {
     key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048);
     const sc = key.shadow.camera;
-    sc.left = -32; sc.right = 32; sc.top = 32; sc.bottom = -32; sc.near = 10; sc.far = 140;
+    sc.left = -26; sc.right = 26; sc.top = 26; sc.bottom = -26; sc.near = 10; sc.far = 140; // follows the ball: tighter = crisper player shadows
     key.shadow.bias = -0.0006;
     key.shadow.normalBias = 0.02;
     scene.add(key);

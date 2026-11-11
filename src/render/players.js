@@ -179,7 +179,7 @@ export class PlayerRenderer {
     this.pulseId = -1;
     // Pose crossfades (per player index): the pose an animation change starts from, and the last drawn pose.
     this.fromPose = []; this.lastPose = []; this.lastAnim = []; this.fadeT = []; this.poseSim = null;
-    this.fall = []; this.fallAnim = [];
+    this.fall = []; this.fallAnim = []; this.wrap = [];
 
     this._m = new THREE.Matrix4();
     this._t = new THREE.Matrix4();
@@ -349,7 +349,7 @@ export class PlayerRenderer {
       const lightJersey = !isDark(jersey);
       this.region(i, REGION.gloves, uni.gloves || (bare ? skin : line ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : lightJersey ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : '#f2f2f2'));
       this.number(i, p.number, uni.number, named[i] ? i : -1);
-      flags(i, false, Math.min(0.35, p.bulk * 0.45), 1, img ? 1 : 0); // linemen: up to 35% of the heavy shape (its belly and seat grow faster than its frame)
+      flags(i, false, Math.min(0.35, p.bulk * 0.45), 1.3, img ? 1 : 0); // linemen: up to 35% of the heavy shape (its belly and seat grow faster than its frame)
       this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));
@@ -397,7 +397,7 @@ export class PlayerRenderer {
       this.region(i, REGION.socks, b.coach ? '#b9a77c' : u.pants === 'white' ? team.colors.primary : '#f2f2f2');
       this.region(i, REGION.skin, skin); this.region(i, REGION.forearm, skin); this.region(i, REGION.gloves, skin);
       this.number(i, b.coach ? -1 : b.number, numColor);
-      flags(i, false, b.coach ? 0.35 : 0.3, b.coach ? 0 : 1);
+      flags(i, false, b.coach ? 0.35 : 0.3, b.coach ? 0 : 1.3);
       this.region(i, REGION.shoe, '#151515');
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
@@ -462,17 +462,39 @@ export class PlayerRenderer {
     let x = p.px + (p.x - p.px) * alpha;
     let z = p.pz + (p.z - p.pz) * alpha;
     let f = p.pfacing + angDiff(p.facing, p.pfacing) * alpha;
-    // Contact: a tackler closes to wrap distance on the runner he's bringing down and faces him, so the two bodies
-    // go down together (the sim already moves them together; it keeps them a little apart for collisions).
-    if (!official && (p.anim === 'tackle' || p.anim === 'tackle_dive') && sim?.players) {
-      const c = this.wrapTarget(sim, p, x, z);
-      if (c) {
-        const cx = c.px + (c.x - c.px) * alpha, cz = c.pz + (c.z - c.pz) * alpha;
-        const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz) || 1;
-        const k = Math.min(1, (p.animT || 0) / 0.12); // ease in over the first frames of the hit
-        const want = 0.5 * (p.height / 2.06);
-        if (d > want) { x += (dx / d) * (d - want) * k; z += (dz / d) * (d - want) * k; }
-        f += angDiff(Math.atan2(dz, dx), f) * k;
+    // Contact: a tackler wraps the runner he hits and stays with him to the ground: he closes to wrap distance during
+    // the hit, then lands on top of him (across his legs / hips, facing the way the pile fell) and stays there until he
+    // gets up, easing back to his own spot. The sim keeps the two a little apart for collisions; this is render-only.
+    let pileLift = 0, pileFall = null;
+    if (!official && sim?.players) {
+      let w = this.wrap[i];
+      if ((p.anim === 'tackle' || p.anim === 'tackle_dive') && !(w && w.id >= 0)) {
+        const c0 = this.wrapTarget(sim, p, x, z);
+        if (c0) w = this.wrap[i] = { id: c0.id, k: 0, side: (i % 2 ? 1 : -1) * 0.18 };
+      }
+      if (w && w.id >= 0) {
+        const c = sim.players[w.id];
+        const on = !!c && (p.anim === 'tackle' || p.anim === 'tackle_dive' || p.anim === 'down') && (c.anim === 'falling' || c.anim === 'down' || c.state === 'tackled');
+        w.k = on ? Math.min(1, w.k + dt * 7) : Math.max(0, w.k - dt * 3.5);
+        if (!c || (!on && w.k === 0)) w.id = -1;
+        else {
+          const cx = c.px + (c.x - c.px) * alpha, cz = c.pz + (c.z - c.pz) * alpha;
+          const k = w.k * w.k * (3 - 2 * w.k);
+          if (p.anim === 'down' || (p.anim === 'tackle' && (p.animT || 0) > 0.35)) {
+            // On the ground: over the runner's legs, lying the way he fell.
+            const cf = c.facing + (this.fall[w.id] && this.fall[w.id].fwd < -0.25 ? Math.PI : 0);
+            const ux = Math.cos(cf), uz = Math.sin(cf);
+            const tx = cx - ux * 0.55 * (p.height / 2.06) - uz * w.side, tz = cz - uz * 0.55 * (p.height / 2.06) + ux * w.side;
+            x += (tx - x) * k; z += (tz - z) * k;
+            f += angDiff(cf, f) * k;
+            pileLift = 0.14 * k; pileFall = { fwd: 1, side: 0 };
+          } else {
+            const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz) || 1;
+            const want = 0.5 * (p.height / 2.06);
+            if (d > want) { x += (dx / d) * (d - want) * k; z += (dz / d) * (d - want) * k; }
+            f += angDiff(Math.atan2(dz, dx), f) * k;
+          }
+        }
       }
     }
     const sc = p.height / 2.06;
@@ -497,8 +519,9 @@ export class PlayerRenderer {
       this.fall[i].fwd = Math.cos(a); this.fall[i].side = Math.sin(a);
       this.fallAnim[i] = true;
     } else if (!falling) this.fallAnim[i] = false;
-    FALL = falling ? this.fall[i] : null;
+    FALL = pileFall || (falling ? this.fall[i] : null);
     const pose = this.blend(i, p.anim, computePose(p, time, sim), dt);
+    if (pileLift) pose.rootY += pileLift; // on top of the pile
     // Planted feet, lean into cuts and a head that follows the ball (render/gait.js).
     const b = sim?.ball;
     const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
@@ -552,17 +575,21 @@ export class PlayerRenderer {
       P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
       P.visor.setMatrixAt(i, ZERO);
     } else {
-      P.helmet.setMatrixAt(i, cl(hg).multiply(scaleM(0.33, 0.33, 0.33)));
+      // The whole helmet assembly (shell, mask, chin strap, decals, visor) a touch smaller and sitting a little lower and
+      // further forward on the skull: a real helmet is ~10 in wide on ~23 in of shoulder pads, not a bobblehead.
+      hgS.copy(hg).multiply(trans(0, -0.012, 0.006)).multiply(scaleM(HELM_K, HELM_K, HELM_K));
+      const hg2 = hgS;
+      P.helmet.setMatrixAt(i, cl(hg2).multiply(scaleM(0.33, 0.33, 0.33)));
       P.face.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, -0.04, 0.075)));
       const g = gearOf(p);
-      P.visor.setMatrixAt(i, g.visor ? cl(hg).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
+      P.visor.setMatrixAt(i, g.visor ? cl(hg2).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
       P.towel.setMatrixAt(i, g.towel ? cl(hips).multiply(trans(-0.07, 0.03, 0.15 * wide)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
-      P.decal.setMatrixAt(i * 2, cl(hg).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
-      P.decal.setMatrixAt(i * 2 + 1, cl(hg).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
-      P.stripe.setMatrixAt(i, cl(hg).multiply(scaleM(0.33, 0.33, 0.33)));
-      P.mask.setMatrixAt(i, hg);
-      P.chin.setMatrixAt(i, hg);
+      P.decal.setMatrixAt(i * 2, cl(hg2).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.decal.setMatrixAt(i * 2 + 1, cl(hg2).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
+      P.stripe.setMatrixAt(i, cl(hg2).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.mask.setMatrixAt(i, hg2);
+      P.chin.setMatrixAt(i, hg2);
     }
 
     // Arms.
@@ -661,17 +688,30 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
   const sin = Math.sin(f), cos = Math.cos(f);
   const dxw = bx - x, dzw = bz - z;
   const lx = (dxw * sin - dzw * cos) / sc, lz = (dxw * cos + dzw * sin) / sc;
-  const shY = B.hipH + pose.crouch + pose.rootY + B.shY;
+  let shY = B.hipH + pose.crouch + pose.rootY + B.shY;
+  // How high the ball arrives relative to his shoulders: high-point it (go up for it), or bend for a low one.
+  const rel = by / sc - shY;
+  const near = Math.max(0, 1 - dist / 2.4);
+  if (p.anim !== 'swat' && rel > 0.4 && near > 0) {
+    const j = Math.min(1, (rel - 0.4) / 0.45) * k * near;
+    pose.rootY += 0.3 * j; pose.legs[0].hip += 0.75 * j; pose.legs[0].knee += 1.05 * j; pose.legs[1].knee += 0.45 * j;
+    shY += 0.3 * j;
+  } else if (rel < -0.5) {
+    const j = Math.min(1, (-rel - 0.5) / 0.45) * k;
+    pose.crouch -= 0.16 * j; pose.lean += 0.45 * j; pose.legs[0].knee += 0.35 * j; pose.legs[1].knee += 0.35 * j;
+    shY -= 0.16 * j;
+  }
   for (let s = 0; s < 2; s++) {
     if (p.anim === 'swat' && s === 0) continue;
+    // Both hands to the ball itself (they meet there, thumbs together), elbows soft so it's caught, not slapped.
     const side = s ? 1 : -1, a = pose.arms[s];
-    const dx = lx - side * B.shX * w * 0.6, dy = by / sc - shY, dz = lz;
+    const dx = lx - side * B.shX * w, dy = by / sc - shY, dz = lz;
     const len = Math.hypot(dx, dy, dz) || 1;
     const pitch = Math.atan2(dz, -dy) - pose.lean;
     const out = Math.asin(Math.max(-0.9, Math.min(0.9, (dx * side) / len)));
     a.pitch += (pitch - a.pitch) * k;
     a.out += (out - a.out) * k;
-    a.elbow += (0.18 - a.elbow) * k;
+    a.elbow += (0.32 - a.elbow) * k;
   }
   // Eyes on the ball.
   pose.head += (-Math.max(-0.6, Math.min(0.9, Math.atan2(by / sc - shY - 0.2, Math.hypot(lx, lz)))) - pose.head) * k; // negative = up
@@ -816,13 +856,14 @@ function computePose(p, time, sim) {
       pose.head = -0.3;
       break;
     case 'catch': {
-      // Hands up to the ball, then pull it into the chest.
-      if (sp > 1) runLegs(Math.min(0.8, run));
-      const k = Math.min(1, t / 0.3);
-      pose.arms[0].pitch = pose.arms[1].pitch = 2.4 - k * 1.3;
-      pose.arms[0].elbow = pose.arms[1].elbow = 0.3 + k * 1.5;
-      pose.arms[0].out = pose.arms[1].out = 0.2 - k * 0.3;
-      pose.head = -0.25 + k * 0.35; pose.lean = 0.15 + k * 0.2;
+      // Hands on the ball (they absorb it: a small give back toward the body), then it comes down and is tucked
+      // high and tight on the carrying side while he turns upfield; the eyes go from the ball to the field.
+      if (sp > 1) runLegs(Math.min(0.85, run));
+      const give = Math.min(1, t / 0.08), k = Math.max(0, Math.min(1, (t - 0.06) / 0.26)), e = k * k * (3 - 2 * k);
+      pose.arms[0].pitch = 2.3 - give * 0.25 - e * 1.4; pose.arms[1].pitch = 2.3 - give * 0.25 - e * 1.55;
+      pose.arms[0].elbow = 0.32 + give * 0.25 + e * 1.0; pose.arms[1].elbow = 0.32 + give * 0.25 + e * 1.6;
+      pose.arms[0].out = 0.05 - e * 0.05; pose.arms[1].out = 0.05 - e * 0.2;
+      pose.head = -0.3 + e * 0.45; pose.lean = 0.12 + e * 0.25; pose.crouch = -0.05 * give * (1 - e);
       break;
     }
     case 'pick': {
@@ -861,12 +902,26 @@ function computePose(p, time, sim) {
       break;
     }
     case 'down': {
+      // On the turf: not spread-eagled. Face down he's rolled a little onto the shoulder he fell toward, one knee drawn
+      // up, a forearm under him and the ball arm tucked; on his back his knees come up. A slow breath, and the head lifts.
       const f = FALL || { fwd: 1, side: 0 };
       const back = f.fwd < -0.25;
-      pose.rootPitch = back ? -1.45 : 1.5; pose.rootRoll = -f.side * 0.5; pose.rootY = -0.02;
-      pose.arms[0].pitch = back ? 2.9 : 2.4; pose.arms[1].pitch = back ? 2.2 : 1.2; pose.arms[0].elbow = 0.6; pose.arms[1].elbow = 1.0;
-      pose.arms[0].out = 0.6; pose.arms[1].out = back ? 0.5 : 0.15;
-      pose.legs[0].hip = back ? 0.5 : 0.2; pose.legs[0].knee = back ? 1.0 : 0.6; pose.legs[1].knee = 0.1;
+      const roll = (f.side >= 0 ? 1 : -1) * (0.35 + Math.abs(f.side) * 0.3);
+      const breath = Math.sin(time * 2.4 + (p.id || 0)) * 0.02;
+      const hasBall = sim?.ball?.state === 'held' && sim.ball.carrier === p.id;
+      pose.rootPitch = (back ? -1.42 : 1.42) + breath; pose.rootRoll = -roll; pose.rootY = -0.03;
+      if (back) {
+        pose.arms[0].pitch = 2.2; pose.arms[1].pitch = hasBall ? 0.9 : 1.6; pose.arms[0].elbow = 0.9; pose.arms[1].elbow = hasBall ? 1.9 : 1.1;
+        pose.arms[0].out = 0.55; pose.arms[1].out = hasBall ? -0.1 : 0.45;
+        pose.legs[0].hip = 0.9; pose.legs[0].knee = 1.4; pose.legs[1].hip = 0.35; pose.legs[1].knee = 0.5;
+        pose.head = 0.35;
+      } else {
+        pose.arms[0].pitch = 2.1; pose.arms[0].elbow = 1.4; pose.arms[0].out = 0.35; // forearm under him
+        pose.arms[1].pitch = hasBall ? 0.7 : 1.9; pose.arms[1].elbow = hasBall ? 2.0 : 1.2; pose.arms[1].out = hasBall ? -0.15 : 0.5;
+        pose.legs[0].hip = 0.75; pose.legs[0].knee = 1.25; pose.legs[0].out = 0.25; // one knee drawn up
+        pose.legs[1].hip = 0.1; pose.legs[1].knee = 0.35;
+        pose.head = -0.55 + Math.min(0.3, t * 0.25);
+      }
       pose.lean = 0;
       break;
     }
@@ -1096,6 +1151,8 @@ function gearOf(p) {
 export const VISOR_COLORS = { dark: '#1a1f2a', gold: '#3a2a10', clear: '#9fb4c8' };
 
 // ---------- matrix helpers ----------
+const HELM_K = 0.9; // helmet assembly scale (see the gear block in posePlayer)
+const hgS = new THREE.Matrix4();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 // Preallocated pool so per-frame posing allocates nothing (no GC hitches).
 const POOL = Array.from({ length: 200 }, () => new THREE.Matrix4());

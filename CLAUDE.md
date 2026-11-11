@@ -302,8 +302,10 @@ rounds}, history[], seed, offseason{step, …} }`.
   offensive/defensive rookie of the year from `p.rookieYear`; `f.awards[year]`), draft scouting (`setupScouting`: each
   prospect's shown overall is a range around a hidden error, potential '?', `SCOUT_POINTS` per draft reveal the truth
   with X; the CPU drafts on true value). Hub: News, Awards & Records (awards, season/game records, champions).
-- Opening cut-down (`trimRosters`, at `createFranchise` and once for older saves via `upgradeFranchise` / `f.trimmed`): teams
-  over 53 send the least valuable (`cutDown`) to the practice squad (youngest first, `addToPS`), the rest to free agency.
+- Opening cut-down (`trimRosters`, at `createFranchise` and once for older saves via `upgradeFranchise` / `f.trimmed`): CPU teams
+  over 53 send the least valuable (`cutDown`) to the practice squad (youngest first, `addToPS`), the rest to free agency; your team
+  gets `f.needsCut` and the hub opens `cutDownScreen` (A = practice squad / release, Y = auto-cut) until you're at 53. CPU depth
+  charts are rebuilt every week (`advance`).
 - `offseason.js`: steps summary → progression (`progressPlayers`: age +1, growth/decline by age and hidden `pot`,
   retirements, contract `years`--) → resign (`expiring`, `resign`, `finishResigning` → free-agent pool) →
   freeagency (`signFreeAgent`, `cpuFreeAgency` by `needs`) → draft (`makeDraft`: 224 picks, worst record first,
@@ -382,6 +384,12 @@ navy gradients, filled panels with no outlines, the focused item white; team col
   Release). Player card (`playerCard`) = header + LB/RB tabs Player Info / Ratings (attribute tiles with bars) / Appearance.
   Depth chart (`depthChartScreen`) = one screen: positions on the left, the picked position's order + available on the right.
   Class prefixes rx- / rt- / rh- / pcd- / dx- (pc2- belongs to the play-call screen).
+- UPDATE 3.3: settings-style screens (`setup-screen` / `gs-screen`: Practice, Settings, New Franchise...) get a right-hand
+  description panel (`Screens.frame` → `nav.onFocus`, text from `OPTION_HELP` by row label or `el.dataset.desc`); list menus
+  (`menu-screen`: Saves, My Plays, Spreadsheets) render as tile grids with spatial nav (nav.js detects `.menu-screen .menu-list`);
+  every `stats-screen` table and non-hub `hub-screen` page shares the monochrome table look. Shared helpers in rosterEditor.js:
+  `playerTable` (header card + table + hint bar), `actionsPanel`, `numberPicker` (new signings pick a jersey number unless
+  `prefs.autoNumbers`). Practice squad (`practiceSquadScreen`) and cut-downs (`cutDownScreen` in franchiseMore.js) use them.
 - Quick Play Team Select, pause, post-game etc. keep their layouts with the new type / panels.
 Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest item in that direction by on-screen
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
@@ -491,7 +499,13 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Clock: between plays the runoff ticks visibly (`session.runoffBudget()`, `realtimePresnap` fast-forwards); the CPU offense
   waits 5-7.5 s at the line vs a human defense (`cpuSnapAt`). A human returner (kickoffs / punts) gets the camera and the stick
   turned upfield from the line (main.js `humanReturn` sets `sim.camDir = -sim.dir`). Kneel-downs use the `kneel` pose (`p.kneeling`). Timeouts send both teams back to the play call; both triggers
-  held = timeout. No-huddle keeps the same eleven (`lastLineup` → `cfg.keep`), not right after the two-minute warning.
+  held = timeout (never twice by one team in the same dead ball: `match.toBreak`, cleared by `applyResult`). Trailing late, `fourthDecision`
+  goes for it (or kicks a tying FG) when a punt would let the leader kneel it out; `hurryUp` starts once the clock is short of
+  ~2:20 a needed score. Onside kicks: hands teams on both sides (WR/TE/HB), aimed at a sideline (`launchKick`), ~8% recovered.
+  Empty depth slots fall back by archetype (`fallbackOrder` in depthChart.js: a back → WR/TE, never a QB; no QB returners).
+  A human returner gets a landing marker (`players.landMark`) and the camera on him while the kick is up. Receivers run a scramble
+  drill after their route while the QB extends the play (`scrambleDrill` in offense.js). Depth chart X = backups (A B C → B C A,
+  again → C B A) per position, Y = starters back (`BENCH` in depthEditor.js). No-huddle keeps the same eleven (`lastLineup` → `cfg.keep`), not right after the two-minute warning.
 - Trick plays (`sim/tricks.js`, formation family "Trick Plays"): Hail Mary, flea flicker, hook and ladder, throwback, swap
   special, reverse; laterals (LB as a carrier, CPU last-gasp `cfg.lastGasp`); defenses don't fall for the same trick twice
   (`session.tricksRun` → `cfg.trickSeen`). Fakes are read (`fakeKickAssign`: contain, jammers on gunners, spy).

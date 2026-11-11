@@ -28,6 +28,8 @@ export class Nav {
       index = j >= 0 ? j : mem.index;
     }
     this.columns = columns;
+    // List menus are laid out as tile grids now (style.css): move by what's on screen.
+    if (!spatial && this.items[0]?.closest?.('.menu-screen .menu-list')) spatial = true;
     this.spatial = spatial; // free layouts (tile grids): move to the nearest item in the stick's direction
     this.onBack = onBack;
     this.onTab = onTab;

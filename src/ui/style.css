@@ -1527,3 +1527,76 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .ss-val { margin-top: 4px; font: 500 18px var(--fo); color: #cfcfcf; }
 .ss-desc { margin-top: 10px; font: 400 17px/1.4 var(--fb); color: #b4b4b4; }
 .screen.setup-screen .start-btn.nav-item.focused { background: #f2f2f2 !important; color: #000 !important; }
+.screen.setup-screen .opt-row.nav-item.focused { background: #f2f2f2 !important; }
+.screen.setup-screen .opt-row.nav-item.focused .opt-val { color: #000 !important; }
+
+/* List menus (Saves, My Plays, Spreadsheets, ...) as a grid of tiles like the hubs: title top-left, line under it. */
+.screen.menu-screen { justify-content: flex-start; align-items: flex-start; padding: 80px 3vw 64px; }
+.screen.menu-screen > .logo-small { position: absolute; left: 3vw; top: 18px; margin: 0; font: 500 28px var(--fo) !important; font-style: normal !important; letter-spacing: 2px; color: #e6e6e6;
+  background: none !important; -webkit-text-fill-color: #e6e6e6 !important; text-transform: uppercase; }
+.screen.menu-screen > .league-status { margin: 0 0 14px; font: 400 15px var(--fb); color: #9a9a9a; text-align: left; }
+.screen.menu-screen .menu-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; width: 100%; max-height: calc(100vh - 190px); overflow-y: auto; padding: 2px; }
+.screen.menu-screen .menu-item { position: relative; min-height: 150px; padding: 16px 18px; border-radius: 14px; background: rgba(18,18,20,0.88) !important; border: none !important;
+  display: flex; flex-direction: column; justify-content: flex-start; text-align: left; transform: none !important; }
+.screen.menu-screen .mi-label { font: 600 21px var(--fo) !important; letter-spacing: 0.5px; text-transform: uppercase; color: #fff; }
+.screen.menu-screen .mi-sub { margin-top: 6px; font: 400 15px var(--fb) !important; color: #9a9a9a; opacity: 1; }
+.screen.menu-screen .menu-item.nav-item.focused { background: #f2f2f2 !important; }
+.screen.menu-screen .menu-item.nav-item.focused .mi-sub { color: #444 !important; }
+.screen.menu-screen .setup-help { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; margin: 0; display: flex; align-items: center; padding: 0 30px; gap: 8px;
+  background: #000; opacity: 1; font: 500 15px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+.screen.setup-screen .opt-row.action { justify-content: space-between; }
+/* Franchise hub tabs (UPDATE 3.3): the reference's tiles — black, title top-left, big line icon bottom-right, the focused one white;
+   they wrap instead of running off the screen. */
+.fh-cards { display: grid !important; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 12px; width: 100%; max-height: calc(100vh - 200px); overflow-y: auto; padding: 2px; }
+.screen .hub-tile.fh-card { flex: none !important; min-height: 200px !important; justify-content: flex-start !important; background: rgba(18,18,20,0.9) !important; border-radius: 14px !important; box-shadow: none !important; }
+.screen .hub-tile.fh-card .ht-icon { top: auto !important; bottom: 16px; right: 18px; opacity: 1 !important; width: 96px !important; height: 96px !important; }
+.screen .hub-tile.fh-card .ht-icon svg { width: 96px; height: 96px; stroke: #fff !important; stroke-width: 1.6; }
+.screen .hub-tile.fh-card .ht-label { font: 600 23px/1.05 var(--fo) !important; }
+.screen .hub-tile.fh-card .ht-sub { color: #9a9a9a; max-width: 70%; }
+.screen .hub-tile.fh-card.nav-item.focused { background: #f2f2f2 !important; box-shadow: none !important; }
+.screen .hub-tile.fh-card.nav-item.focused .ht-icon svg { stroke: #000 !important; }
+.screen .hub-tile.fh-card.nav-item.focused .ht-sub { color: #444 !important; }
+.screen.fh-screen { background: radial-gradient(ellipse at 50% 120%, #1a1a1c 0%, #050505 70%) !important; }
+.fh-news-next { background: #1a1a1c !important; }
+
+/* ===== UPDATE 3.3: every table screen (standings, schedule, stats, contracts, trades, free agents, draft, offseason, Hall of Fame...)
+   in the roster table's look: title top-left, chips, a dark full-width table, the focused row white, the black hint bar. ===== */
+.screen.stats-screen { justify-content: flex-start !important; align-items: stretch !important; padding: 74px 3vw 60px !important; background: rgba(4,4,6,0.94) !important; }
+.screen.stats-screen > h1 { position: absolute; left: 3vw; top: 18px; margin: 0; padding: 0; font: 500 28px var(--fo) !important; font-style: normal !important; letter-spacing: 2px; text-transform: uppercase; color: #e6e6e6; }
+.screen.stats-screen > h1::after { display: none; }
+.screen.stats-screen .st-team-filter, .screen.stats-screen .league-status { color: #9a9a9a !important; font: 400 15px var(--fb) !important; letter-spacing: 0 !important; text-transform: none !important; text-align: left; margin: 0 0 8px; }
+.screen.stats-screen .pc-tabs { margin: 0 0 10px; }
+.screen .pc-tab { border-radius: 6px; background: rgba(255,255,255,0.08); font: 500 15px var(--fo); letter-spacing: 0.5px; text-transform: uppercase; color: #9a9a9a; padding: 5px 12px; }
+.screen .pc-tab.on { background: #f2f2f2 !important; color: #111 !important; }
+.screen.stats-screen .st-table { width: 100% !important; max-height: none !important; flex: 1; min-height: 0; gap: 0 !important; padding: 0 !important; background: rgba(0,0,0,0.38); }
+.screen .st-row { border: none !important; border-radius: 0 !important; background: transparent !important; min-height: 34px; padding: 4px 12px !important; }
+.screen .st-row:nth-child(even) { background: rgba(255,255,255,0.025) !important; }
+.screen .st-row.st-head { background: rgba(255,255,255,0.07) !important; color: #8d8d8d !important; font: 500 13px var(--fo) !important; letter-spacing: 1px; }
+.screen .st-row.mine { box-shadow: inset 4px 0 0 #fff; }
+.screen .st-row.nav-item.focused { background: #f2f2f2 !important; color: #000 !important; }
+.screen.stats-screen .setup-help, .screen.stats-screen .over-buttons + .setup-help { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; margin: 0; display: flex; align-items: center; padding: 0 30px; gap: 8px;
+  background: #000; opacity: 1; font: 500 15px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+.screen.stats-screen .over-buttons { display: flex; gap: 10px; margin-top: 10px; }
+.screen.stats-screen .start-btn { background: rgba(18,18,20,0.9) !important; color: #fff; border: none !important; font: 600 17px var(--fo); letter-spacing: 1px; transform: none !important; }
+.screen.stats-screen .start-btn.nav-item.focused { background: #f2f2f2 !important; color: #000 !important; }
+/* Hub-style pages that aren't the hub (free agents, fantasy draft, tournament, drills, scenarios): black, the same title and hint bar. */
+.screen.hub-screen:not(.fh-screen) { background: rgba(4,4,6,0.94) !important; }
+.screen.hub-screen:not(.fh-screen) .hub-logo { font: 500 28px var(--fo) !important; font-style: normal !important; letter-spacing: 2px; color: #e6e6e6; text-shadow: none; text-transform: uppercase; }
+.screen.hub-screen:not(.fh-screen) .hub-logo span { color: #fff !important; }
+.screen .hub-foot { background: #000 !important; border-top: none !important; height: 44px; padding: 0 30px !important; font: 500 15px var(--fo); letter-spacing: 1px; text-transform: uppercase; }
+.screen.hub-screen:not(.fh-screen) .hub-tile { background: rgba(18,18,20,0.9) !important; border: none !important; box-shadow: none !important; }
+.screen.hub-screen:not(.fh-screen) .hub-tile.nav-item.focused { background: #f2f2f2 !important; }
+.screen.hub-screen:not(.fh-screen) .hub-tile .ht-icon svg { stroke: #fff; }
+.screen.hub-screen:not(.fh-screen) .hub-tile.nav-item.focused .ht-icon svg { stroke: #000 !important; }
+.screen .fd-row { border: none !important; border-radius: 0 !important; background: transparent !important; }
+.screen .fd-row:nth-child(even) { background: rgba(255,255,255,0.025) !important; }
+.screen .fd-row.nav-item.focused { background: #f2f2f2 !important; color: #000 !important; }
+.screen .st-empty { background: transparent !important; color: #8a8a8a !important; padding: 26px; text-align: center; }
+.screen .st-empty.nav-item.focused { background: transparent !important; color: #bdbdbd !important; }
+.screen.stats-screen .st-table:has(> .st-empty:only-child) { flex: none; }
+/* Pause: the menu clears the scorebug (tighter rows), names upright like the rest. */
+.screen.pz-screen { padding-bottom: 92px !important; }
+.screen.pz-screen .pz-item { min-height: 0 !important; height: 40px !important; padding: 0 16px !important; }
+.screen.pz-screen .pz-list { gap: 4px !important; }
+.screen.pz-screen .pz-help { bottom: 64px !important; }
+.screen.pz-screen b, .screen.pz-screen .pz-name b { font-style: normal !important; }

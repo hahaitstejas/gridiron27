@@ -647,7 +647,11 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   olive green on the grass only (warm, sunlit, like a TV broadcast).
   Field goals / PATs (main.js `camPhase = 'fg'`, camera.js): low behind the holder with the uprights ahead from the line-up through
   the kick; a block / fumble (`fgBroke`) and fakes keep the broadcast view. The holder kneels (`holdingKick` → pose `hold`,
-  `pose.noGait` keeps the planted-feet IK off).
+  `pose.noGait` keeps the planted-feet IK off). Pass set (`passset`) is its own pose: sat down in a wide base, chest up, hands at
+  the chest (run blocks keep the forward lean); backpedal / shuffle are low (hips sunk, chest over the toes, eyes up).
+- UPDATE 3.4 (menus, style.css block at the end): post-game / halftime side panel and tabs, trade builder (table scrolls above the
+  Propose / Cancel buttons), playoff bracket + picture, tournament bracket, Weekly Hub story cards: neutral panels, no borders or
+  team-color stripes, upright Oswald.
   Tackles: `PlayerRenderer.wrap[i]` keeps a tackler on the runner he hit through the fall and on the ground (over his legs, `pileLift`),
   easing back when he gets up; `down` lies on a shoulder with a knee drawn up (ball arm tucked). Catches (`reachForBall`): both hands to
   the ball, a jump for high balls and a bend for low ones, a lean on wide ones; `catch` = give, then tuck.

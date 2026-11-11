@@ -586,7 +586,8 @@ window.addEventListener('keydown', (e) => {
 });
 
 // Debug hooks for automated testing.
-window.__g27 = { screens, get session() { return session; }, get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills, showScenarios };
+window.__g27 = { screens, get session() { return session; }, get speed() { return speed; }, set speed(v) { speed = v; }, // speed: dev slow-motion checks
+ get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills, showScenarios };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));

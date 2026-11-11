@@ -817,6 +817,17 @@ function computePose(p, time, sim) {
       pose.rootY = Math.sin(time * 2 + p.id) * 0.005;
       break;
     case 'passset':
+      // Pass set: sitting down in a wide base (knees bent, chest up, not leaning over his feet), hands cocked at the chest
+      // ready to punch, a short kick-slide when he moves and a little bounce while he waits.
+      runLegs(Math.min(0.35, run * 0.45));
+      pose.crouch = -0.2 + Math.sin(time * 7 + p.id) * 0.008; pose.lean = 0.24; pose.head = -0.12;
+      pose.legs[0].out = pose.legs[1].out = 0.32;
+      pose.legs[0].knee += 0.85; pose.legs[1].knee += 0.85;
+      pose.legs[0].hip += 0.55; pose.legs[1].hip += 0.55;
+      pose.arms[0].pitch = pose.arms[1].pitch = 0.5 + Math.sin(time * 6 + p.id) * 0.05;
+      pose.arms[0].elbow = pose.arms[1].elbow = 1.05;
+      pose.arms[0].out = pose.arms[1].out = -0.22;
+      break;
     case 'block':
       runLegs(Math.min(0.5, run * 0.6));
       pose.crouch = -0.22; pose.lean = 0.55;
@@ -828,15 +839,20 @@ function computePose(p, time, sim) {
       pose.arms[0].out = pose.arms[1].out = -0.05;
       break;
     case 'backpedal':
-      runLegs(0.55 * Math.min(1, sp / 5));
-      pose.lean = 0.35; pose.crouch = -0.15;
-      pose.legs[0].hip *= -0.7; pose.legs[1].hip *= -0.7;
+      // A defensive back's pedal: low (hips sunk, knees bent), chest over his toes, eyes up on the quarterback, arms
+      // bent and pumping short.
+      runLegs(0.5 * Math.min(1, sp / 5));
+      pose.lean = 0.42; pose.crouch = -0.3; pose.head = -0.35;
+      pose.legs[0].hip *= -0.6; pose.legs[1].hip *= -0.6;
+      pose.arms[0].elbow = pose.arms[1].elbow = 1.5;
+      pose.arms[0].pitch = 0.35 + sw * 0.35; pose.arms[1].pitch = 0.35 - sw * 0.35;
       break;
     case 'shuffle':
-      pose.crouch = -0.15; pose.lean = 0.3;
+      // Shuffle (linebackers / DBs moving sideways): a low athletic base, chest up, hands ready in front.
+      pose.crouch = -0.3; pose.lean = 0.4; pose.head = -0.3;
       pose.legs[0].out = 0.2 + Math.max(0, sw) * 0.35; pose.legs[1].out = 0.2 + Math.max(0, -sw) * 0.35;
-      pose.legs[0].knee = pose.legs[1].knee = 0.6; pose.legs[0].hip = pose.legs[1].hip = 0.25;
-      pose.arms[0].pitch = pose.arms[1].pitch = 0.6; pose.arms[0].elbow = pose.arms[1].elbow = 1.2;
+      pose.legs[0].knee = pose.legs[1].knee = 0.9; pose.legs[0].hip = pose.legs[1].hip = 0.45;
+      pose.arms[0].pitch = pose.arms[1].pitch = 0.75; pose.arms[0].elbow = pose.arms[1].elbow = 1.25; pose.arms[0].out = pose.arms[1].out = 0.18;
       break;
     case 'throw': {
       // Load (ball back by the ear, front shoulder closed, weight on the back foot), stride and whip (hips open

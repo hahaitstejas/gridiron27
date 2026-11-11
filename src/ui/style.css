@@ -1580,7 +1580,7 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .screen.stats-screen .start-btn { background: rgba(18,18,20,0.9) !important; color: #fff; border: none !important; font: 600 17px var(--fo); letter-spacing: 1px; transform: none !important; }
 .screen.stats-screen .start-btn.nav-item.focused { background: #f2f2f2 !important; color: #000 !important; }
 /* Hub-style pages that aren't the hub (free agents, fantasy draft, tournament, drills, scenarios): black, the same title and hint bar. */
-.screen.hub-screen:not(.fh-screen) { background: rgba(4,4,6,0.94) !important; }
+.screen.hub-screen:not(.fh-screen) { background: #050507 !important; }
 .screen.hub-screen:not(.fh-screen) .hub-logo { font: 500 28px var(--fo) !important; font-style: normal !important; letter-spacing: 2px; color: #e6e6e6; text-shadow: none; text-transform: uppercase; }
 .screen.hub-screen:not(.fh-screen) .hub-logo span { color: #fff !important; }
 .screen .hub-foot { background: #000 !important; border-top: none !important; height: 44px; padding: 0 30px !important; font: 500 15px var(--fo); letter-spacing: 1px; text-transform: uppercase; }
@@ -1600,3 +1600,64 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .screen.pz-screen .pz-list { gap: 4px !important; }
 .screen.pz-screen .pz-help { bottom: 64px !important; }
 .screen.pz-screen b, .screen.pz-screen .pz-name b { font-style: normal !important; }
+
+/* ===== UPDATE 3.4: leftovers from the older look: post game / halftime, trade, playoff bracket, tournament, Weekly Hub cards.
+   Monochrome: no outlines or team-color stripes, Oswald display type, the focused item white, nothing wraps or runs off the screen. ===== */
+
+/* Post game and halftime: no dividers or outlines, upright Oswald names, the panel tabs fit beside the scorebug-free side column. */
+.screen.pg-screen .pz-list, .screen.pg-screen .pz-item { border: 0 !important; }
+.screen.pg-screen .pg-side { width: 330px; }
+.screen.pg-screen .pg-qbs, .screen.pg-screen .pg-leadrow { border-top: 0 !important; }
+.screen.pg-screen .pg-team b, .screen.pg-screen .pg-num b, .screen.pg-screen .pg-lead b, .screen.pg-screen .pg-qb .pz-name b {
+  font: 500 30px/1 var(--fo); font-style: normal; letter-spacing: 1px; text-transform: uppercase; }
+.screen.pg-screen .pg-num b { font-size: 68px; }
+.screen.pg-screen .pg-qb .pz-name b { font-size: 22px; }
+.screen.pg-screen .pg-lead b { font-size: 18px; letter-spacing: 0.5px; text-transform: none; }
+.screen.pg-screen .pg-team small, .screen.pg-screen .pg-num small, .screen.pg-screen .pz-name small { font-family: var(--fo); letter-spacing: 2px; }
+.screen.pg-screen .pg-tabs { flex-wrap: nowrap; white-space: nowrap; justify-content: flex-end; gap: 0; font: 500 12px var(--fo); letter-spacing: 0.5px; text-transform: uppercase; color: #8a8a8a; }
+.screen.pg-screen .pg-tabs span { padding: 3px 5px; }
+.screen.pg-screen .pg-tabs span.on { background: #f2f2f2; color: #000; }
+.screen.pg-screen .pg-tabs .btn { font-size: 11px; margin: 0 1px; }
+.screen.pg-screen .pg-panel table.box { background: rgba(255,255,255,0.055); border-radius: 0; padding: 10px 8px; width: 100%; font: 500 15px var(--fb); }
+.screen.pg-screen .pg-panel table.box th { font: 500 13px var(--fo); letter-spacing: 1px; text-transform: uppercase; opacity: 0.6; }
+.screen.pg-screen .pg-panel table.box td { font-weight: 600; }
+.screen.pg-screen .pg-chart, .screen.pg-screen .pg-sc, .screen.pg-screen .pg-lead { background: rgba(255,255,255,0.055) !important; }
+.screen.pg-screen .pg-qtable th, .screen.pg-screen .pg-qtable td { font-family: var(--fb); }
+
+/* Stats-style pages: the table scrolls inside the screen instead of running under the hint bar; a lone Back is a small button, not a bar. */
+.screen.stats-screen { background: #050507 !important; }
+.screen.stats-screen .st-table { max-height: calc(100vh - 290px) !important; overflow-y: auto !important; }
+.screen.stats-screen > .start-btn { flex: none; align-self: flex-start; width: 220px; height: 48px; margin-top: 16px; display: flex; align-items: center; justify-content: center; }
+/* Side panels and value boxes (trade summary, bracket scores): neutral panels, not the navy ones. */
+.screen .fr-score { background: rgba(255,255,255,0.06) !important; color: #e6e6e6; }
+.screen .fr-divs .st-row { border-left-color: transparent !important; }
+
+/* Playoff bracket: round columns with white labels, games as flat cards, the seeds' picture above. */
+.screen .fr-bracket { align-items: flex-start; justify-content: flex-start; gap: 24px; margin: 14px 0 0; }
+.screen .fr-round { min-width: 230px; flex: 1 1 230px; max-width: 300px; }
+.screen .fr-round .dc-head { font: 500 14px var(--fo); letter-spacing: 1.5px; color: #fff; margin: 0 0 6px; }
+.screen .fr-round .fr-score { font: 500 16px var(--fb); letter-spacing: 0.2px; padding: 8px 12px; margin: 4px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.screen .fr-divs { gap: 12px 24px; }
+.screen .fr-div .dc-head { font: 500 14px var(--fo); letter-spacing: 1.5px; color: #fff; }
+
+/* Tournament bracket: flat black cards, the focused / your team in white, no gold rings, no side bars. */
+.screen .tb-head { border-left: 0 !important; padding-left: 0 !important; color: #fff; }
+.screen .tb-team { border-left: 0 !important; opacity: 0.8; }
+.screen .tb-team.win { background: rgba(255,255,255,0.08); opacity: 1; }
+.screen .tb-team.me b { color: #fff; }
+.screen .tb-card.mine { box-shadow: none; background: rgba(255,255,255,0.13); }
+.screen .tb-champ .tb-card { transform: none; box-shadow: none; background: rgba(255,255,255,0.13); }
+.screen.hub-screen .ht-label { font-style: normal; }
+.screen .tb-tiles .hub-tile .ht-label { font-size: 22px; line-height: 1.05; }
+.screen .tb-tiles .hub-tile.feature .ht-label { font-size: 30px; }
+
+/* Weekly Hub story cards: a little more room for the line, the subtitle across the card, the icon bottom right, no team tint. */
+.fh-cards { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.screen .hub-tile.fh-card { min-height: 220px !important; background: linear-gradient(165deg, #1e1e22 0%, #0a0a0c 80%) !important; }
+.screen .hub-tile.fh-card .ht-label { font-size: 28px !important; }
+.screen .hub-tile.fh-card .ht-sub { font: 400 16px/1.35 var(--fb) !important; color: #9a9a9a; max-width: 82%; }
+.screen .hub-tile.fh-card .ht-icon { width: 84px !important; height: 84px !important; }
+.screen .hub-tile.fh-card .ht-icon svg { width: 84px; height: 84px; }
+.screen .hub-tile.fh-card.nav-item.focused { background: #f2f2f2 !important; }
+/* The news tag was red: monochrome like the rest of the hub. */
+.fh-news-tag { background: #f2f2f2; color: #000; }

@@ -222,3 +222,18 @@ describe('championship MVP', () => {
     expect(f.awards[2027][0].award).toMatch(/MVP/);
   });
 });
+
+describe('opening cut-down', () => {
+  it('leaves your cuts to you and trims the CPU teams', async () => {
+    const { generatePlayer } = await import('../src/data/generator.js');
+    const { addPlayer } = await import('../src/data/rosterOps.js');
+    const teams = generateLeagueRosters(defaultTeams(), 21);
+    for (const t of [teams[3], teams[7]]) for (let i = 0; i < 6; i++) addPlayer(t, generatePlayer('WR', new RNG(50 + i), 0));
+    const n3 = teams[3].roster.length;
+    const f = createFranchise(teams, { userTeam: 3, weeks: 6, seed: 4 });
+    expect(n3).toBeGreaterThan(53);
+    expect(f.needsCut).toBe(true);
+    expect(teams[3].roster.length).toBe(n3); // nothing cut for you
+    expect(teams[7].roster.length).toBeLessThanOrEqual(53);
+  });
+});

@@ -182,7 +182,8 @@ export class Presentation {
     if (!d) return null;
     // One fixed angle on the scorer for the whole celebration (he turns to face the field; the camera doesn't swing).
     c.camAt ||= { x: d.x, z: d.z, facing: c.dir > 0 ? Math.PI : 0 };
-    return { x: c.camAt.x, z: c.camAt.z, facing: c.camAt.facing, t: c.t };
+    // Once you've picked a celebration the camera moves in close on him (a team one stays wider for the group).
+    return { x: c.camAt.x, z: c.camAt.z, facing: c.camAt.facing, t: c.t, close: c.picked ? (c.teamParty ? 0.6 : 1) : 0 };
   }
 
   /** Touchdown: the scorer celebrates facing the field; teammates run over and celebrate around him. */

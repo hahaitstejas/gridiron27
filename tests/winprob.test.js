@@ -24,6 +24,10 @@ describe('decision math', () => {
     expect(fourthDecision(mk({ yardLine: 75, toGo: 5, score: [0, 2], quarter: 4, clock: 30 }), 0).choice).toBe('fg');
     // Down 10 with 1:50 left: punting is hopeless.
     expect(fourthDecision(mk({ yardLine: 35, toGo: 13, score: [0, 10], quarter: 4, clock: 110 }), 0).choice).toBe('go');
+    // Down 13 at midfield, 4th & 9, 0:34, no timeouts: a punt lets them kneel it out.
+    expect(fourthDecision(mk({ yardLine: 50, toGo: 9, score: [0, 13], quarter: 4, clock: 34, timeouts: [0, 3] }), 0).choice).toBe('go');
+    // Down 3, 4th & 9 at the opponent 30, 0:34: tie it with the field goal.
+    expect(fourthDecision(mk({ yardLine: 70, toGo: 9, score: [0, 3], quarter: 4, clock: 34, timeouts: [0, 3] }), 0).choice).toBe('fg');
   });
   it('win probability is sane and deterministic', () => {
     const s = { lead: 3, secs: 120, ball: 'B', yl: 25, toA: 3, toB: 3 };

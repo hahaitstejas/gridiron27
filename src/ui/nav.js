@@ -57,6 +57,7 @@ export class Nav {
     const el = this.items[this.index];
     el.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     el.onfocusitem?.();
+    this.onFocus?.(el); // screen-wide hook (Screens: the settings description panel)
   }
 
   get current() { return this.items[this.index]; }

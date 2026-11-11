@@ -127,12 +127,98 @@ export function rosterScreen(ctx, ti, focus = 0) {
     if (f.pressed.X) {
       if (v.sort.col === v.sort.cur) v.sort.asc = !v.sort.asc; else { v.sort.col = v.sort.cur; v.sort.asc = v.sort.cur <= 2; }
       v.focus = 0; rosterScreen(ctx, ti);
-    } else if (f.pressed.LT || f.pressed.RT) {
-      const i = POS_FILTERS.indexOf(v.pos);
-      v.pos = POS_FILTERS[(i + (f.pressed.RT ? 1 : -1) + POS_FILTERS.length) % POS_FILTERS.length];
-      v.focus = 0; rosterScreen(ctx, ti);
     } else if (f.pressed.Y && ti >= 0) newPlayer(ctx, ti);
+    posTrigger(f);
   };
+  // Positions on the triggers: a tap steps one (LT back, RT forward); holding one opens the list right there —
+  // ▲▼ to pick, let go (or A) to jump to it.
+  const posTrigger = (f) => {
+    const now = performance.now();
+    if (f.pressed.LT || f.pressed.RT) { v.trig = { at: now, d: f.pressed.RT ? 1 : -1, list: null }; return; }
+    const t = v.trig;
+    if (!t) return;
+    const held = f.down.LT || f.down.RT || (f.lt || 0) > 0.4 || (f.rt || 0) > 0.4;
+    if (held && !t.list && now - t.at > 320) t.list = openPosList();
+    if (!held) {
+      v.trig = null;
+      if (t.list) { const pos = t.list.pick(); if (pos) { v.pos = pos; v.focus = 0; } rosterScreen(ctx, ti); return; }
+      const i = POS_FILTERS.indexOf(v.pos);
+      v.pos = POS_FILTERS[(i + t.d + POS_FILTERS.length) % POS_FILTERS.length];
+      v.focus = 0; rosterScreen(ctx, ti);
+    }
+  };
+  const openPosList = () => {
+    const items = POS_FILTERS.map((pos) => {
+      const it = el(`div.rx-pos${pos === v.pos ? '.on' : ''}`, { text: pos === 'ALL' ? 'ALL POSITIONS' : pos });
+      it.pos = pos;
+      it.activate = () => { v.pos = pos; v.focus = 0; v.trig = null; rosterScreen(ctx, ti); };
+      return it;
+    });
+    screens.root.append(el('div.rx-poslist', {}, items));
+    screens.nav.set(items, { columns: 1, index: Math.max(0, POS_FILTERS.indexOf(v.pos)), onBack: () => { v.trig = null; rosterScreen(ctx, ti); } });
+    return { pick: () => screens.nav.current?.pos };
+  };
+}
+
+/**
+ * A player table in the Manage Players look (header card of the focused player on top, filter chips, dark table,
+ * black hint bar). rows = [{ p, team, cells: [...], cls?, act }]; head = column labels (first = name column).
+ */
+export function playerTable(screens, { title = '', head, rows, chips = [], count = '', bar, focus = 0, onBack, onTab = null, extra = null, empty = 'No players.' }) {
+  screens.extraButtons = null;
+  const hero = el('div.rh-host');
+  const show = (r) => { hero.innerHTML = ''; if (r) hero.append(playerHero(r.p, r.team)); };
+  const items = rows.map((r) => {
+    const it = el(`div.rt-row${r.cls ? '.' + r.cls : ''}`, {}, r.cells.map((c, i) => el(`span.rt-c${i === 0 ? '.name' : ''}`, { text: String(c) })));
+    it.onfocusitem = () => show(r);
+    it.activate = () => r.act?.(it);
+    it.player = r.p;
+    return it;
+  });
+  screens.frame('mono-screen rt-screen', hero,
+    el('div.rt-filters', {}, title ? el('div.rt-title', { text: title }) : null, chips.map((c) => el('div.rt-chip', { html: c })), el('div.rt-count', { text: count })),
+    el('div.rt-table', {}, el('div.rt-row.rt-head', {}, head.map((h, i) => el(`span.rt-c${i === 0 ? '.name' : ''}`, { text: h }))),
+      el('div.rt-body', {}, items.length ? items : el('div.rt-empty', { text: empty }))),
+    el('div.mm2-bar', { html: bar }));
+  screens.nav.set(items.length ? items : [el('div')], { columns: 1, index: Math.min(focus, Math.max(0, items.length - 1)), onBack, onTab });
+  if (!items.length) show(null);
+  if (extra) screens.extraButtons = extra;
+  return items;
+}
+
+/**
+ * Pick a new signing's jersey number: every number he's allowed to wear (position rules) that the team doesn't
+ * already use or has retired, his current one focused. A takes it; B keeps the one he has.
+ */
+export function numberPicker(screens, team, p, onDone) {
+  screens.extraButtons = null;
+  const used = new Set([...team.roster.filter((q) => q !== p).map((q) => q.number), ...(team.ps || []).filter((q) => q !== p).map((q) => q.number),
+    ...(team.retired || []).map((r) => (typeof r === 'object' ? +r.number : +r))]);
+  const nums = [];
+  for (let n = 0; n <= 99; n++) if (numberAllowed(p.pos, n) && !used.has(n)) nums.push(n);
+  const tiles = nums.map((n) => {
+    const t = el(`div.nx-num${n === p.number ? '.on' : ''}`, { text: String(n) });
+    t.activate = () => { p.number = n; onDone(n); };
+    return t;
+  });
+  screens.frame('mono-screen rt-screen nx-screen', el('div.rh-host', {}, playerHero(p, team)),
+    el('div.rt-filters', {}, el('div.rt-title', { text: 'Pick a Jersey Number' }), el('div.rt-count', { text: `${p.pos}: ${nums.length} numbers open on the ${team.name}` })),
+    el('div.nx-grid', {}, tiles),
+    el('div.mm2-bar', { html: '<span><b class="btn A">A</b> WEAR THIS NUMBER</span><span><b class="btn B">B</b> KEEP #' + p.number + '</span>' }));
+  screens.nav.set(tiles, { spatial: true, index: Math.max(0, nums.indexOf(p.number)), onBack: () => onDone(p.number) });
+}
+
+/** The Actions panel over a table: [[label, fn], ...]; B (or a picked item) returns via `back`. */
+export function actionsPanel(screens, title, list, back) {
+  screens.root.querySelector('.rx-actions')?.remove();
+  const items = list.filter(Boolean).map(([label, fn, note]) => {
+    const it = el('div.rx-act', {}, el('span', { text: label }), note ? el('small', { text: note }) : null);
+    it.activate = fn;
+    return it;
+  });
+  screens.root.append(el('div.rx-actions', {}, el('div.rx-acth', { text: title }), el('div.rx-actlist', {}, items)));
+  screens.extraButtons = null;
+  screens.nav.set(items, { columns: 1, onBack: back });
 }
 
 /** A on a player: the actions panel over the table. */
@@ -198,8 +284,8 @@ export function playerCard(ctx, ti, id, focus = 0, tab = 0) {
   const { screens, teams } = ctx;
   screens.extraButtons = null;
   const team = teams[ti];
-  const p = team.roster.find((q) => q.id === id);
-  const back = () => (ctx.view ? rosterScreen(ctx, ctx.view.ti) : rosterScreen(ctx, ti));
+  const p = team.roster.find((q) => q.id === id) || team.ps?.find((q) => q.id === id); // practice squad too
+  const back = ctx.cardBack || (() => (ctx.view ? rosterScreen(ctx, ctx.view.ti) : rosterScreen(ctx, ti)));
   if (!p) { back(); return; }
   const hero = el('div.rh-host');
   const refresh = () => { p.ovr = overall(p); hero.innerHTML = ''; hero.append(playerHero(p, team, { big: true })); };
@@ -233,7 +319,8 @@ export function playerCard(ctx, ti, id, focus = 0, tab = 0) {
       text('Last Name', 'last'),
       row('Position', () => p.pos, (d, v) => {
         const pos = v !== undefined ? v.trim().toUpperCase() : POSITIONS[(POSITIONS.indexOf(p.pos) + d + POSITIONS.length) % POSITIONS.length];
-        if (POSITIONS.includes(pos)) changePosition(team, p, pos);
+        if (!POSITIONS.includes(pos)) return;
+        if (team.roster.includes(p)) changePosition(team, p, pos); else { p.pos = pos; p.ovr = overall(p); } // practice squad: no depth chart
       }),
       row('Jersey #', () => `#${p.number}`, (d, v) => {
         // Taken, retired and position-illegal numbers (QB 0-19, OL 50-79, ...) are skipped.

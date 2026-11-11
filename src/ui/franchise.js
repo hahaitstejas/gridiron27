@@ -31,7 +31,7 @@ import { careerPlayer } from '../franchise/career.js';
 import { scheduleFromRows, exportSchedule } from '../data/extraCSV.js';
 import { setSchedule } from '../franchise/franchise.js';
 import { pickFile, downloadFile } from '../data/storage.js';
-import { injuryReport, practiceSquadScreen, waiversScreen, playerSearch, gamePreview, scoutingScreen } from './franchiseMore.js';
+import { cutDownScreen, injuryReport, practiceSquadScreen, waiversScreen, playerSearch, gamePreview, scoutingScreen } from './franchiseMore.js';
 import { teamMorale } from '../franchise/development.js';
 import { localBook } from '../data/localLeague.js';
 
@@ -179,6 +179,11 @@ export class FranchiseUI {
     if (f.phase === 'offseason') { this.ctx.offseason(this); return; }
     if (f.phase === 'done') { this.seasonOver(); return; }
     if (f.fantasy && !f.fantasy.done) { fantasyDraftScreen(this); return; }
+    // Opening cut-down: your roster is over 53 and the season can't start until you've picked who goes.
+    if (f.needsCut) {
+      if (me.roster.length > 53) { cutDownScreen(this, { onDone: () => { f.needsCut = false; this.save(); this.hub(); } }); return; }
+      f.needsCut = false;
+    }
     const g = userGame(f);
     const rec = recordOf(f, teams, f.userTeam);
     const stage = f.phase === 'regular' ? `Week ${f.week + 1} of ${f.weeks}` : PLAYOFF_ROUND_NAMES[f.playoffs.rounds.length - 1];

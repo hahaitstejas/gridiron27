@@ -16,6 +16,7 @@ import { healWeek, weeklyHealth, cpuInjuredReserve, unavailableIds, injuryLine }
 import { updateMorale, developmentTick } from './development.js';
 import { revertElevations, cpuElevations, release as releaseToWaivers, processWaivers, waiverOrder, resetPSSeason, addToPS } from './practiceSquad.js';
 import { cutDown } from './offseason.js';
+import { buildDepthChart } from '../data/depthChart.js';
 import { cpuSignFreeAgents, addFreeAgent, ensureSpecialists } from './freeAgents.js';
 import { fits } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
@@ -65,6 +66,8 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
 export function trimRosters(f, teams) {
   teams.forEach((t, ti) => {
     if (t.roster.length <= 53) return;
+    // Your team: you make the cuts yourself (hub → Cut Down to 53) instead of the auto-cut's guesses.
+    if (ti === f.userTeam) { f.needsCut = true; return; }
     const cut = cutDown(t, 53).sort((a, b) => (a.age ?? 25) - (b.age ?? 25)); // the youngest get the practice-squad spots
     const toPS = [], toFA = [];
     for (const p of cut) { if (addToPS(t, p)) toPS.push(p); else { addFreeAgent(f, p); toFA.push(p); } }
@@ -351,6 +354,8 @@ export function advance(f, teams) {
       const pt = cpuPickTrade(f, teams, new RNG((f.seed += 3)));
       if (pt) logTransaction(f, pt);
     }
+    // CPU coaches redo their depth charts every week (signings, trades, growth, injuries); yours is yours.
+    teams.forEach((t, i) => { if (i !== f.userTeam) t.depth = buildDepthChart(t.roster); });
     f.week++;
     if (f.week >= f.weeks) {
       checkSeasonRecords(f);

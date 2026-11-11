@@ -1,4 +1,6 @@
 import { el } from './nav.js';
+import { cutDownScreen } from './franchiseMore.js';
+import { numberPicker } from './rosterEditor.js';
 import { logoCanvas } from '../render/logo.js';
 import { draftDayOffers, executeDeal, dealText } from '../franchise/trades.js';
 import { RNG } from '../core/rng.js';
@@ -109,7 +111,8 @@ function freeagency(ctx, ui, f, filter = 0) {
       if (!signFreeAgent(f, team, p.id)) { window.alert(`Not enough cap space: he wants ${money(ask)}.`); return; }
       if (p.ovr >= 72) logTransaction(f, `${team.abbr} signs free agent ${p.pos} ${who(p)} (${money(ask)})`);
       save(ctx);
-      freeagency(ctx, ui, f, filter);
+      const after = () => { save(ctx); freeagency(ctx, ui, f, filter); };
+      if (ui.ctx?.prefs?.autoNumbers) after(); else numberPicker(ctx.screens, team, p, after); // you pick his number
     };
     return r;
   });
@@ -207,26 +210,14 @@ function pickOffers(ctx, ui, f) {
 
 function cutdown(ctx, ui, f) {
   const team = ctx.teams[f.userTeam];
-  const over = team.roster.length - ROSTER_LIMIT;
-  const overCap = payroll(team) - f.cap;
-  const list = [...team.roster].sort((a, b) => a.ovr - b.ovr);
-  const rows = list.map((p) => {
-    const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: money(p.salary || 0) })]);
-    r.activate = () => { if (window.confirm(`Release ${who(p)}?`)) { releasePlayer(team, p.id); save(ctx); cutdown(ctx, ui, f); } };
-    return r;
-  });
   const next = () => {
-    cutDown(team, ROSTER_LIMIT, f.cap);
+    cutDown(team, ROSTER_LIMIT, f.cap); // anyone still over (and back under the cap)
     fillRoster(f, team, 46); // a short roster gets the best affordable free agents
     cpuCutDowns(f, ctx.teams);
     startNextSeason(f, ctx.teams);
     save(ctx);
     ui.hub();
   };
-  const buttons = over > 0 || overCap > 0
-    ? [button(`Auto-cut${over > 0 ? ' ' + over : ''}${overCap > 0 ? ' (and get under the cap)' : ''} and start ${f.year + 1}`, next), button('Main Menu', ctx.onExit, '.secondary')]
-    : [button(`Start the ${f.year + 1} season`, next)];
-  const capNote = overCap > 0 ? ` · over the cap by ${money(overCap)}` : ` · ${capLine(f, team)}`;
-  frame(ctx, 'Cut Down to 53', (over > 0 ? `${team.roster.length} players: release ${over} more (A), or auto-cut the lowest rated` : `${team.roster.length} players: you're set`) + capNote,
-    el('div.st-table', {}, rows), buttons, '<b class="btn A">A</b> release player &nbsp; ▲▼ scroll', { rows });
+  // Same screen as the opening cut-down: A = practice squad / release, Y = auto-cut, then Continue starts the season.
+  cutDownScreen(ui, { onDone: next, onAuto: next, title: `Cut Down to 53 · ${f.year + 1}` });
 }

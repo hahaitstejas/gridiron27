@@ -173,6 +173,9 @@ export class Match {
 
   callTimeout(team) {
     if (this.timeouts[team] <= 0 || this.over || this.phase === 'kickoff') return false;
+    // NFL rule: no back-to-back timeouts by the same team in one dead-ball period (applyResult clears it).
+    if ((this.toBreak ||= [false, false])[team]) return false;
+    this.toBreak[team] = true;
     this.timeouts[team]--;
     this.clockRunning = false;
     this.playClock = 25;
@@ -187,6 +190,7 @@ export class Match {
    */
   applyResult(r, sim, penalty = null) {
     this.justWarned = false;
+    this.toBreak = [false, false];
     if (this.over) return;
     // Snapshot for the play-by-play line and the drive summary (see afterResult).
     const before = { phase: this.phase, down: this.down, toGo: this.toGo, firstYL: this.firstYL, yardLine: this.yardLine, poss: this.possession,

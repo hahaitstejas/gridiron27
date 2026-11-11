@@ -1496,3 +1496,34 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .rx-status { margin: -10px 0 18px; font: 400 15px var(--fb); color: #9a9a9a; }
 .dx-top h1 { font: 500 28px var(--fo); letter-spacing: 2px; color: #e6e6e6; padding: 0; }
 .dx-top h1::after { display: none; }
+.rt-title { font: 600 22px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: #fff; margin-right: 8px; }
+.rx-act { flex-direction: column; height: auto; min-height: 38px; padding: 6px 0; }
+.rx-act small { font: 400 13px var(--fb); color: #9a9a9a; text-transform: none; letter-spacing: 0; }
+.screen .rx-act.nav-item.focused small { color: #444 !important; }
+.rt-row.dim .rt-c { color: #8a8a8a; }
+.rt-row.hl .rt-c.name { box-shadow: inset 4px 0 0 #fff; }
+.nx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: 6px; margin-top: 10px; overflow-y: auto; min-height: 0; }
+.nx-num { height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: rgba(255,255,255,0.08); font: 600 26px var(--fo); color: #fff; cursor: pointer; }
+.nx-num.on { box-shadow: inset 0 -4px 0 #fff; }
+/* Hold LT/RT on Manage Players: the position list drops down under the position chip. */
+.rx-poslist { position: absolute; left: calc(3vw + 240px); top: 252px; width: 230px; max-height: calc(100vh - 330px); overflow-y: auto; z-index: 6;
+  display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 8px; background: rgba(10,10,12,0.97); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+.rx-pos { height: 30px; display: flex; align-items: center; padding: 0 12px; border-radius: 5px; font: 500 16px var(--fo); letter-spacing: 0.5px; color: #ddd; cursor: pointer; flex: none; }
+.rx-pos.on { color: #fff; box-shadow: inset 3px 0 0 #fff; }
+
+/* ===== UPDATE 3.3: settings-style screens (the reference's settings: rows on the left, the focused one explained on the right) ===== */
+.screen.setup-screen, .screen.gs-screen { justify-content: flex-start; align-items: flex-start; padding: 80px 3vw 64px; }
+.screen.setup-screen > h1, .screen.gs-screen > h1 { position: absolute; left: 3vw; top: 18px; margin: 0; font: 500 28px var(--fo); letter-spacing: 2px; color: #e6e6e6; padding: 0; }
+.screen.setup-screen > h1::after, .screen.gs-screen > h1::after { display: none; }
+.screen.setup-screen .setup-opts { width: min(760px, 58vw); flex-direction: row; flex-wrap: wrap; gap: 4px; max-height: calc(100vh - 170px); overflow-y: auto; padding: 2px; }
+.screen.setup-screen .opt-row { width: 100%; height: 38px; padding: 0 14px; align-items: center; border-radius: 6px; background: rgba(255,255,255,0.07) !important; font: 500 16px var(--fo); letter-spacing: 0.5px; text-transform: uppercase; }
+.screen.setup-screen .opt-val { font: 600 16px var(--fb); color: #d6d6d6; text-transform: none; min-width: 260px; text-align: center; }
+.screen.setup-screen .start-btn { flex: 1 1 0; min-width: 160px; height: 64px; margin: 10px 0 0; display: flex; align-items: center; justify-content: center; border-radius: 8px;
+  background: rgba(18,18,20,0.9) !important; color: #fff; font: 600 19px var(--fo); letter-spacing: 1px; transform: none !important; }
+.screen.setup-screen .setup-help, .screen.gs-screen .setup-help { position: absolute; left: 0; right: 0; bottom: 0; height: 44px; margin: 0; display: flex; align-items: center; padding: 0 30px; gap: 8px;
+  background: #000; opacity: 1; font: 500 15px var(--fo); letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+.ss-side { position: absolute; right: 3vw; top: 80px; width: min(400px, 30vw); }
+.ss-title { font: 600 30px var(--fo); letter-spacing: 0.5px; text-transform: uppercase; color: #fff; }
+.ss-val { margin-top: 4px; font: 500 18px var(--fo); color: #cfcfcf; }
+.ss-desc { margin-top: 10px; font: 400 17px/1.4 var(--fb); color: #b4b4b4; }
+.screen.setup-screen .start-btn.nav-item.focused { background: #f2f2f2 !important; color: #000 !important; }

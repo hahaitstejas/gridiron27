@@ -1,6 +1,7 @@
 // More franchise screens (Update 1.0): injury report with injured reserve, practice squad, waiver wire, league-wide
 // player search and the pre-game preview from your coordinators. `ui` = FranchiseUI (ctx.screens, f, teams, save(), hub()).
 import { el } from './nav.js';
+import { playerTable, actionsPanel, playerCard } from './rosterEditor.js';
 import { logoCanvas } from '../render/logo.js';
 import { sortHead, sortKeys, sortRows } from './sortable.js';
 import { gameStatus, reinjuryRisk, injuryLine, placeOnIR, canActivate, activateFromIR, activeCount, IR_MIN, IR_RETURNS } from '../franchise/health.js';
@@ -12,6 +13,8 @@ import { traitsOf, TRAITS } from '../data/traits.js';
 import { alphaOrder } from './screens.js';
 import { logTransaction } from '../franchise/franchise.js';
 import { addFreeAgent } from '../franchise/freeAgents.js';
+import { cutDown } from '../franchise/offseason.js';
+import { releasePlayer } from '../data/rosterOps.js';
 import { ensureDraftClass, scoutInSeason, importDraftClass } from '../franchise/draftClass.js';
 import { scoutView } from '../franchise/extras.js';
 import { pickFile } from '../data/storage.js';
@@ -64,81 +67,104 @@ export function injuryReport(ui, mine = true, sort = { col: null, asc: false, cu
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-/** Practice squad: your 16; A = elevate (or undo) / sign to the 53 / release; X = add the best young free agent you pick. */
-export function practiceSquadScreen(ui, mode = 'squad', filter = 0) {
+/** Practice squad: your 16 in the roster-table look; A = actions (edit, elevate / undo, sign to the 53, release); X = add a free agent. */
+export function practiceSquadScreen(ui, mode = 'squad', filter = 0, focus = 0) {
   const { screens } = ui.ctx;
   const f = ui.f, me = ui.teams[f.userTeam];
   const ps = me.ps ||= [];
-  const sort = { col: null, cur: 0 };
   if (mode === 'add') {
     const [fname, positions] = POS_FILTERS[filter];
     const pool = (f.freeAgents || []).filter((p) => (!positions || positions.includes(p.pos)) && psEligible(me, p)).sort((a, b) => b.ovr - a.ovr || (a.age ?? 30) - (b.age ?? 30)).slice(0, 60);
-    const rows = pool.map((p) => {
-      const r = el('div.st-row', {}, el('span.st-num', { text: p.pos }), el('span.st-num.wide', { text: `${p.first} ${p.last}` }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: `${p.age}` }), el('span.st-num', { text: isVeteranPS(p) ? 'Vet' : 'Young' }));
-      r.activate = () => {
+    playerTable(screens, {
+      title: 'Add to Practice Squad', head: ['PLAYER', 'POS', 'OVR', 'AGE', 'TYPE'],
+      rows: pool.map((p) => ({ p, team: me, cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, isVeteranPS(p) ? 'VET' : 'YOUNG'], act: () => {
         f.freeAgents.splice(f.freeAgents.indexOf(p), 1);
         if (addToPS(me, p)) logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} to the practice squad`);
         ui.save(); practiceSquadScreen(ui);
-      };
-      return r;
+      } })),
+      chips: [`<b class="btn LB">LB</b><b class="btn RB">RB</b> ${fname.toUpperCase()}`], count: `${ps.length}/${PS_MAX} on the squad · up to 6 veterans`,
+      bar: '<span><b class="btn A">A</b> SIGN TO THE PRACTICE SQUAD</span><span><b class="btn B">B</b> BACK</span>', empty: 'Nobody eligible here.',
+      onBack: () => practiceSquadScreen(ui), onTab: (d) => practiceSquadScreen(ui, 'add', (filter + d + POS_FILTERS.length) % POS_FILTERS.length),
     });
-    screens.frame('stats-screen', el('h1', { text: 'Add to Practice Squad' }),
-      el('div.pc-tabs', {}, POS_FILTERS.map(([n], i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: n }))),
-      el('div.st-team-filter', { text: `${ps.length}/${PS_MAX} on the squad · up to 6 veterans` }),
-      el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'Nobody eligible here.' })),
-      el('div.setup-help', { html: `<b class="btn A">A</b> Sign to the practice squad &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> ${fname} &nbsp; <b class="btn B">B</b> back` }));
-    screens.nav.set(rows.length ? rows : [el('div')], { columns: 1, onBack: () => practiceSquadScreen(ui), onTab: (d) => practiceSquadScreen(ui, 'add', (filter + d + POS_FILTERS.length) % POS_FILTERS.length) });
     return;
   }
   const elevatedNow = me.roster.filter((p) => p.elevated).length;
-  const rows = [...ps].sort((a, b) => b.ovr - a.ovr).map((p) => {
-    const r = el(`div.st-row${p.elevated ? '.mine' : ''}`, {}, el('span.st-num', { text: p.pos }), el('span.st-num.wide', { text: `${p.first} ${p.last}` }),
-      el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: String(p.age) }),
-      el('span.st-num', { text: `${p.elevations || 0}/${ELEVATE_MAX}` }), el('span.st-num', { text: p.elevated ? 'ELEVATED' : '' }));
-    r.activate = () => psActions(ui, p); // A: what to do with him (elevate / undo, sign to the 53, release)
-    r.player = p;
-    return r;
+  const list = [...ps].sort((a, b) => b.ovr - a.ovr);
+  const again = (i = 0) => practiceSquadScreen(ui, 'squad', 0, i);
+  playerTable(screens, {
+    title: 'Practice Squad', head: ['PLAYER', 'POS', 'OVR', 'AGE', 'ELEV', 'STATUS'],
+    rows: list.map((p, i) => ({ p, team: me, cls: p.elevated ? 'hl' : '', cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, `${p.elevations || 0}/${ELEVATE_MAX}`, p.elevated ? 'ELEVATED' : ''],
+      act: () => psActions(ui, p, () => again(i)) })),
+    count: `${ps.length}/${PS_MAX} players · elevated this week ${elevatedNow}/${ELEVATE_PER_GAME} · ${ELEVATE_MAX} elevations each a season`,
+    bar: '<span><b class="btn A">A</b> ACTIONS</span><span><b class="btn Y">Y</b> SIGN TO THE 53</span><span><b class="btn X">X</b> ADD A FREE AGENT</span><span><b class="btn B">B</b> BACK</span>',
+    empty: 'Empty. X adds players from free agency.', focus, onBack: () => ui.hub('Team'),
+    extra: (fr) => {
+      if (fr.pressed.X) { screens.extraButtons = null; practiceSquadScreen(ui, 'add'); return; }
+      if (fr.pressed.Y) {
+        const p = screens.nav.current?.player;
+        if (p && promoteFromPS(me, p)) { logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} off the practice squad`); ui.save(); }
+        again();
+      }
+    },
   });
-  screens.frame('stats-screen', el('h1', { text: 'Practice Squad' }),
-    el('div.st-team-filter', { text: `${ps.length}/${PS_MAX} players · elevated this week ${elevatedNow}/${ELEVATE_PER_GAME} · each player can be elevated ${ELEVATE_MAX} times a season, then must be signed` }),
-    el('div.st-row.st-head', {}, ['POS', 'PLAYER', 'OVR', 'AGE', 'ELEV', ''].map((h, i) => el(`span.st-num${i === 1 ? '.wide' : ''}`, { text: h }))),
-    el('div.st-table', {}, rows.length ? rows : el('div.st-empty', { text: 'Empty. X adds players from free agency.' })),
-    el('div.setup-help', { html: '<b class="btn A">A</b> Elevate / undo, sign or release &nbsp; <b class="btn Y">Y</b> Sign to the 53 &nbsp; <b class="btn X">X</b> Add a free agent &nbsp; <b class="btn B">B</b> back' }));
-  screens.nav.set(rows.length ? rows : [el('div')], { columns: 1, onBack: () => ui.hub('Team') });
-  screens.extraButtons = (fr) => {
-    if (fr.pressed.X) { screens.extraButtons = null; practiceSquadScreen(ui, 'add'); return; }
-    if (fr.pressed.Y) {
-      const p = screens.nav.items?.[screens.nav.index]?.player;
-      if (p && promoteFromPS(me, p)) { logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} off the practice squad`); ui.save(); }
-      practiceSquadScreen(ui);
-    }
-  };
 }
 
-/** One practice-squad player's options: elevate for this week's game (or undo it), sign him to the 53, release him. */
-function psActions(ui, p) {
+/**
+ * Cut down to 53 (the opening cut-down and the offseason one): your roster, lowest rated first; A on a player =
+ * move him to the practice squad (if he's eligible and there's room) or release him. Y = let the coaches auto-cut
+ * the rest. `onDone` runs once the roster is at 53 or fewer (a Continue row appears).
+ */
+export function cutDownScreen(ui, { onDone, onAuto = null, limit = 53, title = 'Cut Down to 53', focus = 0 } = {}) {
   const { screens } = ui.ctx;
   const f = ui.f, me = ui.teams[f.userTeam];
-  screens.extraButtons = null;
-  const back = () => practiceSquadScreen(ui);
+  const over = me.roster.length - limit;
+  const again = (i = 0) => cutDownScreen(ui, { onDone, onAuto, limit, title, focus: i });
+  const list = [...me.roster].sort((a, b) => a.ovr - b.ovr || (b.age ?? 25) - (a.age ?? 25));
+  const items = playerTable(screens, {
+    title, head: ['PLAYER', 'POS', 'OVR', 'AGE', '$M', 'PS'],
+    rows: list.map((p, i) => ({ p, team: me, cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, (p.salary ?? 0).toFixed(2), psEligible(me, p) ? 'YES' : '—'],
+      act: () => actionsPanel(screens, `${p.first} ${p.last}`, [
+        psEligible(me, p) ? ['Move to Practice Squad', () => { addToPS(me, p); logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`); ui.save(); again(i); }, `${(me.ps || []).length}/${PS_MAX} on the squad`] : null,
+        ['Release', () => { releasePlayer(me, p.id); addFreeAgent(f, p); logTransaction(f, `${me.abbr} cut-down: released ${p.pos} ${p.first} ${p.last}`); ui.save(); again(i); }, 'he becomes a free agent'],
+        ['Keep', () => again(i)],
+      ], () => again(i)) })),
+    count: over > 0 ? `${me.roster.length} players · ${over} more to go (practice squad ${(me.ps || []).length}/${PS_MAX})` : `${me.roster.length} players: you're set`,
+    bar: `<span><b class="btn A">A</b> PRACTICE SQUAD / RELEASE</span>${over > 0 ? '<span><b class="btn Y">Y</b> AUTO-CUT THE REST</span>' : '<span><b class="btn X">X</b> CONTINUE</span>'}<span><b class="btn B">B</b> MAIN MENU</span>`,
+    focus, onBack: () => ui.ctx.onExit(),
+    extra: (fr) => {
+      if (fr.pressed.X && over <= 0) { screens.extraButtons = null; onDone(); }
+      else if (fr.pressed.Y && over > 0) {
+        screens.extraButtons = null;
+        if (onAuto) { onAuto(); return; }
+        for (const p of cutDown(me, limit).sort((a, b) => (a.age ?? 25) - (b.age ?? 25))) {
+          if (addToPS(me, p)) logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`);
+          else { addFreeAgent(f, p); logTransaction(f, `${me.abbr} cut-down: released ${p.pos} ${p.first} ${p.last}`); }
+        }
+        ui.save(); onDone();
+      }
+    },
+  });
+  return items;
+}
+
+/** One practice-squad player's actions: edit him, elevate for this week's game (or undo it), sign him to the 53, release. */
+function psActions(ui, p, back) {
+  const { screens } = ui.ctx;
+  const f = ui.f, me = ui.teams[f.userTeam];
   const done = (msg) => { if (msg) logTransaction(f, msg); ui.save(); back(); };
   const name = `${p.pos} ${p.first} ${p.last}`;
   const full = me.roster.filter((q) => q.elevated).length >= ELEVATE_PER_GAME;
-  const opts = [
+  const editCtx = { screens, teams: ui.teams, onChange: () => ui.save(), pickTeam: ui.ctx.pickTeam, cardBack: back };
+  actionsPanel(screens, `${p.first} ${p.last}`, [
+    ['Edit Player', () => playerCard(editCtx, f.userTeam, p.id)],
     p.elevated
-      ? ['Undo elevation', 'he stays on the practice squad this week (the elevation isn\'t used up)', () => { unelevate(me, p); done(); }]
-      : ['Elevate for this game', (p.elevations || 0) >= ELEVATE_MAX ? 'used all 3 elevations: sign him to play' : full ? `already ${ELEVATE_PER_GAME} elevated: undo one first` : `${ELEVATE_MAX - (p.elevations || 0)} elevations left this season`,
-        () => { if (elevate(me, p)) done(`${me.abbr} elevate ${name} from the practice squad`); }],
-    ['Sign to the 53', me.roster.filter((q) => !q.injury?.ir && !q.elevated).length >= 53 ? 'roster full: release someone first' : 'a regular contract', () => { if (promoteFromPS(me, p)) done(`${me.abbr} sign ${name} off the practice squad`); }],
-    ['Release', 'he becomes a free agent', () => { releaseFromPS(me, p, (q) => addFreeAgent(f, q)); done(`${me.abbr} release ${name} from the practice squad`); }],
-    ['Back', '', back],
-  ];
-  const items = opts.map(([label, note, act]) => { const it = el('div.pz-item', {}, el('span', { text: label }), note ? el('small', { text: note }) : null); it.activate = act; return it; });
-  screens.frame('mono-screen pz-screen', el('h1', { text: `${p.first} ${p.last}` }),
-    el('div.st-team-filter', { text: `${p.pos} · ${p.ovr} OVR · age ${p.age} · ${p.elevated ? 'ELEVATED for this game' : 'practice squad'}` }),
-    el('div.pz-main', {}, el('div.pz-list', {}, items), el('div')),
-    el('div.setup-help.pz-help', { html: '<b class="btn A">A</b> Select &nbsp; <b class="btn B">B</b> Back' }));
-  screens.nav.set(items, { columns: 1, onBack: back });
+      ? ['Undo Elevation', () => { unelevate(me, p); done(); }, 'he stays on the practice squad this week']
+      : ['Elevate for This Game', () => { if (elevate(me, p)) done(`${me.abbr} elevate ${name} from the practice squad`); },
+        (p.elevations || 0) >= ELEVATE_MAX ? 'used all elevations: sign him to play' : full ? `already ${ELEVATE_PER_GAME} elevated: undo one first` : `${ELEVATE_MAX - (p.elevations || 0)} elevations left this season`],
+    ['Sign to the 53', () => { if (promoteFromPS(me, p)) done(`${me.abbr} sign ${name} off the practice squad`); },
+      me.roster.filter((q) => !q.injury?.ir && !q.elevated).length >= 53 ? 'roster full: release someone first' : 'a regular contract'],
+    ['Release', () => { releaseFromPS(me, p, (q) => addFreeAgent(f, q)); done(`${me.abbr} release ${name} from the practice squad`); }, 'he becomes a free agent'],
+  ], back);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

@@ -429,8 +429,44 @@ function optionBreak(sim, p, t) {
   sim.emit('optionRoute', { player: p.id, read });
 }
 
+/**
+ * Scramble drill: the route is over but the QB still has the ball behind the line and is on the move. Short
+ * receivers climb, deep ones come back toward him, everyone drifts the way he's rolling and away from the nearest
+ * defender, so there's still someone to throw to (the old behavior: stand still at the end of the route).
+ */
+function scrambleDrill(sim, p, qb) {
+  const me = sim.toLocal(p.x, p.z), q = sim.toLocal(qb.x, qb.z);
+  const qv = sim.toLocal(qb.x + qb.vx, qb.z + qb.vz);
+  const vLat = qv.lat - q.lat;
+  let down = me.down < 7 ? me.down + 3 : me.down > 16 ? me.down - 3 : me.down + 0.5;
+  let lat = me.lat + clamp(vLat, -6, 6) * 0.7 + (q.lat - me.lat) * 0.08;
+  // Find grass: away from the closest defender.
+  let near = null, nd = 6;
+  for (const d of sim.players) {
+    if (d.team === p.team || d.state !== 'active') continue;
+    const dd = Math.hypot(d.x - p.x, d.z - p.z);
+    if (dd < nd) { nd = dd; near = d; }
+  }
+  if (near) { const dl = sim.toLocal(near.x, near.z); lat += Math.sign(me.lat - dl.lat || 1) * (6 - nd) * 0.8; down += Math.sign(me.down - dl.down || 1) * (6 - nd) * 0.4; }
+  lat = clamp(lat, -24, 24);
+  const w = sim.toWorld(Math.max(1, down), lat);
+  seek(p, w.x, w.z, 0.7, 0.8);
+  p.face = { x: qb.x, z: qb.z };
+}
+
+/** Is the QB still holding the ball and moving around (out of the pocket or sliding) with the pass not thrown? */
+function qbExtending(sim, qb) {
+  if (!qb || sim.passThrown || sim.ball.state !== 'held' || sim.ball.carrier !== qb.id) return false;
+  if (sim.toLocal(qb.x, qb.z).down > 0) return false; // he's past the line: a runner now
+  return qb.task?.phase === 'scramble' || Math.hypot(qb.vx, qb.vz) > 2.2;
+}
+
 function route(sim, p) {
   const t = p.task;
+  // Route run (or sitting in a void) while the QB extends the play: keep working to get open.
+  const qbX = (t.settled || t.done) ? sim.bySlot(sim.offIdx, 'QB') : null;
+  if (qbX && (t.done || t.drill || sim.t - (t.settledT ?? sim.t) > 0.8) && qbExtending(sim, qbX)) { t.drill = true; scrambleDrill(sim, p, qbX); return; }
+  if (t.done) { stop(p); return; }
   if (t.settled) {
     // Sit in the void and face the QB, sliding away from the closest defender.
     const qb = sim.bySlot(sim.offIdx, 'QB');
@@ -446,7 +482,7 @@ function route(sim, p) {
     return;
   }
   const target = t.pts[t.idx];
-  if (!target) { stop(p); return; }
+  if (!target) { t.done = true; stop(p); return; }
   const dx = target.x - p.x, dz = target.z - p.z;
   const d = Math.hypot(dx, dz);
   // Slow into sharp breaks; better route runners keep more speed.
@@ -465,8 +501,8 @@ function route(sim, p) {
     t.idx++;
     if (ROUTES[t.name]?.option && !t.broke && t.idx >= 1) { optionBreak(sim, p, t); return; }
     if (t.idx >= t.pts.length) {
-      if (t.end === 'settle') { t.settled = true; }
-      else stop(p);
+      if (t.end === 'settle') { t.settled = true; t.settledT = sim.t; }
+      else { t.done = true; stop(p); }
     }
   }
 }

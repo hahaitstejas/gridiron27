@@ -215,6 +215,12 @@ export function launchKick(sim, kicker, params) {
   } else {
     ax = sx + sim.dir * R;
     az = sz + clamp(params.aim || 0, -1, 1) * (type === 'punt' ? 14 : type === 'onside' ? 8 : 18);
+    if (type === 'onside') {
+      // Onside: angled toward a sideline but still past the 10 yards it has to go (a short hop the hands team chases).
+      const lat = clamp(params.aim || 0, -1, 1) * 11, down = 10.5;
+      ax = sx + sim.dir * down; az = sz + lat;
+      v = Math.sqrt((Math.hypot(down, lat) * GRAVITY) / Math.sin(2 * theta));
+    }
     if (style === 'coffin' || style === 'pooch') {
       // Coffin corner: out of bounds around their 8, on the chosen side (right if aiming straight). Pooch: high and
       // soft to about their 9 (coverage gets there for a fair catch or a downing). Never longer than his leg allows.
@@ -346,7 +352,7 @@ export function cpuKickParams(sim, kicker) {
     return { type: 'punt', power, accuracy: accErr, aim: rng.gauss(0, 0.25) };
   }
   const style = sim.offPlay.kick || 'deep';
-  if (style === 'onside') return { type: style, power: 1, accuracy: accErr, aim: rng.gauss(0, 0.3) };
+  if (style === 'onside') return { type: style, power: 1, accuracy: accErr, aim: (rng.next() < 0.5 ? -1 : 1) * (0.7 + rng.next() * 0.3) }; // to one sideline
   // Dynamic kickoff: a touchback gives them the 35, so kickers aim for the landing zone (deep kicks around the 5,
   // squibs around the 15), with some spread — a few land in the end zone or come up short.
   const toGoal = GOAL_X - sim.ball.x * sim.dir; // yards from the kick to the receiving goal line
@@ -526,7 +532,9 @@ function securesLooseKick(sim, p) {
   const b = sim.ball;
   const hands = sim.R(p, 'catching') * 0.002;
   let chance;
-  if (p.team === sim.defIdx) chance = 0.5 + hands;
+  // An onside kick skips hard and sideways off the turf: hard to field cleanly while it's still moving fast.
+  const skid = sim.kick?.style === 'onside' && Math.hypot(b.vx, b.vz) > 3 ? 0.32 : 1;
+  if (p.team === sim.defIdx) chance = (0.5 + hands) * skid;
   else {
     const crowd = sim.players.filter((q) => q.team === sim.defIdx && q.state === 'active' && Math.hypot(q.x - b.x, q.z - b.z) < 2.2).length;
     chance = (0.6 + hands) * (crowd ? 1 / crowd : 1);

@@ -1,6 +1,7 @@
 // Franchise → Free Agents: sign players without a team during the season (franchise/freeAgents.js). A full roster
 // picks someone to release first. X imports a CSV of the current free agents (roster.csv format, team column ignored).
 import { el } from './nav.js';
+import { numberPicker } from './rosterEditor.js';
 import { signInSeason, inSeasonAsk, setFreeAgents, ROSTER_MAX } from '../franchise/freeAgents.js';
 import { payroll } from '../franchise/contracts.js';
 import { logTransaction } from '../franchise/franchise.js';
@@ -50,7 +51,9 @@ function trySign(ui, p, filter, releaseId = null) {
   if (!r.ok) { freeAgentsScreen(ui, filter, r.reason); return; }
   logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} (${money(p.salary)}, 1 yr)${r.released ? `; release ${r.released.pos} ${r.released.first} ${r.released.last}` : ''}`);
   ui.save();
-  freeAgentsScreen(ui, filter, `Signed ${p.pos} ${p.first} ${p.last}${r.released ? `, released ${r.released.first} ${r.released.last}` : ''}.`);
+  const after = () => { ui.save(); freeAgentsScreen(ui, filter, `Signed ${p.pos} ${p.first} ${p.last} (#${p.number})${r.released ? `, released ${r.released.first} ${r.released.last}` : ''}.`); };
+  // You pick his number (Settings → Franchise signings: jersey # = Automatic skips this).
+  if (ui.ctx.prefs?.autoNumbers) after(); else numberPicker(ui.ctx.screens, me, p, after);
 }
 
 /** Roster full: pick who goes (your lowest-rated players first, the same position on top). */

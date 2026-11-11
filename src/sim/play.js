@@ -9,7 +9,7 @@ import { updateBallFlight, updatePendingThrow } from './passing.js';
 import { updateTackles, updateMoves } from './tackling.js';
 import { updateAnimations } from './anim.js';
 import { getOffFormation, getDefFormation } from '../data/playbook.js';
-import { fbFallback } from '../data/depthChart.js';
+import { fbFallback, fallbackOrder } from '../data/depthChart.js';
 import { ROUTES } from '../data/routes.js';
 import { runOffenseAI } from '../ai/offense.js';
 import { runDefenseAI, assignDefense, alignMan, disguiseAlign, frontAlign } from '../ai/defense.js';
@@ -209,7 +209,8 @@ export class PlaySim {
     const noFB = !team.roster.some((p) => p.pos === 'FB' && !used.has(p.id));
     for (const fp of formation.players) {
       const src = fp.p === 'FB' && noFB ? fbFallback(team, used) : team.depth[fp.p] || byPos(fp.p);
-      const list = src.filter((id) => fp.p === 'QB' || id !== qb1);
+      // Never the starting QB on another spot, and no quarterback returning kicks.
+      const list = src.filter((id) => fp.p === 'QB' || (id !== qb1 && !((fp.p === 'KR' || fp.p === 'PR') && byId.get(id)?.pos === 'QB')));
       let rp = null;
       // No-huddle: the same eleven stay on the field (nobody had time to sub).
       const keep = this.cfg.keep?.[teamIdx]?.[fp.s];
@@ -223,6 +224,9 @@ export class PlaySim {
         rp = byId.get(list[i]);
       }
       for (let i = 0; i < list.length && !rp; i++) if (!used.has(list[i])) rp = byId.get(list[i]);
+      // The depth chart ran dry (injuries): the closest fit by archetype (a back → WR / TE, never a QB).
+      if (!rp) { const id = fallbackOrder(team, fp.p, used)[0]; if (id !== undefined && (fp.p === 'QB' || id !== qb1)) rp = byId.get(id); }
+      if (!rp) rp = team.roster.find((p) => !used.has(p.id) && !['QB', 'K', 'P'].includes(p.pos));
       if (!rp) rp = team.roster.find((p) => !used.has(p.id) && p.id !== qb1 && !['K', 'P'].includes(p.pos));
       if (!rp) rp = team.roster.find((p) => !used.has(p.id));
       used.add(rp.id);

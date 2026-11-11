@@ -58,6 +58,24 @@ export function fbFallback(team, unavailable = new Set()) {
   return [...new Set(order.map((p) => p.id))].slice(0, 4);
 }
 
+// When a slot's depth chart runs dry in a game (injuries), who steps in: players of a similar archetype, never a
+// quarterback (except at QB) or a kicker. KR / PR go by speed.
+const FALLBACK = {
+  QB: ['QB'], HB: ['HB', 'FB', 'WR', 'TE', 'CB'], FB: ['FB', 'TE', 'HB', 'T', 'G'], WR: ['WR', 'TE', 'HB', 'CB', 'FS'], TE: ['TE', 'FB', 'T', 'WR'],
+  LT: ['T', 'G', 'C'], LG: ['G', 'C', 'T'], C: ['C', 'G', 'T'], RG: ['G', 'C', 'T'], RT: ['T', 'G', 'C'],
+  LE: ['DE', 'OLB', 'DT'], RE: ['DE', 'OLB', 'DT'], DT: ['DT', 'DE', 'OLB'], LOLB: ['OLB', 'MLB', 'DE', 'SS'], MLB: ['MLB', 'OLB', 'SS'],
+  ROLB: ['OLB', 'MLB', 'DE', 'SS'], CB: ['CB', 'FS', 'SS', 'WR'], FS: ['FS', 'SS', 'CB'], SS: ['SS', 'FS', 'CB', 'OLB'],
+  K: ['K', 'P'], P: ['P', 'K'], KR: ['WR', 'HB', 'CB', 'FS', 'SS', 'TE'], PR: ['WR', 'CB', 'HB', 'FS', 'SS'],
+};
+/** Fallback order for `slot` (or a plain position): similar players, best fit first; `skip` = ids to leave out. */
+export function fallbackOrder(team, slot, skip = new Set()) {
+  const positions = FALLBACK[slot] || DEPTH_SLOTS[slot] || [slot];
+  const ret = slot === 'KR' || slot === 'PR';
+  return team.roster.filter((p) => positions.includes(p.pos) && !skip.has(p.id))
+    .map((p) => ({ p, s: (ret ? p.ratings.speed : slotRating(p, slot)) - positions.indexOf(p.pos) * 4 }))
+    .sort((a, b) => b.s - a.s).map((x) => x.p.id);
+}
+
 /** Roster players who can play `slot`, best first by their overall at that spot, excluding ones listed. */
 export function eligibleForSlot(team, slot) {
   const positions = DEPTH_SLOTS[slot] || [slot];
@@ -69,7 +87,7 @@ export function eligibleForSlot(team, slot) {
 
 /** A player's overall rating if he plays `slot`. */
 export function slotRating(p, slot) {
-  return overall({ ...p, pos: (DEPTH_SLOTS[slot] || [p.pos])[0] });
+  return overall({ ...p, pos: (DEPTH_SLOTS[slot] || [slot in FALLBACK ? slot : p.pos])[0] });
 }
 
 /** Move a player to position `to` in a slot's order (adding him if he isn't listed). */

@@ -15,7 +15,42 @@ import { SCENARIOS } from '../game/scenarios.js';
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
   nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
-  practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset' };
+  practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false };
+
+// What each setting does (the description panel on settings-style screens), keyed by the row's label, lower case.
+export const OPTION_HELP = {
+  'quarter length': 'Minutes in each quarter. Stats and the clock scale with it; 5-8 minutes with the accelerated clock plays like a full game.',
+  'accelerated clock': 'Between plays the play clock runs down to this many seconds before the snap is allowed, so short quarters still have realistic play counts.',
+  'difficulty': 'Rookie gives the easiest challenge; Legend is the toughest. It changes CPU reactions, accuracy, tackling, blitzing and play calling.',
+  'default difficulty': 'The difficulty new games start with. Rookie is the easiest; Legend is the toughest test of your skills.',
+  'opponent difficulty': 'How good the CPU is in practice reps: reactions, accuracy, tackling and play calling.',
+  'penalties': 'Flags on or off. With them on, holding, offsides, interference and the rest are called and enforced.',
+  'camera': 'The broadcast angle during plays. D-pad left / right cycles cameras in a game.',
+  'graphics': 'High adds bloom and color grading; Low is the fastest and sharpest on older machines.',
+  'name tags': 'Names under the player you control and the ball carrier.',
+  'post-play stat card': 'A small card after each play with the key players and their game line.',
+  'auto replay big plays': 'Touchdowns, interceptions and big hits replay automatically once the play is over.',
+  'pregame intro': 'The stadium flyover and run-out before kickoff. A, B or Menu skips it.',
+  'career camera': 'In Career mode: the camera behind your player, or the broadcast view.',
+  'franchise signings: jersey #': 'You pick a new signing\'s number from the ones he can wear, or the game gives him one.',
+  'your team': 'The team you control.',
+  'opponent': 'The team on the other side of the ball.',
+  'practice': 'Run your offense or your defense against the opponent\'s CPU.',
+  'ball on': 'Where every rep starts.',
+  'situation': 'Down and distance for every rep.',
+  'after each play': 'Back to the same spot every rep, or keep the drive going.',
+  'start practice': 'Take the field with these settings.',
+  'skills drills': 'Short scored drills: passing, rushing, kicking, pass rush and coverage, with medals.',
+  'scenarios': 'Late-game challenges: two-minute drills, goal-line stands and comebacks.',
+  'start game': 'Kick it off.',
+  'stadium': 'Home stadium, or a neutral site with no home crowd.',
+  'weather': 'Rain makes the ball slick, snow slows footing and kicks, wind moves kicks and deep passes.',
+  'time of day': 'Day, dusk or a night game under the lights.',
+  'gameplay sliders': 'Fine-tune passing, blocking, catching, tackling and more, separately for you and the CPU.',
+  'season length': 'Games in each regular season.',
+  'teams': 'How many teams enter the bracket.',
+  'rosters': 'Keep the league\'s rosters, or empty them all into a fantasy draft.',
+};
 
 // Gameplay sliders (0..100, 50 = default); `user` applies to human teams, `cpu` to the CPU's.
 export const SLIDER_KEYS = [
@@ -216,6 +251,20 @@ export class Screens {
     this.root.classList.remove('hidden');
     this.root.className = 'screen ' + cls;
     this.root.append(...kids.filter((k) => k !== null && k !== undefined && k !== false)); // optional pieces may be absent
+    // Settings-style screens (rows of options): the focused row's name, value and what it does, in a panel on the
+    // right (the reference's settings screens).
+    this.nav.onFocus = null;
+    if (/\b(setup-screen|gs-screen)\b/.test(cls)) {
+      const side = el('div.ss-side');
+      this.root.append(side);
+      this.nav.onFocus = (it) => {
+        const label = (it.querySelector('.opt-label')?.textContent || it.querySelector('.mi-label')?.textContent || it.textContent || '').trim();
+        const val = (it.querySelector('.opt-val')?.textContent || '').replace(/[◀▶‹›]/g, '').trim();
+        const desc = it.dataset?.desc || OPTION_HELP[label.toLowerCase()] || '';
+        side.innerHTML = '';
+        side.append(...[el('div.ss-title', { text: label }), val ? el('div.ss-val', { text: val }) : null, desc ? el('div.ss-desc', { text: desc }) : null].filter(Boolean));
+      };
+    }
   }
 
   title(padName, leagueLogo = null) {
@@ -698,6 +747,7 @@ export class Screens {
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
       option('Pregame intro', [true, false], 'intro', (v) => (v ? 'On' : 'Off')),
       option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
+      option('Franchise signings: jersey #', [false, true], 'autoNumbers', (v) => (v ? 'Automatic' : 'You pick')),
     ];
     const sliders = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Gameplay sliders…' }));
     sliders.activate = () => this.sliders(p, { onSave: (sl) => { p.sliders = sl; this.settings(p, { onSave, onBack }); }, onBack: () => this.settings(p, { onSave, onBack }) });

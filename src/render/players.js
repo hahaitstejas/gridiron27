@@ -168,6 +168,13 @@ export class PlayerRenderer {
     this.pulse.position.y = 0.035;
     this.pulse.renderOrder = 3;
     scene.add(this.pulse);
+    // Where a kick will come down, for a human on the receiving team (decide early: field it, or let it bounce).
+    this.landMark = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.45, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.85, depthWrite: false }));
+    this.landMark.rotation.x = -Math.PI / 2;
+    this.landMark.position.y = 0.04;
+    this.landMark.renderOrder = 3;
+    this.landMark.material.opacity = 0; // stays in the scene (shader compiled up front), shown by opacity
+    scene.add(this.landMark);
     this.pulseT = 0;
     this.pulseId = -1;
     // Pose crossfades (per player index): the pose an animation change starts from, and the last drawn pose.
@@ -429,6 +436,13 @@ export class PlayerRenderer {
     for (const m of Object.values(P)) m.instanceMatrix.needsUpdate = true;
     this.contact.count = n; this.contact.instanceMatrix.needsUpdate = true;
     this.boneTex.needsUpdate = true;
+    const b = sim.ball;
+    const mark = b && b.state === 'kick' && !b.bounces && b.target && b.kind !== 'fg' && sim.humanTeam !== null && sim.humanTeam === sim.defIdx;
+    this.landMark.material.opacity = mark ? 0.85 : 0;
+    if (mark) {
+      this.landMark.position.x = b.target.x; this.landMark.position.z = b.target.z;
+      this.landMark.scale.setScalar(1 + 0.12 * Math.sin(time * 8));
+    }
     const ids = Array.isArray(controlledId) ? controlledId : [controlledId];
     [this.ring, this.ring2].forEach((ring, i) => {
       const cp = (ids[i] >= 0 && this.display?.[ids[i]]) || sim.players[ids[i]];

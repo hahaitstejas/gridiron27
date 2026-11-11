@@ -2,6 +2,11 @@ import { el } from './nav.js';
 import { playerHero } from './rosterEditor.js';
 import { DEPTH_SLOTS, eligibleForSlot, slotRating, placeInDepth, removeFromDepth } from '../data/depthChart.js';
 
+// Per team: the depth chart before "play the backups" (to put the starters back) and how far it went.
+let BENCH = new WeakMap();
+/** Forget every "play the backups" state (main.js, when a game's depth charts are put back). */
+export function resetBench() { BENCH = new WeakMap(); }
+
 const SLOT_NAMES = {
   QB: 'Quarterback', HB: 'Halfback', FB: 'Fullback', WR: 'Wide receiver', TE: 'Tight end', LT: 'Left tackle', LG: 'Left guard',
   C: 'Center', RG: 'Right guard', RT: 'Right tackle', LE: 'Left end', RE: 'Right end', DT: 'Defensive tackle',
@@ -85,7 +90,7 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
       el('div.mm2-bar', { html: holding
         ? '<span>▲▼ MOVE PLAYER</span><span><b class="btn A">A</b> DROP HERE</span>'
         : side === 'left'
-          ? `<span><b class="btn A">A</b> EDIT POSITION</span><span><b class="btn X">X</b> PLAY THE BACKUPS</span><span><b class="btn Y">Y</b> ${inGame ? 'STARTERS BACK IN' : 'AUTO (BEST FIRST)'}</span><span><b class="btn B">B</b> DONE</span>`
+          ? `<span><b class="btn A">A</b> EDIT POSITION</span><span><b class="btn X">X</b> ${BENCH.get(team)?.mode === 1 ? 'WORST FIRST' : 'PLAY THE BACKUPS'}</span><span><b class="btn Y">Y</b> ${BENCH.get(team) ? 'STARTERS BACK IN' : 'BEST FIRST'}</span><span><b class="btn B">B</b> DONE</span>`
           : '<span><b class="btn A">A</b> PICK UP / ADD</span><span><b class="btn X">X</b> REMOVE</span><span>◀ POSITIONS</span><span><b class="btn B">B</b> BACK</span>' }));
     const items = [...left, ...right];
     const index = side === 'left' ? cur : left.length + Math.min(focusIdx, right.length - 1);
@@ -95,13 +100,26 @@ export function depthChartScreen(screens, team, { energy = null, onDone, onChang
       const onLeft = screens.nav.index < left.length;
       if (!onLeft) { if (f.pressed.X && !holding && depthRows.includes(screens.nav.current)) screens.nav.current.removePlayer(); return; }
       if (!f.pressed.X && !f.pressed.Y) return;
-      // Blowouts: X sends the backups in at every position (worst first, kickers and returners untouched); Y puts the
-      // best players back on top.
-      const backups = !!f.pressed.X;
-      for (const sl of SLOTS) {
-        if (['K', 'P', 'KR', 'PR'].includes(sl)) continue;
-        const ids = [...new Set([...(team.depth[sl] || []), ...eligibleForSlot(team, sl).map((p) => p.id)])].filter((id) => byId.has(id) && !byId.get(id).injury?.ir);
-        team.depth[sl] = ids.sort((a, b) => (slotRating(byId.get(a), sl) - slotRating(byId.get(b), sl)) * (backups ? 1 : -1)).slice(0, Math.max(team.depth[sl]?.length || 0, 3));
+      // Blowouts, position by position and only among the players already listed there (kickers and returners
+      // untouched). X once: the backups move up (A B C -> B C A); X again: worst first (C B A). Y puts the order from
+      // before the first X back (or, with nothing to undo, sorts each list best first).
+      const st = BENCH.get(team) || { mode: 0, snap: null };
+      if (f.pressed.X) {
+        if (!st.snap) st.snap = Object.fromEntries(SLOTS.map((sl) => [sl, [...(team.depth[sl] || [])]]));
+        st.mode = Math.min(2, st.mode + 1);
+        for (const sl of SLOTS) {
+          if (['K', 'P', 'KR', 'PR'].includes(sl)) continue;
+          const base = st.snap[sl] || [];
+          team.depth[sl] = st.mode === 1 ? [...base.slice(1), ...base.slice(0, 1)] : [...base].reverse();
+        }
+        BENCH.set(team, st);
+      } else {
+        for (const sl of SLOTS) {
+          if (['K', 'P', 'KR', 'PR'].includes(sl)) continue;
+          team.depth[sl] = st.snap ? [...(st.snap[sl] || [])]
+            : [...(team.depth[sl] || [])].filter((id) => byId.has(id)).sort((a, b) => slotRating(byId.get(b), sl) - slotRating(byId.get(a), sl));
+        }
+        BENCH.delete(team);
       }
       onChange();
       draw('left');

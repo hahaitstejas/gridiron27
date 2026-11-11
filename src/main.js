@@ -45,7 +45,7 @@ import { logoCanvas } from './render/logo.js';
 import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS } from './ui/screens.js';
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
-import { depthChartScreen, coachingScreen } from './ui/depthEditor.js';
+import { depthChartScreen, coachingScreen, resetBench } from './ui/depthEditor.js';
 import { playbookScreen, loadAudiblePackages } from './ui/playbookEditor.js';
 import { coverageRead } from './game/reads.js';
 import { registerCustomRoutes, loadRoutes, registerCustomDefPlays, loadDefSpecs } from './data/customDesign.js';
@@ -477,6 +477,7 @@ function restoreDepth() {
   if (!session?.depthSnapshot) return;
   session.teams.forEach((t, i) => { t.depth = session.depthSnapshot[i]; });
   session.depthSnapshot = null;
+  resetBench();
 }
 
 function leaveGame() {
@@ -493,7 +494,7 @@ function pause() {
   screens.pause({
     onResume: () => { screens.clear(); app = 'game'; },
     // Timeouts can be called between plays (play call or at the line before the snap), not in practice.
-    onTimeout: session && session.humanTeam !== null && !session.practice && session.match.timeouts[session.humanTeam] > 0
+    onTimeout: session && session.humanTeam !== null && !session.practice && session.match.timeouts[session.humanTeam] > 0 && !session.match.toBreak?.[session.humanTeam]
       && (session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))
       ? () => { session.callTimeout(session.humanTeam); for (const e of session.events.splice(0)) onSessionEvent(e); screens.clear(); app = 'game'; } : null,
     timeoutsLeft: session?.match.timeouts[session?.humanTeam] ?? 0,
@@ -834,6 +835,13 @@ function frameBody(now) {
     const humanReturn = sim && sim.isKick && sim.offPlay.type !== 'fg' && session.humanSide === 'defense' && !session.watching;
     if (humanReturn && sim.camDir !== -sim.dir) sim.camDir = -sim.dir;
     const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : humanReturn ? -sim.dir : m.dirOf(m.possession);
+    // While the kick is in the air, a human returner's camera stays on him (behind him, looking at the ball coming
+    // down onto the marker), so he can choose to field it, back off or let it bounce.
+    let camPhase = phase;
+    if (humanReturn && phase === 'kick' && sim.ball.bounces === 0) {
+      const r = sim.players[sim.controlledId];
+      if (r) { focus = { x: r.x - sim.dir * 5, z: r.z * 0.8 }; camPhase = 'return'; }
+    }
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;
     const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15 + noise * 0.7;
@@ -841,7 +849,7 @@ function frameBody(now) {
     renderer.updateLighting(dt, (Math.min(m.quarter, 4) - 1 + (1 - m.clock / Math.max(1, m.periodLength()))) / 4);
     // Wide view for a human on either side, kicks included (the kicker and the rush / coverage in frame).
     renderer.rig.wideView = !playerCam && (session.humanSide === 'defense' || session.humanSide === 'offense');
-    renderer.render(dt, focus, camDir, phase, snapCam, excite);
+    renderer.render(dt, focus, camDir, camPhase, snapCam, excite);
     snapCam = false;
     hud.artOn = artView;
     hud.update(session, renderer, dt, frameMs, playcall.open);

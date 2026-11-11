@@ -61,8 +61,10 @@ const clamp01 = (x) => Math.max(0.02, Math.min(0.95, x));
 
 /** Is this team in a two-minute drill (trailing late, or driving before the half)? */
 export function hurryUp(m, team) {
-  if (!m.inTwoMinutes) return false;
   const lead = m.score[team] - m.score[1 - team];
+  // Trailing in the 4th: hurry once the clock is short of what the scores still needed take (~2:20 a drive).
+  if (m.quarter >= 4 && lead < 0 && m.clock < Math.ceil(-lead / 8) * 140 + 20) return true;
+  if (!m.inTwoMinutes) return false;
   return m.quarter === 2 ? !(lead > 0 && m.yardLine < 20) : lead <= 0;
 }
 
@@ -214,6 +216,12 @@ export function fourthDecision(m, team, aggr = 0) {
   } else if (m.quarter === 2 && m.clock < 40 && v.fg !== null) {
     v.go -= 1; // end of the half: take the points
   }
+  // Trailing late: if a punt lets them run the clock out (kneels; our timeouts each save one), the game is over anyway.
+  if (m.quarter >= 4 && lead < 0) {
+    const need = Math.ceil(-lead / 8); // scores still needed
+    const back = m.clock - Math.max(0, 3 - m.timeouts[team]) * 40 - 8; // seconds left when we'd get it back
+    if (back < 35 * need) return { choice: v.fg !== null && lead >= -3 ? 'fg' : 'go', values: v };
+  }
   const kick = v.fg !== null && v.fg >= v.punt ? 'fg' : 'punt';
   const choice = v.go > v[kick] + margin ? 'go' : kick;
   return { choice, values: v };
@@ -273,8 +281,8 @@ export function defenseForSpecial(offPlay) {
 /** Seconds of play clock the CPU offense uses before snapping (tempo). */
 export function cpuTempo(m, team, rng) {
   const lead = m.score[team] - m.score[1 - team];
-  if (m.inTwoMinutes && lead <= 0) return 8 + rng.next() * 6; // hurry-up
-  if (m.quarter >= 4 && m.clock < 330 && lead < -8) return 12 + rng.next() * 6; // down two scores: hurry before the two-minute warning
+  if (hurryUp(m, team) && (m.quarter !== 2 || lead <= 0)) return 8 + rng.next() * 6; // hurry-up
+  if (m.quarter >= 4 && m.clock < 480 && lead < -8) return 14 + rng.next() * 6; // down two scores: quicker before the two-minute warning
   if (m.quarter >= 4 && lead > 0 && m.clock < 360) return 37 + rng.next() * 2; // milk the clock
   return 31 + rng.next() * 7; // pro offenses snap with a few seconds left on the 40-second clock
 }

@@ -27,8 +27,10 @@ export class CameraRig {
     if (this.debug) { p.set(...this.debug.p); l.set(...this.debug.l); } // dev screenshots (window.__g27.renderer.rig.debug)
     else if (shot) {
       const fx = Math.cos(shot.facing), fz2 = Math.sin(shot.facing);
-      p.set(shot.x + fx * 8 + fz2 * 2.5, 4.2, shot.z + fz2 * 8 - fx * 2.5);
-      l.set(shot.x, 1.1, shot.z);
+      const c = shot.close || 0; // 0 = the wide shot, 1 = tight on the scorer after a picked celebration
+      const dist = 8 - c * 4.4, side = 2.5 - c * 1.3, up = 4.2 - c * 2.4;
+      p.set(shot.x + fx * dist + fz2 * side, up, shot.z + fz2 * dist - fx * side);
+      l.set(shot.x, 1.1 + c * 0.25, shot.z);
     } else switch (this.mode) {
       case 'endzone':
         p.set(focus.x - dir * 30, 14, fz * 0.3);

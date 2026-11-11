@@ -79,9 +79,11 @@ function playerFromRow(row, pos, rng) {
   const pro = parseInt(row.exp ?? row.experience ?? row.pro_years, 10);
   if (Number.isFinite(pro) && pro >= 0) p.proYears = pro;
   // Optional OVR column: show that overall (kept as an offset from the computed one).
-  const ovr = parseInt(row.OVR ?? row.ovr, 10);
+  // Any spelling of the header (OVR, ovr, Overall, Overall Rating...), so a sheet copied from elsewhere matches exactly.
+  const ovrKey = Object.keys(row).find((k) => /^(ovr|overall|overall[ _]?rating|ovr[ _]?rating)$/i.test(k.trim()));
+  const ovr = parseInt(ovrKey ? row[ovrKey] : '', 10);
   delete p.ovrAdj;
-  if (Number.isFinite(ovr)) p.ovrAdj = Math.max(-30, Math.min(30, ovr - overall(p)));
+  if (Number.isFinite(ovr)) p.ovrAdj = Math.max(-70, Math.min(70, ovr - overall(p)));
   p.ovr = overall(p);
   return p;
 }

@@ -701,6 +701,11 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
     pose.crouch -= 0.16 * j; pose.lean += 0.45 * j; pose.legs[0].knee += 0.35 * j; pose.legs[1].knee += 0.35 * j;
     shY -= 0.16 * j;
   }
+  // A ball thrown wide of him: lean the body toward it (same roll convention as a fall to that side) and stretch.
+  if (p.anim !== 'swat' && Math.abs(lx) > 0.7 && near > 0) {
+    const j = Math.min(1, (Math.abs(lx) - 0.7) / 0.9) * k * near;
+    pose.rootRoll += Math.sign(lx) * 0.38 * j; pose.lean += 0.15 * j;
+  }
   for (let s = 0; s < 2; s++) {
     if (p.anim === 'swat' && s === 0) continue;
     // Both hands to the ball itself (they meet there, thumbs together), elbows soft so it's caught, not slapped.

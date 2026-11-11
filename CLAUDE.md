@@ -639,6 +639,12 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   position; face photo or number, trait). Offense / defense camera: `CameraRig.wideView` (human on offense or defense, kicks too; a human returner gets the camera turned to face the coverage) pulls the
   broadcast view back to 20 / 9.5 presnap so the backfield is in frame. Atlases (logos, names, faces) only re-upload
   when their content changes (texture uploads were hitching every play); crowd fans ~30 tris; helmet shell 44×24.
+- Realism pass (render-only): the helmet assembly (shell, mask, chin, decals, visor) is scaled `HELM_K` 0.9 and sits a touch
+  lower / forward; shoulder pads at 1.3 (`COL_FLAGS.z`); the body shader darkens down-facing surfaces and lower legs (cheap
+  occlusion) and keeps whites just under pure white; day / dusk / night ambient (hemi) lowered, key light up; shadow camera ±26 yd.
+  Tackles: `PlayerRenderer.wrap[i]` keeps a tackler on the runner he hit through the fall and on the ground (over his legs, `pileLift`),
+  easing back when he gets up; `down` lies on a shoulder with a knee drawn up (ball arm tucked). Catches (`reachForBall`): both hands to
+  the ball, a jump for high balls and a bend for low ones, a lean on wide ones; `catch` = give, then tuck.
 - Motion capture (`tools/mocap.mjs` → `src/assets/clips.json`, CMU database via github.com/una-dinosauria/cmu-mocap): BVH → FK
   (x flipped: CMU's frame is mirrored vs ours) → our pose parameters in the runner's heading frame (`LAYOUT`: rootY, lean,
   twist, head, both arms' pitch/out/elbow/twist, both legs' hip/knee/out); gait cycles cut at alternating footfalls (half

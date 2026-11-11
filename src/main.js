@@ -201,6 +201,7 @@ let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
 let celWheel = null; // the touchdown celebration picker (RS)
 let artView = false;
+let fgBroke = null; // the field-goal PlaySim whose kick was blocked / fumbled (camera back to broadcast)
 let artSim = null, artReleased = false; // RT play art needs a fresh press at the line (see the render loop) // RT play art: the camera pulls back over the whole field
 let autoReplayPending = false; // a big play just happened: show it once the play is over
 let session = null;
@@ -841,6 +842,12 @@ function frameBody(now) {
     if (humanReturn && phase === 'kick' && sim.ball.bounces === 0) {
       const r = sim.players[sim.controlledId];
       if (r) { focus = { x: r.x - sim.dir * 5, z: r.z * 0.8 }; camPhase = 'return'; }
+    }
+    // Field goals and PATs (not fakes): low behind the kicker with the uprights ahead, from the line-up through the kick, like
+    // a TV game's kick shot. A block or a fumble (the ball comes loose) goes back to the broadcast view for the rest of the play.
+    if (sim && sim.offPlay?.type === 'fg' && sim.ball.state === 'loose') fgBroke = sim;
+    if (sim && sim.offPlay?.type === 'fg' && fgBroke !== sim && session.state !== 'playcall' && sim.state !== 'finished' && !session.watching) {
+      focus = { x: losX, z: sim.ballZ }; camPhase = 'fg';
     }
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;

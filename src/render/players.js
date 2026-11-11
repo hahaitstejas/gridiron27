@@ -520,7 +520,7 @@ export class PlayerRenderer {
       this.fallAnim[i] = true;
     } else if (!falling) this.fallAnim[i] = false;
     FALL = pileFall || (falling ? this.fall[i] : null);
-    const pose = this.blend(i, p.anim, computePose(p, time, sim), dt);
+    const pose = this.blend(i, holdingKick(p, sim) ? 'hold' : p.anim, computePose(p, time, sim), dt);
     if (pileLift) pose.rootY += pileLift; // on top of the pile
     // Planted feet, lean into cuts and a head that follows the ball (render/gait.js).
     const b = sim?.ball;
@@ -744,6 +744,14 @@ function unpackPose(a, p) {
 
 // ---------- Procedural poses ----------
 let FALL = null; // fall direction of the player being posed (set by drawPlayer)
+/** The holder on a field goal / PAT kneels from the set until the kick (render-only; standing still, so not while jogging to the line). */
+function holdingKick(p, sim) {
+  if (!sim || p.slot !== 'H' || p.team !== sim.offIdx || sim.offPlay?.type !== 'fg') return false;
+  if (sim.state === 'presnap' && Math.hypot(p.vx || 0, p.vz || 0) > 0.6) return false;
+  const b = sim.ball;
+  return sim.state === 'presnap' || b.state === 'snap' || (b.state === 'held' && b.carrier === p.id);
+}
+
 function computePose(p, time, sim) {
   const sp = Math.hypot(p.vx, p.vz);
   const run = Math.min(1, sp / 8);
@@ -769,7 +777,7 @@ function computePose(p, time, sim) {
     pose.crouch = -0.06 * amp;
     pose.head = -pose.lean * 0.55; // eyes up the field, not at the turf
   };
-  switch (p.anim) {
+  switch (holdingKick(p, sim) ? 'hold' : p.anim) {
     case 'stance3':
       pose.crouch = -0.38; pose.lean = 1.15; pose.head = -0.9;
       pose.legs[0].hip = 1.0; pose.legs[0].knee = 1.6; pose.legs[1].hip = 0.7; pose.legs[1].knee = 1.4;
@@ -1033,6 +1041,14 @@ function computePose(p, time, sim) {
       // Interception: the ball held up high in one hand.
       pose.lean = -0.1; pose.head = -0.35; pose.arms[1].pitch = 3.0; pose.arms[1].elbow = 0.05; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.3;
       pose.rootY = Math.abs(Math.sin(t * 4)) * 0.05;
+      break;
+    case 'hold':
+      // Field-goal holder: down on his right knee, leaning in, hands out low and forward for the snap, then the spot.
+      pose.crouch = -0.48; pose.lean = 0.42; pose.head = 0.1;
+      pose.legs[0].hip = 1.35; pose.legs[0].knee = 1.55; pose.legs[0].out = 0.12;
+      pose.legs[1].hip = -0.1; pose.legs[1].knee = 1.6; pose.legs[1].out = 0.05; pose.legs[1].flat = 0;
+      pose.arms[0].pitch = pose.arms[1].pitch = 1.0; pose.arms[0].elbow = pose.arms[1].elbow = 0.45; pose.arms[0].out = pose.arms[1].out = -0.05;
+      pose.noGait = true; // the planted-feet IK would stand him up
       break;
     case 'kneel':
       // Victory formation: down on the right knee, left foot planted, ball tucked; hips drop straight down, no lunge.

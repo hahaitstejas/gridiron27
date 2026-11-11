@@ -67,6 +67,14 @@ export class CameraRig {
         l.set(focus.x + dir * 4, 1, fz);
         break;
       default: {
+        if (phase === 'fg') {
+          // Kick shot: about 4 yds behind the holder (7 behind the line), just above knee height and a step to the side, looking
+          // through the line at the uprights.
+          const hx = focus.x - dir * 7;
+          p.set(hx - dir * 4.2, 1.35, fz + 1.5);
+          l.set(focus.x + dir * 14, 1.7, fz * 0.6);
+          break;
+        }
         // Broadcast: high behind the offense, pulling back when the ball is in the air.
         // Low and tight like a TV game: just above helmet height behind the quarterback at the line, easing up and
         // back once the ball is snapped and further when it's thrown deep.

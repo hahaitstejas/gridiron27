@@ -87,7 +87,7 @@ export class Gait {
       g.roll += (Math.max(-0.38, Math.min(0.38, -yawRate * sp * 0.014)) - g.roll) * k;
       g.sp = sp; g.f = f; g.vx = vx; g.vz = vz;
     }
-    const want = GAIT_ANIMS.has(p.anim) && Math.abs(pose.rootPitch) < 0.3 && p.state !== 'down' && p.state !== 'tackled' ? 1 : 0;
+    const want = !pose.noGait && GAIT_ANIMS.has(p.anim) && Math.abs(pose.rootPitch) < 0.3 && p.state !== 'down' && p.state !== 'tackled' ? 1 : 0;
     g.w += (want - g.w) * Math.min(1, dt * 8);
     if (want) { pose.lean += g.lean; pose.rootRoll += g.roll * Math.min(1, sp / 4); }
     this.head(g, pose, x, z, f, look, dt);

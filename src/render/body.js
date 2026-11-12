@@ -296,9 +296,16 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
           if (depth < vee - 0.03) col = jer * 0.3;
           else if (depth < vee || depth < 0.022) col = trimC;
         }
-        // Wristband above a glove (only when he wears gloves).
-        vec3 glv = tex(${COL_COLORS} + 7).rgb, skn = tex(${COL_COLORS} + 5).rgb;
-        if (region == 6 && distance(glv, skn) > 0.06) { float d = y - uRegY.z; if (d > 0.004 && d < 0.042) col = vec3(0.93); }
+        // Wrist tape: nearly everyone (not officials / coaches) wears a white band above the glove or bare hand, QBs included.
+        if (region == 6 && tex(${COL_FLAGS}).x < 0.5) { float d = y - uRegY.z; if (d > 0.004 && d < 0.05) col = vec3(0.92); }
+        // Jersey mesh: a fine punched-hole pattern on the lower torso and sides (fades out where the holes are under a pixel).
+        if (region == 0 && vBody.y > 0.0 && vBody.y < 0.5) {
+          vec2 mp = vec2(vBody.x * 26.0, vBody.y * 70.0);
+          float w = fwidth(mp.x) + fwidth(mp.y);
+          vec2 cell = fract(mp) - 0.5;
+          float hole = smoothstep(0.34, 0.2, length(cell)) * (1.0 - smoothstep(0.3, 0.8, w)) * smoothstep(0.5, 0.25, vBody.y);
+          col *= 1.0 - 0.1 * hole;
+        }
       }
       vec4 flg = tex(${COL_FLAGS});
       if (flg.x > 0.5 && (region == 0 || region == 1)) { float a = vBody.x; col *= fract(a * 1.909) < 0.5 ? 1.0 : 0.05; }

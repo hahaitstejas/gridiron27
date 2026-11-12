@@ -1,0 +1,13 @@
+import { createRequire } from 'module';
+const require = createRequire(process.cwd() + '/package.json');
+const { chromium } = require('playwright');
+const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
+const pg = await b.newPage({ viewport: { width: 640, height: 360 } });
+pg.on('console', (m) => { const t = m.text(); if (/ERROR|error|warn/i.test(t)) console.log(t.slice(0, 600)); });
+pg.on('pageerror', (e) => console.log('PAGEERR', e.message));
+await pg.addInitScript(() => localStorage.setItem('g27.settings', JSON.stringify({ graphics: 'low', intro: false })));
+await pg.goto('http://localhost:5173/'); await pg.waitForTimeout(3500);
+await pg.keyboard.press('Enter'); await pg.waitForTimeout(600);
+await pg.evaluate(() => __g27.startGame({ ...__g27.prefs, side: 'cpu', quarterMinutes: 5 }, { seed: 7, speed: 4 }));
+await pg.waitForTimeout(9000);
+await b.close();

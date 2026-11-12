@@ -265,7 +265,9 @@ export class GameRenderer {
         const rel = new THREE.Vector3(bm.position.x - rx, bm.position.y, bm.position.z - rz);
         if (prev.id !== b.carrier) prev.rel.set(was.x - rx, was.y, was.z - rz); // from wherever the ball was a frame ago
         if (prev.rel.distanceTo(rel) > 3) prev.rel.copy(rel); // a new play / a snap: no blend across the field
-        prev.rel.lerp(rel, 1 - Math.exp(-dt * 16));
+        // Follow the hands exactly while they move smoothly (a fast fall turns the body quickly); blend only a real jump
+        // (a catch tucking to the cradle, a handoff, the QB's hands to the throwing hand).
+        if (prev.rel.distanceTo(rel) < 0.12) prev.rel.copy(rel); else prev.rel.lerp(rel, 1 - Math.exp(-dt * 16));
         prev.id = b.carrier;
         bm.position.set(rx + prev.rel.x, Math.max(0.1, prev.rel.y), rz + prev.rel.z);
       }

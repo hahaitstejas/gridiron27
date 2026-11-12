@@ -597,6 +597,12 @@ export class PlayerRenderer {
     const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
     this.gait.apply(p, i, pose, x, z, f, sc, official ? 1 : wide, dt, look);
     if (b && REACH_ANIMS.has(p.anim) && (b.state === 'air' || b.state === 'kick')) reachForBall(pose, p, b, x, z, f, sc, wide, alpha);
+    else if (b && b.state === 'air' && b.target && !b.resolved && b.kind !== 'throwaway' && b.T - b.t < 0.55 && p.state === 'active' && !p.engagement
+      && Math.hypot(p.x - b.target.x, p.z - b.target.z) < 2.2 && sim.players[b.intended]) {
+      // A contested ball: everyone at the catch point goes up for it, not just the man the sim picked to reach. Teammates of the
+      // intended receiver reach with both hands; defenders play through the receiver with one arm (the nearer one).
+      reachForBall(pose, p, b, x, z, f, sc, wide, alpha, p.team === sim.players[b.intended].team ? 'catch' : 'swat');
+    }
     // Blocks: hands on the other man's chest. Arms straighten or fold with the distance between them, both sides square up.
     const eg = p.engagement;
     if (!official && eg && p.anim === 'block' && eg.b && eg.d) {
@@ -840,7 +846,8 @@ const Q_ALONG = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 
 // ---------- Arm IK: hands go to the ball ----------
 const REACH_ANIMS = new Set(['reach', 'swat', 'pick', 'catch', 'fair_catch']);
 /** Aim both arms (one for a swat) from the shoulders at the ball, more as it arrives; elbows nearly straight. */
-function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
+function reachForBall(pose, p, b, x, z, f, sc, w, alpha, mode = null) {
+  const swat = mode ? mode === 'swat' : p.anim === 'swat';
   const bx = b.px + (b.x - b.px) * alpha, by = b.py + (b.y - b.py) * alpha, bz = b.pz + (b.z - b.pz) * alpha;
   const dist = Math.hypot(bx - x, bz - z);
   if (dist > 4.5) return;
@@ -852,7 +859,7 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
   // How high the ball arrives relative to his shoulders: high-point it (go up for it), or bend for a low one.
   const rel = by / sc - shY;
   const near = Math.max(0, 1 - dist / 2.4);
-  if (p.anim !== 'swat' && rel > 0.4 && near > 0) {
+  if (!swat && rel > 0.4 && near > 0) {
     const j = Math.min(1, (rel - 0.4) / 0.45) * k * near;
     pose.rootY += 0.3 * j; pose.legs[0].hip += 0.75 * j; pose.legs[0].knee += 1.05 * j; pose.legs[1].knee += 0.45 * j;
     shY += 0.3 * j;
@@ -862,16 +869,16 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
     shY -= 0.16 * j;
   }
   // A ball thrown wide of him: lean the body toward it (same roll convention as a fall to that side) and stretch.
-  if (p.anim !== 'swat' && Math.abs(lx) > 0.7 && near > 0) {
+  if (!swat && Math.abs(lx) > 0.7 && near > 0) {
     const j = Math.min(1, (Math.abs(lx) - 0.7) / 0.9) * k * near;
     pose.rootRoll += Math.sign(lx) * 0.38 * j; pose.lean += 0.15 * j;
   }
   for (let s = 0; s < 2; s++) {
-    if (p.anim === 'swat' && s === 0) continue;
+    if (swat && (s ? 1 : -1) !== (lx >= 0 ? 1 : -1)) continue; // a swat: only the arm on the ball's side
     // Two-bone IK: each hand to its side of the ball (they meet there, thumbs together). The upper arm aims at the hand
     // target minus the shoulder angle of the bend, so a ball inside arm's length is met with bent elbows, not overreached.
     const side = s ? 1 : -1, a = pose.arms[s];
-    const dx = lx + side * (p.anim === 'swat' ? 0 : 0.07) - side * B.shX * w, dy = by / sc - shY, dz = lz;
+    const dx = lx + side * (swat ? 0 : 0.07) - side * B.shX * w, dy = by / sc - shY, dz = lz;
     const U = B.upper, F = B.fore + 0.05;
     const len = Math.max(Math.abs(U - F) + 0.02, Math.min(U + F - 0.005, Math.hypot(dx, dy, dz) || 1));
     const bend = Math.PI - Math.acos(Math.max(-1, Math.min(1, (U * U + F * F - len * len) / (2 * U * F))));
@@ -1327,6 +1334,12 @@ function computePose(p, time, sim) {
       break;
     default: // run
       runLegs(Math.min(1.05, 0.25 + run * 0.85));
+  }
+  // Sacked: a passer who goes down with the ball clutches it in both hands at his chest (ball security), arms off the springs.
+  const sb = sim?.ball;
+  if (sb && sb.carrier === p.id && sb.state === 'held' && p.task?.type === 'qb_pass' && !sim.passThrown && (p.anim === 'falling' || p.anim === 'down' || p.anim === 'getup')) {
+    for (const a of pose.arms) { a.pitch = 0.95; a.elbow = 2.05; a.out = -0.32; a.twist = 0; }
+    pose.carryArm = 2;
   }
   // A ball carrier cradles it in the right arm (both arms when protecting it) instead of pumping that arm.
   const b = sim?.ball;

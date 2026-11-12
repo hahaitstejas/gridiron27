@@ -287,6 +287,9 @@ for (let i = 0; i < A.length; i++) {
   }
 }
 
+function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); }
+
+
 // ---------- clothing: the jersey hangs off the pads, sleeves and padded pants sit off the skin (part of the pads delta) ----------
 {
   const nrm = A.map(() => [0, 0, 0]);
@@ -320,6 +323,35 @@ const part = A.map((p, i) => {
   if (region[i] === REGION.forearm || region[i] === REGION.gloves || (region[i] === REGION.sleeve && arm > 0.8)) return 1;
   if (region[i] === REGION.socks || region[i] === REGION.shoe || (region[i] === REGION.pants && leg > 0.5)) return 2;
   return 0;
+});
+// ---------- build: a lineman's mass, in the places it really is (flags.y = 1 is a ~320 lb lineman) ----------
+// Radial growth away from each body part's own axis. One continuous profile down the trunk (seat, belly, chest, traps, neck)
+// so nothing steps at the jersey hem; thighs and calves taper away from the hip; upper arms are thick, forearms barely.
+// Replaces MakeHuman's max-weight shape, whose mass is mostly belly and seat.
+const profile = (tab, y) => {
+  if (y <= tab[0][0]) return tab[0][1];
+  for (let k = 1; k < tab.length; k++) if (y <= tab[k][0]) { const t = (y - tab[k - 1][0]) / (tab[k][0] - tab[k - 1][0]); return tab[k - 1][1] + (tab[k][1] - tab[k - 1][1]) * smooth01(t); }
+  return tab[tab.length - 1][1];
+};
+const TRUNK = [[hipH - 0.3, 0.0], [hipH - 0.15, 0.03], [waistY, 0.05], [waistY + 0.2, 0.055], [shY - 0.3, 0.05], [shY - 0.1, 0.045], [shY + 0.05, 0.03], [collarY + 0.04, 0.034]];
+const GUT = [[hipH - 0.1, 0], [waistY + 0.1, 1], [shY - 0.32, 0.8], [shY - 0.12, 0]]; // extra growth toward the front
+const THIGH = [[ankleY, 0], [kneeY - 0.1, 0.012], [kneeY + 0.1, 0.024], [hipH - 0.25, 0.034], [hipH - 0.05, 0.03]];
+const mass = A.map((p, i) => {
+  const y = p[1], side = p[0] < 0 ? -1 : 1;
+  const armW = wOf(i, 'shL') + wOf(i, 'shR'), foreW = wOf(i, 'elL') + wOf(i, 'elR');
+  const footW = wOf(i, 'footL') + wOf(i, 'footR');
+  const radial = (cx, amt, front = 1) => {
+    const dx = p[0] - cx, dz = p[2], r = Math.hypot(dx, dz) || 1e-6;
+    const fw = dz / r > 0 ? 1 + (front - 1) * dz / r : 1;
+    return [dx / r * amt * fw, 0, dz / r * amt * fw];
+  };
+  if (footW > 0.5) return [0, 0, 0];
+  if (foreW > 0.5) return radial(side * Bk.shX, 0.02 * smooth01((y - (wristY + 0.02)) / 0.12));
+  if (armW > 0.5 && y < shY - 0.04) return radial(side * Bk.shX, 0.042 * smooth01((shY - 0.04 - y) / 0.06) * (1 - 0.35 * smooth01((shY - Bk.upper - y) / 0.15 + 1)));
+  const trunk = radial(0, profile(TRUNK, y), 1 + 0.7 * profile(GUT, y));
+  const leg = radial(side * Bk.hipX, profile(THIGH, y));
+  const k = smooth01((hipH - 0.05 - y) / 0.14); // 0 in the trunk, 1 once it is clearly a leg
+  return [trunk[0] + (leg[0] - trunk[0]) * k, 0, trunk[2] + (leg[2] - trunk[2]) * k];
 });
 Bk.waistY = waistY; Bk.collarY = collarY + 0.02; Bk.sleeveY = shY - 0.13; Bk.wristY = wristY + 0.01; Bk.sockY = kneeY - 0.07; Bk.shoeY = ankleY + 0.02;
 
@@ -355,7 +387,7 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
       }
       if (!hit) { const n = pool.map((i) => [i, Math.hypot(Pp[i][0] - x, Pp[i][1] - y)]).sort((q, r) => q[1] - r[1])[0][0]; hit = { z: Pp[n][2], v: [n, n, n], w: [1, 0, 0] }; }
       const lerp3 = (arr) => [0, 1, 2].map((k) => hit.w[0] * arr(hit.v[0])[k] + hit.w[1] * arr(hit.v[1])[k] + hit.w[2] * arr(hit.v[2])[k]);
-      const base = lerp3((i) => A[i]), pd = lerp3((i) => pad[i]), bk = lerp3((i) => sub(Hv[i], A[i]));
+      const base = lerp3((i) => A[i]), pd = lerp3((i) => pad[i]), bk = lerp3((i) => mass[i]);
       decal.pos.push(base[0], base[1], base[2] + side * 0.012);
       decal.pad.push(...pd); decal.bulk.push(...bk);
       // Exactly the shirt's own skinning at that spot, so print and shirt bend together.
@@ -404,7 +436,7 @@ const out = {
   skeleton: Object.fromEntries(Object.entries(Bk).map(([k, v]) => [k, r4(v)])),
   count: src.length,
   position: f32(src.flatMap((i) => A[i])),
-  bulk: f32(src.flatMap((i) => sub(Hv[i], A[i]))),
+  bulk: f32(src.flatMap((i) => mass[i])),
   pad: f32(src.flatMap((i) => pad[i])),
   skinIndex: u8(src.flatMap((i) => skinIdx[i])),
   skinWeight: f32(src.flatMap((i) => skinW[i])),

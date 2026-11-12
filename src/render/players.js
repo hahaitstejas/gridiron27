@@ -349,7 +349,7 @@ export class PlayerRenderer {
       const lightJersey = !isDark(jersey);
       this.region(i, REGION.gloves, uni.gloves || (bare ? skin : line ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : lightJersey ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : '#f2f2f2'));
       this.number(i, p.number, uni.number, named[i] ? i : -1);
-      flags(i, false, Math.min(0.35, p.bulk * 0.45), 1.3, img ? 1 : 0); // linemen: up to 35% of the heavy shape (its belly and seat grow faster than its frame)
+      flags(i, false, Math.min(1, p.bulk), 1.3, img ? 1 : 0); // build: 0 slim receiver .. 1 ~320 lb lineman (buildhuman.mjs `mass`)
       this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(helmet));

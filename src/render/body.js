@@ -212,12 +212,12 @@ vec3 buildPos(vec3 p) {
   if (aKind < 0.5) { float pad = mix(1.0, prm.w, smoothstep(1.38, 1.56, p.y)); return vec3(p.x * prm.x * pad, p.y, p.z * prm.z); }
   if (aKind < 1.5) { vec3 ax = vec3(aAxis.x * prm.x, aAxis.y, aAxis.z); return ax + (p - aAxis) * vec3(prm.y, 1.0, prm.y); }
   if (aKind > 4.5) {
-    // The MakeHuman body: lineman build and pads as shape deltas (bulk mostly in the upper body: a lineman's legs and
-    // seat stay athletic, not inflated), then the hips, seat and thighs taken in toward each leg's center so the
-    // shoulder pads read wider than the hips the way a player in uniform does on TV.
+    // The MakeHuman body: build (tools/buildhuman.mjs mass: neck, chest, belly, arms, thighs; 1 = a ~320 lb lineman) and
+    // pads as shape deltas, then the hips, seat and thighs taken in toward each leg's center so the shoulder pads read
+    // wider than the hips the way a player in uniform does on TV.
     vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID), 0);
     float lower = smoothstep(1.24, 1.08, p.y);
-    vec3 q = p + aBulkD * fl.y * (1.0 - 0.55 * lower) + aPadD * fl.z;
+    vec3 q = p + aBulkD * fl.y + aPadD * fl.z;
     float t = lower * smoothstep(0.32, 0.6, p.y);
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
     q.x = cx + (q.x - cx) * (1.0 - 0.15 * t);

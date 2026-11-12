@@ -642,8 +642,10 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Realism pass (render-only): the helmet assembly (shell, mask, chin, decals, visor) is scaled `HELM_K` 0.9 and sits a touch
   lower / forward; shoulder pads at 1.3 (`COL_FLAGS.z`); the body shader darkens down-facing surfaces and lower legs (cheap
   occlusion) and keeps whites just under pure white; day / dusk / night ambient (hemi) lowered, key light up; shadow camera ±26 yd.
-  Body shape (body.js `buildPos`): lineman bulk only ~45% below the waist, hips / seat / thighs taken in toward each leg's center
-  (seat most); the pants stripe comes from the bind-pose normal (`vBindN`, clean edges). Turf: stronger mowing bands, a deeper
+  Body build (tools/buildhuman.mjs `mass` → human.json `bulk`; `COL_FLAGS.y` = the player's `bulk` 0 slim receiver .. 1 ~320 lb lineman,
+  from weight): our own radial mass profiles (neck, chest, a gut that sticks out front, thick upper arms, thighs) replace
+  MakeHuman's max-weight shape; one continuous profile down the trunk so nothing steps at the jersey hem. Body shape (body.js
+  `buildPos`): hips / seat / thighs taken in toward each leg's center (seat most); the pants stripe comes from the bind-pose normal (`vBindN`, clean edges). Turf: stronger mowing bands, a deeper
   olive green on the grass only (warm, sunlit, like a TV broadcast).
   Field goals / PATs (main.js `camPhase = 'fg'`, camera.js): low behind the holder with the uprights ahead from the line-up through
   the kick; a block / fumble (`fgBroke`) and fakes keep the broadcast view. The holder kneels (`holdingKick` → pose `hold`,

@@ -252,19 +252,45 @@ export class GameRenderer {
     const bm = this.ball;
     if ((b.state === 'held' || b.state === 'presnap') && b.carrier >= 0) {
       const cp = sim.players[b.carrier];
-      if (b.state === 'presnap') bm.position.set(b.x, 0.12, b.z);
-      // Going down: the ball stays in his cradling hand (the posed body), not at the sim's spotting point, which
-      // runs ahead of a sideways or backward fall and made every tackle look like a fumble.
-      else if (cp.state === 'tackled' || cp.state === 'down') {
-        const h = players.handPos[b.carrier];
-        if (h) bm.position.copy(h); else bm.position.set(b.px + (b.x - b.px) * alpha, b.py + (b.y - b.py) * alpha, b.pz + (b.z - b.pz) * alpha);
-        bm.position.y = Math.max(0.12, bm.position.y);
+      if (b.state === 'presnap') { bm.position.set(b.x, 0.12, b.z); bm.rotation.set(0, Math.PI - cp.facing, 0); }
+      else {
+        // In the posed arm (cradled along the forearm, or in the hands), also going down and on the ground: not at the sim's
+        // spotting point, which runs ahead of a sideways or backward fall and made every tackle look like a fumble.
+        // Where the posed body holds it, blended in the carrier's own frame: a catch tucks the ball from the hands to the
+        // cradle (and a caught pass starts from where the ball was in the air) without lagging behind a running player.
+        const prev = this._held ||= { id: -1, rel: new THREE.Vector3(), root: new THREE.Vector3(), from: new THREE.Vector3() };
+        const rx = cp.px + (cp.x - cp.px) * alpha, rz = cp.pz + (cp.z - cp.pz) * alpha;
+        const was = bm.position.clone();
+        players.carryPoint(sim, b.carrier, alpha, bm.position, bm.quaternion);
+        const rel = new THREE.Vector3(bm.position.x - rx, bm.position.y, bm.position.z - rz);
+        if (prev.id !== b.carrier) prev.rel.set(was.x - rx, was.y, was.z - rz); // from wherever the ball was a frame ago
+        if (prev.rel.distanceTo(rel) > 3) prev.rel.copy(rel); // a new play / a snap: no blend across the field
+        prev.rel.lerp(rel, 1 - Math.exp(-dt * 16));
+        prev.id = b.carrier;
+        bm.position.set(rx + prev.rel.x, Math.max(0.1, prev.rel.y), rz + prev.rel.z);
       }
-      else players.carryPoint(sim, b.carrier, alpha, bm.position);
-      const c = sim.players[b.carrier];
-      bm.rotation.set(0, Math.PI / 2 - c.facing + Math.PI / 2, b.state === 'presnap' ? 0 : 0.5);
     } else {
+      if (this._held) this._held.id = -1;
       bm.position.set(b.px + (b.x - b.px) * alpha, b.py + (b.y - b.py) * alpha, b.pz + (b.z - b.pz) * alpha);
+      // A pass on its way in: over the last 0.3 s it eases into the hands of whoever is reaching for it nearest its target
+      // (the sim resolves the catch at the target spot, up to ~1.25 yd from the catcher, which made the ball jump to him).
+      // After the resolution (a drop or a tip) the offset fades out instead of snapping back.
+      const off = (this._ballOff ||= new THREE.Vector3());
+      if (b.state === 'air' && b.target && !b.resolved && b.T - b.t < 0.3) {
+        let best = -1, bd = 2.6;
+        for (const p of sim.players) {
+          if (!(p.anim === 'reach' || p.anim === 'swat' || p.anim === 'pick' || p.anim === 'catch')) continue;
+          const d = Math.hypot(p.x - b.target.x, p.z - b.target.z) - (p.id === b.intended ? 0.4 : 0);
+          if (d < bd && players.hands[p.id]) { bd = d; best = p.id; }
+        }
+        if (best >= 0) {
+          const hs = players.hands[best];
+          const k = 1 - Math.max(0, b.T - b.t) / 0.3, e = k * k * (3 - 2 * k);
+          off.copy(hs[0]).add(hs[1]).multiplyScalar(0.5).sub(bm.position).multiplyScalar(e);
+          if (off.length() > 2) off.setLength(2);
+        } else off.multiplyScalar(Math.exp(-dt * 12));
+      } else off.multiplyScalar(Math.exp(-dt * 12));
+      if (b.state === 'air' || b.state === 'loose') bm.position.add(off); else off.set(0, 0, 0);
       if (b.state === 'loose') bm.rotation.set(b.tumble || 0, Math.atan2(-b.vz, b.vx), (b.tumble || 0) * 0.6, 'YZX'); // end over end
       else if (b.state === 'air' || b.state === 'snap') {
         // Point along the velocity with a spiral.

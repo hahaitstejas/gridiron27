@@ -675,6 +675,9 @@ function onSessionEvent(e) {
 let acc = 0;
 let last = performance.now();
 let time = 0;
+// Animation clock: runs at the game's speed (slow motion, 4x career fast-forward, a paused or slow replay), so pose crossfades,
+// the limp-limb springs and the gait stay in step with the sim instead of the wall clock.
+let animTime = 0;
 let attract = 0;
 function frameBody(now) {
   const frameMs = now - last;
@@ -760,6 +763,8 @@ function frameBody(now) {
   }
 
   // ---- Render ----
+  const animRate = app === 'replay' ? (replay?.playing ? (replay.speed ?? 1) : 0) : app === 'game' && session ? (session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed) : app === 'paused' ? 0 : 1;
+  animTime += dt * animRate;
   const sim = session?.sim || null;
   if (app !== 'replay' && sim !== lastSim) {
     // Uniforms get dirty over the game: mud in rain / snow, grass stains otherwise (repainted once per play).
@@ -776,7 +781,7 @@ function frameBody(now) {
     const m = session.match;
     const isim = sim || intro.sim;
     if (isim && isim !== lastSim) { renderer.players.setColors(isim, session.teams); lastSim = isim; }
-    if (isim) renderer.drawSim(isim, alpha, time, session); else renderer.hidePlayers();
+    if (isim) renderer.drawSim(isim, alpha, animTime, session); else renderer.hidePlayers();
     renderer.lines.set(null, null);
     renderer.setAim(null);
     renderer.presentation.introT = intro.t;
@@ -791,7 +796,7 @@ function frameBody(now) {
     }
     renderer.renderShot(dt, sh.pos, sh.look, 0.6);
   } else if (app === 'replay' && replay) {
-    renderer.drawSim(replay.player.ghost, replay.alpha ?? 0, time);
+    renderer.drawSim(replay.player.ghost, replay.alpha ?? 0, animTime);
     renderer.lines.set(null, null);
     renderer.setAim(null);
     renderer.playArt.update(null, 1);
@@ -800,7 +805,7 @@ function frameBody(now) {
     hud.replayView({ t: replay.player.t, duration: replay.player.duration, playing: replay.playing, speed: replay.speed, auto: replay.auto, angle: REPLAY_ANGLES[replay.angle].name });
   } else if (session && app !== 'menu') {
     const m = session.match;
-    if (sim) renderer.drawSim(sim, alpha, time, session); else renderer.hidePlayers();
+    if (sim) renderer.drawSim(sim, alpha, animTime, session); else renderer.hidePlayers();
     const scrim = m.phase === 'scrimmage';
     const losX = sim ? sim.losX : m.xOf(m.possession, m.yardLine);
     renderer.lines.set(scrim ? m.xOf(m.possession, m.yardLine) : null, scrim && m.firstYL < 100 ? m.xOf(m.possession, m.firstYL) : null, scrim ? m.down : null);

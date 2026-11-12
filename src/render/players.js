@@ -219,6 +219,7 @@ export class PlayerRenderer {
     this.gait = new Gait();
     this.colorsKey = '';
     this.handPos = [];
+    this.hands = []; this.cradle = []; this.foreQ = []; // per player: [left, right]
   }
 
   /**
@@ -669,7 +670,15 @@ export class PlayerRenderer {
       const el = cl(sh).multiply(trans(0, -B.upper, 0)).multiply(rotX(-a.elbow));
       this.bone(i, s ? BONE.shR : BONE.shL, sh, w);
       this.bone(i, s ? BONE.elR : BONE.elL, el, w);
-      if (s === 1) (this.handPos[i] ||= new THREE.Vector3()).setFromMatrixPosition(cl(el).multiply(trans(0, -B.fore - 0.05, 0)));
+      // Both hands, and where a ball sits when this arm cradles it (along the forearm, tucked toward the chest), with the
+      // forearm's rotation so the carried ball lies along it.
+      const hd = (this.hands[i] ||= [new THREE.Vector3(), new THREE.Vector3()]);
+      hd[s].setFromMatrixPosition(cl(el).multiply(trans(0, -B.fore - 0.05, 0)));
+      const cr = (this.cradle[i] ||= [new THREE.Vector3(), new THREE.Vector3()]), fq = (this.foreQ[i] ||= [new THREE.Quaternion(), new THREE.Quaternion()]);
+      const cm = cl(el).multiply(trans(-side * 0.035, -B.fore * 0.62, 0.045));
+      cr[s].setFromMatrixPosition(cm);
+      fq[s].setFromRotationMatrix(cm);
+      if (s === 1) (this.handPos[i] ||= new THREE.Vector3()).copy(hd[1]);
     }
     // Legs.
     for (let s = 0; s < 2; s++) {
@@ -742,7 +751,9 @@ export class PlayerRenderer {
       const m = Math.max(0.35, Math.min(1.4, Math.hypot(p.vx || 0, p.vz || 0) / 6));
       const h1 = Math.sin((p.id || 0) * 12.9898) * 0.5, h2 = Math.sin((p.id || 0) * 78.233) * 0.5;
       const v = st.v;
-      for (let s2 = 0; s2 < 2; s2++) {
+      // A tackler keeps his arms wrapped (his kick is in the legs and head only); a runner's arms fling.
+      const wrapper = p.anim === 'tackle' || p.anim === 'tackle_dive';
+      for (let s2 = 0; s2 < 2 && !wrapper; s2++) {
         const sg = s2 ? 1 : -1, base = LIMB_AT + s2 * ARM_KEYS.length;
         v[base] += (-3.5 + h1 * 2) * m;           // arms fling back / up
         v[base + 1] += (3.2 + h2 * 2) * m;       // and out
@@ -759,13 +770,23 @@ export class PlayerRenderer {
     st.w = on ? Math.min(1, st.w + dt * 10) : Math.max(0, st.w - dt * 5);
     const down = p.anim === 'down';
     const K = down ? 70 : 46, C = down ? 9 : 5.5; // underdamped: ~30% overshoot while falling, settling on the ground
+    // The ball arm (both when he protects it) keeps its cradle: the ball rides on it.
+    const carry = pose.carryArm;
     for (let j = HEAD_AT; j < POSE_N; j++) {
-      if (st.w <= 0 && !on) { st.x[j] = TMP[j]; st.v[j] = 0; continue; }
+      const arm = j >= LIMB_AT && j < LIMB_AT + 2 * ARM_KEYS.length ? Math.floor((j - LIMB_AT) / ARM_KEYS.length) : -1;
+      const keep = (arm >= 0 && (carry === 2 || carry === arm)) || (arm >= 0 && (j - LIMB_AT) % ARM_KEYS.length === 3); // and no twist springs
+      if ((st.w <= 0 && !on) || keep) { st.x[j] = TMP[j]; st.v[j] = 0; continue; }
       st.v[j] += (K * (TMP[j] - st.x[j]) - C * st.v[j]) * dt;
       st.x[j] += st.v[j] * dt;
       const d = st.x[j] - TMP[j];
-      if (d > 1.3) st.x[j] = TMP[j] + 1.3; else if (d < -1.3) st.x[j] = TMP[j] - 1.3; // joints can't fold through the body
+      if (d > 0.9) st.x[j] = TMP[j] + 0.9; else if (d < -0.9) st.x[j] = TMP[j] - 0.9; // joints can't fold through the body
       TMP[j] += (st.x[j] - TMP[j]) * st.w;
+    }
+    // Joint limits: elbows and knees only bend one way (and not past ~150 degrees).
+    for (let s2 = 0; s2 < 2 && st.w > 0; s2++) {
+      const e = LIMB_AT + s2 * ARM_KEYS.length + 2, kn = LIMB_AT + 2 * ARM_KEYS.length + s2 * LEG_KEYS.length + 1;
+      TMP[e] = Math.max(0.04, Math.min(2.6, TMP[e]));
+      TMP[kn] = Math.max(0, Math.min(2.6, TMP[kn]));
     }
     unpackPose(TMP, pose);
   }
@@ -781,23 +802,37 @@ export class PlayerRenderer {
     return best;
   }
 
-  /** World position for the ball when it's carried by player i. */
-  carryPoint(sim, i, alpha, out) {
+  /**
+   * World position for the ball when player i holds it, and (in `quat`, when given) its rotation. A runner carries it in
+   * the cradle of his ball arm (along the forearm, tucked to the chest), also while he is tackled and on the ground; a
+   * passer holds it in both hands at the chest, then in the throwing hand; a catcher holds it in his hands.
+   */
+  carryPoint(sim, i, alpha, out, quat = null) {
     const p = sim.players[i];
-    const x = p.px + (p.x - p.px) * alpha, z = p.pz + (p.z - p.pz) * alpha;
-    const f = p.facing;
-    const sc = p.height / 2.06;
-    if (p.anim === 'throw' || p.anim === 'stance_qb' || p.anim === 'passset' || p.anim === 'reach' || p.anim === 'catch') {
-      const h = this.handPos[i];
-      if (h) return out.copy(h);
+    const hs = this.hands[i], cr = this.cradle[i];
+    const twoHands = p.anim === 'stance_qb' || p.anim === 'passset' || p.anim === 'reach' || p.anim === 'catch' || p.anim === 'pick'
+      || (p.task?.type === 'qb_pass' && !sim.passThrown && p.anim !== 'throw');
+    if (hs && p.anim === 'throw') { if (quat) quat.copy(this.foreQ[i][1]).multiply(Q_ALONG); return out.copy(hs[1]); }
+    if (hs && twoHands) {
+      // Between the hands, the ball crosswise to the body (as a passer holds it at the chest, or a catcher secures it).
+      out.copy(hs[0]).add(hs[1]).multiplyScalar(0.5);
+      if (quat) quat.setFromAxisAngle(Y_AXIS, -p.facing);
+      return out;
     }
-    if (p.state === 'down' || p.state === 'tackled') return out.set(x + Math.cos(f) * 0.3, 0.25, z + Math.sin(f) * 0.3);
-    // Tucked under the carrying arm (right unless he switched it: p.ballArm = -1).
+    if (cr) {
+      const arm = p.ballArm === -1 ? 0 : 1;
+      if (quat) quat.copy(this.foreQ[i][arm]).multiply(Q_ALONG);
+      return out.copy(cr[arm]);
+    }
+    // Before the first pose (no arm yet): a fixed spot under the right arm.
+    const x = p.px + (p.x - p.px) * alpha, z = p.pz + (p.z - p.pz) * alpha, f = p.facing, sc = p.height / 2.06;
     const arm = p.ballArm === -1 ? -1 : 1;
-    const rx = -Math.sin(f) * arm, rz = Math.cos(f) * arm; // the carrying side
+    const rx = -Math.sin(f) * arm, rz = Math.cos(f) * arm;
     return out.set(x + Math.cos(f) * 0.12 + rx * 0.2 * sc, 1.25 * sc, z + Math.sin(f) * 0.12 + rz * 0.2 * sc);
   }
 }
+const Y_AXIS = new THREE.Vector3(0, 1, 0);
+const Q_ALONG = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2); // the ball's long axis (x) along the forearm (y)
 
 // ---------- Arm IK: hands go to the ball ----------
 const REACH_ANIMS = new Set(['reach', 'swat', 'pick', 'catch', 'fair_catch']);
@@ -830,15 +865,19 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha) {
   }
   for (let s = 0; s < 2; s++) {
     if (p.anim === 'swat' && s === 0) continue;
-    // Both hands to the ball itself (they meet there, thumbs together), elbows soft so it's caught, not slapped.
+    // Two-bone IK: each hand to its side of the ball (they meet there, thumbs together). The upper arm aims at the hand
+    // target minus the shoulder angle of the bend, so a ball inside arm's length is met with bent elbows, not overreached.
     const side = s ? 1 : -1, a = pose.arms[s];
-    const dx = lx - side * B.shX * w, dy = by / sc - shY, dz = lz;
-    const len = Math.hypot(dx, dy, dz) || 1;
-    const pitch = Math.atan2(dz, -dy) - pose.lean;
-    const out = Math.asin(Math.max(-0.9, Math.min(0.9, (dx * side) / len)));
+    const dx = lx + side * (p.anim === 'swat' ? 0 : 0.07) - side * B.shX * w, dy = by / sc - shY, dz = lz;
+    const U = B.upper, F = B.fore + 0.05;
+    const len = Math.max(Math.abs(U - F) + 0.02, Math.min(U + F - 0.005, Math.hypot(dx, dy, dz) || 1));
+    const bend = Math.PI - Math.acos(Math.max(-1, Math.min(1, (U * U + F * F - len * len) / (2 * U * F))));
+    const atShoulder = Math.acos(Math.max(-1, Math.min(1, (U * U + len * len - F * F) / (2 * U * len))));
+    const pitch = Math.atan2(dz, -dy) - pose.lean - atShoulder;
+    const out = Math.asin(Math.max(-0.9, Math.min(0.9, (dx * side) / (Math.hypot(dx, dy, dz) || 1))));
     a.pitch += (pitch - a.pitch) * k;
     a.out += (out - a.out) * k;
-    a.elbow += (0.32 - a.elbow) * k;
+    a.elbow += (Math.max(0.12, bend) - a.elbow) * k;
   }
   // Eyes on the ball.
   pose.head += (-Math.max(-0.6, Math.min(0.9, Math.atan2(by / sc - shY - 0.2, Math.hypot(lx, lz)))) - pose.head) * k; // negative = up

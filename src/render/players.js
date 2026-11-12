@@ -175,6 +175,7 @@ export class PlayerRenderer {
     // Pose crossfades (per player index): the pose an animation change starts from, and the last drawn pose.
     this.fromPose = []; this.lastPose = []; this.lastAnim = []; this.fadeT = []; this.poseSim = null;
     this.fall = []; this.fallAnim = []; this.wrap = [];
+    this.limpS = []; // per-player spring state for the limp-limb layer (see limp())
 
     this._m = new THREE.Matrix4();
     this._t = new THREE.Matrix4();
@@ -518,6 +519,7 @@ export class PlayerRenderer {
     } else if (!falling) this.fallAnim[i] = false;
     FALL = pileFall || (falling ? this.fall[i] : null);
     const pose = this.blend(i, holdingKick(p, sim) ? 'hold' : p.anim, computePose(p, time, sim), dt);
+    if (!official) this.limp(i, p, pose, dt);
     if (pileLift) pose.rootY += pileLift; // on top of the pile
     // Planted feet, lean into cuts and a head that follows the ball (render/gait.js).
     const b = sim?.ball;
@@ -654,6 +656,50 @@ export class PlayerRenderer {
     return target;
   }
 
+  /**
+   * Limp limbs (render only, a cheap stand-in for a ragdoll): while a player is being tackled, falling or lying on the
+   * turf, arms, legs and head follow the keyframed pose through damped springs, so they swing, overshoot and settle
+   * instead of being posed rigidly. A kick on impact (scaled by his speed) starts the swing; the layer fades in and
+   * out so normal animations are untouched.
+   */
+  limp(i, p, pose, dt) {
+    const st = (this.limpS[i] ||= { x: new Float32Array(POSE_N), v: new Float32Array(POSE_N), w: 0, on: false, init: false });
+    const on = LIMP_ANIMS.has(p.anim);
+    packPose(pose, TMP);
+    if (!st.init) { st.x.set(TMP); st.init = true; }
+    dt = Math.min(dt, 0.05);
+    if (on && !st.on) { // impact: a kick scaled by how fast he was going, different per player
+      const m = Math.max(0.35, Math.min(1.4, Math.hypot(p.vx || 0, p.vz || 0) / 6));
+      const h1 = Math.sin((p.id || 0) * 12.9898) * 0.5, h2 = Math.sin((p.id || 0) * 78.233) * 0.5;
+      const v = st.v;
+      for (let s2 = 0; s2 < 2; s2++) {
+        const sg = s2 ? 1 : -1, base = LIMB_AT + s2 * ARM_KEYS.length;
+        v[base] += (-3.5 + h1 * 2) * m;           // arms fling back / up
+        v[base + 1] += (3.2 + h2 * 2) * m;       // and out
+        v[base + 2] += sg * 2.5 * m * (0.5 + h1); // elbows whip
+      }
+      for (let s2 = 0; s2 < 2; s2++) {
+        const base = LIMB_AT + 2 * ARM_KEYS.length + s2 * LEG_KEYS.length;
+        v[base] += (s2 ? -2.6 : 2.6) * m * (0.7 + h2); // legs kick apart
+        v[base + 1] += (s2 ? 2.2 : -1.2) * m;
+      }
+      v[HEAD_AT] += -3.0 * m;                    // head snaps back
+    }
+    st.on = on;
+    st.w = on ? Math.min(1, st.w + dt * 10) : Math.max(0, st.w - dt * 5);
+    const down = p.anim === 'down';
+    const K = down ? 70 : 46, C = down ? 9 : 5.5; // underdamped: ~30% overshoot while falling, settling on the ground
+    for (let j = HEAD_AT; j < POSE_N; j++) {
+      if (st.w <= 0 && !on) { st.x[j] = TMP[j]; st.v[j] = 0; continue; }
+      st.v[j] += (K * (TMP[j] - st.x[j]) - C * st.v[j]) * dt;
+      st.x[j] += st.v[j] * dt;
+      const d = st.x[j] - TMP[j];
+      if (d > 1.3) st.x[j] = TMP[j] + 1.3; else if (d < -1.3) st.x[j] = TMP[j] - 1.3; // joints can't fold through the body
+      TMP[j] += (st.x[j] - TMP[j]) * st.w;
+    }
+    unpackPose(TMP, pose);
+  }
+
   /** The runner a tackler is wrapping: the nearest opponent going down within 2.2 yd (the carrier, usually). */
   wrapTarget(sim, p, x, z) {
     let best = null, bd = 2.2;
@@ -733,6 +779,9 @@ const POSE_KEYS = ['rootY', 'rootPitch', 'rootRoll', 'rootYaw', 'crouch', 'lean'
 const ARM_KEYS = ['pitch', 'out', 'elbow', 'twist'];
 const LEG_KEYS = ['hip', 'knee', 'out'];
 const POSE_N = POSE_KEYS.length + 2 * ARM_KEYS.length + 2 * LEG_KEYS.length;
+const HEAD_AT = POSE_KEYS.indexOf('head'); // the springs start at the head, then the arms and legs follow in packPose order
+const LIMB_AT = POSE_KEYS.length;
+const LIMP_ANIMS = new Set(['falling', 'tackle', 'tackle_dive', 'down']);
 const TMP = new Float32Array(POSE_N);
 const FAST_FADE = new Set(['tackle', 'falling', 'dive', 'tackle_dive', 'hitstick', 'juke', 'spin', 'catch', 'throw', 'swat']);
 function packPose(p, a) {

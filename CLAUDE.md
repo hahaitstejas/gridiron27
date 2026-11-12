@@ -398,6 +398,9 @@ menus or trade dress.
 ### Proportions (measured against the reference jersey / pants)
 Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / thigh width ~0.40 on the CC BY reference; ours were 0.72 / 0.45 / 0.48, so cap width (0.055), plate depth (0.035) in tools/buildhuman.mjs and the hip take-in (0.3) in render/body.js `buildPos` were tightened.
 
+### Limp limbs (render-only ragdoll stand-in)
+`PlayerRenderer.limp()` (players.js) runs damped springs on head, arms and legs while `anim` is falling / tackle / tackle_dive / down (`LIMP_ANIMS`): a kick on impact scaled by speed, ~30% overshoot, settling on the ground, faded in / out so other animations are untouched. Rapier was approved for a full ragdoll but is not needed for this; the sim never sees any of it.
+
 ### Baked folds
 `tools/bakefolds.mjs` unrolls the CC BY reference shirt around the torso into `src/assets/jersey_fold.png` (x = our jersey angle, y = height waist..collar, 128 = flat); body.js adds it to `gFold` below the armpits (x5). The reference geometry is mostly smooth (its seams and mesh panels live in textures), so the effect is subtle.
 

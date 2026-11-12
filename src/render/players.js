@@ -56,8 +56,8 @@ function numberAtlas() {
   for (let n = 0; n < 100; n++) {
     const cx = (n % 10) * C + C / 2, cy = Math.floor(n / 10) * C + C * 0.53;
     const s = String(n);
-    // Widen to block proportions, but keep two digits inside the cell.
-    const wide = Math.min(1.3, (C * 0.76) / Math.max(1, g.measureText(s).width)); // margin so blurrier mips don't bleed into the next cell
+    // Oswald digits are still too wide once printed on the chest: squeeze them to ~0.74 (tall, narrow numerals); two digits stay inside the cell.
+    const wide = Math.min(0.74, (C * 0.76) / Math.max(1, g.measureText(s).width)); // margin so blurrier mips don't bleed into the next cell
     g.save(); g.translate(cx, cy); g.scale(wide, 1);
     g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,1)'; g.strokeText(s, 0, 0);
     g.fillStyle = '#ffffff'; g.fillText(s, 0, 0);

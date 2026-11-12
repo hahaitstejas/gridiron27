@@ -125,7 +125,7 @@ export class PlayerRenderer {
       chin: part(helmetPart(helmetData.chin, { color: true }), Object.assign(mat(0.45, 0.1, 0.6), { vertexColors: true }), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
       // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
-      visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), mat(0.1, 0.3, 1.2), MAX, false),
+      visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), Object.assign(mat(0.08, 0.3, 1.2), { transparent: true, opacity: 0.5, depthWrite: false }), MAX, false), // see-through: the face stays readable behind the tint
       towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
     };
     this.parts.face.geometry.setAttribute('aFace', this.faceAttr);
@@ -359,7 +359,7 @@ export class PlayerRenderer {
       P.stripe.setColorAt(i, c.set(hstripe));
       P.mask.setColorAt(i, c.set(facemask));
       const vl = p.look?.visor;
-      P.visor.setColorAt(i, c.set(VISOR_COLORS[vl] || (p.number % 3 ? VISOR_COLORS.dark : VISOR_COLORS.gold)));
+      P.visor.setColorAt(i, c.set(VISOR_COLORS[vl] || (p.number % 3 === 0 ? VISOR_COLORS.dark : p.number % 3 === 1 ? VISOR_COLORS.clear : VISOR_COLORS.gold)));
       P.towel.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);

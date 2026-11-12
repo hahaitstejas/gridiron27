@@ -125,8 +125,46 @@ function repose(P, T) {
     return tot > 0 ? (tot > 1 ? mul(acc, 1 / tot) : acc) : v;
   });
 }
+// Relaxed curl of the fingers (the base mesh has them straight): each phalanx bends about its joint, toward the palm
+// (the base pose has the palms down, so the tips go to -y), applied child first so the chain folds like a real finger.
+const CURL = { 1: [0.1, 0.25, 0.15], 2: [0.3, 0.6, 0.35], 3: [0.32, 0.65, 0.38], 4: [0.35, 0.7, 0.4], 5: [0.4, 0.75, 0.42] }; // radians per joint, finger 1 = thumb
+function curlFingers(P) {
+  const chains = {};
+  for (const s of ['L', 'R']) for (let f = 1; f <= 5; f++) for (let j = 1; j <= 3; j++) {
+    const name = `finger${f}-${j}.${s}`;
+    chains[name] = [];
+    for (let k = j; k >= 1; k--) { // this joint first, then its parents'
+      const b = `finger${f}-${k}.${s}`;
+      const h = head(P, b), t = joint(P, skel.bones[b].tail);
+      const d = norm(sub(t, h));
+      let axis = norm(cross(d, [0, 1, 0]));
+      const a = CURL[f][k - 1];
+      // Flip the axis if this angle would lift the tip instead of dropping it.
+      const q = sub(t, h), rq = add(mul(q, Math.cos(a)), add(mul(cross(axis, q), Math.sin(a)), mul(axis, dot(axis, q) * (1 - Math.cos(a)))));
+      if (rq[1] > q[1]) axis = mul(axis, -1);
+      chains[name].push({ h, axis, a });
+    }
+  }
+  const rotAbout = (p, c) => {
+    const v = sub(p, c.h), cs = Math.cos(c.a), sn = Math.sin(c.a);
+    return add(c.h, add(mul(v, cs), add(mul(cross(c.axis, v), sn), mul(c.axis, dot(c.axis, v) * (1 - cs)))));
+  };
+  return P.map((v, i) => {
+    let tot = 0, acc = [0, 0, 0];
+    for (const [b, w] of vw[i]) {
+      const ch = chains[b];
+      if (!ch) continue;
+      let p = v;
+      for (const c of ch) p = rotAbout(p, c);
+      acc = add(acc, mul(p, w)); tot += w;
+    }
+    if (!tot) return v;
+    const rest = vw[i].reduce((m, [, w]) => m + w, 0) - tot; // weight on non-finger bones stays put
+    return mul(add(acc, mul(v, rest)), 1 / (tot + rest));
+  });
+}
 const Ta = poseOf(ATH), Th = poseOf(HEAVY);
-let A = repose(ATH, Ta), Hv = repose(HEAVY, Th);
+let A = repose(curlFingers(ATH), Ta), Hv = repose(curlFingers(HEAVY), Th);
 
 // ---------- scale / place: soles on the ground, hips at z = 0, 2.06 yd tall ----------
 const used = new Set(faces.flat());

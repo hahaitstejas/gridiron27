@@ -4,7 +4,9 @@ import { generateLeagueRosters } from '../src/data/generator.js';
 import { parseCSV } from '../src/data/csv.js';
 import { exportLeagueBook, importLeagueBook, splitLeagueBook } from '../src/data/leagueBook.js';
 import { importUniforms, exportUniforms, importStadiums, exportStadiums } from '../src/data/extraCSV.js';
-import { FONTS, fontOf, cssFont, parsePatch, patchCell, ENDZONE_STYLES, guideLines } from '../src/data/design.js';
+import { FONTS, fontOf, cssFont, parsePatch, patchCell, resolvePatches, resolveCaptainPatch, ENDZONE_STYLES, guideLines } from '../src/data/design.js';
+import { assignCaptains, captainsOf, hasCaptain } from '../src/data/captains.js';
+import { exportRosterCSV } from '../src/data/csv.js';
 
 const league = (seed = 5) => generateLeagueRosters(defaultTeams(), seed);
 
@@ -20,14 +22,17 @@ describe('design vocabulary', () => {
   });
   it('patch cells parse and print back', () => {
     expect(parsePatch('')).toBe(null);
-    expect(parsePatch('none')).toBe(null);
+    expect(parsePatch('none')).toEqual({ none: true });
+    expect(parsePatch('https://example.com/a.png')).toEqual({ image: 'https://example.com/a.png' });
+    expect(parsePatch('captain_patch.PNG')).toEqual({ image: 'captain_patch.PNG' });
+    expect(patchCell(parsePatch('anniversary.png'))).toBe('anniversary.png');
     expect(parsePatch('team_logo')).toEqual({ logo: 'team_logo' });
     expect(parsePatch('League Logo')).toEqual({ logo: 'league_logo' });
     const p = parsePatch('circle:c:#ffd100:#111111:#111111');
     expect(p).toEqual({ shape: 'circle', text: 'C', bg: '#ffd100', fg: '#111111', border: '#111111' });
     expect(patchCell(p)).toBe('circle:C:#ffd100:#111111:#111111');
     expect(parsePatch('star:_:#ffd100')).toEqual({ shape: 'star', text: '', bg: '#ffd100' });
-    expect(parsePatch('blob:A').error).toMatch(/unknown patch shape/);
+    expect(parsePatch('blob:A').error).toMatch(/unknown patch/);
     expect(parsePatch('circle:A:red').error).toMatch(/bad patch background/);
     expect(parsePatch('shield:ABCDE').text).toBe('ABC'); // 3 letters at most
   });
@@ -48,7 +53,7 @@ describe('uniform design columns', () => {
       + `${a[1].abbr},away,#ffffff,#ffffff,#111111,#ff0000,#111111,papyrus,,,,,,\n`;
     const r = importUniforms(a, parseCSV(csv));
     expect(r.count).toBe(2);
-    expect(r.skipped.some((s) => /unknown patch shape "wrong"/.test(s))).toBe(true);
+    expect(r.skipped.some((s) => /unknown patch "wrong:X"/.test(s))).toBe(true);
     expect(r.skipped.some((s) => /unknown number_font "papyrus"/.test(s) && /oswald/.test(s))).toBe(true);
     const u = a[1].uniforms.home;
     expect(u).toMatchObject({ numberFont: 'graduate', nameFont: 'bebas_neue', patchFont: 'oswald' });
@@ -117,5 +122,58 @@ describe('league book guide', () => {
     const book = `[UNIFORMS]\n# comment inside\nteam,kind,jersey\n${a[1].abbr},home,#654321\n`;
     importLeagueBook(a, book);
     expect(a[1].uniforms.home.jersey).toBe('#654321');
+  });
+});
+
+describe('patches: images, the collar default, captains', () => {
+  it('the league logo sits under the V-neck on every team unless removed; none removes a patch', () => {
+    expect(resolvePatches({}).collar).toEqual({ logo: 'league_logo' });
+    expect(resolvePatches({ collar: { none: true } }).collar).toBeUndefined();
+    expect(resolvePatches({ collar: { image: 'x.png' }, left_chest: { logo: 'team_logo' } })).toMatchObject({ collar: { image: 'x.png' }, left_chest: { logo: 'team_logo' } });
+  });
+  it('image links import for every slot and the captain badge, and export back', () => {
+    const a = league();
+    const csv = 'team,kind,jersey,captain_patch,left_chest,right_chest,left_sleeve,right_sleeve,collar\n'
+      + `${a[3].abbr},home,#222222,cap.png,https://example.com/a.png,b.jpg,"data:image/svg+xml;utf8,<svg/>",c.svg,none\n`;
+    const r = importUniforms(a, parseCSV(csv));
+    expect(r.skipped).toEqual([]);
+    const u = a[3].uniforms.home;
+    expect(u.captainPatch).toEqual({ image: 'cap.png' });
+    expect(u.patches.left_chest).toEqual({ image: 'https://example.com/a.png' });
+    expect(u.patches.collar).toEqual({ none: true });
+    expect(resolveCaptainPatch(u)).toEqual({ image: 'cap.png' });
+    expect(exportUniforms(a)).toContain('cap.png');
+    // The default captain badge uses the uniform colors.
+    expect(resolveCaptainPatch({ jersey: '#111111', number: '#ffffff', outline: '#ff0000' })).toMatchObject({ text: 'C', bg: '#111111', fg: '#ffffff', border: '#ff0000' });
+    expect(resolveCaptainPatch({ captainPatch: { none: true } })).toBe(null);
+  });
+  it('only a few players per team are captains by default, and the roster column sets them', () => {
+    const a = league();
+    for (const t of a) { const n = captainsOf(t).length; expect(n).toBeGreaterThanOrEqual(2); expect(n).toBeLessThanOrEqual(3); expect(captainsOf(t).some((p) => p.pos === 'QB')).toBe(true); }
+    const csv = exportRosterCSV(a);
+    expect(csv.split('\n')[0]).toContain(',captain');
+    expect(csv).toContain(',Y');
+    // A file naming its own captains replaces the defaults.
+    const b = league(21);
+    const rows = parseCSV(csv).filter((r) => r.team === b[0].abbr);
+    for (const r of rows) r.captain = '';
+    rows[5].captain = 'Y'; rows[9].captain = 'yes';
+    const head = Object.keys(rows[0]);
+    const text = head.join(',') + '\n' + rows.map((r) => head.map((h) => r[h]).join(',')).join('\n');
+    importLeagueBook(b, `[ROSTER]\n${text}\n`);
+    expect(captainsOf(b[0]).length).toBe(2);
+    // A team whose file lists no captain gets the default three.
+    const c = league(22);
+    const rows2 = parseCSV(csv).filter((r) => r.team === c[1].abbr);
+    for (const r of rows2) r.captain = '';
+    const text2 = head.join(',') + '\n' + rows2.map((r) => head.map((h) => r[h]).join(',')).join('\n');
+    importLeagueBook(c, `[ROSTER]\n${text2}\n`);
+    expect(hasCaptain(c[1])).toBe(true);
+  });
+  it('the guide explains captains and image patches', () => {
+    const g = guideLines().join('\n');
+    expect(g).toMatch(/captain = Y/);
+    expect(g).toMatch(/IMAGE LINK/);
+    expect(g).toMatch(/under the V-neck/);
   });
 });

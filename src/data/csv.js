@@ -3,6 +3,7 @@ import { generatePlayer } from './generator.js';
 import { buildDepthChart } from './depthChart.js';
 import { RNG } from '../core/rng.js';
 import { CONFERENCES } from './teams.js';
+import { assignCaptains, hasCaptain } from './captains.js';
 
 // CSV helpers + roster import/export. Format is documented in CLAUDE.md ("Roster CSV").
 
@@ -39,7 +40,7 @@ export function toCSV(objs, header) {
   return [header.join(','), ...objs.map((o) => header.map((h) => esc(o[h])).join(','))].join('\n') + '\n';
 }
 
-const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp', 'face', 'skin'];
+const ROSTER_HEADER = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'OVR', 'salary', 'years', 'exp', 'face', 'skin', 'captain'];
 const POS_ALIAS = { RB: 'HB', LB: 'OLB', ILB: 'MLB', NB: 'CB', S: 'FS', OT: 'T', OG: 'G', EDGE: 'DE', NT: 'DT', PK: 'K',
   // Depth-chart slot names work as positions too.
   LT: 'T', RT: 'T', LG: 'G', RG: 'G', LE: 'DE', RE: 'DE', LOLB: 'OLB', ROLB: 'OLB', SAM: 'OLB', WILL: 'OLB', MIKE: 'MLB' };
@@ -69,6 +70,9 @@ function playerFromRow(row, pos, rng) {
   const sk = String(row.skin ?? row.skin_tone ?? '').trim();
   if (/^#?[0-9a-f]{6}$/i.test(sk)) { p.skinColor = sk.startsWith('#') ? sk : `#${sk}`; p.skinManual = true; }
   else if (/^[1-6]$/.test(sk)) { p.skin = +sk - 1; p.skinManual = true; }
+  // Optional captain column: Y = wears the captain's badge, N = does not (blank: keep the default).
+  const cap = String(row.captain ?? row.captains ?? row.is_captain ?? '').trim();
+  if (cap) { if (/^(y|yes|1|true|x|c)$/i.test(cap)) p.captain = true; else delete p.captain; }
   const num = parseInt(row.number, 10);
   if (Number.isFinite(num) && num >= 0 && num <= 99) p.number = num;
   // Contract columns (so year-one free agency is right): salary in $M, years left, or the year the deal expires.
@@ -146,6 +150,7 @@ export function importRosterRows(teams, rows, seed = 77) {
     delete t._pinCount;
   }
   summary.teams = [...touched].map((t) => t.abbr);
+  for (const t of touched) if (!hasCaptain(t)) assignCaptains(t); // a team whose file names no captain gets the default three
   return summary;
 }
 
@@ -160,7 +165,9 @@ export function exportRosterCSV(teams) {
       // Uploaded photos (data URLs) are too big for a spreadsheet cell: only file names / links are written.
       face: p.face && !/^data:/i.test(p.face) ? p.face : '',
       // A hand-picked tone (1-6 or #hex); blank = the default / the face photo's.
-      skin: p.skinManual ? (p.skinColor || (p.skin ?? 2) + 1) : '' };
+      skin: p.skinManual ? (p.skinColor || (p.skin ?? 2) + 1) : '',
+      // Y = team captain (wears the captain's badge); blank = not.
+      captain: p.captain ? 'Y' : '' };
     for (const [key, code] of RATINGS) o[code] = p.ratings[key];
     o.OVR = overall(p);
     rows.push(o);

@@ -21,6 +21,7 @@ export function makeSimPlayer(idx, rp, team, side, slot) {
     skinColor: rp.skinColor || null, // photo-derived tone (render only, ui/faces.js)
     photo: rp.face || null, // face photo (render only; `face` is the facing target)
     look: rp.look || null, // appearance (roster editor): visor, towel, arm sleeves
+    captain: !!rp.captain, // wears the captain's badge (render only)
     x: 0, z: 0, px: 0, pz: 0, vx: 0, vz: 0,
     facing: 0, pfacing: 0,
     // Wide spread so ratings matter: SPD 56 (lineman) ~7.5 yd/s, 70 ~8.5, 90 ~10.0, 99 ~10.6.

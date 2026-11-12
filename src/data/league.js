@@ -1,3 +1,4 @@
+import { assignCaptains, hasCaptain } from './captains.js';
 import { applyCoachTendencies } from './extraCSV.js';
 // League save format (pure logic): the whole league — teams, colors, logos, rosters, depth charts —
 // as plain JSON, plus which team the player uses. Browser storage lives in storage.js.
@@ -60,6 +61,7 @@ export function deserializeLeague(data) {
     return { ...t, id: t.id ?? i, colors: { ...t.colors }, logo: { ...t.logo }, roster, depth, ps };
   });
   for (const t of teams) if (t.coaches) applyCoachTendencies(t);
+  for (const t of teams) if (!hasCaptain(t)) assignCaptains(t); // older saves: the default captains
   setNextPlayerId(maxId + 1);
   setLeagueInfo(data.info || null);
   return { teams, playAs: data.playAs ?? null, name: data.name || 'My League', franchise: data.franchise || null };

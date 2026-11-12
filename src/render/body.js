@@ -241,7 +241,7 @@ function patchVertex(sh, normals = true, rowOff = null) {
   sh.vertexShader = v;
 }
 
-export const BODY_UNIFORMS = { foldTex: { value: null }, boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 },
+export const BODY_UNIFORMS = { numTex2: { value: null }, patchTex: { value: null }, foldTex: { value: null }, boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 },
   regionY: { value: new THREE.Vector4(1.156, 1.531, 1.113, 0.488) }, shoeY: { value: 0.109 }, collarY: { value: 1.79 }, decals: { value: 0 } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
@@ -583,8 +583,8 @@ export function decalMaterial(envMap) {
     depthWrite: false, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40 });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
-    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
-    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows;
+    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.numTex2 = BODY_UNIFORMS.numTex2; sh.uniforms.patchTex = BODY_UNIFORMS.patchTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
+    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D numTex2; uniform sampler2D patchTex; uniform sampler2D nameTex; uniform float nameRows;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 ` + sh.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
@@ -595,10 +595,24 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
       int kind = int(floor(vRegion + 0.5));
       vec2 st = 1.0 - vBody; // the patch's grid runs the other way round from the atlas cell
       float alpha = 0.0; vec3 col = ncol;
-      if (nb.w > 0.5) {
+      // Which of the two teams in the game this player is (1 or 2 in the number color's w; 0 = an official: no patches, team 1's numbers).
+      float wv = tex(${COL_NUMCOL}).w;                       // 0 official, 1 / 2 = team 0 / 1, +2 for a team captain
+      float team = wv > 0.5 ? mod(wv - 1.0, 2.0) + 1.0 : 0.0; // 0 official, 1 or 2
+      bool captain = wv > 2.5;
+      if (kind >= 3) {
+        // Patches (3 left chest, 4 right chest, 5 left sleeve, 6 right sleeve, 7 under the V-neck; cell 5 = the captain's badge, which
+        // takes the right chest's place on a captain): a 6 x 2 atlas, one row per team.
+        if (team > 0.5) {
+          float row = team > 1.5 ? 1.0 : 0.0;
+          float cell = (kind == 4 && captain) ? 5.0 : float(kind - 3);
+          vec4 t = texture2D(patchTex, vec2((cell + clamp(vBody.x, 0.0, 1.0)) / 6.0, 1.0 - (row + 1.0 - clamp(vBody.y, 0.0, 1.0)) / 2.0));
+          alpha = t.a; col = t.rgb;
+        }
+      } else if (nb.w > 0.5) {
         if (kind < 2) {
           vec2 sc = vec2(0.12 + st.x * 0.76, 0.2 + (1.0 - st.y) * 0.64);
-          vec4 t = texture(numTex, vec2((sc.x + nb.x) / 10.0, 1.0 - (sc.y + nb.y) / 10.0), -1.0);
+          vec2 nuv = vec2((sc.x + nb.x) / 10.0, 1.0 - (sc.y + nb.y) / 10.0);
+          vec4 t = mix(texture(numTex, nuv, -1.0), texture(numTex2, nuv, -1.0), step(1.5, team)); // each team has its own number font
           alpha = smoothstep(0.25, 0.6, t.a);
           // Only inside the digits' box: keeps mip bleed from the neighbouring cells off the shirt.
           alpha *= step(0.0, st.x) * step(st.x, 1.0) * step(0.02, st.y) * step(st.y, 0.98);

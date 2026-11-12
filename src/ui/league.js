@@ -6,9 +6,18 @@ import { defaultTeams } from '../data/teams.js';
 import { generateLeagueRosters } from '../data/generator.js';
 import { writeSave, readSave, deleteSave, listSaves, activeSlot, setActiveSlot, downloadFile, pickFile, loadImage } from '../data/storage.js';
 
-/** Attach logo images (uploaded data URLs or files in public/local/logos) to teams. */
+/** Where a patch image comes from: a web link / data URL as it is, or a file name in /local/logos/. */
+export const patchSrc = (img) => (/^(https?:|data:)/i.test(img) ? img : `/local/logos/${img}`);
+
+/** Attach logo images (uploaded data URLs or files in public/local/logos) to teams, and the images of uniform patches. */
 export async function attachLogos(teams) {
-  await Promise.all([...teams.map(async (t) => {
+  // Uniform patches written as an image link (uniforms.csv): the loaded image rides on the patch as a hidden `_img`
+  // (not enumerable, so it never ends up in a save file).
+  const patchLoads = [];
+  for (const t of teams) for (const u of Object.values(t.uniforms || {})) for (const p of Object.values(u?.patches || {})) {
+    if (p?.image) patchLoads.push(loadImage(patchSrc(p.image)).then((img) => Object.defineProperty(p, '_img', { value: img, enumerable: false, writable: true, configurable: true })));
+  }
+  await Promise.all([...patchLoads, ...teams.map(async (t) => {
     const src = t.logo?.dataUrl || (t.logo?.image ? (/^(https?:|data:)/i.test(t.logo.image) ? t.logo.image : `/local/logos/${t.logo.image}`) : null);
     t.logo._img = src ? await loadImage(src) : null;
   }), (async () => { const s = logoSrc(LEAGUE.logo); LEAGUE.logo._img = s ? await loadImage(s) : null; })(),

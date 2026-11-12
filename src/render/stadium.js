@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { HALF_WIDTH } from '../core/constants.js';
 import { makeFieldCanvas, FX, FZ } from './fieldTexture.js';
+import { ensureFonts } from './fonts.js';
+import { fontOf } from '../data/design.js';
 import { drawLogo } from './logo.js';
 
 const WALL_Z = 36; // stands start this far from the center line (sidelines)
@@ -121,7 +123,16 @@ export function buildStadium(renderer, home, away) {
   field.receiveShadow = true;
   group.add(field);
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  let lastTeams = null;
+  const fontTries = new Set(); // each font set is waited for once (a font that never loads must not repaint forever)
   const setTeams = (h, a, opts = {}) => {
+    lastTeams = [h, a, opts];
+    // End zone / yard-number fonts from the spreadsheet: until they are loaded the field is drawn in a fallback, then repainted.
+    const want = [h.stadium?.ezFont, h.stadium?.yardFont].filter(Boolean);
+    if (want.length && !fontTries.has(want.join()) && typeof document !== 'undefined' && !want.every((id) => { const f = fontOf(id); return !f || document.fonts.check(`${f.weight} 40px "${f.family}"`); })) {
+      fontTries.add(want.join());
+      ensureFonts(want).then(() => { if (lastTeams && lastTeams[0] === h && lastTeams[1] === a) setTeams(h, a, opts); });
+    }
     if (fieldMat.map) fieldMat.map.dispose();
     const tex = new THREE.CanvasTexture(makeFieldCanvas(h, a, opts));
     tex.anisotropy = maxAniso;

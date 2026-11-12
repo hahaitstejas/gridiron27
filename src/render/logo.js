@@ -1,8 +1,11 @@
-// Procedural team logos drawn on a 2D canvas (used on the field, in menus and the score bug).
+// Procedural team logos drawn on a 2D canvas (used on the field, in menus and the score bug, and as uniform patches).
+import { cssFont } from '../data/design.js';
 export const LOGO_SHAPES = ['circle', 'shield', 'diamond', 'hex', 'star', 'triangle'];
 
-function shapePath(ctx, shape, cx, cy, r) {
+function shapePath(ctx, shape, cx, cy, r, box = null) {
   ctx.beginPath();
+  if (box === 'square') { ctx.rect(cx - r * 0.9, cy - r * 0.9, r * 1.8, r * 1.8); return; }
+  if (box === 'rounded') { const k = r * 0.9, rr = r * 0.4; ctx.moveTo(cx - k + rr, cy - k); ctx.arcTo(cx + k, cy - k, cx + k, cy + k, rr); ctx.arcTo(cx + k, cy + k, cx - k, cy + k, rr); ctx.arcTo(cx - k, cy + k, cx - k, cy - k, rr); ctx.arcTo(cx - k, cy - k, cx + k, cy - k, rr); ctx.closePath(); return; }
   switch (shape) {
     case 'shield':
       ctx.moveTo(cx - r * 0.85, cy - r * 0.8);
@@ -49,15 +52,15 @@ export function drawLogo(ctx, logo, cx, cy, r) {
     return;
   }
   ctx.save();
-  shapePath(ctx, logo.shape, cx, cy, r);
+  shapePath(ctx, logo.shape, cx, cy, r, logo.box);
   ctx.fillStyle = logo.border;
   ctx.fill();
-  shapePath(ctx, logo.shape, cx, cy, r * 0.86);
+  shapePath(ctx, logo.shape, cx, cy, r * 0.86, logo.box);
   ctx.fillStyle = logo.bg;
   ctx.fill();
   const text = logo.text || '';
   const size = r * (text.length <= 2 ? 0.9 : text.length === 3 ? 0.68 : 0.5) * (logo.shape === 'star' ? 0.7 : 1);
-  ctx.font = `800 ${size}px "Saira Condensed", "Arial Narrow", sans-serif`;
+  ctx.font = logo.font ? cssFont(logo.font, size) : `800 ${size}px "Saira Condensed", "Arial Narrow", sans-serif`; // logo.font: an id from data/design.js (patches)
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineWidth = size * 0.12;

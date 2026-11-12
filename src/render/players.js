@@ -2,6 +2,9 @@ import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
+import { fontOf, cssFont, resolvePatches, resolveCaptainPatch, PATCH_SLOTS, NUMBER_FONT, DEFAULT_FONT } from '../data/design.js';
+import { ensureFonts } from './fonts.js';
+import { LEAGUE } from '../data/leagueInfo.js';
 import cleatData from '../assets/cleat.json'; // one cleat's shape from a CC BY 4.0 Sketchfab model (see CREDITS.md), built by tools/buildcleat.mjs
 import helmetData from '../assets/helmet.json'; // CC0 helmet (BlendSwap, see src/assets/CREDITS.md), built by tools/blender/export_helmet.py
 import { Gait, setClips } from './gait.js';
@@ -44,29 +47,39 @@ function part(geo, mat, count, shadow = true) {
  * Jersey numbers 0-99, one per cell of a 10 x 10 atlas (2048 px: sharp even across a whole back). Block style: heavy,
  * widened digits with a dark outline (the color is applied in the shader; the outline stays dark).
  */
-function numberAtlas() {
-  const N = 2048, C = N / 10;
+function numberAtlas(fontId = NUMBER_FONT) {
+  const N = 2048;
   const c = document.createElement('canvas');
   c.width = c.height = N;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  t.userData = { font: null };
+  paintNumberAtlas(t, fontId);
+  return t;
+}
+/** (Re)paint an atlas texture in a font (a font id from data/design.js); each font has its own digit squeeze. */
+function paintNumberAtlas(tex, fontId) {
+  const c = tex.image, N = c.width, C = N / 10;
+  const f = fontOf(fontId) || fontOf(NUMBER_FONT);
   const g = c.getContext('2d');
+  g.clearRect(0, 0, N, N);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = '700 150px "Oswald", "Arial Narrow", sans-serif';
+  g.font = `${f.weight} 150px "${f.family}", "Arial Narrow", sans-serif`;
   g.lineJoin = 'round';
   for (let n = 0; n < 100; n++) {
     const cx = (n % 10) * C + C / 2, cy = Math.floor(n / 10) * C + C * 0.53;
     const s = String(n);
-    // Oswald digits are still too wide once printed on the chest: squeeze them to ~0.74 (tall, narrow numerals); two digits stay inside the cell.
-    const wide = Math.min(0.74, (C * 0.76) / Math.max(1, g.measureText(s).width)); // margin so blurrier mips don't bleed into the next cell
+    // Digits are squeezed by the font's own factor (Oswald's natural digits look too wide on a chest), and always kept inside the cell.
+    const wide = Math.min(f.squeeze ?? 1, (C * 0.76) / Math.max(1, g.measureText(s).width)); // margin so blurrier mips don't bleed into the next cell
     g.save(); g.translate(cx, cy); g.scale(wide, 1);
     g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,1)'; g.strokeText(s, 0, 0);
     g.fillStyle = '#ffffff'; g.fillText(s, 0, 0);
     g.restore();
   }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.anisotropy = 8;
-  return t;
+  tex.userData.font = f.id;
+  tex.needsUpdate = true;
 }
 
 export class PlayerRenderer {
@@ -76,7 +89,7 @@ export class PlayerRenderer {
     // Physically based materials (lit by the scene's environment map): matte jerseys, glossy helmets.
     const mat = (roughness = 0.75, metalness = 0, env = 0.3) => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness, metalness, envMap, envMapIntensity: env });
     const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-    const numAtlas = numberAtlas();
+    this.numAtlas = [numberAtlas(), numberAtlas()]; // one per team in the game (each team can have its own number font)
 
     // Helmet decals: a patch bent onto the helmet shell (same local space as helmetGeo), the team's logo from a
     // two-cell atlas (home | away) picked per instance; aDecal = (cell, flip) so both sides read the right way.
@@ -107,7 +120,14 @@ export class PlayerRenderer {
     this.boneTex = new THREE.DataTexture(this.boneData, TEX_W, MAX, THREE.RGBAFormat, THREE.FloatType);
     this.boneTex.needsUpdate = true;
     BODY_UNIFORMS.boneTex.value = this.boneTex;
-    BODY_UNIFORMS.numTex.value = numAtlas;
+    BODY_UNIFORMS.numTex.value = this.numAtlas[0];
+    BODY_UNIFORMS.numTex2.value = this.numAtlas[1];
+    // Patches (left chest, right chest, left sleeve, right sleeve, under the V-neck, captain's badge): 6 cells of 128 px per team, repainted per matchup.
+    this.patchCanvas = document.createElement('canvas');
+    this.patchCanvas.width = 768; this.patchCanvas.height = 256;
+    this.patchTex = new THREE.CanvasTexture(this.patchCanvas);
+    this.patchTex.colorSpace = THREE.SRGBColorSpace; this.patchTex.anisotropy = 4;
+    BODY_UNIFORMS.patchTex.value = this.patchTex;
     BODY_UNIFORMS.nameTex.value = this.nameTex;
     BODY_UNIFORMS.nameRows.value = MAX;
     const fabric = fabricNormal();
@@ -269,17 +289,17 @@ export class PlayerRenderer {
   texel(i, col, x, y, z, w) { const o = (i * TEX_W + col) * 4, d = this.boneData; d[o] = x; d[o + 1] = y; d[o + 2] = z; d[o + 3] = w; }
   region(i, r, color) { const c = this._col.set(color); this.texel(i, COL_COLORS + r, c.r, c.g, c.b, 1); }
   regionC(i, r, c) { this.texel(i, COL_COLORS + r, c.r, c.g, c.b, 1); }
-  number(i, n, color, nameRow = -1) {
+  number(i, n, color, nameRow = -1, team = -1, captain = false) {
     const show = n !== null && n !== undefined && n >= 0;
     this.texel(i, COL_NUMBER, show ? n % 10 : 0, show ? Math.floor(n / 10) : 0, nameRow, show ? 1 : 0);
-    const c = this._col.set(color || '#ffffff'); this.texel(i, COL_NUMCOL, c.r, c.g, c.b, 1);
+    const c = this._col.set(color || '#ffffff'); this.texel(i, COL_NUMCOL, c.r, c.g, c.b, team < 0 ? 0 : team + 1 + (captain ? 2 : 0)); // w: 0 official, 1 team 0, 2 team 1, +2 for a captain
   }
 
   /** Assign per-instance colors from team uniforms (once per play setup). */
   setColors(sim, teams) {
     const wear = this.wear || ['home', 'away'];
     const unis = teams.map((t, k) => uniformFor(t, wear[k]));
-    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.skin}:${p.skinColor || ''}:${p.photo ? p.photo.length + p.photo.slice(-24) : ''}:${p.look?.sleeves || ''}`).join(',') + ':f' + this.faceRev + JSON.stringify(unis) + ':' + (this.extra?.length || 0) + ':' + Math.round((this.dirt || 0) * 10);
+    const key = sim.players.map((p) => `${p.team}:${p.number}:${p.captain ? 'C' : ''}:${p.skin}:${p.skinColor || ''}:${p.photo ? p.photo.length + p.photo.slice(-24) : ''}:${p.look?.sleeves || ''}`).join(',') + ':f' + this.faceRev + JSON.stringify(unis) + ':' + (this.extra?.length || 0) + ':' + Math.round((this.dirt || 0) * 10);
     if (key === this.colorsKey) return;
     this.colorsKey = key;
     const P = this.parts;
@@ -295,14 +315,43 @@ export class PlayerRenderer {
       teams.forEach((t, k) => drawLogo(lg, t.logo, 128 + k * 256, 128, 118));
       this.logoTex.needsUpdate = true;
     }
+    // Fonts per team (uniform: number_font / name_font / patch_font). Load the ones in use; until they are ready the
+    // atlases are drawn in a fallback and repainted when the fonts arrive.
+    const numFonts = unis.map((u) => fontOf(u.numberFont)?.id || NUMBER_FONT), nameFonts = unis.map((u) => fontOf(u.nameFont)?.id || NUMBER_FONT), patchFonts = unis.map((u) => fontOf(u.patchFont)?.id || DEFAULT_FONT);
+    const usedFonts = [...numFonts, ...nameFonts, ...patchFonts];
+    const fontsReady = usedFonts.every((id) => { const f = fontOf(id); return !document.fonts || document.fonts.check(`${f.weight} 40px "${f.family}"`); });
+    if (!fontsReady && this._fontWait !== usedFonts.join()) {
+      this._fontWait = usedFonts.join();
+      ensureFonts(usedFonts).then(() => { this.colorsKey = ''; this._names = []; this._patchKey = null; this.numAtlas.forEach((t) => { t.userData.font = null; }); });
+    }
+    teams.forEach((t, k) => { const a = this.numAtlas[k]; if (a && a.userData.font !== numFonts[k]) paintNumberAtlas(a, numFonts[k]); });
+    // Patch atlas: 5 cells (left chest, right chest, left sleeve, right sleeve, under the V-neck) per team.
+    const patchSets = unis.map((u) => ({ ...resolvePatches(u.patches), captain: resolveCaptainPatch(u) }));
+    const patchKey = JSON.stringify(patchSets) + patchFonts.join() + teams.map((t) => JSON.stringify(t.colors) + (t.logo._img ? 'i' : '')).join() + (LEAGUE.logo._img ? 'L' : '') + patchSets.map((ps) => Object.values(ps).map((p) => (p._img ? 'i' : '')).join('')).join() + (fontsReady ? 'r' : 'w');
+    if (patchKey !== this._patchKey) {
+      this._patchKey = patchKey;
+      const pg = this.patchCanvas.getContext('2d');
+      pg.clearRect(0, 0, 768, 256);
+      teams.forEach((t, k) => [...PATCH_SLOTS.slice(0, 5), 'captain'].forEach((slot, si) => {
+        const p = patchSets[k]?.[slot];
+        if (!p) return;
+        const logo = p.logo === 'league_logo' ? LEAGUE.logo : p.logo === 'team_logo' ? t.logo
+          : p.image ? { _img: p._img }
+          : { shape: p.shape === 'square' || p.shape === 'rounded' ? 'circle' : p.shape, bg: p.bg || t.colors.secondary, fg: p.fg || t.colors.primary, border: p.border || t.colors.accent, text: p.text || '', font: patchFonts[k], box: p.shape === 'square' ? 'square' : p.shape === 'rounded' ? 'rounded' : null };
+        if (p.image && !p._img) return; // still loading
+        drawLogo(pg, logo, si * 128 + 64, k * 128 + 64, 54);
+      }));
+      this.patchTex.needsUpdate = true;
+    }
     const ng = this.nameCanvas.getContext('2d');
     this._names ||= [];
     let namesDirty = false;
-    ng.font = '600 29px "Oswald", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
-    const paintName = (i, name) => {
+    ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
+    const paintName = (i, name, font) => {
       if (i >= MAX || !name) return false;
-      if (this._names[i] === name) return true;
-      this._names[i] = name; namesDirty = true;
+      if (this._names[i] === name + '|' + font) return true;
+      this._names[i] = name + '|' + font; namesDirty = true;
+      ng.font = cssFont(font, 29);
       ng.clearRect(0, i * 32, 512, 32);
       const last = name.replace(/^\S+\.\s*/, '').toUpperCase();
       // The name patch is ~4.5:1 but a row is 16:1, so stretch the text across (less for long names, to fit).
@@ -310,7 +359,7 @@ export class PlayerRenderer {
       ng.save(); ng.translate(256, i * 32 + 17); ng.scale(sx, 1); ng.fillText(last, 0, 0); ng.restore();
       return true;
     };
-    const named = sim.players.map((p, i) => paintName(i, p.name));
+    const named = sim.players.map((p, i) => paintName(i, p.name, nameFonts[p.team]));
     if (namesDirty) this.nameTex.needsUpdate = true;
     this._facesDirty = false;
     const pick = (team, which) => (which === 'white' ? '#f4f4f4' : which === 'secondary' ? team.colors.secondary : which === 'accent' ? team.colors.accent : team.colors.primary);
@@ -355,7 +404,7 @@ export class PlayerRenderer {
       const bare = ['QB', 'K', 'P'].includes(p.pos), line = ['T', 'G', 'C', 'DT', 'DE'].includes(p.pos);
       const lightJersey = !isDark(jersey);
       this.region(i, REGION.gloves, uni.gloves || (bare ? skin : line ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : lightJersey ? (isDark(team.colors.primary) ? team.colors.primary : '#1c1c1c') : '#f2f2f2'));
-      this.number(i, p.number, uni.number, named[i] ? i : -1);
+      this.number(i, p.number, uni.number, named[i] ? i : -1, p.team, !!p.captain);
       flags(i, false, Math.min(1, p.bulk), 1.3, img ? 1 : 0); // build: 0 slim receiver .. 1 ~320 lb lineman (buildhuman.mjs `mass`)
       this.region(i, REGION.shoe, uni.cleats || (i % 3 ? '#151515' : '#f0f0f0'));
       P.face.setColorAt(i, c.set(skin));

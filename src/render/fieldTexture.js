@@ -2,6 +2,7 @@ import { CONFERENCES } from '../data/teams.js';
 import { HASH_Z, HALF_WIDTH } from '../core/constants.js';
 import { drawLogo } from './logo.js';
 import { LEAGUE } from '../data/leagueInfo.js';
+import { cssFont } from '../data/design.js';
 
 // The field texture covers x in [-FX, FX] and z in [-FZ, FZ] (yards).
 export const FX = 66;
@@ -61,37 +62,72 @@ export function makeFieldCanvas(home, away, opts = {}) {
   };
   const ez = (x0, team, rot, text, side) => {
     const style = sd.endzone || 'color';
-    if (style === 'color' || style === 'stripes') {
-      g.fillStyle = team.colors.primary;
-      g.fillRect(px(x0), pz(-HALF_WIDTH), 10 * S, HALF_WIDTH * 2 * S);
-    }
+    // Design columns (stadiums.csv): the two paint colors, lettering colors and font, the words and the logos beside them.
+    const c1 = (!opts.championship && sd.ezColor) || team.colors.primary, c2 = (!opts.championship && sd.ezColor2) || team.colors.secondary;
+    const goalDir = x0 < 0 ? 1 : -1; // along +x toward the goal line (the left end zone's goal line is on its right edge)
+    const X0 = px(x0), Y0 = pz(-HALF_WIDTH), EW = 10 * S, EH = HALF_WIDTH * 2 * S;
+    const clipEZ = () => { g.save(); g.beginPath(); g.rect(X0, Y0, EW, EH); g.clip(); };
+    if (style !== 'turf') { g.fillStyle = c1; g.fillRect(X0, Y0, EW, EH); }
     if (style === 'stripes') {
-      // Diagonal stripes in the secondary color behind the lettering.
-      g.save();
-      g.beginPath(); g.rect(px(x0), pz(-HALF_WIDTH), 10 * S, HALF_WIDTH * 2 * S); g.clip();
-      g.strokeStyle = team.colors.secondary; g.globalAlpha = 0.35; g.lineWidth = 1.1 * S;
-      for (let z = -HALF_WIDTH - 12; z < HALF_WIDTH + 12; z += 3.2) { g.beginPath(); g.moveTo(px(x0), pz(z)); g.lineTo(px(x0 + 10), pz(z + 10)); g.stroke(); }
+      // Diagonal stripes in the second color behind the lettering.
+      clipEZ();
+      g.strokeStyle = c2; g.globalAlpha = 0.35; g.lineWidth = 1.1 * S;
+      for (let z = -HALF_WIDTH - 12; z < HALF_WIDTH + 12; z += 3.2) { g.beginPath(); g.moveTo(X0, pz(z)); g.lineTo(X0 + EW, pz(z + 10)); g.stroke(); }
+      g.restore();
+    } else if (style === 'checker') {
+      clipEZ();
+      g.fillStyle = c2; g.globalAlpha = 0.3;
+      const q = 1.25 * S;
+      for (let yy = 0; yy * q < EH; yy++) for (let xx = 0; xx * q < EW; xx++) if ((xx + yy) % 2 === 0) g.fillRect(X0 + xx * q, Y0 + yy * q, q, q);
+      g.restore();
+    } else if (style === 'chevron') {
+      clipEZ();
+      g.fillStyle = c2; g.globalAlpha = 0.55;
+      // Chevrons (arrow heads) pointing at the goal line, repeated along the end zone and across.
+      const w = 0.9 * S, step = 2.2 * S, hh = 3 * S;
+      for (let yy = Y0 - hh; yy < Y0 + EH + hh; yy += 2 * hh + 0.8 * S) for (let k = 0; k < 6; k++) {
+        const bx = goalDir > 0 ? X0 + k * step : X0 + EW - k * step;
+        g.beginPath(); g.moveTo(bx, yy); g.lineTo(bx + goalDir * 1.6 * S, yy + hh); g.lineTo(bx, yy + 2 * hh); g.lineTo(bx - goalDir * w, yy + 2 * hh); g.lineTo(bx + goalDir * (1.6 * S - w), yy + hh); g.lineTo(bx - goalDir * w, yy); g.closePath(); g.fill();
+      }
+      g.restore();
+    } else if (style === 'gradient') {
+      const gr = g.createLinearGradient(goalDir > 0 ? X0 + EW : X0, 0, goalDir > 0 ? X0 : X0 + EW, 0); // c1 at the goal line, c2 at the back
+      gr.addColorStop(0, c1); gr.addColorStop(1, c2);
+      g.fillStyle = gr; g.fillRect(X0, Y0, EW, EH);
+    } else if (style === 'border') {
+      g.strokeStyle = c2; g.lineWidth = 1.6 * S; g.strokeRect(X0 + 0.8 * S, Y0 + 0.8 * S, EW - 1.6 * S, EH - 1.6 * S);
+    } else if (style === 'split') {
+      g.fillStyle = c2; g.fillRect(goalDir > 0 ? X0 : X0 + EW / 2, Y0, EW / 2, EH);
+    } else if (style === 'hoops') {
+      clipEZ();
+      g.fillStyle = c2; g.globalAlpha = 0.5;
+      for (let xx = X0 + 0.6 * S; xx < X0 + EW; xx += 2.5 * S) g.fillRect(xx, Y0, 0.9 * S, EH);
       g.restore();
     }
+    // Lettering: the team name / city (or the words from the spreadsheet), in the chosen font and colors.
+    const words = !opts.championship && (x0 < 0 ? sd.ezLeft : sd.ezRight) !== undefined ? (x0 < 0 ? sd.ezLeft : sd.ezRight) : text;
     g.save();
     g.translate(px(x0 + 5), pz(0));
     g.rotate(rot);
-    const fs = Math.min(5.6 * S, (HALF_WIDTH * 2 * S * 0.6) / (text.length * 0.66));
-    g.font = `800 ${fs}px "Saira Condensed", "Arial Narrow", sans-serif`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.lineWidth = fs * 0.09;
-    g.strokeStyle = team.colors.accent;
-    g.strokeText(text, 0, 0);
-    g.fillStyle = team.colors.secondary;
-    g.fillText(text, 0, 0);
-    // Logos either side of the word, turned with it: conference left, league right — or, in the championship, the
-    // team's own logo on both sides.
+    if (words) {
+      const fs = Math.min(5.6 * S, (HALF_WIDTH * 2 * S * 0.6) / (words.length * 0.66));
+      g.font = sd.ezFont ? cssFont(sd.ezFont, fs) : `800 ${fs}px "Saira Condensed", "Arial Narrow", sans-serif`;
+      g.textAlign = 'center';
+      g.textBaseline = 'middle';
+      g.lineWidth = fs * 0.09;
+      g.strokeStyle = (!opts.championship && sd.ezOutline) || team.colors.accent;
+      g.strokeText(words, 0, 0);
+      g.fillStyle = (!opts.championship && sd.ezText) || team.colors.secondary;
+      g.fillText(words, 0, 0);
+    }
+    // Logos either side of the word, turned with it: conference left, league right by default (the spreadsheet can pick
+    // team / league / conference / none for each side) — or, in the championship, the team's own logo on both sides.
     const off = HALF_WIDTH * S * 0.78;
-    const L = side.left, R = side.right;
+    const pickLogo = (which, dflt) => { const w = opts.championship ? null : which; if (w === 'none') return null; if (w === 'team') return team.logo; if (w === 'league') return LEAGUE.logo; if (w === 'conference') return confLogo(team); return dflt; };
+    const L = pickLogo(sd.ezLogoLeft, side.left), R = pickLogo(sd.ezLogoRight, side.right);
     // Same frame as the lettering, so they read upright from the same side as the word (like a real end zone).
-    drawLogo(g, L, -off, 0, 2.6 * S);
-    drawLogo(g, R, off, 0, 2.6 * S);
+    if (L) drawLogo(g, L, -off, 0, 2.6 * S);
+    if (R) drawLogo(g, R, off, 0, 2.6 * S);
     g.restore();
     g.strokeStyle = 'rgba(255,255,255,0.18)';
     g.lineWidth = 0.15 * S;
@@ -124,7 +160,7 @@ export function makeFieldCanvas(home, away, opts = {}) {
   g.fillRect(px(60), pz(-HALF_WIDTH - 2), 2 * S, (HALF_WIDTH * 2 + 4) * S);
 
   // Yard numbers every 10 yards, read from the sidelines, with direction arrows.
-  g.font = `700 ${2.2 * S}px "Saira Condensed", "Arial Narrow", sans-serif`;
+  g.font = sd.yardFont ? cssFont(sd.yardFont, 2.2 * S) : `700 ${2.2 * S}px "Saira Condensed", "Arial Narrow", sans-serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   for (let x = -40; x <= 40; x += 10) {

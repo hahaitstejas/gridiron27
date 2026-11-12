@@ -6,7 +6,7 @@
 //                        go_for_it / long_fg / blitz / aggression are 0-100 tendencies (50 = league average)
 //   uniforms.csv         team,kind,jersey,pants,number,number_outline,helmet   kind = home | away | alt (hex colors)
 //                        optional: sleeves, shoulders, helmet_stripe, facemask, socks, gloves, cleats (colors) and the design
-//                        columns number_font, name_font, patch_font, left_chest, right_chest, left_sleeve, right_sleeve
+//                        columns number_font, name_font, patch_font, captain_patch, left_chest, right_chest, left_sleeve, right_sleeve, collar
 //                        (allowed values: src/data/design.js, also written into the [README] section of a league book)
 //   stadiums.csv         team,name,city,capacity,roof,surface,kind,year         team blank + kind = championship |
 //                        international for neutral sites (year = which season's championship game is played there)
@@ -103,6 +103,11 @@ export function importUniforms(teams, rows) {
       const f = fontOf(r[col]);
       if (f) u[key] = f.id; else skipped.push(`row ${i + 2}: unknown ${col} "${r[col]}" (allowed: ${fontList()})`);
     }
+    if (r.captain_patch) {
+      const p = parsePatch(r.captain_patch);
+      if (p?.error) skipped.push(`row ${i + 2}: captain_patch: ${p.error}`);
+      else if (p) u.captainPatch = p;
+    }
     for (const slot of PATCH_SLOTS) {
       if (!r[slot]) continue;
       const p = parsePatch(r[slot]);
@@ -116,7 +121,7 @@ export function importUniforms(teams, rows) {
 const FONT_COLS = [['number_font', 'numberFont'], ['name_font', 'nameFont'], ['patch_font', 'patchFont']];
 // Optional uniform-creator columns (written only when some team uses them, so plain sheets keep their columns).
 const EXTRA_COLS = [['sleeves', 'sleeves'], ['shoulders', 'shoulders'], ['helmet_stripe', 'stripe'], ['facemask', 'facemask'], ['socks', 'socks'], ['gloves', 'gloves'], ['cleats', 'cleats']];
-const DESIGN_COLS = [...FONT_COLS.map(([c]) => c), ...PATCH_SLOTS];
+const DESIGN_COLS = [...FONT_COLS.map(([c]) => c), 'captain_patch', ...PATCH_SLOTS];
 /** opts.designColumns: always write the font / patch columns (the league book does, so a guide-reading AI sees them). */
 export function exportUniforms(teams, { designColumns = false } = {}) {
   const out = [];
@@ -126,6 +131,7 @@ export function exportUniforms(teams, { designColumns = false } = {}) {
     const row = { team: t.abbr, kind, jersey: u.jersey, pants: u.pants, number: u.number, number_outline: u.outline, helmet: u.helmet };
     for (const [col, key] of EXTRA_COLS) if (u[key]) { row[col] = u[key]; extras = true; }
     for (const [col, key] of FONT_COLS) if (u[key]) { row[col] = u[key]; design = true; }
+    if (u.captainPatch) { row.captain_patch = patchCell(u.captainPatch); design = true; }
     for (const slot of PATCH_SLOTS) if (u.patches?.[slot]) { row[slot] = patchCell(u.patches[slot]); design = true; }
     out.push(row);
   }

@@ -1,3 +1,4 @@
+import { assignCaptains } from './captains.js';
 import { RNG } from '../core/rng.js';
 import { FIRST_NAMES, LAST_NAMES, COLLEGES, blockedName } from './names.js';
 import { POSITION_TEMPLATES, RATING_KEYS, ROSTER_COUNTS, JERSEY_RANGES, BODY, overall } from './positions.js';
@@ -82,6 +83,7 @@ export function generateLeagueRosters(teams, seed = 2027) {
   for (const t of teams) {
     t.roster = generateRoster(rng, rng.gauss(0, 3));
     t.depth = buildDepthChart(t.roster);
+    assignCaptains(t);
   }
   return teams;
 }

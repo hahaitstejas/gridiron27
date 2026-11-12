@@ -560,14 +560,14 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
   const jersey = ids.filter((i) => region[i] === REGION.jersey);
   const Pp = A.map((p, i) => add(p, pad[i])); // the shirt as worn (pads + clothing)
   const czAt = (y) => { let s2 = 0, n = 0; for (const i of jersey) if (Math.abs(A[i][1] - y) < 0.03) { s2 += A[i][2]; n++; } return n ? s2 / n : 0; };
-  const patch = (kind, side, yc, hw, hh, nx, ny) => {
+  const patch = (kind, side, yc, hw, hh, nx, ny, xc = 0) => {
     const base = decal.pos.length / 3;
     const cz = czAt(yc);
-    const pool = jersey.filter((i) => Math.sign(A[i][2] - cz) === side && Math.abs(A[i][1] - yc) < hh + 0.08 && Math.abs(A[i][0]) < hw + 0.1);
+    const pool = jersey.filter((i) => Math.sign(A[i][2] - cz) === side && Math.abs(A[i][1] - yc) < hh + 0.08 && Math.abs(A[i][0] - xc) < hw + 0.1);
     const inPool = new Set(pool);
     const tris = faces.filter((f) => f.some((v) => inPool.has(v)) && f.every((v) => region[v] === REGION.jersey));
     for (let gy = 0; gy < ny; gy++) for (let gx = 0; gx < nx; gx++) {
-      const x = -hw + (2 * hw * gx) / (nx - 1), y = yc - hh + (2 * hh * gy) / (ny - 1);
+      const x = xc - hw + (2 * hw * gx) / (nx - 1), y = yc - hh + (2 * hh * gy) / (ny - 1);
       // Drop the point straight onto the padded shirt along z (front: from +z, back: from -z): the outermost triangle under
       // (x, y), and take its exact surface attributes by barycentric interpolation.
       let hit = null;
@@ -594,7 +594,9 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
       for (let q = 0; q < 4; q++) { decal.si.push(top[q] ? +top[q][0] : 0); decal.sw.push(top[q] ? top[q][1] / tw : 0); }
       // Seen from the front the player's right is on the viewer's left: the front reads with u running toward -x.
       // (The front patch is built facing the other way from the back one: both its axes run reversed.)
-      decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 || kind >= 1 ? 1 - gy / (ny - 1) : gy / (ny - 1));
+      // Kinds 3+ are the patches (chest, sleeves, under the V-neck): uv = (viewer's left .. right, bottom .. top) straight into the patch atlas.
+      if (kind >= 3) decal.uv.push(gx / (nx - 1), gy / (ny - 1));
+      else decal.uv.push(side > 0 ? 1 - gx / (nx - 1) : gx / (nx - 1), side > 0 || kind >= 1 ? 1 - gy / (ny - 1) : gy / (ny - 1));
       decal.kind.push(kind);
     }
     for (let gy = 0; gy < ny - 1; gy++) for (let gx = 0; gx < nx - 1; gx++) {
@@ -603,10 +605,60 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
       if (side > 0) decal.idx.push(a, b, c, b, d, c); else decal.idx.push(a, c, b, b, c, d);
     }
   };
+  // A patch on the outside of the upper arm (wearer's left sleeve = +x, right = -x): the grid runs over (z, y) and is dropped along x.
+  const sleevePatch = (kind, sgn, yc, hz, hh, nz, ny) => {
+    const base = decal.pos.length / 3;
+    const sl = ids.filter((i) => region[i] === REGION.sleeve && Math.sign(A[i][0]) === sgn && Math.abs(A[i][1] - yc) < hh + 0.1);
+    const inPool = new Set(sl);
+    const tris = faces.filter((f) => f.some((v) => inPool.has(v)) && f.every((v) => region[v] === REGION.sleeve));
+    let zc = 0; for (const i of sl) zc += Pp[i][2]; zc = sl.length ? zc / sl.length : 0;
+    for (let gy = 0; gy < ny; gy++) for (let gz = 0; gz < nz; gz++) {
+      const z = zc - hz + (2 * hz * gz) / (nz - 1), y = yc - hh + (2 * hh * gy) / (ny - 1);
+      let hit = null;
+      for (const [ia, ib, ic] of tris) {
+        const P0 = Pp[ia], P1 = Pp[ib], P2 = Pp[ic];
+        // barycentric in the (z, y) plane
+        const d = (P1[1] - P2[1]) * (P0[2] - P2[2]) + (P2[2] - P1[2]) * (P0[1] - P2[1]);
+        if (Math.abs(d) < 1e-12) continue;
+        const w0 = ((P1[1] - P2[1]) * (z - P2[2]) + (P2[2] - P1[2]) * (y - P2[1])) / d;
+        const w1 = ((P2[1] - P0[1]) * (z - P2[2]) + (P0[2] - P2[2]) * (y - P2[1])) / d;
+        const w2 = 1 - w0 - w1;
+        if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+        const xx = w0 * P0[0] + w1 * P1[0] + w2 * P2[0];
+        if (!hit || xx * sgn > hit.x * sgn) hit = { x: xx, v: [ia, ib, ic], w: [w0, w1, w2] };
+      }
+      if (!hit) { const n = sl.map((i) => [i, Math.hypot(Pp[i][2] - z, Pp[i][1] - y)]).sort((q, r) => q[1] - r[1])[0][0]; hit = { x: Pp[n][0], v: [n, n, n], w: [1, 0, 0] }; }
+      const lerp3 = (arr) => [0, 1, 2].map((k) => hit.w[0] * arr(hit.v[0])[k] + hit.w[1] * arr(hit.v[1])[k] + hit.w[2] * arr(hit.v[2])[k]);
+      const bs = lerp3((i) => A[i]), pd = lerp3((i) => pad[i]), bk = lerp3((i) => mass[i]);
+      decal.pos.push(bs[0] + sgn * 0.01, bs[1], bs[2]);
+      decal.pad.push(...pd); decal.bulk.push(...bk);
+      const bones = {};
+      hit.v.forEach((i, k) => { for (let q = 0; q < 4; q++) if (skinW[i][q] > 0) bones[skinIdx[i][q]] = (bones[skinIdx[i][q]] || 0) + skinW[i][q] * hit.w[k]; });
+      const top = Object.entries(bones).sort((q, r) => r[1] - q[1]).slice(0, 4), tw = top.reduce((t, e) => t + e[1], 0);
+      for (let q = 0; q < 4; q++) { decal.si.push(top[q] ? +top[q][0] : 0); decal.sw.push(top[q] ? top[q][1] / tw : 0); }
+      // Seen from the wearer's left (+x) the viewer's right is -z; from his right (-x) it is +z.
+      decal.uv.push(sgn > 0 ? 1 - gz / (nz - 1) : gz / (nz - 1), gy / (ny - 1));
+      decal.kind.push(kind);
+    }
+    for (let gy = 0; gy < ny - 1; gy++) for (let gz = 0; gz < nz - 1; gz++) {
+      const a = base + gy * nz + gz, b = a + 1, c = a + nz, d = c + 1;
+      // (a, b, c) faces -x: flip for the +x sleeve so the print faces outward.
+      if (sgn > 0) decal.idx.push(a, c, b, b, c, d); else decal.idx.push(a, b, c, b, d, c);
+    }
+  };
   const shAbs = hipH + Bk.shY;
-  patch(0, 1, shAbs - 0.11, 0.15, 0.115, 22, 18); // front number, across the chest
+  patch(0, 1, shAbs - 0.19, 0.15, 0.115, 22, 18); // front number, across the chest (lowered: the league shield sits under the V-neck)
   patch(1, -1, shAbs - 0.19, 0.165, 0.15, 26, 22); // back number
   patch(2, -1, shAbs + 0.02, 0.17, 0.05, 30, 8); // name plate across the shoulders
+  // Patches (kinds 3..7 = left chest, right chest, left sleeve, right sleeve, collar). Left / right are the wearer's: his left is +x.
+  patch(3, 1, shAbs - 0.075, 0.04, 0.045, 12, 12, 0.135); // left chest
+  patch(4, 1, shAbs - 0.075, 0.04, 0.045, 12, 12, -0.135); // right chest
+  sleevePatch(5, 1, shAbs - 0.085, 0.045, 0.045, 12, 12); // left sleeve
+  sleevePatch(6, -1, shAbs - 0.085, 0.045, 0.045, 12, 12); // right sleeve
+  { // under the V-neck: its tip sits at 83% of the way from the waist to the collar (see body.js's neckline)
+    const tip = waistY + 0.83 * (collarY - waistY);
+    patch(7, 1, tip - 0.047, 0.043, 0.04, 12, 12);
+  }
 }
 
 // ---------- decimate ----------

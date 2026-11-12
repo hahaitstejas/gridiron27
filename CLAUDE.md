@@ -643,8 +643,8 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   lower / forward; shoulder pads at 1.3 (`COL_FLAGS.z`); the body shader darkens down-facing surfaces and lower legs (cheap
   occlusion) and keeps whites just under pure white; day / dusk / night ambient (hemi) lowered, key light up; shadow camera ±26 yd.
   Helmet (`src/assets/helmet.json`, built by `tools/blender/export_helmet.py` from the CC0 BlendSwap helmet in art/blendswap/): real shell with
-  vents and ear opening, facemask cage, strap + padding + snaps (vertex-colored chin part), a crown-stripe ribbon and a side logo patch
-  projected onto the shell by ray casts (the left logo is the mirror); geometry is in yards in helmet space, so the gear matrices are
+  vents and ear opening, facemask cage, strap + padding + snaps (vertex-colored chin part), a side logo patch
+  projected onto the shell by ray casts (the left logo is the mirror); no crown stripe on player helmets; geometry is in yards in helmet space, so the gear matrices are
   just `hg2` (no 0.33 scale). `HELM_K` 1.0.
   Body overhaul (tools/buildhuman.mjs): shoulder pads are a cantilever cap (broad, flat top, short drop) plus front / back plates that
   push outward from the torso axis (never by the sign of z: that tears the surface at the sides); the torso under the jersey is

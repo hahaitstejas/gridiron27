@@ -1,6 +1,6 @@
 # blender -b --factory-startup -P tools/blender/export_helmet.py -- "<American Football Helmet.blend>" src/assets/helmet.json
 # Turns the CC0 BlendSwap helmet (Noseferrit, blend #76058; see src/assets/CREDITS.md) into src/assets/helmet.json: shell, facemask,
-# chin strap + padding + fixings (vertex-colored), plus a crown-stripe ribbon and a side logo patch projected onto the real shell.
+# chin strap + padding + fixings (vertex-colored), plus a side logo patch projected onto the real shell (no crown stripe: not wanted).
 # Axes: Blender (x, y, z) with the face toward -y and up +z  →  game (x, z, -y): face toward +z, up +y; scaled to a 0.30 yd wide shell.
 import bpy, bmesh, json, base64, struct, sys, math
 from mathutils import Vector
@@ -95,7 +95,7 @@ for me, col in chin_meshes:
 data = {'source': 'American Football Helmet by Noseferrit, BlendSwap #76058, CC0', 'scale': S,
         'shell': part_json([(meshes['shell'], (1, 1, 1))]), 'mask': part_json([(meshes['mask'], (1, 1, 1))]), 'chin': part_json(chin_dec)}
 
-# ---- crown stripe and side logo patch, projected onto the (undecimated) shell surface ----
+# ---- side logo patch, projected onto the (undecimated) shell surface ----
 shell_hi = evaluated('Helmet', 1)
 ob = bpy.data.objects.new('shell_hi', shell_hi); bpy.context.scene.collection.objects.link(ob); bpy.context.view_layer.update()
 miny, maxy = min(ys), max(ys)
@@ -103,31 +103,6 @@ def ray(origin, direction):
     ok, loc, nor, idx = ob.ray_cast(origin, direction)
     return (loc, nor) if ok else (None, None)
 OFF = 0.02
-# stripe: two rails x = ±hw along the top, from the nape to the brow
-hw = 0.42
-rows = []
-for k in range(0, 41):
-    y = miny + (maxy - miny) * (0.97 - k / 40 * 0.94)
-    lc, nc = ray(Vector((0, y, max(zs) + 5)), Vector((0, 0, -1)))      # the center line (the ridge: no vents there)
-    row = []
-    for sx in (-1, 1):
-        loc, nor = ray(Vector((sx * hw, y, max(zs) + 5)), Vector((0, 0, -1)))
-        # a ray that drops through a vent hole lands far below the ridge: use the ridge height instead (the crown is flat across 2 hw)
-        if loc is None or lc is None or abs(loc.z - lc.z) > 0.25: loc, nor = (lc + Vector((sx * hw, 0, -0.01)), nc) if lc is not None else (None, None)
-        row.append((loc + nor * OFF, nor) if loc is not None else None)
-    rows.append(row)
-sp, sn, si = [], [], []
-for row in rows:
-    if row[0] is None or row[1] is None: continue
-    base = len(sp)
-    for loc, nor in row: sp.append(conv(loc)); sn.append(convn(nor))
-    sp_idx = base
-    si.append(sp_idx)
-tri = []
-for a, b in zip(si, si[1:]):
-    if b - a == 2: tri += [a, a + 1, a + 2, a + 1, a + 3, a + 2]
-data['stripe'] = {'count': len(sp), 'position': f32([c for p in sp for c in p]), 'normal': f32([c for n in sn for c in n]), 'index': u16(tri)}
-
 # logo patch on the +x side, above and behind the ear opening: a 12 x 12 grid, u toward the front, v up
 G = 12
 f0, f1, h0, h1 = 0.16, 0.62, 0.42, 0.92

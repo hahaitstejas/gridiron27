@@ -118,7 +118,7 @@ export class PlayerRenderer {
       shoe: part(cleatGeometry(), mat(0.45, 0, 0.8), MAX * 2),
       helmet: part(helmetPart(helmetData.shell, { color: true }), helmetMat, MAX),
       face: part(new THREE.SphereGeometry(0.085, 18, 14).scale(0.95, 1.15, 1), this.faceMaterial(mat(0.55)), MAX, false),
-      stripe: part(helmetPart(helmetData.stripe), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false),
+      stripe: part(helmetStripeGeometry(), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false), // only the officials' / coaches' cap brim uses it now
       mask: part(helmetPart(helmetData.mask), mat(0.3, 0.55, 1), MAX, false),
       chin: part(helmetPart(helmetData.chin, { color: true }), Object.assign(mat(0.45, 0.1, 0.6), { vertexColors: true }), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
@@ -582,7 +582,7 @@ export class PlayerRenderer {
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
       P.decal.setMatrixAt(i * 2, hg2);
       P.decal.setMatrixAt(i * 2 + 1, cl(hg2).multiply(scaleM(-1, 1, 1)));
-      P.stripe.setMatrixAt(i, hg2);
+      P.stripe.setMatrixAt(i, ZERO); // no crown stripe on player helmets
       P.mask.setMatrixAt(i, hg2);
       P.chin.setMatrixAt(i, hg2);
     }

@@ -403,6 +403,10 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
         const back = p[2] < 0 ? 1.6 : 0.7;               // the calf bulges behind
         d = [r[0] * back, 0, r[2] * back];
       }
+    } else if (legW > 0.3 && y >= hipH - 0.05 && y < hipH + 0.12 && region[i] === REGION.pants) {
+      // Hip pads: a bulge over the hip bone on each side, under the pants.
+      const hb = bump((y - (hipH - 0.05)) / 0.17) * smooth01((Math.abs(p[0]) - 0.1) / 0.08);
+      d = [side * 0.026 * hb, 0, 0];
     } else if (!armW && !foreW && !legW) {
       // Trunk: sloped traps, a V-taper (lats wide, waist narrow), broad upper back.
       const ux = p[0] === 0 ? 0 : Math.sign(p[0]);
@@ -422,7 +426,7 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
     const n = cross(sub(A[b], A[a]), sub(A[c], A[a]));
     for (const v of [a, b, c]) nrm[v] = add(nrm[v], n);
   }
-  const THICK = { 0: 0.02, 1: 0.016, 2: 0.01, 3: 0.01, 4: 0.006, 8: 0.012 };
+  const THICK = { 0: 0.02, 1: 0.016, 2: 0.006, 3: 0.006, 4: 0.004, 8: 0.012 }; // pants and socks cling (tight football pants)
   for (const i of ids) {
     const t = THICK[region[i]];
     if (!t) continue;

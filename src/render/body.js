@@ -356,7 +356,7 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
       if (region == 2 && vBody.y < -1.5) {
         vec3 bn = normalize(vBindN);
         float o = bn.x * (vBody.y < -2.5 ? 1.0 : -1.0) / max(0.2, length(bn.xz));
-        if (o > 0.9 && vBody.x > 0.55) col = tex(${COL_COLORS} + 3).rgb; // vBody.x = cosine around the leg, 1 = outside (keeps the crotch seam clean)
+        if (o > 0.955 && vBody.x > 0.55) col = tex(${COL_COLORS} + 3).rgb; // vBody.x = cosine around the leg, 1 = outside (keeps the crotch seam clean)
       }
       // Face photo (8 x 8 atlas, cell = instance) on the front of the MakeHuman head (vBody.y > 5 marks it), faded into the skin.
       if (region == 5 && vBody.y > 5.0 && flg.w > 0.5) {

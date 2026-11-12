@@ -296,7 +296,7 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           float k = max(0.0, 1.0 - abs(y - uRegY.w - 0.07) / 0.06);
           col *= 1.0 - 0.1 * k * (sin(y * 300.0) * 0.5 + 0.5);
         }
-        if (region == 0 && vBody.y > 0.5) {
+        if (region == 0 && vBody.y > 0.5 && abs(dFdx(vBody.x)) + abs(dFdy(vBody.x)) < 0.6) { // (not across the wrap seam)
           float a = vBody.x - 1.5708; float fa = a > 3.14159 ? a - 6.28318 : a;
           float depth = 1.0 - vBody.y;
           float vee = 0.17 * max(0.0, 1.0 - abs(fa) / 0.4);
@@ -443,6 +443,20 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
         float lip = smoothstep(1.0, 0.7, length((st - vec2(0.5, 0.215)) / vec2(0.15, 0.038)));
         col = mix(col, mix(skinC, vec3(0.45, 0.2, 0.2), 0.55) * 0.9, lip * 0.75 * fm);
         col = mix(col, vec3(0.1, 0.03, 0.03), smoothstep(0.012, 0.0, abs(st.y - 0.215)) * smoothstep(0.14, 0.09, abs(st.x - 0.5)) * 0.85 * fm);
+      }
+      // Skin life: mottled tone, and on a painted face a flush on the cheeks, shadow under the eyes and a warmer nose tip.
+      if (region == 5) {
+        float mot = vn(vec2(vBindY * 38.0, atan(vBindN.x, vBindN.z) * 5.0 + vInst * 1.7)) * 0.6 + vn(vec2(vBindY * 120.0 + 9.0, atan(vBindN.x, vBindN.z) * 14.0)) * 0.4;
+        col *= 1.0 + 0.05 * mot;
+        if (vBody.y > 5.0 && flg.w < 0.5) {
+          vec2 fs = vec2(vBody.x, vBody.y - 10.0);
+          float fmask = smoothstep(0.62, 0.38, abs(fs.x - 0.5)) * smoothstep(0.0, 0.12, fs.y) * smoothstep(1.0, 0.8, fs.y);
+          float cheek = smoothstep(0.17, 0.0, length((fs - vec2(0.25, 0.43)) * vec2(1.0, 1.25))) + smoothstep(0.17, 0.0, length((fs - vec2(0.75, 0.43)) * vec2(1.0, 1.25)));
+          col = mix(col, col * vec3(1.14, 0.8, 0.76), clamp(cheek, 0.0, 1.0) * 0.4 * fmask);
+          float under = smoothstep(0.045, 0.0, abs(fs.y - 0.52)) * (smoothstep(0.15, 0.07, abs(fs.x - 0.31)) + smoothstep(0.15, 0.07, abs(fs.x - 0.69)));
+          col *= 1.0 - 0.14 * under * fmask;
+          col = mix(col, col * vec3(1.1, 0.85, 0.82), smoothstep(0.05, 0.0, length((fs - vec2(0.5, 0.4)) * vec2(1.0, 1.4))) * 0.3 * fmask);
+        }
       }
       diffuseColor.rgb = col;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>

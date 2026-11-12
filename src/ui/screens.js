@@ -121,8 +121,8 @@ function featuredCard(teams, screens) {
   const c = t.colors;
   const jersey = `<svg viewBox="0 0 200 220" class="mm-jersey"><path d="M58 14 L82 6 Q100 22 118 6 L142 14 L192 44 L172 96 L150 86 L150 214 L50 214 L50 86 L28 96 L8 44 Z" fill="${c.primary}" stroke="${c.secondary}" stroke-width="5"/>
     <path d="M82 6 Q100 22 118 6" fill="none" stroke="${c.secondary}" stroke-width="8"/>
-    <text x="100" y="${p.last.length > 9 ? 62 : 64}" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="800" font-size="${p.last.length > 9 ? 17 : 21}" fill="${c.secondary}" letter-spacing="2">${p.last.toUpperCase()}</text>
-    <text x="100" y="168" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="96" fill="${c.secondary}" stroke="${c.accent || '#fff'}" stroke-width="2">${p.number}</text></svg>`;
+    <text x="100" y="${p.last.length > 9 ? 62 : 64}" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="600" font-size="${p.last.length > 9 ? 17 : 21}" fill="${c.secondary}" letter-spacing="2">${p.last.toUpperCase()}</text>
+    <text x="100" y="168" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="96" fill="${c.secondary}" stroke="${c.accent || '#fff'}" stroke-width="2">${p.number}</text></svg>`;
   const face = faceImg(p, 'mm-face');
   return el('div.mm-feature', {}, el('div.mm-jersey-wrap', { html: jersey }),
     el('div.mm-player', {}, ...(face ? [face] : []), el('small', { text: `${p.pos} · ${t.city.toUpperCase()} ${t.name.toUpperCase()}` }), el('b', { text: `${p.first} ${p.last}` }),
@@ -204,7 +204,7 @@ function uniformFigure(t, uni, p) {
     <path d="M26 82 Q30 64 52 60 L58 62 L46 100 L40 130 L22 126 Z M134 82 Q130 64 108 60 L102 62 L114 100 L120 130 L138 126 Z" fill="${sleeve}"/>
     <path d="M22 126 L40 130 L38 150 L24 148 Z M138 126 L120 130 L122 150 L136 148 Z" fill="${u.gloves || skin}"/>
     <path d="M68 60 L80 74 L92 60" fill="none" stroke="${u.outline || c.secondary}" stroke-width="4"/>
-    <text x="80" y="128" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="900" font-size="46" fill="${u.number}" stroke="${u.outline || '#000'}" stroke-width="2">${num}</text>
+    <text x="80" y="128" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="46" fill="${u.number}" stroke="${u.outline || '#000'}" stroke-width="2">${num}</text>
     <rect x="70" y="44" width="20" height="18" fill="${skin}"/>
     <path d="M52 30 Q52 6 80 6 Q108 6 108 30 L108 46 Q100 52 92 50 L68 50 Q60 52 52 46 Z" fill="${u.helmet}"/>
     <path d="M80 6 L80 46" stroke="${stripe}" stroke-width="3" opacity="0.9"/>

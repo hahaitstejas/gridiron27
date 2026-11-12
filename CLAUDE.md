@@ -417,7 +417,7 @@ Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / t
 `src/assets/cleat.json` (tools/buildcleat.mjs, from the CC BY Sketchfab model) is a rigid shoe in foot-bone space (toe +z, sole at y = -0.079, `parts.shoe` right / `parts.shoeL` mirrored geometry); it covers the slightly smaller MakeHuman foot, colored by the team cleat color.
 
 ### Fonts
-Jersey numbers and name plates (number atlas + name canvas in `render/players.js`) use Oswald 700 / 600 (narrower block digits that fit the jersey, still very readable); everything else below is Saira Condensed.
+Jersey numbers and name plates (number atlas + name canvas in `render/players.js`, and the SVG jersey cards in `ui/screens.js`: featured player, uniform preview) use Oswald 700 / 600 (narrower block digits that fit the jersey, still very readable); everything else below is Saira Condensed.
 Saira Condensed everywhere (the user's pick): menus, HUD, scorebug and canvas text (field numbers, end zones, jerseys,
 logos, video boards, play diagrams). Bundled with `@fontsource/saira-condensed` (imported at the top of main.js; OFL,
 offline); main.js waits for `document.fonts.load` before the renderer paints its canvases. CSS roles `--fd` / `--fc` /

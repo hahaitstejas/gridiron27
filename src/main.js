@@ -427,7 +427,10 @@ function showPractice() {
 
 // Skills drills: best scores per browser (localStorage g27.drills).
 const drillBests = () => { try { return JSON.parse(localStorage.getItem('g27.drills') || '{}'); } catch { return {}; } };
+// The home-menu cards call these without settings (the Practice screen passes its own): fall back to the saved prefs.
+const practicePrefs = (p) => { const q = p || { ...prefs }; if (q.home === q.away) q.away = (q.home + 1) % teams.length; return q; };
 function showDrills(p) {
+  p = practicePrefs(p);
   app = 'menu';
   const t = teams[p.home];
   screens.drills(drillBests(), `${t.city} ${t.name}`, { onStart: (id) => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id }, drillPrefs: p }), onBack: showPractice });
@@ -446,6 +449,7 @@ function showDrillResult() {
 // Scenarios: beaten ones per browser (localStorage g27.scenarios).
 const scenariosDone = () => { try { return JSON.parse(localStorage.getItem('g27.scenarios') || '{}'); } catch { return {}; } };
 function showScenarios(p) {
+  p = practicePrefs(p);
   app = 'menu';
   const startScenario = (id) => startGame({ ...p, side: 'home', quarterMinutes: 15 }, { scenario: { id }, scenarioPrefs: p, noIntro: true });
   screens.scenarios(scenariosDone(), `${teams[p.home].abbr} vs ${teams[p.away].abbr}`, { onStart: startScenario, onBack: showPractice });

@@ -340,7 +340,9 @@ export class PlayerRenderer {
       this.region(i, REGION.socks, uni.socks || (!isDark(pants) ? team.colors.primary : '#f2f2f2'));
       this.region(i, REGION.skin, skin);
       // Arm sleeves (roster editor): white / black / team color, else bare forearms.
-      const sl = p.look?.sleeves;
+      // Most players wear a long undershirt sleeve under the short jersey sleeve (white, black or the team color), some stay bare.
+      const sh = (p.id * 2654435761 >>> 0) % 10;
+      const sl = p.look?.sleeves || (sh < 3 ? null : sh < 6 ? 'white' : sh < 8 ? 'black' : 'team');
       this.region(i, REGION.forearm, sl === 'white' ? '#f2f2f2' : sl === 'black' ? '#141414' : sl === 'team' ? team.colors.primary : skin);
       // Bare hands match the skin; gloves only when the uniform sets a glove color (Team editor → uniform details).
       // Gloves: the uniform's, else what most players wear: skill players and backers white (dark on a white uniform),

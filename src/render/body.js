@@ -330,12 +330,23 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
         }
       }
       // Pants stripe down the outside of each leg (vBody.y = -2 left leg, -3 right leg; x = angle around it).
+      // Thigh pads under the pants: a raised rectangle on the front of each thigh with three soft grooves, and a knee pad.
+      if (region == 2 && vPart > 1.5 && vPart < 2.5) {
+        vec3 tn = normalize(vBindN);
+        float front = smoothstep(0.35, 0.7, tn.z);
+        float yy = vBindY - uRegY.w;
+        float pad = front * smoothstep(0.1, 0.16, yy) * (1.0 - smoothstep(0.34, 0.4, yy));
+        float groove = pad * smoothstep(0.78, 1.0, abs(sin(yy * 52.0)));
+        col *= 1.0 - 0.05 * pad - 0.11 * groove;
+        float knee = front * (1.0 - smoothstep(0.0, 0.07, abs(yy - 0.07)));
+        col *= 1.0 - 0.07 * knee;
+      }
       // The bind-pose normal pointing straight out to the side (smooth per pixel, so the edges are clean lines, not blotches
       // from the per-vertex angle), a thin trim line on either side when the stripe matches the jersey trim.
       if (region == 2 && vBody.y < -1.5) {
         vec3 bn = normalize(vBindN);
         float o = bn.x * (vBody.y < -2.5 ? 1.0 : -1.0) / max(0.2, length(bn.xz));
-        if (o > 0.9) col = tex(${COL_COLORS} + 3).rgb;
+        if (o > 0.9 && vBody.x > 0.55) col = tex(${COL_COLORS} + 3).rgb; // vBody.x = cosine around the leg, 1 = outside (keeps the crotch seam clean)
       }
       // Face photo (8 x 8 atlas, cell = instance) on the front of the MakeHuman head (vBody.y > 5 marks it), faded into the skin.
       if (region == 5 && vBody.y > 5.0 && flg.w > 0.5) {

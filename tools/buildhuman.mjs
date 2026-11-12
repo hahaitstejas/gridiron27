@@ -217,7 +217,7 @@ for (let i = 0; i < A.length; i++) {
     // Face photo coordinates: the front of the head projected flat (x, y around the face center), v + 10 marks them.
     const fc = [0, hipH + Bk.headY + 0.1, Bk.headZ + 0.05];
     if (p[2] > fc[2] - 0.02) b = [(p[0] - fc[0]) / 0.16 + 0.5, (p[1] - fc[1]) / 0.2 + 0.5 + 10];
-  } else if (fore > 0.5 || (arm > 0.5 && p[1] < shY - 0.13)) r = p[1] < wristY + 0.01 ? REGION.gloves : REGION.forearm;
+  } else if (fore > 0.5 || (arm > 0.5 && p[1] < shY - 0.2)) r = p[1] < wristY + 0.01 ? REGION.gloves : REGION.forearm;
   else if (arm > 0.5) r = REGION.sleeve;
   else if (foot > 0.4 || p[1] < ankleY + 0.02) r = REGION.shoe;
   else if (shin > 0.5 && p[1] < kneeY - 0.07) r = REGION.socks;
@@ -282,7 +282,7 @@ for (let i = 0; i < A.length; i++) {
     const cz = czOf(p[1]);
     const dx = p[0], dz = p[2] - cz, r = Math.hypot(dx, dz) || 1e-6;
     const k = (p[1] - waistY) / (chestY - waistY); // 1 at the chest, 0 at the belt
-    const want = chest[bin(dx, dz)] * (0.86 + 0.1 * Math.max(0, Math.min(1, k)));
+    const want = chest[bin(dx, dz)] * (0.78 + 0.15 * Math.max(0, Math.min(1, k))); // a fitted jersey: tapers from the pads to the belt
     if (want > r) pad[i] = add(pad[i], [dx / r * (want - r), 0, dz / r * (want - r)]);
   }
 }
@@ -353,7 +353,7 @@ const mass = A.map((p, i) => {
   const k = smooth01((hipH - 0.05 - y) / 0.14); // 0 in the trunk, 1 once it is clearly a leg
   return [trunk[0] + (leg[0] - trunk[0]) * k, 0, trunk[2] + (leg[2] - trunk[2]) * k];
 });
-Bk.waistY = waistY; Bk.collarY = collarY + 0.02; Bk.sleeveY = shY - 0.13; Bk.wristY = wristY + 0.01; Bk.sockY = kneeY - 0.07; Bk.shoeY = ankleY + 0.02;
+Bk.waistY = waistY; Bk.collarY = collarY + 0.02; Bk.sleeveY = shY - 0.2; Bk.wristY = wristY + 0.01; Bk.sockY = kneeY - 0.07; Bk.shoeY = ankleY + 0.02;
 
 // ---------- printed numbers and name: thin patches lying on the chest / back, with their own clean UVs ----------
 // Each grid point takes the surface (and its pad / bulk deltas and skin weights) from the nearest jersey vertices, so the

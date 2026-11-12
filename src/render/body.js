@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import fabricUrl from '../assets/fabric_normal.jpg'; // ambientCG Fabric030 normal map (CC0), see CREDITS.md
 
 // One smooth, skinned football-player body (torso over shoulder pads, pelvis, arms with gloves, legs with socks),
 // drawn for every player with a single InstancedMesh. Each instance is skinned on the GPU from a float texture of
@@ -243,7 +244,7 @@ export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
   const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.22,
-    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.35, 0.35) });
+    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
@@ -470,32 +471,20 @@ export function bodyDepthMaterial() {
   return m;
 }
 
-/** A fine knit pattern for jersey / pants fabric (tiling normal map). */
+/** Jersey / pants fabric: a real fine knit (ambientCG Fabric030, CC0) as a tiling normal map; a procedural knit stands in until it loads. */
 export function fabricNormal() {
-  // Athletic jersey mesh: staggered rows of small holes in a fine knit, as a height field turned into normals.
-  const N = 256;
-  const H = new Float32Array(N * N);
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const row = Math.floor(y / 10), ox = (row % 2) * 5;
-    const u = ((x + ox) % 10) / 10 - 0.5, v = (y % 10) / 10 - 0.5;
-    const hole = Math.max(0, 0.32 - Math.hypot(u, v * 1.15)) / 0.32;
-    const rib = 0.15 * Math.sin((x / N) * Math.PI * 2 * 64);
-    H[y * N + x] = -hole * hole + rib;
-  }
+  const N = 64;
   const c = document.createElement('canvas');
   c.width = c.height = N;
   const g = c.getContext('2d');
-  const img = g.createImageData(N, N);
-  const at = (x, y) => H[((y + N) % N) * N + ((x + N) % N)];
-  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-    const dx = (at(x + 1, y) - at(x - 1, y)) * 2.2, dy = (at(x, y + 1) - at(x, y - 1)) * 2.2;
-    const l = Math.hypot(dx, dy, 1), i = (y * N + x) * 4;
-    img.data[i] = (-dx / l * 0.5 + 0.5) * 255; img.data[i + 1] = (-dy / l * 0.5 + 0.5) * 255; img.data[i + 2] = (1 / l * 0.5 + 0.5) * 255; img.data[i + 3] = 255;
-  }
-  g.putImageData(img, 0, 0);
+  g.fillStyle = 'rgb(128,128,255)'; g.fillRect(0, 0, N, N);
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.repeat.set(0.6, 0.6); // one tile ≈ 0.18 yd (the geometry's uv is ~9 per yd)
   t.anisotropy = 8;
+  new THREE.TextureLoader().load(fabricUrl, (img) => {
+    t.image = img.image; t.needsUpdate = true;
+  });
   return t;
 }
 

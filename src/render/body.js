@@ -242,8 +242,8 @@ export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 export function bodyMaterial(envMap, fabric) {
-  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.35,
-    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.8, 0.8) });
+  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.22,
+    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.35, 0.35) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
@@ -252,6 +252,9 @@ export function bodyMaterial(envMap, fabric) {
 uniform vec4 uRegY; uniform float uShoeY; uniform float uCollarY; uniform float uDecals;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
+float vh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(vh(i), vh(i + vec2(1.0, 0.0)), f.x), mix(vh(i + vec2(0.0, 1.0)), vh(i + vec2(1.0, 1.0)), f.x), f.y) * 2.0 - 1.0; }
+float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends the normal
 ` + sh.fragmentShader
       .replace('#include <color_fragment>', `#include <color_fragment>
       int region = int(floor(vRegion + 0.5));
@@ -364,15 +367,85 @@ vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
         vec2 q = clamp(st, 0.0, 1.0) * 0.84 + 0.08;
         col = mix(col, texture2D(faceTex, vec2((cell.x + q.x) / 8.0, 1.0 - (cell.y + 1.0 - q.y) / 8.0)).rgb, k);
       }
+      // Cloth folds: drape hanging from the pads, tuck wrinkles at the hem, underarm stress lines; pants bunch at the hip and knee.
+      gFold = 0.0;
+      if (vPart > -0.5) {
+        float fy = vBindY;
+        float nz = vn(vec2(fy * 6.0, vInst * 0.37));
+        if (region == 0 && vBody.y > 0.0) {
+          float fa = vBody.x - 1.5708, fv = vBody.y;
+          float drape = sin(fa * 7.0 + nz * 3.0 + sin(fy * 9.0) * 0.8);
+          float tuck = sin(fy * 120.0 + fa * 3.0 + nz * 4.0);
+          float fside = smoothstep(0.55, 0.9, abs(sin(fa)));
+          float under = sin(fy * 55.0 - fa * 8.0) * smoothstep(0.5, 0.85, fv) * fside;
+          gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
+        } else if (region == 1) {
+          float ang = atan(vBindN.z, vBindN.x);
+          gFold = 0.5 * sin(fy * 70.0 + ang * 3.0 + nz * 3.0) + 0.3 * sin(ang * 5.0 + fy * 20.0);
+        } else if (region == 2 && vPart > 1.5 && vPart < 2.5) {
+          float ang = atan(vBindN.z, vBindN.x);
+          float hip = smoothstep(uRegY.w + 0.45, uRegY.w + 0.7, fy);
+          float knee = smoothstep(0.1, 0.0, abs(fy - uRegY.w - 0.07));
+          gFold = 0.4 * hip * sin(fy * 45.0 + ang * 6.0 + nz * 3.0) + 0.5 * knee * sin(fy * 130.0 + nz * 5.0);
+        }
+      }
+      col *= 1.0 + 0.12 * gFold; // creases read darker, ridges lighter
+      // No photo: a painted face (eyes, brows, nose, mouth, and stubble or a beard on some players), so the helmet opening isn't a blank mask.
+      if (region == 5 && vBody.y > 5.0 && flg.w < 0.5) {
+        vec2 st = vec2(vBody.x, vBody.y - 10.0);
+        float hh = fract(sin(vInst * 12.9898) * 43758.5453), h2 = fract(sin(vInst * 78.233) * 12345.6789);
+        float fm = smoothstep(0.62, 0.38, abs(st.x - 0.5)) * smoothstep(0.0, 0.12, st.y) * smoothstep(1.0, 0.8, st.y);
+        vec3 skinC = col;
+        vec3 dark = skinC * 0.55;
+        // Beard / stubble on the jaw and upper lip for about a third of the players, a lighter shadow for most of the rest.
+        float jaw = smoothstep(0.34, 0.14, st.y) * smoothstep(0.62, 0.4, abs(st.x - 0.5)) + 0.7 * smoothstep(0.015, 0.0, abs(st.y - 0.285)) * smoothstep(0.2, 0.1, abs(st.x - 0.5));
+        float beard = hh < 0.33 ? 0.85 : hh < 0.7 ? 0.22 : 0.0;
+        col = mix(col, skinC * 0.28, clamp(jaw, 0.0, 1.0) * beard * fm);
+        // Eyes: white, a dark-brown / hazel iris, pupil, upper lid shadow.
+        vec3 iris = h2 < 0.6 ? vec3(0.16, 0.1, 0.06) : h2 < 0.85 ? vec3(0.25, 0.17, 0.08) : vec3(0.22, 0.3, 0.38);
+        for (int e = 0; e < 2; e++) {
+          vec2 ec = vec2(e == 0 ? 0.31 : 0.69, 0.585);
+          vec2 d = (st - ec) / vec2(0.115, 0.05);
+          float eye = smoothstep(1.0, 0.8, length(d));
+          float ir = smoothstep(0.62, 0.5, length((st - ec - vec2(0.0, 0.0)) / vec2(0.056, 0.05)));
+          float pu = smoothstep(0.26, 0.18, length((st - ec) / vec2(0.056, 0.05)));
+          col = mix(col, vec3(0.9, 0.88, 0.85), eye);
+          col = mix(col, iris, ir * eye);
+          col = mix(col, vec3(0.02), pu * eye);
+          col = mix(col, dark * 0.7, smoothstep(0.07, 0.0, abs(st.y - (ec.y + 0.042))) * smoothstep(1.15, 0.7, abs(d.x)) * 0.8); // lid line
+          // Brow: a thick dark arc above the eye.
+          vec2 bd = (st - ec - vec2(0.0, 0.115 - (e == 0 ? -0.012 : 0.012) * 0.0)) / vec2(0.14, 0.022);
+          col = mix(col, skinC * 0.22, smoothstep(1.0, 0.6, length(bd)) * 0.85 * fm);
+        }
+        // Nose: soft shadow on either side of the bridge and the nostrils.
+        col *= 1.0 - 0.18 * smoothstep(0.08, 0.0, abs(abs(st.x - 0.5) - 0.07)) * smoothstep(0.25, 0.4, st.y) * smoothstep(0.62, 0.5, st.y) * fm;
+        col = mix(col, dark * 0.6, smoothstep(0.05, 0.0, length((st - vec2(0.5, 0.375)) / vec2(0.1, 0.04))) * 0.7 * fm);
+        // Mouth: a darker lip band with the line between the lips.
+        float lip = smoothstep(1.0, 0.7, length((st - vec2(0.5, 0.215)) / vec2(0.15, 0.038)));
+        col = mix(col, mix(skinC, vec3(0.45, 0.2, 0.2), 0.55) * 0.9, lip * 0.75 * fm);
+        col = mix(col, vec3(0.1, 0.03, 0.03), smoothstep(0.012, 0.0, abs(st.y - 0.215)) * smoothstep(0.14, 0.09, abs(st.x - 0.5)) * 0.85 * fm);
+      }
       diffuseColor.rgb = col;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
       roughnessFactor = region == 5 ? 0.5 - uSweat * 0.22 : region == 7 ? 0.55 : region == 8 ? 0.35 : region == 2 || region == 3 ? 0.62 : 0.78 - uSweat * 0.08;`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
       // Cheap occlusion: surfaces facing the turf (under the arms, the undersides of the pads, inside the legs) and the
       // lower legs get less of the sky; whites are cloth, not paint (a touch under pure white so folds and shading read).
+      if (region == 5) normal = nonPerturbedNormal; // no cloth weave on skin
+      if (gFold != 0.0) {
+        vec3 fsx = dFdx(-vViewPosition), fsy = dFdy(-vViewPosition);
+        vec3 fr1 = cross(fsy, normal), fr2 = cross(normal, fsx);
+        float fdet = dot(fsx, fr1);
+        vec2 fdh = vec2(dFdx(gFold), dFdy(gFold)) * 0.007;
+        normal = normalize(abs(fdet) * normal - sign(fdet) * (fdh.x * fr1 + fdh.y * fr2));
+      }
       vec3 wN = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
       float ao = mix(0.6, 1.0, smoothstep(-0.8, 0.35, wN.y));
       if (vPart > -0.5) ao *= mix(0.8, 1.0, smoothstep(0.25, 1.15, vBindY));
+      if (region == 5) { // skin: a little warmth where the surface turns away from the light (cheap subsurface scatter)
+        float rim = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.0);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.25, 0.82, 0.7), rim * 0.55);
+      }
       float lum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
       diffuseColor.rgb *= ao * mix(1.0, 0.85, smoothstep(0.7, 0.95, lum));`);
   };

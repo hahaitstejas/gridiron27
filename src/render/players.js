@@ -579,7 +579,7 @@ export class PlayerRenderer {
     } else {
       // The whole helmet assembly (shell, mask, chin strap, decals, visor) a touch smaller and sitting a little lower and
       // further forward on the skull: a real helmet is ~10 in wide on ~23 in of shoulder pads, not a bobblehead.
-      hgS.copy(hg).multiply(trans(0, -0.012, 0.006)).multiply(scaleM(HELM_K, HELM_K, HELM_K));
+      hgS.copy(hg).multiply(trans(0, -0.012, 0.008)).multiply(scaleM(HELM_K, HELM_K, HELM_K));
       const hg2 = hgS;
       P.helmet.setMatrixAt(i, cl(hg2).multiply(scaleM(0.33, 0.33, 0.33)));
       P.face.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, -0.04, 0.075)));
@@ -1190,7 +1190,7 @@ function gearOf(p) {
 export const VISOR_COLORS = { dark: '#1a1f2a', gold: '#3a2a10', clear: '#9fb4c8' };
 
 // ---------- matrix helpers ----------
-const HELM_K = 0.9; // helmet assembly scale (see the gear block in posePlayer)
+const HELM_K = 1.03; // helmet assembly scale (see the gear block in posePlayer)
 const hgS = new THREE.Matrix4();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 // Preallocated pool so per-frame posing allocates nothing (no GC hitches).
@@ -1249,7 +1249,9 @@ function helmetGeometry() {
       // Vents: two slots each side of the ridge toward the front, and a pair at the back.
       const vent = (Math.abs(x0) > 0.1 && Math.abs(x0) < 0.2 && v > Math.PI * 0.14 && v < Math.PI * 0.3 && f > 0.3)
         || (Math.abs(x0) > 0.12 && Math.abs(x0) < 0.26 && v > Math.PI * 0.3 && v < Math.PI * 0.42 && f < -0.5);
-      const c = vent ? 0.18 : 1;
+      // Ear opening: a dark oval on each side behind the jaw guard, so the shell reads as a helmet with a head inside.
+      const em = Math.max(0, 1 - Math.hypot((f - 0.02) / 0.34, (v / Math.PI - 0.5) / 0.1)) * (Math.abs(sd) > 0.8 ? 1 : 0);
+      const c = vent ? 0.18 : 1 - 0.85 * Math.min(1, em * 2.2);
       col.push(c, c, c);
     }
   }
@@ -1276,7 +1278,7 @@ function helmetGeometry() {
 /** Facemask in head space (yards): thick bars across the face, a nose bar pair, side struts down the jaw guards. */
 function facemaskGeometry() {
   const geos = [];
-  const bar = (pts, r = 0.0082) => geos.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z))), 20, r, 7, false));
+  const bar = (pts, r = 0.0062) => geos.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z))), 20, r, 7, false));
   const arc = (y, rad, a0, a1, fwd = 0) => {
     const pts = [];
     for (let k = 0; k <= 10; k++) { const a = a0 + (a1 - a0) * (k / 10); pts.push([Math.sin(a) * rad, y, Math.cos(a) * rad * 1.05 + fwd]); }

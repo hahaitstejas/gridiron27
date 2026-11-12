@@ -642,6 +642,13 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Realism pass (render-only): the helmet assembly (shell, mask, chin, decals, visor) is scaled `HELM_K` 0.9 and sits a touch
   lower / forward; shoulder pads at 1.3 (`COL_FLAGS.z`); the body shader darkens down-facing surfaces and lower legs (cheap
   occlusion) and keeps whites just under pure white; day / dusk / night ambient (hemi) lowered, key light up; shadow camera ±26 yd.
+  Body overhaul (tools/buildhuman.mjs): shoulder pads are a cantilever cap (broad, flat top, short drop) plus front / back plates that
+  push outward from the torso axis (never by the sign of z: that tears the surface at the sides); the torso under the jersey is
+  reshaped per height slab to a clean rounded box (no pec relief) and smoothed; an always-on athletic base adds deltoids / biceps /
+  forearms, quads, calves, a V-taper and sloped traps; the old "boxy jersey" outline fill is OFF (it made a shelf under the pads).
+  Decimation target 0.5. Body shader: cloth fold height field (`gFold`: drape, hem tuck, underarm lines, hip / knee bunching) darkens
+  creases and bumps the normal; skin gets no cloth weave and a warm rim; a painted face (eyes, brows, nose, mouth, stubble / beard
+  by instance) when there is no photo. The key light follows the camera (renderer.js: above and to one side behind it).
   Body build (tools/buildhuman.mjs `mass` → human.json `bulk`; `COL_FLAGS.y` = the player's `bulk` 0 slim receiver .. 1 ~320 lb lineman,
   from weight): our own radial mass profiles (neck, chest, a gut that sticks out front, thick upper arms, thighs) replace
   MakeHuman's max-weight shape; one continuous profile down the trunk so nothing steps at the jersey hem. Body shape (body.js

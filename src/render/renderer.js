@@ -15,9 +15,9 @@ import { Presentation } from './presentation.js';
 
 // Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
 const TIME_LOOKS = {
-  day: { hemi: [0xdfeaff, 0x3a4a2a, 1.1], key: [0xfff2dc, 3.3], rim: [0xffffff, 0.4], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1 },
-  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.95], key: [0xffb070, 2.6], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5 },
-  night: { hemi: [0xb8c8ff, 0x203018, 0.85], key: [0xfff4e0, 2.7], rim: [0xaabbff, 0.6], fog: [0x0b1020, 160, 420], sky: [[0.015, 0.03, 0.08], [0.06, 0.09, 0.2], [0.22, 0.2, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.15 },
+  day: { hemi: [0xdfeaff, 0x3a4a2a, 0.72], key: [0xfff2dc, 3.9], rim: [0xffffff, 0.6], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1 },
+  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.7], key: [0xffb070, 3.0], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5 },
+  night: { hemi: [0xb8c8ff, 0x203018, 0.62], key: [0xfff4e0, 3.0], rim: [0xaabbff, 0.6], fog: [0x0b1020, 160, 420], sky: [[0.015, 0.03, 0.08], [0.06, 0.09, 0.2], [0.22, 0.2, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.15 },
 };
 
 /** Owns the WebGL renderer, scene, lights and all visual sub-systems. */
@@ -266,8 +266,11 @@ export class GameRenderer {
     this.ballShadow.position.x = bm.position.x;
     this.ballShadow.position.z = bm.position.z;
     this.ballShadow.visible = bm.position.y > 0.3;
-    // Shadow camera follows the action.
-    this.key.position.set(bm.position.x - 25, 60, bm.position.z + 30);
+    // Shadow camera follows the action. The key light comes from above and a little to one side of the camera (as a TV
+    // broadcast lights the field), so the faces of the players the camera sees are lit and shaped instead of backlit.
+    const cp = this.rig.camera.position, kx = cp.x - bm.position.x, kz = cp.z - bm.position.z, kd = Math.hypot(kx, kz) || 1;
+    const ux = kx / kd, uz = kz / kd, ang = 0.6, ca = Math.cos(ang), sa = Math.sin(ang);
+    this.key.position.set(bm.position.x + (ux * ca - uz * sa) * 38, 58, bm.position.z + (ux * sa + uz * ca) * 38);
     this.key.target.position.set(bm.position.x, 0, bm.position.z);
   }
 

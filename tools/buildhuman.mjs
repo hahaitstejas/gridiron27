@@ -10,7 +10,7 @@ import { MeshoptSimplifier } from 'meshoptimizer';
 
 const DATA = process.argv[2] || '/home/user/makehumancommunity/makehuman/makehuman/data';
 const OUT = path.resolve('src/assets/human.json');
-const TARGET_RATIO = 0.42;
+const TARGET_RATIO = 0.5;
 
 // ---------- load ----------
 const obj = fs.readFileSync(path.join(DATA, '3dobjs/base.obj'), 'utf8').split('\n');
@@ -177,13 +177,29 @@ const pad = A.map((p, i) => {
   const head = wOf(i, 'head');
   if (armDown > 0.05 || head > 0.5) return [0, 0, 0];
   const up = wOf(i, 'shL') + wOf(i, 'shR');
-  if (up > 0.6 && p[1] < shY - 0.1) return [0, 0, 0]; // the upper arm below the deltoid
-  const ky = Math.max(0, 1 - Math.abs(p[1] - (shY + 0.03)) / 0.24);
-  if (ky <= 0) return [0, 0, 0];
+  if (up > 0.6 && p[1] < shY - 0.12) return [0, 0, 0]; // the upper arm below the pad's edge
+  // Pad construction: a broad cantilever shoulder (wide, nearly flat across the top, a short drop over the deltoid), and
+  // front / back plates that cover the chest and shoulder blades and end under the pecs.
+  const dy = p[1] - (shY + 0.04);
   const ax = Math.abs(p[0]) / (Bk.shX + 0.08);
-  const k = ky * ky * (3 - 2 * ky);
-  // Outward over the shoulder caps, a bit forward / back over the chest and shoulder blades, a little up on top.
-  return [Math.sign(p[0]) * k * 0.085 * Math.min(1, ax * 1.15), k * 0.025 * Math.min(1, ax + 0.35), Math.sign(p[2] || 1) * k * 0.04];
+  const capH = dy > 0 ? 0.1 : 0.18;                      // above / below the shoulder line
+  const ky = Math.max(0, 1 - Math.abs(dy) / capH);
+  const plateY = Math.max(0, 1 - Math.abs(p[1] - (shY - 0.02)) / 0.3); // plates reach lower than the caps
+  if (ky <= 0 && plateY <= 0) return [0, 0, 0];
+  const k = ky * ky * (3 - 2 * ky), kp = plateY * plateY * plateY * (plateY * (plateY * 6 - 15) + 10);
+  const out = Math.min(1, Math.pow(ax, 1.4) * 1.25);
+  const dx = Math.sign(p[0]) * k * 0.075 * out;
+  // Slope: the trapezius rises toward the neck and the cap sits just above the shoulder line.
+  const dyy = k * 0.03 * Math.min(1, ax + 0.2) + 0.012 * k * Math.max(0, 1 - Math.abs(ax - 0.45) * 3);
+  // The plates push outward from the torso's axis (not by the sign of z: that flips between neighbors at the sides and tears the surface).
+  const onTorso = up < 0.5; // the plates are on the chest and back, not on the arm
+  let px = 0, pz = 0;
+  if (onTorso) {
+    const r = Math.hypot(p[0], p[2]) || 1e-6, ux = p[0] / r, uz = p[2] / r;
+    const amt = kp * 0.055 * (0.45 + 0.55 * Math.abs(uz)) + k * 0.012; // front / back plates stand off more than the sides
+    px = ux * amt * 0.6; pz = uz * amt;
+  }
+  return [dx + px, dyy, pz];
 });
 
 // Shoulder pads ride on the torso, not the arm: vertices the pads push out move most of their upper-arm weight onto the
@@ -258,6 +274,66 @@ for (let i = 0; i < A.length; i++) {
   }
 }
 
+// ---------- smooth the torso under the jersey (the base body has sculpted pecs: a jersey over pads is smooth) ----------
+// Taubin smoothing (shrink / inflate passes, so volume holds) over the jersey's torso vertices on the original mesh, from the
+// belt up to the base of the neck; the result goes into the pad delta, faded out at the hem, the arms and the collar.
+{
+  const nb = A.map(() => new Set());
+  for (const [a, b, c] of faces) { nb[a].add(b); nb[a].add(c); nb[b].add(a); nb[b].add(c); nb[c].add(a); nb[c].add(b); }
+  const w = A.map((p, i) => {
+    if (region[i] !== REGION.jersey) return 0;
+    if (wOf(i, 'elL') + wOf(i, 'elR') > 0.25 || wOf(i, 'head') > 0.3) return 0; // (the chest carries some shoulder-bone weight: not a reason to skip it)
+    const y = p[1];
+    return smooth01((y - (waistY + 0.03)) / 0.1) * (1 - smooth01((y - (shY - 0.02)) / 0.1)) * (1 - smooth01((Math.abs(p[0]) - 0.2) / 0.06));
+  });
+  const idsT = ids.filter((i) => w[i] > 0);
+  let P = A.map((p) => [...p]);
+  const pass = (lam) => {
+    const Q = P.map((p) => [...p]);
+    for (const i of idsT) {
+      const n = [...nb[i]];
+      if (!n.length) continue;
+      const m = [0, 0, 0];
+      for (const j of n) { m[0] += P[j][0]; m[1] += P[j][1]; m[2] += P[j][2]; }
+      for (let k = 0; k < 3; k++) Q[i][k] = P[i][k] + lam * (m[k] / n.length - P[i][k]);
+    }
+    P = Q;
+  };
+  for (let it = 0; it < 30; it++) { pass(0.5); pass(-0.53); }
+  // Reshape each height slab's chest cross-section to a clean rounded box: depth from the sternum / spine line, width from the
+  // slab's own extent. This removes the pec relief (a low-frequency bump smoothing alone cannot).
+  {
+    const SL = 0.03, slabs = new Map();
+    for (const i of idsT) { const k = Math.round(P[i][1] / SL); (slabs.get(k) || slabs.set(k, []).get(k)).push(i); }
+    for (const list of slabs.values()) {
+      if (list.length < 12) continue;
+      const zs = list.map((i) => P[i][2]), cz = zs.reduce((a, b) => a + b, 0) / zs.length;
+      const xs = list.map((i) => Math.abs(P[i][0])).sort((a, b) => a - b);
+      const a = xs[Math.floor(xs.length * 0.92)];
+      const mid = list.filter((i) => Math.abs(P[i][0]) < 0.04);
+      const fr = mid.filter((i) => P[i][2] > cz), bk = mid.filter((i) => P[i][2] <= cz);
+      if (!fr.length || !bk.length || a < 0.08) continue;
+      const zf = fr.reduce((t, i) => t + P[i][2], 0) / fr.length, zb = bk.reduce((t, i) => t + P[i][2], 0) / bk.length;
+      const c = (zf + zb) / 2, bf = zf - c, bb = c - zb, n = 2.5;
+      for (const i of list) {
+        const x = Math.abs(P[i][0]), sgn = P[i][2] >= c ? 1 : -1;
+        const t = Math.min(1, x / a), wx = 1 - smooth01((x / a - 0.72) / 0.28);
+        const zt = c + sgn * (sgn > 0 ? bf : bb) * Math.pow(Math.max(0, 1 - Math.pow(t, n)), 1 / n);
+        P[i][2] = P[i][2] + (zt - P[i][2]) * wx;
+      }
+    }
+  }
+  let maxD = 0;
+  for (const i of idsT) {
+    const d = sub(P[i], A[i]);
+    maxD = Math.max(maxD, len(d));
+    pad[i] = add(pad[i], mul(d, w[i] / 1.3));
+  }
+  console.log('torso smoothing:', idsT.length, 'vertices, max move', maxD.toFixed(4), 'yd');
+}
+
+// The old boxy-jersey fill (pushes the torso below the chest out to the chest's outline) is off: it made a shelf under the pads.
+const FILL = false;
 // ---------- the jersey hangs straight off the shoulder pads (a football jersey is boxy: no V-taper to the waist) ----------
 // Below the chest, every jersey vertex is pushed out to (most of) the chest's outline in its direction, so the torso reads
 // as one block from the pads to the belt, the way it does on TV.
@@ -271,24 +347,73 @@ for (let i = 0; i < A.length; i++) {
   for (const i of torsoV) {
     const p = A[i];
     if (Math.abs(p[1] - chestY) > 0.035) continue;
-    const r = Math.hypot(p[0] + pad[i][0], p[2] + pad[i][2] - cz0);
+    const r = Math.hypot(p[0], p[2] - cz0); // the body itself (not the pad plates): the jersey below the chest follows the torso, tapering to the belt
     const b = bin(p[0], p[2] - cz0);
     chest[b] = Math.max(chest[b], r);
   }
   for (let b = 0; b < BINS; b++) if (!chest[b]) chest[b] = Math.max(chest[(b + BINS - 1) % BINS], chest[(b + 1) % BINS]);
   for (const i of torsoV) {
     const p = A[i];
-    if (p[1] >= chestY || p[1] < waistY - 0.04) continue;
+    if (p[1] >= chestY + 0.14 || p[1] < waistY - 0.04) continue;
+    const fade = smooth01((chestY + 0.14 - p[1]) / 0.14); // 1 from the chest down, easing out above it (no step under the plates)
     const cz = czOf(p[1]);
     const dx = p[0], dz = p[2] - cz, r = Math.hypot(dx, dz) || 1e-6;
     const k = (p[1] - waistY) / (chestY - waistY); // 1 at the chest, 0 at the belt
-    const want = chest[bin(dx, dz)] * (0.78 + 0.15 * Math.max(0, Math.min(1, k))); // a fitted jersey: tapers from the pads to the belt
-    if (want > r) pad[i] = add(pad[i], [dx / r * (want - r), 0, dz / r * (want - r)]);
+    const want = chest[bin(dx, dz)] * (0.99 + 0.1 * Math.max(0, Math.min(1, k))) + 0.012; // a fitted jersey: just off the torso, a little fuller at the chest than the belt
+    if (FILL && want > r) pad[i] = add(pad[i], [dx / r * (want - r) * fade, 0, dz / r * (want - r) * fade]);
   }
 }
 
 function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); }
 
+
+// ---------- athletic base for every build: muscle where it is (biceps, deltoids, forearms, quads, calves), a V-taper ----------
+// Added to the pad delta (always on, scaled with the pads), then the clothing offsets go on top.
+{
+  const PADK = 1.3, elbowY = shY - Bk.upper;
+  const bump = (t) => (t <= 0 || t >= 1 ? 0 : Math.sin(Math.PI * t));
+  const radial = (p, cx, cz, amt, front) => {
+    const dx = p[0] - cx, dz = p[2] - cz, r = Math.hypot(dx, dz) || 1e-6;
+    const fw = dz / r > 0 ? 1 + (front - 1) * dz / r : 1;
+    return [dx / r * amt * fw, 0, dz / r * amt * fw];
+  };
+  for (const i of ids) {
+    const p = A[i], y = p[1], side = p[0] < 0 ? -1 : 1;
+    const armW = wOf(i, 'shL') + wOf(i, 'shR'), foreW = wOf(i, 'elL') + wOf(i, 'elR');
+    const legW = wOf(i, 'hipL') + wOf(i, 'hipR'), shinW = wOf(i, 'kneeL') + wOf(i, 'kneeR'), footW = wOf(i, 'footL') + wOf(i, 'footR');
+    let d = [0, 0, 0];
+    if (region[i] === REGION.gloves || footW > 0.5) continue;
+    if (foreW > 0.5) {
+      // Forearm: thick near the elbow, tapering to the wrist.
+      const t = Math.max(0, Math.min(1, (y - wristY) / (elbowY - wristY)));
+      d = radial(p, side * Bk.shX, Bk.shZ, 0.022 * Math.pow(t, 0.8) * (1 - 0.25 * t * t), 1.1);
+    } else if (armW > 0.5 && y < shY - 0.04) {
+      // Upper arm: deltoid at the top, bicep in front and tricep behind through the middle.
+      const t = Math.max(0, Math.min(1, (y - elbowY) / Bk.upper));
+      d = radial(p, side * Bk.shX, Bk.shZ, 0.03 * bump(0.1 + t * 0.85) + 0.012 * smooth01((t - 0.6) / 0.35), 1.25);
+    } else if (legW + shinW > 0.5 && y < hipH - 0.05) {
+      // Thigh: quads and hamstrings, fullest a third of the way down, narrowing into the knee; calf muscle behind the shin.
+      const cx = side * Bk.hipX;
+      if (y > kneeY + 0.02) {
+        const t = (y - kneeY) / (hipH - 0.05 - kneeY);
+        d = radial(p, cx, 0, 0.034 * bump(0.02 + t * 0.95) * (0.7 + 0.5 * t), 1.35);
+      } else if (y > ankleY + 0.05) {
+        const t = (y - ankleY) / (kneeY - ankleY);
+        const r = radial(p, cx, 0, 0.024 * bump(0.25 + t * 0.7), 1.0);
+        const back = p[2] < 0 ? 1.6 : 0.7;               // the calf bulges behind
+        d = [r[0] * back, 0, r[2] * back];
+      }
+    } else if (!armW && !foreW && !legW) {
+      // Trunk: sloped traps, a V-taper (lats wide, waist narrow), broad upper back.
+      const ux = p[0] === 0 ? 0 : Math.sign(p[0]);
+      const lat = bump((y - (waistY + 0.1)) / 0.5);      // lats: waist..chest
+      const waist = bump((y - (waistY - 0.1)) / 0.28);   // the waist itself
+      d = [ux * (0.024 * lat - 0.02 * waist) * Math.min(1, Math.abs(p[0]) / 0.12), 0, 0];
+      if (y > shY + 0.0 && Math.abs(p[0]) < 0.2 && Math.abs(p[0]) > 0.06) d[1] += 0.022 * smooth01((y - shY) / 0.1) * (1 - smooth01((Math.abs(p[0]) - 0.06) / 0.14)); // traps
+    }
+    if (d[0] || d[1] || d[2]) pad[i] = add(pad[i], mul(d, 1 / PADK));
+  }
+}
 
 // ---------- clothing: the jersey hangs off the pads, sleeves and padded pants sit off the skin (part of the pads delta) ----------
 {

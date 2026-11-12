@@ -208,7 +208,7 @@ export class PlayerRenderer {
     this.pulseId = -1;
     // Pose crossfades (per player index): the pose an animation change starts from, and the last drawn pose.
     this.fromPose = []; this.lastPose = []; this.lastAnim = []; this.fadeT = []; this.poseSim = null;
-    this.fall = []; this.fallAnim = []; this.wrap = [];
+    this.fall = []; this.fallAnim = []; this.wrap = []; this.gang = [];
     this.limpS = []; // per-player spring state for the limp-limb layer (see limp())
 
     this._m = new THREE.Matrix4();
@@ -528,6 +528,19 @@ export class PlayerRenderer {
 
   drawPlayer(sim, p, i, alpha, time, dt = 1 / 60, official = false) {
     const P = this.parts;
+    // Gang tackles (render only): a defender who arrives while the runner is going down joins the tackle: drawn as a
+    // second tackler (wraps, falls with the pile and lands on it) through a proxy, so the sim never sees it.
+    if (!official && sim?.players && sim.ball && sim.ball.carrier >= 0) {
+      const c = sim.players[sim.ball.carrier], g = (this.gang[i] ||= { t: 0, on: false });
+      const going = c && c !== p && c.team !== p.team && (c.state === 'tackled' || c.state === 'down' || c.anim === 'falling');
+      const free = p.state === 'active' && !p.engagement && p.anim !== 'tackle' && p.anim !== 'tackle_dive' && !p.kneeling;
+      const d = going ? Math.hypot(p.x - c.x, p.z - c.z) : 9;
+      if (going && free && (g.on || (d < 1.7 && c.state !== 'down'))) {
+        g.on = true; g.t += dt;
+        const pp = Object.create(p); pp.anim = 'tackle'; pp.animT = g.t; pp.gang = true;
+        p = pp;
+      } else { g.on = false; g.t = 0; }
+    }
     let x = p.px + (p.x - p.px) * alpha;
     let z = p.pz + (p.z - p.pz) * alpha;
     let f = p.pfacing + angDiff(p.facing, p.pfacing) * alpha;
@@ -539,7 +552,7 @@ export class PlayerRenderer {
       let w = this.wrap[i];
       if ((p.anim === 'tackle' || p.anim === 'tackle_dive') && !(w && w.id >= 0)) {
         const c0 = this.wrapTarget(sim, p, x, z);
-        if (c0) w = this.wrap[i] = { id: c0.id, k: 0, side: (i % 2 ? 1 : -1) * 0.18 };
+        if (c0) w = this.wrap[i] = { id: c0.id, k: 0, side: ((i % 3) - 1) * 0.22 + (i % 2 ? 0.06 : -0.06), lift: p.gang ? 0.12 : 0 }; // gang tacklers land beside and on top of the first
       }
       if (w && w.id >= 0) {
         const c = sim.players[w.id];
@@ -556,7 +569,7 @@ export class PlayerRenderer {
             const tx = cx - ux * 0.55 * (p.height / 2.06) - uz * w.side, tz = cz - uz * 0.55 * (p.height / 2.06) + ux * w.side;
             x += (tx - x) * k; z += (tz - z) * k;
             f += angDiff(cf, f) * k;
-            pileLift = 0.14 * k; pileFall = { fwd: 1, side: 0 };
+            pileLift = (0.14 + (w.lift || 0)) * k; pileFall = { fwd: 1, side: 0 };
           } else {
             const dx = cx - x, dz = cz - z, d = Math.hypot(dx, dz) || 1;
             const want = 0.5 * (p.height / 2.06);

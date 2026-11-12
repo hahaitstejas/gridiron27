@@ -573,12 +573,22 @@ const decal = { pos: [], bulk: [], pad: [], si: [], sw: [], uv: [], kind: [], id
 
 // ---------- decimate ----------
 await MeshoptSimplifier.ready;
+MeshoptSimplifier.useExperimentalFeatures = true; // simplifyWithAttributes (vertex lock)
 const remap = new Map(ids.map((v, k) => [v, k]));
 const pos = new Float32Array(ids.length * 3);
 ids.forEach((v, k) => pos.set(A[v], k * 3));
 let index = new Uint32Array(faces.flat().map((v) => remap.get(v)));
 // Region borders and the left / right seam stay put (locked) so uniform edges and the numbers stay clean.
-const [simp, err] = MeshoptSimplifier.simplify(index, pos, 3, Math.floor(index.length * TARGET_RATIO / 3) * 3, 0.01, ['LockBorder']);
+// The hands (gloves region: fingers and thumbs) are locked so the simplifier doesn't melt them; the rest takes the whole cut.
+const lock = new Uint8Array(ids.length);
+let handVerts = 0;
+ids.forEach((v, k) => { if (region[v] === REGION.gloves) { lock[k] = 1; handVerts++; } });
+let handTris = 0;
+for (let t = 0; t < index.length; t += 3) if (lock[index[t]] && lock[index[t + 1]] && lock[index[t + 2]]) handTris++;
+// Keep the hand triangles on top of the usual ratio: the cut falls on everything else.
+const keepTris = Math.floor((index.length / 3 - handTris) * TARGET_RATIO) + handTris;
+console.log(`hands: ${handVerts} vertices / ${handTris} triangles kept`);
+const [simp, err] = MeshoptSimplifier.simplifyWithAttributes(index, pos, 3, new Float32Array(0), 1, [], lock, keepTris * 3, 0.01, ['LockBorder']);
 const keep = [...new Set(simp)].sort((a, b) => a - b);
 const k2 = new Map(keep.map((v, k) => [v, k]));
 const outIdx = Array.from(simp, (v) => k2.get(v));

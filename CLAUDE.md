@@ -395,6 +395,9 @@ Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest it
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
 menus or trade dress.
 
+### Hands
+`tools/buildhuman.mjs` locks the gloves-region vertices (fingers, thumbs) so the simplifier cannot melt them (`simplifyWithAttributes` with a vertex lock, `useExperimentalFeatures`): ~3.2k hand triangles per player on top of the half-cut body (~16.6k tris per player). The bind pose has splayed fingers; a relaxed curl and finger bones are not done yet.
+
 ### Cleats
 `src/assets/cleat.json` (tools/buildcleat.mjs, from the CC BY Sketchfab model) is a rigid shoe in foot-bone space (toe +z, sole at y = -0.079, `parts.shoe` right / `parts.shoeL` mirrored geometry); it covers the slightly smaller MakeHuman foot, colored by the team cleat color.
 

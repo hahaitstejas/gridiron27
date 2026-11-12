@@ -5,12 +5,19 @@
 //                        role = HC | OC | DC. run_pct = how often the offense runs (0-100, 45 = league average);
 //                        go_for_it / long_fg / blitz / aggression are 0-100 tendencies (50 = league average)
 //   uniforms.csv         team,kind,jersey,pants,number,number_outline,helmet   kind = home | away | alt (hex colors)
+//                        optional: sleeves, shoulders, helmet_stripe, facemask, socks, gloves, cleats (colors) and the design
+//                        columns number_font, name_font, patch_font, left_chest, right_chest, left_sleeve, right_sleeve
+//                        (allowed values: src/data/design.js, also written into the [README] section of a league book)
 //   stadiums.csv         team,name,city,capacity,roof,surface,kind,year         team blank + kind = championship |
 //                        international for neutral sites (year = which season's championship game is played there)
+//                        optional: turf, endzone, mid_logo, seats and the end zone design columns endzone_color, endzone_color2,
+//                        endzone_text_color, endzone_outline_color, endzone_font, endzone_text_left, endzone_text_right,
+//                        endzone_logo_left, endzone_logo_right, yard_font
 //   schedule.csv         week,away,home,day,date,time                           a franchise season's schedule
 import { toCSV } from './csv.js';
 import { FIRST_NAMES, LAST_NAMES } from './names.js';
 import { uniformFor, UNIFORM_KINDS } from './uniforms.js';
+import { FONTS, fontOf, PATCH_SLOTS, parsePatch, patchCell, ENDZONE_STYLES, ENDZONE_LOGOS, TURF_STYLES } from './design.js';
 
 const byAbbr = (teams) => new Map(teams.map((t, i) => [t.abbr.toUpperCase(), i]));
 const HEX = /^#?[0-9a-f]{6}$/i;
@@ -76,61 +83,109 @@ export function exportCoaches(teams) {
   return toCSV(out, ['team', 'role', 'first', 'last', 'age', 'run_pct', 'go_for_it', 'long_fg', 'blitz', 'aggression']);
 }
 
+/** A row with its column names folded to lower case with underscores, so "Number Font" / "number_font" both work. */
+const lowerRow = (r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [k.trim().toLowerCase().replace(/[\s-]+/g, '_'), v]));
+const fontList = () => FONTS.map((f) => f.id).join(', ');
+
 export function importUniforms(teams, rows) {
   const idx = byAbbr(teams), skipped = [];
-  rows.forEach((r, i) => {
+  let bad = 0;
+  rows.forEach((raw, i) => {
+    const r = lowerRow(raw);
     const ti = idx.get((r.team || '').toUpperCase()), kind = (r.kind || '').toLowerCase().trim().replace(/\s+/g, '_').replace('alternate', 'alt').replace('rivalry', 'alt').replace(/^colou?r_?rush$/, 'color_rush');
-    if (ti === undefined || !UNIFORM_KINDS.includes(kind)) { skipped.push(`row ${i + 2}: team "${r.team}" / kind "${r.kind}" (${UNIFORM_KINDS.join(', ')})`); return; }
+    if (ti === undefined || !UNIFORM_KINDS.includes(kind)) { bad++; skipped.push(`row ${i + 2}: team "${raw.team}" / kind "${raw.kind}" (${UNIFORM_KINDS.join(', ')})`); return; }
     const u = {};
     for (const [col, key] of [['jersey', 'jersey'], ['pants', 'pants'], ['number', 'number'], ['number_outline', 'outline'], ['helmet', 'helmet'], ...EXTRA_COLS]) { const v = hex(r[col]); if (v) u[key] = v; }
     if (/^none$/i.test(r.helmet_stripe || '')) u.stripe = 'none';
+    // Design columns: fonts (ids from design.js) and the four patch slots.
+    for (const [col, key] of FONT_COLS) {
+      if (!r[col]) continue;
+      const f = fontOf(r[col]);
+      if (f) u[key] = f.id; else skipped.push(`row ${i + 2}: unknown ${col} "${r[col]}" (allowed: ${fontList()})`);
+    }
+    for (const slot of PATCH_SLOTS) {
+      if (!r[slot]) continue;
+      const p = parsePatch(r[slot]);
+      if (p?.error) skipped.push(`row ${i + 2}: ${slot}: ${p.error}`);
+      else if (p) (u.patches ||= {})[slot] = p;
+    }
     ((teams[ti].uniforms ||= {})[kind] = u);
   });
-  return { count: rows.length - skipped.length, skipped };
+  return { count: rows.length - bad, skipped };
 }
+const FONT_COLS = [['number_font', 'numberFont'], ['name_font', 'nameFont'], ['patch_font', 'patchFont']];
 // Optional uniform-creator columns (written only when some team uses them, so plain sheets keep their columns).
 const EXTRA_COLS = [['sleeves', 'sleeves'], ['shoulders', 'shoulders'], ['helmet_stripe', 'stripe'], ['facemask', 'facemask'], ['socks', 'socks'], ['gloves', 'gloves'], ['cleats', 'cleats']];
-export function exportUniforms(teams) {
+const DESIGN_COLS = [...FONT_COLS.map(([c]) => c), ...PATCH_SLOTS];
+/** opts.designColumns: always write the font / patch columns (the league book does, so a guide-reading AI sees them). */
+export function exportUniforms(teams, { designColumns = false } = {}) {
   const out = [];
-  let extras = false;
+  let extras = false, design = designColumns;
   for (const t of teams) for (const kind of UNIFORM_KINDS) {
     const u = uniformFor(t, kind);
     const row = { team: t.abbr, kind, jersey: u.jersey, pants: u.pants, number: u.number, number_outline: u.outline, helmet: u.helmet };
     for (const [col, key] of EXTRA_COLS) if (u[key]) { row[col] = u[key]; extras = true; }
+    for (const [col, key] of FONT_COLS) if (u[key]) { row[col] = u[key]; design = true; }
+    for (const slot of PATCH_SLOTS) if (u.patches?.[slot]) { row[slot] = patchCell(u.patches[slot]); design = true; }
     out.push(row);
   }
-  return toCSV(out, ['team', 'kind', 'jersey', 'pants', 'number', 'number_outline', 'helmet', ...(extras ? EXTRA_COLS.map(([c]) => c) : [])]);
+  return toCSV(out, ['team', 'kind', 'jersey', 'pants', 'number', 'number_outline', 'helmet', ...(extras || designColumns ? EXTRA_COLS.map(([c]) => c) : []), ...(design ? DESIGN_COLS : [])]);
 }
 
 /** Stadiums: per team, plus neutral sites (league.sites: championship venues by year, international venues). */
+/** End zone design columns: spreadsheet name → saved key. */
+const EZ_TEXT = [['endzone_text_left', 'ezLeft'], ['endzone_text_right', 'ezRight']];
+const EZ_COLORS = [['endzone_color', 'ezColor'], ['endzone_color2', 'ezColor2'], ['endzone_text_color', 'ezText'], ['endzone_outline_color', 'ezOutline']];
 export function importStadiums(teams, rows, league = {}) {
   const idx = byAbbr(teams), skipped = [];
+  let bad = 0;
   league.sites ||= { championship: {}, international: [] };
-  rows.forEach((r, i) => {
+  rows.forEach((raw, i) => {
+    const r = lowerRow(raw);
     const st = { name: r.name, city: r.city || '', capacity: num(r.capacity), roof: (r.roof || 'open').toLowerCase(), surface: r.surface || '' };
     // Stadium creator columns (optional): turf color, end zone style, midfield logo, seat color.
-    if (r.turf) st.turf = r.turf.toLowerCase();
-    if (r.endzone) st.endzone = r.endzone.toLowerCase();
+    if (r.turf) { const t = r.turf.toLowerCase(); if (TURF_STYLES.includes(t)) st.turf = t; else skipped.push(`row ${i + 2}: unknown turf "${r.turf}" (${TURF_STYLES.join(', ')})`); }
+    if (r.endzone) { const e = r.endzone.toLowerCase().replace(/[\s-]+/g, '_'); if (ENDZONE_STYLES[e]) st.endzone = e; else skipped.push(`row ${i + 2}: unknown endzone style "${r.endzone}" (${Object.keys(ENDZONE_STYLES).join(', ')})`); }
     if (r.mid_logo) st.midLogo = !/^(n|no|off|0|false)$/i.test(r.mid_logo);
     if (hex(r.seats)) st.seats = hex(r.seats);
-    if (!st.name) { skipped.push(`row ${i + 2}: no stadium name`); return; }
+    // End zone design: colors, lettering font and words, the logos beside the words, the yard-number font.
+    for (const [col, key] of EZ_COLORS) { const v = hex(r[col]); if (v) st[key] = v; else if (r[col]) skipped.push(`row ${i + 2}: ${col} must be a hex color, got "${r[col]}"`); }
+    for (const [col, key] of EZ_TEXT) if (r[col]) st[key] = r[col] === '_' ? '' : r[col];
+    for (const [col, key] of [['endzone_font', 'ezFont'], ['yard_font', 'yardFont']]) {
+      if (!r[col]) continue;
+      const f = fontOf(r[col]);
+      if (f) st[key] = f.id; else skipped.push(`row ${i + 2}: unknown ${col} "${r[col]}" (allowed: ${fontList()})`);
+    }
+    for (const [col, key] of [['endzone_logo_left', 'ezLogoLeft'], ['endzone_logo_right', 'ezLogoRight']]) {
+      if (!r[col]) continue;
+      const v = r[col].toLowerCase();
+      if (ENDZONE_LOGOS.includes(v)) st[key] = v; else skipped.push(`row ${i + 2}: ${col} must be ${ENDZONE_LOGOS.join(', ')}, got "${r[col]}"`);
+    }
+    if (!st.name) { bad++; skipped.push(`row ${i + 2}: no stadium name`); return; }
     const kind = (r.kind || '').toLowerCase();
     if (r.team && kind !== 'championship' && kind !== 'international') {
       const ti = idx.get(r.team.toUpperCase());
-      if (ti === undefined) { skipped.push(`row ${i + 2}: unknown team "${r.team}"`); return; }
+      if (ti === undefined) { bad++; skipped.push(`row ${i + 2}: unknown team "${r.team}"`); return; }
       teams[ti].stadium = st;
     } else if (kind === 'international') league.sites.international.push({ city: st.city, stadium: st.name });
     else league.sites.championship[r.year || 'any'] = { ...st, stadium: st.name };
   });
-  return { count: rows.length - skipped.length, skipped, sites: league.sites };
+  return { count: rows.length - bad, skipped, sites: league.sites };
 }
-export function exportStadiums(teams, sites = null) {
-  const out = teams.map((t) => ({ team: t.abbr, name: t.stadium?.name || `${t.city} Stadium`, city: t.stadium?.city || t.city, capacity: t.stadium?.capacity ?? '', roof: t.stadium?.roof || 'open', surface: t.stadium?.surface || '', kind: 'home', year: '',
-    turf: t.stadium?.turf || '', endzone: t.stadium?.endzone || '', mid_logo: t.stadium?.midLogo === false ? 'off' : t.stadium?.midLogo ? 'on' : '', seats: t.stadium?.seats || '' }));
-  const extra = out.some((o) => o.turf || o.endzone || o.mid_logo || o.seats);
+const EZ_COLS = ['endzone_color', 'endzone_color2', 'endzone_text_color', 'endzone_outline_color', 'endzone_font', 'endzone_text_left', 'endzone_text_right', 'endzone_logo_left', 'endzone_logo_right', 'yard_font'];
+export function exportStadiums(teams, sites = null, { designColumns = false } = {}) {
+  const out = teams.map((t) => {
+    const sd = t.stadium || {};
+    return { team: t.abbr, name: sd.name || `${t.city} Stadium`, city: sd.city || t.city, capacity: sd.capacity ?? '', roof: sd.roof || 'open', surface: sd.surface || '', kind: 'home', year: '',
+      turf: sd.turf || '', endzone: sd.endzone || '', mid_logo: sd.midLogo === false ? 'off' : sd.midLogo ? 'on' : '', seats: sd.seats || '',
+      endzone_color: sd.ezColor || '', endzone_color2: sd.ezColor2 || '', endzone_text_color: sd.ezText || '', endzone_outline_color: sd.ezOutline || '', endzone_font: sd.ezFont || '',
+      endzone_text_left: sd.ezLeft === '' ? '_' : sd.ezLeft || '', endzone_text_right: sd.ezRight === '' ? '_' : sd.ezRight || '', endzone_logo_left: sd.ezLogoLeft || '', endzone_logo_right: sd.ezLogoRight || '', yard_font: sd.yardFont || '' };
+  });
+  const extra = designColumns || out.some((o) => o.turf || o.endzone || o.mid_logo || o.seats);
+  const ezUsed = designColumns || out.some((o) => EZ_COLS.some((c) => o[c]));
   for (const [year, s] of Object.entries(sites?.championship || {})) out.push({ team: '', name: s.name || s.stadium, city: s.city, capacity: s.capacity ?? '', roof: s.roof || '', surface: '', kind: 'championship', year: year === 'any' ? '' : year });
   for (const s of sites?.international || []) out.push({ team: '', name: s.stadium, city: s.city, capacity: '', roof: '', surface: '', kind: 'international', year: '' });
-  return toCSV(out, ['team', 'name', 'city', 'capacity', 'roof', 'surface', 'kind', 'year', ...(extra ? ['turf', 'endzone', 'mid_logo', 'seats'] : [])]);
+  return toCSV(out, ['team', 'name', 'city', 'capacity', 'roof', 'surface', 'kind', 'year', ...(extra ? ['turf', 'endzone', 'mid_logo', 'seats'] : []), ...(ezUsed ? EZ_COLS : [])]);
 }
 
 /** "20:20" → "8:20 PM" (a 12-hour time like "1:00 PM" is kept as it is). */

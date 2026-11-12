@@ -8,6 +8,8 @@ import { CONFERENCES } from './teams.js';
 
 /** Parse CSV text into an array of objects keyed by the header row. Handles quoted fields. */
 export function parseCSV(text) {
+  // Comment lines (first non-blank character #) are dropped: league books carry guide text; a hex color is never first on a row.
+  if (text.includes('#')) text = text.split(/\r?\n/).filter((l) => !/^\s*"?#/.test(l)).join('\n');
   const rows = [];
   let row = [], field = '', q = false;
   for (let i = 0; i < text.length; i++) {

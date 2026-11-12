@@ -18,8 +18,9 @@ import { RATINGS } from './positions.js';
 import { LEAGUE } from './leagueInfo.js';
 import { CONFERENCES } from './teams.js';
 import { PLAYOFF_ROUND_NAMES } from '../franchise/season.js';
+import { guideLines } from './design.js';
 
-export const BOOK_SECTIONS = ['LEAGUE', 'TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE'];
+export const BOOK_SECTIONS = ['README', 'LEAGUE', 'TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE'];
 const MARK = /^\s*"?\[([A-Za-z_ ]+)\]"?\s*(,.*)?$/;
 const norm = (s) => s.trim().toUpperCase().replace(/\s+/g, '_').replace(/^RETIRED$/, 'RETIRED_NUMBERS').replace(/^FREEAGENTS$/, 'FREE_AGENTS');
 
@@ -36,6 +37,7 @@ export function splitLeagueBook(text) {
     const m = MARK.exec(line);
     if (m) { cur = norm(m[1]); out[cur] = ''; continue; }
     if (cur === null) continue;
+    if (/^\s*"?#/.test(line)) continue; // comment rows
     if (!line.replace(/[,\s"]/g, '')) continue; // blank rows (or rows of nothing but commas) between sections
     out[cur] += line + '\n';
   }
@@ -51,13 +53,14 @@ export function exportLeagueBook(teams, { playAs = null, sites = null, schedule 
   const faHead = ['team', 'first', 'last', 'pos', 'number', 'age', 'height', 'weight', 'college', ...RATINGS.map((r) => r[1]), 'face', 'skin'];
   const fa = toCSV(freeAgents?.length ? parseCSV(exportRosterCSV([{ abbr: 'FA', roster: freeAgents }])) : [], faHead);
   const sec = {
+    README: guideLines().map((l) => `"${l.replace(/"/g, '""')}"`).join('\n') + '\n', // one quoted cell per line, ignored on import
     LEAGUE: exportLeagueSection(),
     TEAMS: exportTeamsCSV(teams, playAs),
     ROSTER: exportRosterCSV(teams),
     DEPTH: exportDepthCSV(teams),
     COACHES: exportCoaches(teams),
-    UNIFORMS: exportUniforms(teams),
-    STADIUMS: exportStadiums(teams, sites),
+    UNIFORMS: exportUniforms(teams, { designColumns: true }),
+    STADIUMS: exportStadiums(teams, sites, { designColumns: true }),
     RETIRED_NUMBERS: exportRetired(teams),
     FREE_AGENTS: fa,
     SCHEDULE: schedule ? exportSchedule(teams, schedule) : toCSV([], ['week', 'away', 'home', 'day', 'date', 'time']),

@@ -99,7 +99,7 @@ describe('league book (one spreadsheet)', () => {
     a[2].retired = [{ number: 12, player: 'Old Star' }];
     const text = exportLeagueBook(a, { playAs: 4 });
     expect(isLeagueBook(text)).toBe(true);
-    expect(Object.keys(splitLeagueBook(text))).toEqual(['LEAGUE', 'TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE']);
+    expect(Object.keys(splitLeagueBook(text))).toEqual(['README', 'LEAGUE', 'TEAMS', 'ROSTER', 'DEPTH', 'COACHES', 'UNIFORMS', 'STADIUMS', 'RETIRED_NUMBERS', 'FREE_AGENTS', 'SCHEDULE']);
     // Spreadsheet apps pad marker rows with commas and add blank rows: still fine.
     const padded = text.replace(/^\[(\w+)\]$/gm, '[$1],,,,').replace(/\n\[/g, '\n,,,\n[');
     const b = generateLeagueRosters(defaultTeams(), 99);

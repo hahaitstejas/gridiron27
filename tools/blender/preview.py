@@ -24,7 +24,7 @@ def shape(i, bulk, pad):
     q = [x + BK[3*i]*bulk + PD[3*i]*pad, y + BK[3*i+1]*bulk + PD[3*i+1]*pad, z + BK[3*i+2]*bulk + PD[3*i+2]*pad]
     tt = lw * smooth(0.32, 0.6, y)
     cx = 0.105 * max(-1, min(1, q[0] / 0.05))
-    q[0] = cx + (q[0] - cx) * (1 - 0.15 * tt)
+    q[0] = cx + (q[0] - cx) * (1 - 0.2 * tt)
     q[2] = (-0.03 + (q[2] + 0.03) * (1 - 0.4 * tt)) if q[2] < -0.03 else q[2] * (1 - 0.08 * tt)
     return q
 bpy.ops.wm.read_factory_settings(use_empty=True)

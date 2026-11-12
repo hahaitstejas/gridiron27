@@ -220,7 +220,7 @@ vec3 buildPos(vec3 p) {
     vec3 q = p + aBulkD * fl.y + aPadD * fl.z;
     float t = lower * smoothstep(0.32, 0.6, p.y);
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
-    q.x = cx + (q.x - cx) * (1.0 - 0.15 * t);
+    q.x = cx + (q.x - cx) * (1.0 - 0.2 * t);
     q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.4 * t) : q.z * (1.0 - 0.08 * t);
     return q;
   }
@@ -386,10 +386,18 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           float ang = atan(vBindN.z, vBindN.x);
           float hip = smoothstep(uRegY.w + 0.45, uRegY.w + 0.7, fy);
           float knee = smoothstep(0.1, 0.0, abs(fy - uRegY.w - 0.07));
-          gFold = 0.4 * hip * sin(fy * 45.0 + ang * 6.0 + nz * 3.0) + 0.5 * knee * sin(fy * 130.0 + nz * 5.0);
+          gFold = 0.35 * hip * sin(fy * 45.0 + ang * 6.0 + nz * 3.0) + 0.3 * knee * sin(fy * 95.0 + ang * 2.0 + nz * 5.0);
         }
       }
       col *= 1.0 + 0.12 * gFold; // creases read darker, ridges lighter
+      // Cleats: a dark molded sole and a welt line, a darker heel counter and toe so the foot reads as a shoe.
+      if (region == 8) {
+        float sy = vBindY;
+        vec3 sn = normalize(vBindN);
+        if (sy < 0.034) col = mix(col, vec3(0.05), 0.85);
+        else if (sy < 0.042) col *= 0.55;
+        col *= 1.0 - 0.25 * smoothstep(0.4, 0.9, -sn.z) - 0.15 * smoothstep(0.5, 0.95, sn.z) * step(sy, 0.06);
+      }
       // No photo: a painted face (eyes, brows, nose, mouth, and stubble or a beard on some players), so the helmet opening isn't a blank mask.
       if (region == 5 && vBody.y > 5.0 && flg.w < 0.5) {
         vec2 st = vec2(vBody.x, vBody.y - 10.0);

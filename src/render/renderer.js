@@ -6,6 +6,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { PlayArtOverlay } from './playArt.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import envUrl from '../assets/env/hochsal_field_1k.hdr?url'; // CC0, Poly Haven (see src/assets/CREDITS.md)
 import { buildStadium } from './stadium.js';
 import { PlayerRenderer } from './players.js';
 import { CameraRig } from './camera.js';
@@ -66,6 +68,15 @@ export class GameRenderer {
     this.stadium = buildStadium(r, home, away);
     scene.add(this.stadium.group);
     this.players = new PlayerRenderer(scene, envMap);
+    // Image-based light for the players: a real outdoor sky / grass / sun environment (CC0 HDRI) replaces the studio room once
+    // it loads, so uniforms, skin and helmets pick up believable sky fill, green bounce from the turf and sun reflections.
+    new HDRLoader().load(envUrl, (tex) => {
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      const pm = new THREE.PMREMGenerator(r);
+      const env = pm.fromEquirectangular(tex).texture;
+      pm.dispose(); tex.dispose();
+      this.players.setEnvMap(env);
+    }, undefined, () => { /* keep the studio room if the file is missing */ });
     this.presentation = new Presentation(); // only the players use it (scene.environment would light the whole stadium)
     this.lines = new FieldLines(scene);
     this.precip = new Precipitation(scene);

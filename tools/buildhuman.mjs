@@ -367,6 +367,36 @@ const FILL = false;
 function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); }
 
 
+// ---------- cleats: the base mesh foot is bare (toes); smooth it into a shoe and give it a sole ----------
+{
+  const nb = A.map(() => new Set());
+  for (const [a, b, c] of faces) { nb[a].add(b); nb[a].add(c); nb[b].add(a); nb[b].add(c); nb[c].add(a); nb[c].add(b); }
+  const foot = ids.filter((i) => region[i] === REGION.shoe);
+  const inFoot = new Set(foot);
+  let P = A.map((p) => [...p]);
+  for (let it = 0; it < 40; it++) for (const lam of [0.5, -0.53]) {
+    const Q = P.map((p) => [...p]);
+    for (const i of foot) {
+      const n = [...nb[i]].filter((j) => inFoot.has(j) || A[j][1] > A[i][1]);
+      if (!n.length) continue;
+      const m = [0, 0, 0];
+      for (const j of n) { m[0] += P[j][0]; m[1] += P[j][1]; m[2] += P[j][2]; }
+      for (let k = 0; k < 3; k++) Q[i][k] = P[i][k] + lam * (m[k] / n.length - P[i][k]);
+    }
+    P = Q;
+  }
+  for (const i of foot) {
+    const top = smooth01((A[i][1] - (ankleY - 0.02)) / 0.05); // blend back to the ankle so the sock join stays put
+    const d = mul(sub(P[i], A[i]), 1 - top);
+    if (A[i][1] < 0.03) d[1] = Math.min(d[1], 0); // keep the sole on the ground
+    // A molded sole sticks out a little all round.
+    const sole = A[i][1] < 0.035 ? 0.006 : 0;
+    const r = Math.hypot(A[i][0] - Math.sign(A[i][0]) * Bk.hipX, A[i][2] - 0.05) || 1;
+    d[0] += sole * (A[i][0] - Math.sign(A[i][0]) * Bk.hipX) / r; d[2] += sole * (A[i][2] - 0.05) / r;
+    pad[i] = add(pad[i], mul(d, 1 / 1.3));
+  }
+}
+
 // ---------- athletic base for every build: muscle where it is (biceps, deltoids, forearms, quads, calves), a V-taper ----------
 // Added to the pad delta (always on, scaled with the pads), then the clothing offsets go on top.
 {
@@ -396,17 +426,17 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
       const cx = side * Bk.hipX;
       if (y > kneeY + 0.02) {
         const t = (y - kneeY) / (hipH - 0.05 - kneeY);
-        d = radial(p, cx, 0, 0.034 * bump(0.02 + t * 0.95) * (0.7 + 0.5 * t), 1.35);
+        d = radial(p, cx, 0, 0.016 * bump(0.02 + t * 0.95) * (0.7 + 0.5 * t), 1.5); // quads (front) more than the sides: athletic, not bulky
       } else if (y > ankleY + 0.05) {
         const t = (y - ankleY) / (kneeY - ankleY);
-        const r = radial(p, cx, 0, 0.024 * bump(0.25 + t * 0.7), 1.0);
+        const r = radial(p, cx, 0, 0.012 * bump(0.25 + t * 0.7), 1.0);
         const back = p[2] < 0 ? 1.6 : 0.7;               // the calf bulges behind
         d = [r[0] * back, 0, r[2] * back];
       }
     } else if (legW > 0.3 && y >= hipH - 0.05 && y < hipH + 0.12 && region[i] === REGION.pants) {
       // Hip pads: a bulge over the hip bone on each side, under the pants.
       const hb = bump((y - (hipH - 0.05)) / 0.17) * smooth01((Math.abs(p[0]) - 0.1) / 0.08);
-      d = [side * 0.026 * hb, 0, 0];
+      d = [side * 0.012 * hb, 0, 0];
     } else if (!armW && !foreW && !legW) {
       // Trunk: sloped traps, a V-taper (lats wide, waist narrow), broad upper back.
       const ux = p[0] === 0 ? 0 : Math.sign(p[0]);

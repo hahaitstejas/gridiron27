@@ -585,7 +585,7 @@ export class PlayerRenderer {
       P.face.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, -0.04, 0.075)));
       const g = gearOf(p);
       P.visor.setMatrixAt(i, g.visor ? cl(hg2).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
-      P.towel.setMatrixAt(i, g.towel ? cl(hips).multiply(trans(-0.07, 0.03, 0.15 * wide)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
+      P.towel.setMatrixAt(i, g.towel ? cl(hips).multiply(trans(-0.12, 0.05, 0.1 * wide)).multiply(rotY(-0.5)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
       P.decal.setMatrixAt(i * 2, cl(hg2).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
       P.decal.setMatrixAt(i * 2 + 1, cl(hg2).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
@@ -619,6 +619,15 @@ export class PlayerRenderer {
   }
 
   /** Write bone b of instance i: the posed frame times the inverse bind (a translation back to the origin). */
+  /** Swap the players' environment map (renderer.js loads an HDRI after start-up). */
+  setEnvMap(env) {
+    this.envMap = env;
+    for (const mesh of Object.values(this.parts)) {
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const m of mats) if (m && 'envMap' in m) { m.envMap = env; m.needsUpdate = true; }
+    }
+  }
+
   bone(i, b, m, w) {
     const o = bindOrigin(b, w, this._v);
     const k = this._s.copy(m).multiply(this._t.makeTranslation(-o.x, -o.y, -o.z)).elements;

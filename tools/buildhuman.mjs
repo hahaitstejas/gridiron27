@@ -695,6 +695,21 @@ const src = keep.map((k) => ids[k]);
 const lodPos = new Float32Array(keep.length * 3);
 keep.forEach((k, n) => lodPos.set(pos.subarray(k * 3, k * 3 + 3), n * 3));
 const [lodSimp, lodErr] = MeshoptSimplifier.simplify(new Uint32Array(outIdx), lodPos, 3, Math.floor(outIdx.length * 0.3 / 3) * 3, 0.08, ['LockBorder']);
+// The jersey shell (render/players.js `parts.shell`): a second draw of the torso and upper-arm triangles, pushed out by the
+// cloth thickness in the vertex shader and cut to the real jersey zones per pixel, so the cloth is a layer over the body
+// (the arm shows inside the sleeve, the hem and the neck have a visible edge).
+const shellIdx = [];
+for (let t = 0; t < outIdx.length; t += 3) {
+  let ok = true;
+  for (let q = 0; q < 3 && ok; q++) {
+    const v = src[outIdx[t + q]], y = A[v][1];
+    if (part[v] === 0) ok = y > Bk.waistY - 0.12 && y < Bk.collarY + 0.02;
+    else if (part[v] === 1) ok = y > Bk.sleeveY - 0.1;
+    else ok = false;
+  }
+  if (ok) shellIdx.push(outIdx[t], outIdx[t + 1], outIdx[t + 2]);
+}
+console.log(`shell: ${shellIdx.length / 3} triangles`);
 console.log(`lod: ${lodSimp.length / 3} triangles (error ${lodErr.toFixed(4)})`);
 console.log(`vertices ${ids.length} → ${src.length}, triangles ${index.length / 3} → ${outIdx.length / 3} (error ${err.toFixed(4)})`);
 
@@ -717,6 +732,7 @@ const out = {
   body: f32(src.flatMap((i) => body[i])),
   index: u16(outIdx),
   lodIndex: u16(Array.from(lodSimp)),
+  shellIndex: u16(shellIdx),
   decals: { count: decal.pos.length / 3, position: f32(decal.pos), bulk: f32(decal.bulk), pad: f32(decal.pad), skinIndex: u8(decal.si),
     skinWeight: f32(decal.sw), uv: f32(decal.uv), kind: u8(decal.kind), index: u16(decal.idx) },
 };

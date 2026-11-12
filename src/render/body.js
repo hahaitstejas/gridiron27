@@ -204,13 +204,15 @@ varying vec2 vBody;
 flat varying float vPart;
 varying float vBindY;
 varying vec3 vBindN;
+uniform float uShell; // > 0: this mesh is the jersey shell (or a print on it): pushed out by the cloth thickness x uShell
+uniform vec4 uRegY;
 uniform int uRowOff; // the first bone-texture row this mesh draws (the sideline LOD mesh starts after the main players)
 mat4 boneMat(int b) {
   int c = b * 4;
   return mat4(texelFetch(boneTex, ivec2(c, gl_InstanceID + uRowOff), 0), texelFetch(boneTex, ivec2(c + 1, gl_InstanceID + uRowOff), 0),
               texelFetch(boneTex, ivec2(c + 2, gl_InstanceID + uRowOff), 0), texelFetch(boneTex, ivec2(c + 3, gl_InstanceID + uRowOff), 0));
 }
-vec3 buildPos(vec3 p) {
+vec3 buildPos(vec3 p, vec3 nrm) {
   vec4 prm = texelFetch(boneTex, ivec2(${COL_PARAMS}, gl_InstanceID + uRowOff), 0); // width, limb, chest depth
   if (aKind < 0.5) { float pad = mix(1.0, prm.w, smoothstep(1.38, 1.56, p.y)); return vec3(p.x * prm.x * pad, p.y, p.z * prm.z); }
   if (aKind < 1.5) { vec3 ax = vec3(aAxis.x * prm.x, aAxis.y, aAxis.z); return ax + (p - aAxis) * vec3(prm.y, 1.0, prm.y); }
@@ -225,6 +227,13 @@ vec3 buildPos(vec3 p) {
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
     q.x = cx + (q.x - cx) * (1.0 - 0.3 * t);
     q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.4 * t) : q.z * (1.0 - 0.08 * t);
+    if (uShell > 0.0) {
+      // Cloth is a layer, not skin: a centimetre or so over the pads and body, looser toward the hem and at the sleeve ends.
+      float cl = 0.0;
+      if (aPart < 0.5) cl = 0.009 + 0.017 * smoothstep(uRegY.x + 0.3, uRegY.x - 0.04, p.y);
+      else if (aPart < 1.5) cl = 0.010 + 0.009 * smoothstep(uRegY.y + 0.18, uRegY.y - 0.02, p.y);
+      q += normalize(nrm) * cl * uShell;
+    }
     return q;
   }
   return vec3(p.x * prm.x, p.y, p.z * prm.x);
@@ -232,12 +241,14 @@ vec3 buildPos(vec3 p) {
 mat4 skinMat() { return boneMat(int(aIdx.x)) * aWt.x + boneMat(int(aIdx.y)) * aWt.y + boneMat(int(aIdx.z)) * aWt.z + boneMat(int(aIdx.w)) * aWt.w; }
 `;
 
-function patchVertex(sh, normals = true, rowOff = null) {
+function patchVertex(sh, normals = true, rowOff = null, shell = null) {
   sh.uniforms.boneTex = BODY_UNIFORMS.boneTex;
+  sh.uniforms.uShell = shell || { value: 0 };
+  sh.uniforms.uRegY = BODY_UNIFORMS.regionY;
   sh.uniforms.uRowOff = rowOff || { value: 0 };
   let v = VERT_HEAD + 'mat4 gSk;\n' + sh.vertexShader;
   if (normals) v = v.replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\ngSk = skinMat();\nobjectNormal = normalize(mat3(gSk) * objectNormal);');
-  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID + uRowOff); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;${normals ? ' vBindN = normal;' : ''}`);
+  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position, normal), 1.0)).xyz;\nvInst = float(gl_InstanceID + uRowOff); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;${normals ? ' vBindN = normal;' : ''}`);
   sh.vertexShader = v;
 }
 
@@ -245,15 +256,18 @@ export const BODY_UNIFORMS = { numTex2: { value: null }, patchTex: { value: null
   regionY: { value: new THREE.Vector4(1.156, 1.531, 1.113, 0.488) }, shoeY: { value: 0.109 }, collarY: { value: 1.79 }, decals: { value: 0 } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
-export function bodyMaterial(envMap, fabric, rowOff = { value: 0 }) {
+/** opts.shell: draw as the jersey shell (cloth thickness, cut to the jersey zones); opts.under: the plain body hides its jersey zones behind a dark undershirt layer. */
+export function bodyMaterial(envMap, fabric, rowOff = { value: 0 }, opts = {}) {
+  const uShell = { value: opts.shell || 0 }, uUnder = { value: opts.under ? 1 : 0 };
   const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.22,
     sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
   m.onBeforeCompile = (sh) => {
-    patchVertex(sh, true, rowOff);
+    patchVertex(sh, true, rowOff, uShell);
+    sh.uniforms.uUnder = uUnder;
     sh.uniforms.foldTex = BODY_UNIFORMS.foldTex; sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
     sh.uniforms.uRegY = BODY_UNIFORMS.regionY; sh.uniforms.uShoeY = BODY_UNIFORMS.shoeY; sh.uniforms.uCollarY = BODY_UNIFORMS.collarY; sh.uniforms.uDecals = BODY_UNIFORMS.decals;
     sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform sampler2D foldTex; uniform float uSweat;
-uniform vec4 uRegY; uniform float uShoeY; uniform float uCollarY; uniform float uDecals;
+uniform vec4 uRegY; uniform float uShoeY; uniform float uCollarY; uniform float uDecals; uniform float uShell; uniform float uUnder;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
 float vh(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -273,7 +287,13 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
         else if (part == 2) { region = y > uRegY.w ? 2 : (y > uShoeY ? 4 : 8); float d = uRegY.w - y; band = region == 4 && ((d > 0.05 && d < 0.066) || (d > 0.08 && d < 0.096)); }
         else region = y > uCollarY - 0.03 ? 5 : 0; // the head part's lowest ring is the collar
       }
+      // Layers: the shell is only the jersey and sleeves (cut per pixel at the real hem, cuff and neck); the plain body hides
+      // those zones behind a dark undershirt, so the arm shows inside the sleeve and a gap at the hem reads as depth.
+      bool underLayer = false;
+      if (uShell > 0.5) { if (region != 0 && region != 1) discard; }
+      else if (uUnder > 0.5 && (region == 0 || region == 1)) { underLayer = true; region = 6; }
       vec3 col = tex(${COL_COLORS} + region).rgb;
+      if (underLayer) col *= 0.5;
       // Sleeve and sock stripes in the trim color (the pants stripe's), when it differs from the base.
       if (band) { vec3 tc = tex(${COL_COLORS} + 3).rgb; if (distance(tc, col) > 0.08) col = tc; }
       if (vPart > -0.5) {
@@ -458,6 +478,7 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           col = mix(col, col * vec3(1.1, 0.85, 0.82), smoothstep(0.05, 0.0, length((fs - vec2(0.5, 0.4)) * vec2(1.0, 1.4))) * 0.3 * fmask);
         }
       }
+      if (uShell > 0.5 && !gl_FrontFacing) col *= 0.45; // the inside of the cloth
       diffuseColor.rgb = col;`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
       roughnessFactor = region == 5 ? 0.5 - uSweat * 0.22 : region == 7 ? 0.55 : region == 8 ? 0.35 : region == 2 || region == 3 ? 0.62 : 0.78 - uSweat * 0.08;`)
@@ -486,10 +507,11 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
 }
 
 /** Shadow-pass material with the same skinning (otherwise shadows would be the bind pose). */
-export function bodyDepthMaterial(rowOff = { value: 0 }) {
+export function bodyDepthMaterial(rowOff = { value: 0 }, shell = 0) {
+  const uShell = { value: shell };
   const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   m.onBeforeCompile = (sh) => {
-    patchVertex(sh, false, rowOff);
+    patchVertex(sh, false, rowOff, uShell);
     sh.fragmentShader = 'flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;\n' + sh.fragmentShader;
   };
   return m;
@@ -543,6 +565,16 @@ export function buildHumanGeometry(h) {
   return g;
 }
 
+/** The jersey shell: the same vertices and attributes as the body with only the torso / upper-arm triangles (`shellIndex`). */
+export function buildHumanShellGeometry(full, h) {
+  const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const g = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(full.attributes)) g.setAttribute(name, attr);
+  g.setIndex(new THREE.BufferAttribute(dec(h.shellIndex, Uint16Array), 1));
+  g.boundingSphere = full.boundingSphere;
+  return g;
+}
+
 /** The sideline LOD: the same vertices and attributes as the full body with the much lighter index buffer (`lodIndex`). */
 export function buildHumanLodGeometry(full, h) {
   const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
@@ -567,7 +599,8 @@ export function buildDecalGeometry(h) {
   g.setAttribute('aBody', new THREE.BufferAttribute(dec(d.uv, Float32Array), 2));
   g.setAttribute('aKind', new THREE.BufferAttribute(new Float32Array(n).fill(5), 1));
   g.setAttribute('aAxis', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-  g.setAttribute('aPart', new THREE.BufferAttribute(new Float32Array(n).fill(-1), 1));
+  // aPart: the prints ride on the jersey shell's layer (0 torso, 1 sleeve: kinds 5 / 6), so they get the same cloth offset.
+  g.setAttribute('aPart', new THREE.BufferAttribute(Float32Array.from(dec(d.kind, Uint8Array), (k) => (k === 5 || k === 6 ? 1 : 0)), 1));
   g.setIndex(new THREE.BufferAttribute(dec(d.index, Uint16Array), 1));
   g.computeVertexNormals();
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
@@ -578,11 +611,12 @@ export function buildDecalGeometry(h) {
  * Lettering material: the instance's number (filled in its number color, outlined in the trim color like a twill
  * number) or its name, with soft anti-aliased edges; everything else on the patch is transparent.
  */
-export function decalMaterial(envMap) {
+export function decalMaterial(envMap, shellK = 0) {
+  const uShell = { value: shellK };
   const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.55, metalness: 0, envMap, envMapIntensity: 0.3, transparent: true,
     depthWrite: false, side: THREE.FrontSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -40 });
   m.onBeforeCompile = (sh) => {
-    patchVertex(sh);
+    patchVertex(sh, true, null, uShell);
     sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.numTex2 = BODY_UNIFORMS.numTex2; sh.uniforms.patchTex = BODY_UNIFORMS.patchTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows;
     sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D numTex2; uniform sampler2D patchTex; uniform sampler2D nameTex; uniform float nameRows;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;

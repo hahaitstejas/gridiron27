@@ -26,7 +26,7 @@ await pg.evaluate((view) => {
   qb.x = qb.px = 0; qb.z = qb.pz = 20; qb.vx = qb.vz = 0; qb.facing = qb.pfacing = 0; qb.anim = 'idle'; qb.animT = 0.25; qb.state = 'active'; qb.task = null;
   sim.ball.x = 70;
   const r = __g27.renderer.rig;
-  const cams = { front: [[2.6, 1.45, 20], [0, 1.4, 20]], back: [[-2.6, 1.45, 20], [0, 1.4, 20]], left: [[0, 1.45, 22.6], [0, 1.4, 20]], right: [[0, 1.45, 17.4], [0, 1.4, 20]] };
+  const cams = { close: [[1.7, 1.55, 20], [0, 1.5, 20]], q3: [[2.0, 1.5, 21.4], [0, 1.4, 20]], full: [[5.2, 1.15, 20], [0, 1.0, 20]], fullback: [[-5.2, 1.15, 20], [0, 1.0, 20]], fullside: [[0, 1.15, 25.2], [0, 1.0, 20]], front: [[2.6, 1.45, 20], [0, 1.4, 20]], back: [[-2.6, 1.45, 20], [0, 1.4, 20]], left: [[0, 1.45, 22.6], [0, 1.4, 20]], right: [[0, 1.45, 17.4], [0, 1.4, 20]] };
   const [p, l] = cams[view]; r.debug = { p, l }; r.pos.set(...p); r.look.set(...l);
 }, view);
 await pg.waitForTimeout(6000);

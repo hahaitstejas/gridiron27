@@ -395,6 +395,9 @@ Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest it
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
 menus or trade dress.
 
+### Cleats
+`src/assets/cleat.json` (tools/buildcleat.mjs, from the CC BY Sketchfab model) is a rigid shoe in foot-bone space (toe +z, sole at y = -0.079, `parts.shoe` right / `parts.shoeL` mirrored geometry); it covers the slightly smaller MakeHuman foot, colored by the team cleat color.
+
 ### Fonts
 Jersey numbers and name plates (number atlas + name canvas in `render/players.js`) use Oswald 700 / 600 (narrower block digits that fit the jersey, still very readable); everything else below is Saira Condensed.
 Saira Condensed everywhere (the user's pick): menus, HUD, scorebug and canvas text (field numbers, end zones, jerseys,

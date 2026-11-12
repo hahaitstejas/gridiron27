@@ -2,6 +2,7 @@ import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
+import cleatData from '../assets/cleat.json'; // one cleat's shape from a CC BY 4.0 Sketchfab model (see CREDITS.md), built by tools/buildcleat.mjs
 import helmetData from '../assets/helmet.json'; // CC0 helmet (BlendSwap, see src/assets/CREDITS.md), built by tools/blender/export_helmet.py
 import { Gait, setClips } from './gait.js';
 import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
@@ -115,7 +116,8 @@ export class PlayerRenderer {
     const helmetMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.22, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08, envMap, envMapIntensity: 0.9 });
     this.parts = {
       body: this.body,
-      shoe: part(cleatGeometry(), mat(0.45, 0, 0.8), MAX * 2),
+      shoe: part(cleatGeometry(false), mat(0.62, 0, 0.45), MAX), // right foot
+      shoeL: part(cleatGeometry(true), mat(0.62, 0, 0.45), MAX), // left foot (mirrored geometry: a negative-scale matrix would flip the faces)
       helmet: part(helmetPart(helmetData.shell, { color: true }), helmetMat, MAX),
       face: part(new THREE.SphereGeometry(0.085, 18, 14).scale(0.95, 1.15, 1), this.faceMaterial(mat(0.55)), MAX, false),
       stripe: part(helmetStripeGeometry(), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false), // only the officials' / coaches' cap brim uses it now
@@ -127,7 +129,7 @@ export class PlayerRenderer {
       towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
     };
     this.parts.face.geometry.setAttribute('aFace', this.faceAttr);
-    this.pairs = new Set([this.parts.decal, this.parts.shoe]);
+    this.pairs = new Set([this.parts.decal]);
     for (const p of Object.values(this.parts)) scene.add(p);
 
     // Contact shadows: a soft dark patch under every figure (grounds the feet; the sun shadow alone reads as floating).
@@ -361,7 +363,7 @@ export class PlayerRenderer {
       P.towel.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);
-        P.shoe.setColorAt(i * 2 + k, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
+        (k ? P.shoe : P.shoeL).setColorAt(i, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
       }
     });
     // Officials after the players: striped shirt, black pants, black cap (the referee wears white).
@@ -376,7 +378,7 @@ export class PlayerRenderer {
       flags(i, true, 0.15, 0);
       this.region(i, REGION.shoe, '#0e0e0e');
       P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap)); P.chin.setColorAt(i, c.set(cap));
-      for (let k = 0; k < 2; k++) P.shoe.setColorAt(i * 2 + k, c.set('#0e0e0e'));
+      for (let k = 0; k < 2; k++) (k ? P.shoe : P.shoeL).setColorAt(i, c.set('#0e0e0e'));
     }
     // Sideline players and coaches (Presentation.bench) after the officials.
     const base = sim.players.length + 7;
@@ -398,7 +400,7 @@ export class PlayerRenderer {
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
       P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333')); P.chin.setColorAt(i, c.set('#f2f2f2'));
-      for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); P.shoe.setColorAt(i * 2 + s2, c.set('#151515')); }
+      for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); (s2 ? P.shoe : P.shoeL).setColorAt(i, c.set('#151515')); }
     });
     for (let i = sim.players.length; i < MAX; i++) this.faceAttr.setX(i, 0);
     this.faceAttr.needsUpdate = true;
@@ -607,7 +609,7 @@ export class PlayerRenderer {
       this.bone(i, s ? BONE.hipR : BONE.hipL, hip, w);
       this.bone(i, s ? BONE.kneeR : BONE.kneeL, knee, w);
       this.bone(i, s ? BONE.footR : BONE.footL, foot, w);
-      P.shoe.setMatrixAt(i * 2 + s, this.human ? ZERO : foot); // the MakeHuman foot is the cleat (shoe region)
+      (s ? P.shoe : P.shoeL).setMatrixAt(i, foot); // covers the MakeHuman foot (shoe region), which is a touch smaller
     }
   }
 
@@ -1320,17 +1322,16 @@ function chinGeometry() {
 }
 
 /** A low-cut cleat: flat sole, rounded toe, higher heel counter (foot-bone space, toe toward +z). */
-function cleatGeometry() {
-  const g = new THREE.CapsuleGeometry(0.058, 0.19, 4, 10).rotateX(Math.PI / 2).scale(0.92, 0.62, 1);
-  const p = g.attributes.position;
-  for (let k = 0; k < p.count; k++) {
-    let y = p.getY(k), z = p.getZ(k);
-    if (y < -0.022) y = -0.03 - (y + 0.022) * 0.1; // flat sole
-    if (z < -0.06 && y > 0) y += (-0.06 - z) * 0.5; // heel counter
-    if (z > 0.08) y -= (z - 0.08) * 0.25 * (y > 0 ? 1 : 0); // toe drops
-    p.setY(k, y);
-  }
-  g.computeVertexNormals();
+function cleatGeometry(mirror) {
+  const b64 = (str, T) => { const bin = atob(str), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const pos = b64(cleatData.position, Float32Array), nor = b64(cleatData.normal, Float32Array), idx = b64(cleatData.index, Uint16Array);
+  const g = new THREE.BufferGeometry();
+  const sx = mirror ? -1 : 1;
+  for (let i = 0; i < pos.length; i += 3) { pos[i] *= sx; nor[i] *= sx; }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  if (mirror) for (let t = 0; t < idx.length; t += 3) { const q = idx[t + 1]; idx[t + 1] = idx[t + 2]; idx[t + 2] = q; } // keep the faces outward
+  g.setIndex(new THREE.BufferAttribute(idx, 1));
   return g;
 }
 

@@ -290,7 +290,7 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           float h = (y - uRegY.x) / max(0.01, uRegY.y - uRegY.x);
           float drape = sin(a * 9.0 + sin(a * 2.0) * 1.5) * 0.5 + 0.5;
           float tuck = (sin(y * 260.0 + sin(a * 5.0) * 2.0) * 0.5 + 0.5) * (1.0 - smoothstep(0.0, 0.22, h));
-          col *= 1.0 - 0.07 * drape * smoothstep(0.1, 0.5, 1.0 - h) - 0.12 * tuck;
+          if (abs(dFdx(vBody.x)) + abs(dFdy(vBody.x)) < 0.6) col *= 1.0 - 0.07 * drape * smoothstep(0.1, 0.5, 1.0 - h) - 0.12 * tuck; // not across the wrap seam
         }
         if (region == 2 && vPart > 1.5 && vPart < 2.5) {
           float k = max(0.0, 1.0 - abs(y - uRegY.w - 0.07) / 0.06);
@@ -382,10 +382,14 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           float tuck = sin(fy * 120.0 + fa * 3.0 + nz * 4.0);
           float fside = smoothstep(0.55, 0.9, abs(sin(fa)));
           float under = sin(fy * 55.0 - fa * 8.0) * smoothstep(0.5, 0.85, fv) * fside;
-          gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
-          // Real folds from the reference shirt (unrolled around the torso): below the armpits only, never across the wrap seam.
+          // A triangle that straddles the wrap seam under the left arm interpolates the angle all the way round: no folds there
+          // (they turned into speckle at the armpit).
           float seamJ = abs(dFdx(vBody.x)) + abs(dFdy(vBody.x));
-          if (seamJ < 0.6) gFold += 5.0 * (texture2D(foldTex, vec2(vBody.x / 6.28318, 1.0 - fv)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
+          if (seamJ < 0.6) {
+            gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
+            // Real folds from the reference shirt (unrolled around the torso): below the armpits only.
+            gFold += 5.0 * (texture2D(foldTex, vec2(vBody.x / 6.28318, 1.0 - fv)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
+          }
         } else if (region == 1) {
           float ang = atan(vBindN.z, vBindN.x);
           gFold = 0.5 * sin(fy * 70.0 + ang * 3.0 + nz * 3.0) + 0.3 * sin(ang * 5.0 + fy * 20.0);

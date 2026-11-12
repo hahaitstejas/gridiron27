@@ -402,7 +402,7 @@ Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / t
 `render/body.js` `fabricNormal()` loads `src/assets/fabric_normal.jpg` (ambientCG Fabric030, CC0) as the body's tiling normal map (repeat 0.6 of the geometry uv, normalScale 0.6); a flat normal stands in until it loads.
 
 ### Hands
-`tools/buildhuman.mjs` locks the gloves-region vertices (fingers, thumbs) so the simplifier cannot melt them (`simplifyWithAttributes` with a vertex lock, `useExperimentalFeatures`): ~3.2k hand triangles per player on top of the half-cut body (~16.6k tris per player). `curlFingers` bends each phalanx about its joint in the base pose (relaxed curl, `CURL` radians); finger bones are not added (one rigid hand).
+`tools/buildhuman.mjs` locks the gloves-region vertices (fingers, thumbs) so the simplifier cannot melt them (`simplifyWithAttributes` with a vertex lock, `useExperimentalFeatures`): ~1.9k hand triangles per player (hands first cut to `HAND_RATIO` 0.6, then locked) on top of the half-cut body (~14k tris per player; the whole frame measured ~3.3M triangles incl. the shadow pass with 16.6k bodies, so keep an eye on it). `curlFingers` bends each phalanx about its joint in the base pose (relaxed curl, `CURL` radians); finger bones are not added (one rigid hand).
 
 ### Cleats
 `src/assets/cleat.json` (tools/buildcleat.mjs, from the CC BY Sketchfab model) is a rigid shoe in foot-bone space (toe +z, sole at y = -0.079, `parts.shoe` right / `parts.shoeL` mirrored geometry); it covers the slightly smaller MakeHuman foot, colored by the team cleat color.

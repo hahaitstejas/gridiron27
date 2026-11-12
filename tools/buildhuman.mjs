@@ -623,10 +623,17 @@ let handVerts = 0;
 ids.forEach((v, k) => { if (region[v] === REGION.gloves) { lock[k] = 1; handVerts++; } });
 let handTris = 0;
 for (let t = 0; t < index.length; t += 3) if (lock[index[t]] && lock[index[t + 1]] && lock[index[t + 2]]) handTris++;
-// Keep the hand triangles on top of the usual ratio: the cut falls on everything else.
-const keepTris = Math.floor((index.length / 3 - handTris) * TARGET_RATIO) + handTris;
-console.log(`hands: ${handVerts} vertices / ${handTris} triangles kept`);
-const [simp, err] = MeshoptSimplifier.simplifyWithAttributes(index, pos, 3, new Float32Array(0), 1, [], lock, keepTris * 3, 0.01, ['LockBorder']);
+// Stage A: only the hands are free; they go to HAND_RATIO (the fingers survive, the palm and back lose their flat triangles).
+const HAND_RATIO = 0.6;
+const lockOther = lock.map((v) => 1 - v);
+const handTarget = Math.floor(handTris * HAND_RATIO);
+const [stageA] = MeshoptSimplifier.simplifyWithAttributes(index, pos, 3, new Float32Array(0), 1, [], lockOther, (index.length / 3 - handTris + handTarget) * 3, 0.01, []);
+let handTris2 = 0;
+for (let t = 0; t < stageA.length; t += 3) if (lock[stageA[t]] && lock[stageA[t + 1]] && lock[stageA[t + 2]]) handTris2++;
+// Stage B: the hands are locked as they are; the rest takes the usual cut.
+const keepTris = Math.floor((stageA.length / 3 - handTris2) * TARGET_RATIO) + handTris2;
+console.log(`hands: ${handVerts} vertices, ${handTris} → ${handTris2} triangles kept`);
+const [simp, err] = MeshoptSimplifier.simplifyWithAttributes(stageA, pos, 3, new Float32Array(0), 1, [], lock, keepTris * 3, 0.01, ['LockBorder']);
 const keep = [...new Set(simp)].sort((a, b) => a - b);
 const k2 = new Map(keep.map((v, k) => [v, k]));
 const outIdx = Array.from(simp, (v) => k2.get(v));

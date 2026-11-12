@@ -686,7 +686,10 @@ export class PlayerRenderer {
       const l = pose.legs[s];
       const hip = cl(root).multiply(trans(side * B.hipX * w, B.hipH + pose.crouch, 0)).multiply(rotX(-l.hip)).multiply(rotZ(side * (l.out || 0)));
       const knee = cl(hip).multiply(trans(0, -B.thigh, 0)).multiply(rotX(l.knee));
-      const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(-l.knee + l.hip * (l.flat ?? 0.6)));
+      // The ankle: the foot is kept near level with the ground, but only within a real ankle's range (about 30 deg up, 50 down
+      // against the shin). Beyond that the shin / foot skinning collapsed and the rigid cleat sat beside the sock.
+      const ankle = Math.max(-0.9, Math.min(0.5, -l.knee + l.hip * (l.flat ?? 0.6)));
+      const foot = cl(knee).multiply(trans(0, -B.shin - 0.01, 0.06)).multiply(rotX(ankle));
       this.bone(i, s ? BONE.hipR : BONE.hipL, hip, w);
       this.bone(i, s ? BONE.kneeR : BONE.kneeL, knee, w);
       this.bone(i, s ? BONE.footR : BONE.footL, foot, w);

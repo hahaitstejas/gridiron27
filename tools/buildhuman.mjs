@@ -92,13 +92,18 @@ function poseOf(P) {
 // Which re-pose transform (and which of our bones) each MakeHuman bone follows.
 function classify(b) {
   const s = b.endsWith('.L') ? 'L' : b.endsWith('.R') ? 'R' : null;
+  // MakeHuman's ".L" side sits at +x in our frame, where OUR right (R) bones are (render/body.js bindOrigin: L = -x). `s` stays
+  // MakeHuman's (the re-pose transforms are keyed by it); the bones we fold into take the side by position (`o`). Folding by
+  // name drove each visible limb with the opposite side's bones (the mesh looked right, but rigid cleats and the carried ball,
+  // which ride on the real bones, sat on the other leg / arm).
+  const o = s === 'L' ? 'R' : s === 'R' ? 'L' : null;
   const n = b.replace(/\.[LR]$/, '');
-  if (/^upperarm0[12]$/.test(n)) return { t: 'upper', s, ours: { [`sh${s}`]: 1 } };
-  if (/^(lowerarm0[12]|wrist|metacarpal\d|finger\d-\d)$/.test(n)) return { t: 'fore', s, ours: { [`el${s}`]: 1 } };
-  if (/^upperleg0[12]$/.test(n)) return { t: 'thigh', s, ours: { [`hip${s}`]: 1 } };
-  if (/^lowerleg0[12]$/.test(n)) return { t: 'shin', s, ours: { [`knee${s}`]: 1 } };
-  if (/^(foot|toe\d-\d)$/.test(n)) return { t: 'shin', s, ours: { [`foot${s}`]: 1 } };
-  if (n === 'shoulder01') return { t: null, s, ours: { chest: 0.55, [`sh${s}`]: 0.45 } };
+  if (/^upperarm0[12]$/.test(n)) return { t: 'upper', s, ours: { [`sh${o}`]: 1 } };
+  if (/^(lowerarm0[12]|wrist|metacarpal\d|finger\d-\d)$/.test(n)) return { t: 'fore', s, ours: { [`el${o}`]: 1 } };
+  if (/^upperleg0[12]$/.test(n)) return { t: 'thigh', s, ours: { [`hip${o}`]: 1 } };
+  if (/^lowerleg0[12]$/.test(n)) return { t: 'shin', s, ours: { [`knee${o}`]: 1 } };
+  if (/^(foot|toe\d-\d)$/.test(n)) return { t: 'shin', s, ours: { [`foot${o}`]: 1 } };
+  if (n === 'shoulder01') return { t: null, s, ours: { chest: 0.55, [`sh${o}`]: 0.45 } };
   if (/^(root|spine05|spine04|pelvis)$/.test(n)) return { t: null, s, ours: { hips: 1 } };
   if (n === 'spine03') return { t: null, s, ours: { hips: 0.45, chest: 0.55 } };
   if (/^(spine0[12]|breast|clavicle|levator0\d)$/.test(n)) return { t: null, s, ours: { chest: 1 } };
@@ -509,6 +514,13 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
       pad[i] = add(pad[i], mul(n, (thigh * 0.014 + knee * 0.012) * Math.min(1, (n[2] - 0.25) * 2.5)));
     }
   }
+}
+
+// The shoe region is the rigid cleat's footprint (render/players.js parts.shoe rides on the foot bone): give it to the foot bone
+// alone, so the body's foot moves exactly with the cleat (a shin / foot blend slid out beside it in a hard ankle bend).
+for (const i of ids) if (region[i] === REGION.shoe) {
+  const b = A[i][0] < 0 ? BONE.footL : BONE.footR;
+  skinIdx[i] = [b, 0, 0, 0]; skinW[i] = [1, 0, 0, 0];
 }
 
 // ---------- body part per vertex (the shader draws the uniform's edges from the bind-pose height inside each part) ----------

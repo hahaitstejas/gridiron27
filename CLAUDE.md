@@ -430,6 +430,11 @@ Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / t
 `tools/buildhuman.mjs` locks the gloves-region vertices (fingers, thumbs) so the simplifier cannot melt them (`simplifyWithAttributes` with a vertex lock, `useExperimentalFeatures`): ~1.9k hand triangles per player (hands first cut to `HAND_RATIO` 0.6, then locked) on top of the half-cut body (~14k tris per player; the whole frame measured ~3.3M triangles incl. the shadow pass with 16.6k bodies, so keep an eye on it). `curlFingers` bends each phalanx about its joint in the base pose (relaxed curl, `CURL` radians); finger bones are not added (one rigid hand).
 
 ### Cleats
+Left / right fix (tools/buildhuman.mjs `classify`): MakeHuman's ".L" limbs sit at +x, where OUR R bones are; they used to be folded by name, so
+every visible limb was driven by the opposite side's bones (the skinned mesh still looked right, but the rigid cleats and the carried ball,
+which ride on the real bones, sat on the other leg / arm). Now folded by position. The shoe region is weighted 100% to its foot bone, and the
+ankle is clamped to a real range (players.js: foot vs shin -0.9..0.5 rad). Measured (CPU-skinned sock-bottom vertices to their own cleat):
+median 0.96 -> 0.09 yd.
 `src/assets/cleat.json` (tools/buildcleat.mjs, from the CC BY Sketchfab model) is a rigid shoe in foot-bone space (toe +z, sole at y = -0.079, `parts.shoe` right / `parts.shoeL` mirrored geometry); it covers the slightly smaller MakeHuman foot, colored by the team cleat color.
 
 ### Fonts

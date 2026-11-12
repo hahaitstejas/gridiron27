@@ -1138,24 +1138,39 @@ function computePose(p, time, sim) {
       runLegs(0.5);
       pose.lean = 0.7; pose.arms[0].out = pose.arms[1].out = 0.9; pose.rootRoll = Math.sin(t * 12) * 0.15;
       break;
-    case 'juke':
-      runLegs(0.6);
-      pose.rootRoll = (p.move?.dir || 1) * -0.35 * Math.sin(Math.min(1, t / 0.45) * Math.PI);
-      pose.crouch = -0.12;
+    case 'juke': {
+      // A hard plant: the outside foot jabs wide, the hips drop and the shoulders snap the other way, arms out for balance.
+      runLegs(0.35);
+      const d = p.move?.dir || 1, k = Math.sin(Math.min(1, t / 0.45) * Math.PI);
+      const plant = d > 0 ? 0 : 1; // the leg on the side he cuts away from takes the plant
+      pose.legs[plant].out = (pose.legs[plant].out || 0) + 0.3 * k; pose.legs[plant].knee += 0.4 * k; pose.legs[1 - plant].knee += 0.25 * k;
+      pose.rootRoll = d * -0.3 * k; pose.twist = d * 0.3 * k; pose.crouch = -0.16 * k; pose.lean = 0.2;
+      pose.arms[0].out = 0.45 * k; pose.arms[1].out = 0.45 * k; pose.head = -0.1;
       break;
+    }
     case 'spin':
-      runLegs(0.5);
-      pose.arms[0].out = pose.arms[1].out = 0.5; pose.crouch = -0.1;
+      // Arms in tight to the chest so nothing is there to grab; low and turning.
+      runLegs(0.45);
+      pose.arms[0].out = pose.arms[1].out = -0.2; pose.arms[0].elbow = pose.arms[1].elbow = 1.9; pose.arms[0].pitch = pose.arms[1].pitch = 0.7;
+      pose.crouch = -0.14; pose.lean = 0.3;
       break;
-    case 'stiffarm':
+    case 'stiffarm': {
+      // The free arm (not the ball arm) cocks, then punches out and locks; he leans away from it with his head down.
       runLegs(Math.min(1, run));
-      pose.arms[0].pitch = 1.55; pose.arms[0].elbow = 0; pose.arms[0].out = 0.15;
+      const free = p.ballArm === -1 ? 1 : 0, a = pose.arms[free], side = free ? 1 : -1;
+      const cock = Math.min(1, t / 0.1), punch = Math.min(1, Math.max(0, (t - 0.08) / 0.12));
+      a.pitch = 0.9 + 0.6 * punch; a.elbow = 1.7 * cock * (1 - punch) + 0.05; a.out = 0.35; a.twist = 0;
+      pose.twist = side * 0.35 * punch; pose.rootRoll = -side * 0.22 * punch; pose.lean = 0.35; pose.head = -0.2; pose.crouch = -0.08;
       break;
-    case 'truck':
+    }
+    case 'truck': {
+      // Shoulder dropped into the hit, the free forearm up as a shield (a shiver), low pad level.
       runLegs(Math.min(1, run));
-      pose.lean = 0.75; pose.crouch = -0.15; pose.head = -0.3;
-      pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.4;
+      const free = p.ballArm === -1 ? 1 : 0, a = pose.arms[free], side = free ? 1 : -1;
+      pose.lean = 0.85; pose.crouch = -0.2; pose.head = -0.35; pose.twist = side * 0.3;
+      a.pitch = 1.25; a.elbow = 1.85; a.out = -0.3; a.twist = 0;
       break;
+    }
     case 'hurdle': {
       const k = Math.min(1, t / 0.6);
       pose.rootY = Math.sin(k * Math.PI) * 0.75;
@@ -1353,7 +1368,7 @@ function computePose(p, time, sim) {
   return pose;
 }
 // Includes going down and getting up: a tackled runner keeps the ball cradled (drawn in his hand), so it never looks loose.
-const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stumble', 'hurdle', 'backpedal', 'falling', 'down', 'getup', 'dive', 'slide']);
+const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stiffarm', 'stumble', 'hurdle', 'backpedal', 'falling', 'down', 'getup', 'dive', 'slide']);
 
 /** Per-player gear, stable by number: visors on ~35% (more for skill players), towels on QBs and some skill players. */
 function gearOf(p) {

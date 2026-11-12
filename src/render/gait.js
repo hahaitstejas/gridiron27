@@ -80,16 +80,20 @@ export class Gait {
     // ---- body dynamics: lean forward when speeding up, back when braking, into the turn when cutting ----
     if (dt > 0) {
       const acc = (sp - g.sp) / dt;
-      let dF = f - g.f; while (dF > Math.PI) dF -= 2 * Math.PI; while (dF < -Math.PI) dF += 2 * Math.PI;
+      // Turn rate from the direction of travel when moving (the facing lags a cut), else from the facing.
+      const h = Math.atan2(vz, vx), h0 = Math.atan2(g.vz, g.vx);
+      let dF = sp > 1.5 && g.sp > 1.5 ? h - h0 : f - g.f; while (dF > Math.PI) dF -= 2 * Math.PI; while (dF < -Math.PI) dF += 2 * Math.PI;
       const yawRate = dF / dt;
-      const k = 1 - Math.exp(-dt * 7);
+      const k = 1 - Math.exp(-dt * 9);
       g.lean += (Math.max(-0.22, Math.min(0.28, acc * 0.022)) - g.lean) * k;
-      g.roll += (Math.max(-0.38, Math.min(0.38, -yawRate * sp * 0.014)) - g.roll) * k;
+      // Lean into a cut like a real runner (lateral acceleration = speed x turn rate), harder than before, and sink the hips on
+      // a hard plant.
+      g.roll += (Math.max(-0.55, Math.min(0.55, -yawRate * sp * 0.028)) - g.roll) * k;
       g.sp = sp; g.f = f; g.vx = vx; g.vz = vz;
     }
     const want = !pose.noGait && GAIT_ANIMS.has(p.anim) && Math.abs(pose.rootPitch) < 0.3 && p.state !== 'down' && p.state !== 'tackled' ? 1 : 0;
     g.w += (want - g.w) * Math.min(1, dt * 8);
-    if (want) { pose.lean += g.lean; pose.rootRoll += g.roll * Math.min(1, sp / 4); }
+    if (want) { pose.lean += g.lean; pose.rootRoll += g.roll * Math.min(1, sp / 4); pose.crouch -= Math.min(0.1, Math.abs(g.roll) * 0.16); }
     this.head(g, pose, x, z, f, look, dt);
     if (g.w < 0.02) return;
 
@@ -105,7 +109,8 @@ export class Gait {
     if (g.mw > 0.01 && LOCO) {
       const m = sampleLoco(sp, g.ph, MC), k = g.mw * g.w;
       const mix = (a, b) => a + (b - a) * k;
-      pose.rootY = mix(pose.rootY, m[0]); pose.lean = mix(pose.lean, Math.min(0.42, m[1] + g.lean * 0.6)); // the clip already leans; cap it so nobody runs like he's falling pose.twist = mix(pose.twist, m[2]);
+      pose.rootY = mix(pose.rootY, m[0]); pose.lean = mix(pose.lean, Math.min(0.42, m[1] + g.lean * 0.6)); // the clip already leans; cap it so nobody runs like he's falling
+      pose.twist = mix(pose.twist, m[2]);
       pose.head = mix(pose.head, m[3]);
       const carry = pose.carryArm; // the ball arm keeps its cradle (computePose set it; 2 = both arms protect it)
       for (let s2 = 0; s2 < 2; s2++) {

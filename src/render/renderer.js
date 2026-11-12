@@ -383,7 +383,10 @@ export class GameRenderer {
     this.precip.update(dt, this.rig.camera.position);
     if (this.flagT > 0 && (this.flagT -= dt) <= 0) this.flag.visible = false;
     this.stadium.update(dt, excitement);
-    this.rig.update(dt, focus, dir, phase, snap, { shot: this.presentation.celebration() });
+    // The touchdown celebration wins over any other shot (main.js sets `extraShot` for the catch cam).
+    const shot = this.presentation.celebration() || this.extraShot;
+    if (shot?.cut) { snap = true; shot.cut = false; } // a hard cut in (the way back out eases)
+    this.rig.update(dt, focus, dir, phase, snap, { shot });
     this.draw(this.rig.camera);
   }
 

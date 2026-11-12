@@ -28,9 +28,10 @@ export class CameraRig {
     else if (shot) {
       const fx = Math.cos(shot.facing), fz2 = Math.sin(shot.facing);
       const c = shot.close || 0; // 0 = the wide shot, 1 = tight on the scorer after a picked celebration
-      const dist = 8 - c * 4.4, side = 2.5 - c * 1.3, up = 4.2 - c * 2.4;
+      const dist = shot.dist ?? 8 - c * 4.4, side = shot.side ?? 2.5 - c * 1.3, up = shot.up ?? 4.2 - c * 2.4;
+      const lead = shot.lead || 0; // look a little ahead of a moving subject (catch cam)
       p.set(shot.x + fx * dist + fz2 * side, up, shot.z + fz2 * dist - fx * side);
-      l.set(shot.x, 1.1 + c * 0.25, shot.z);
+      l.set(shot.x - fx * lead, 1.1 + c * 0.25, shot.z - fz2 * lead);
     } else switch (this.mode) {
       case 'endzone':
         p.set(focus.x - dir * 30, 14, fz * 0.3);
@@ -90,7 +91,7 @@ export class CameraRig {
       this.pos.copy(p);
       this.look.copy(l);
     } else {
-      const k = 1 - Math.exp(-dt * (shot ? 2.2 : phase === 'presnap' ? 3 : 4.2));
+      const k = 1 - Math.exp(-dt * (shot ? shot.k ?? 2.2 : phase === 'presnap' ? 3 : 4.2));
       const kl = 1 - Math.exp(-dt * 6);
       this.pos.lerp(p, k);
       this.look.lerp(l, kl);

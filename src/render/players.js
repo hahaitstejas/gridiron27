@@ -2,6 +2,7 @@ import { uniformFor } from '../data/uniforms.js';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawLogo } from './logo.js';
+import helmetData from '../assets/helmet.json'; // CC0 helmet (BlendSwap, see src/assets/CREDITS.md), built by tools/blender/export_helmet.py
 import { Gait, setClips } from './gait.js';
 import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
 import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry, buildDecalGeometry, decalMaterial } from './body.js';
@@ -79,15 +80,7 @@ export class PlayerRenderer {
     // Helmet decals: a patch bent onto the helmet shell (same local space as helmetGeo), the team's logo from a
     // two-cell atlas (home | away) picked per instance; aDecal = (cell, flip) so both sides read the right way.
     // Big, like a real helmet logo: most of the side of the shell, centered a little behind and above the ear hole.
-    const decalGeo = new THREE.PlaneGeometry(0.62, 0.62, 10, 10);
-    {
-      const pos = decalGeo.attributes.position, R = 0.512;
-      for (let k = 0; k < pos.count; k++) {
-        const u = pos.getX(k) - 0.03, v = pos.getY(k) + 0.06;
-        pos.setXYZ(k, Math.sqrt(Math.max(0.0001, R * R - u * u - v * v)) * 0.95, v * 0.95, u * 1.1);
-      }
-      decalGeo.computeVertexNormals();
-    }
+    const decalGeo = helmetPart(helmetData.decal, { uv: true }); // projected onto the real shell (right side; the left is its mirror)
     const decalAttr = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 2 * 2), 2);
     decalGeo.setAttribute('aDecal', decalAttr);
     this.decalAttr = decalAttr;
@@ -123,11 +116,11 @@ export class PlayerRenderer {
     this.parts = {
       body: this.body,
       shoe: part(cleatGeometry(), mat(0.45, 0, 0.8), MAX * 2),
-      helmet: part(helmetGeometry(), helmetMat, MAX),
+      helmet: part(helmetPart(helmetData.shell, { color: true }), helmetMat, MAX),
       face: part(new THREE.SphereGeometry(0.085, 18, 14).scale(0.95, 1.15, 1), this.faceMaterial(mat(0.55)), MAX, false),
-      stripe: part(helmetStripeGeometry(), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false),
-      mask: part(facemaskGeometry(), mat(0.3, 0.55, 1), MAX, false),
-      chin: part(chinGeometry(), mat(0.4, 0, 0.6), MAX, false),
+      stripe: part(helmetPart(helmetData.stripe), Object.assign(mat(0.25, 0.1, 0.8), { side: THREE.DoubleSide }), MAX, false),
+      mask: part(helmetPart(helmetData.mask), mat(0.3, 0.55, 1), MAX, false),
+      chin: part(helmetPart(helmetData.chin, { color: true }), Object.assign(mat(0.45, 0.1, 0.6), { vertexColors: true }), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
       // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
       visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), mat(0.1, 0.3, 1.2), MAX, false),
@@ -579,17 +572,17 @@ export class PlayerRenderer {
     } else {
       // The whole helmet assembly (shell, mask, chin strap, decals, visor) a touch smaller and sitting a little lower and
       // further forward on the skull: a real helmet is ~10 in wide on ~23 in of shoulder pads, not a bobblehead.
-      hgS.copy(hg).multiply(trans(0, -0.012, 0.008)).multiply(scaleM(HELM_K, HELM_K, HELM_K));
+      hgS.copy(hg).multiply(trans(0, -0.01, 0.0)).multiply(scaleM(HELM_K, HELM_K, HELM_K));
       const hg2 = hgS;
-      P.helmet.setMatrixAt(i, cl(hg2).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.helmet.setMatrixAt(i, hg2);
       P.face.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, -0.04, 0.075)));
       const g = gearOf(p);
       P.visor.setMatrixAt(i, g.visor ? cl(hg2).multiply(scaleM(0.33 * 0.97, 0.33 * 0.97, 0.33 * 1.1)) : ZERO);
       P.towel.setMatrixAt(i, g.towel ? cl(hips).multiply(trans(-0.12, 0.05, 0.1 * wide)).multiply(rotY(-0.5)).multiply(rotX(0.08 + Math.sin(time * 9 + i) * Math.min(0.5, Math.hypot(p.vx || 0, p.vz || 0) * 0.05))) : ZERO);
       // Decals on both sides (the left one mirrored through x), a little behind the ear hole.
-      P.decal.setMatrixAt(i * 2, cl(hg2).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(0.33, 0.33, 0.33)));
-      P.decal.setMatrixAt(i * 2 + 1, cl(hg2).multiply(trans(0, 0.01, -0.012)).multiply(scaleM(-0.33, 0.33, 0.33)));
-      P.stripe.setMatrixAt(i, cl(hg2).multiply(scaleM(0.33, 0.33, 0.33)));
+      P.decal.setMatrixAt(i * 2, hg2);
+      P.decal.setMatrixAt(i * 2 + 1, cl(hg2).multiply(scaleM(-1, 1, 1)));
+      P.stripe.setMatrixAt(i, hg2);
       P.mask.setMatrixAt(i, hg2);
       P.chin.setMatrixAt(i, hg2);
     }
@@ -1199,7 +1192,19 @@ function gearOf(p) {
 export const VISOR_COLORS = { dark: '#1a1f2a', gold: '#3a2a10', clear: '#9fb4c8' };
 
 // ---------- matrix helpers ----------
-const HELM_K = 1.03; // helmet assembly scale (see the gear block in posePlayer)
+/** A BufferGeometry from one helmet.json part (position / normal / optional color / uv, indexed; yards, helmet space). */
+function helmetPart(d, { color = false, uv = false } = {}) {
+  const b64 = (str, T) => { const bin = atob(str), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(b64(d.position, Float32Array), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(b64(d.normal, Float32Array), 3));
+  if (color) g.setAttribute('color', new THREE.BufferAttribute(b64(d.color, Float32Array), 3));
+  if (uv) g.setAttribute('uv', new THREE.BufferAttribute(b64(d.uv, Float32Array), 2));
+  g.setIndex(new THREE.BufferAttribute(b64(d.index, Uint16Array), 1));
+  return g;
+}
+
+const HELM_K = 1.0; // helmet assembly scale (see the gear block in posePlayer)
 const hgS = new THREE.Matrix4();
 const ZERO = new THREE.Matrix4().makeScale(0, 0, 0);
 // Preallocated pool so per-frame posing allocates nothing (no GC hitches).

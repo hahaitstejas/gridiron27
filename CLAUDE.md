@@ -398,6 +398,9 @@ menus or trade dress.
 ### Proportions (measured against the reference jersey / pants)
 Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / thigh width ~0.40 on the CC BY reference; ours were 0.72 / 0.45 / 0.48, so cap width (0.055), plate depth (0.035) in tools/buildhuman.mjs and the hip take-in (0.3) in render/body.js `buildPos` were tightened.
 
+### Baked folds
+`tools/bakefolds.mjs` unrolls the CC BY reference shirt around the torso into `src/assets/jersey_fold.png` (x = our jersey angle, y = height waist..collar, 128 = flat); body.js adds it to `gFold` below the armpits (x5). The reference geometry is mostly smooth (its seams and mesh panels live in textures), so the effect is subtle.
+
 ### Fabric
 `render/body.js` `fabricNormal()` loads `src/assets/fabric_normal.jpg` (ambientCG Fabric030, CC0) as the body's tiling normal map (repeat 0.6 of the geometry uv, normalScale 0.6); a flat normal stands in until it loads.
 

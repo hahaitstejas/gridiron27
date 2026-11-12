@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import foldUrl from '../assets/jersey_fold.png'; // soft cloth folds baked from the CC BY reference shirt (tools/bakefolds.mjs), see CREDITS.md
 import fabricUrl from '../assets/fabric_normal.jpg'; // ambientCG Fabric030 normal map (CC0), see CREDITS.md
 
 // One smooth, skinned football-player body (torso over shoulder pads, pelvis, arms with gloves, legs with socks),
@@ -238,7 +239,7 @@ function patchVertex(sh, normals = true) {
   sh.vertexShader = v;
 }
 
-export const BODY_UNIFORMS = { boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 },
+export const BODY_UNIFORMS = { foldTex: { value: null }, boneTex: { value: null }, numTex: { value: null }, nameTex: { value: null }, nameRows: { value: 56 }, faceTex: { value: null }, sweat: { value: 0 },
   regionY: { value: new THREE.Vector4(1.156, 1.531, 1.113, 0.488) }, shoeY: { value: 0.109 }, collarY: { value: 1.79 }, decals: { value: 0 } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
@@ -247,9 +248,9 @@ export function bodyMaterial(envMap, fabric) {
     sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh);
-    sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
+    sh.uniforms.foldTex = BODY_UNIFORMS.foldTex; sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
     sh.uniforms.uRegY = BODY_UNIFORMS.regionY; sh.uniforms.uShoeY = BODY_UNIFORMS.shoeY; sh.uniforms.uCollarY = BODY_UNIFORMS.collarY; sh.uniforms.uDecals = BODY_UNIFORMS.decals;
-    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform float uSweat;
+    sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform sampler2D foldTex; uniform float uSweat;
 uniform vec4 uRegY; uniform float uShoeY; uniform float uCollarY; uniform float uDecals;
 flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY; varying vec3 vBindN;
 vec4 tex(int c) { return texelFetch(boneTex, ivec2(c, int(vInst + 0.5)), 0); }
@@ -380,6 +381,9 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           float fside = smoothstep(0.55, 0.9, abs(sin(fa)));
           float under = sin(fy * 55.0 - fa * 8.0) * smoothstep(0.5, 0.85, fv) * fside;
           gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
+          // Real folds from the reference shirt (unrolled around the torso): below the armpits only, never across the wrap seam.
+          float seamJ = abs(dFdx(vBody.x)) + abs(dFdy(vBody.x));
+          if (seamJ < 0.6) gFold += 5.0 * (texture2D(foldTex, vec2(vBody.x / 6.28318, 1.0 - fv)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
         } else if (region == 1) {
           float ang = atan(vBindN.z, vBindN.x);
           gFold = 0.5 * sin(fy * 70.0 + ang * 3.0 + nz * 3.0) + 0.3 * sin(ang * 5.0 + fy * 20.0);
@@ -469,6 +473,12 @@ export function bodyDepthMaterial() {
     sh.fragmentShader = 'flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;\n' + sh.fragmentShader;
   };
   return m;
+}
+
+{ // the baked folds (a 1024 x 512 height map: 0.5 = flat); wraps around the torso, clamps top / bottom
+  const t = new THREE.TextureLoader().load(foldUrl);
+  t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping; t.colorSpace = THREE.NoColorSpace; t.anisotropy = 4;
+  BODY_UNIFORMS.foldTex.value = t;
 }
 
 /** Jersey / pants fabric: a real fine knit (ambientCG Fabric030, CC0) as a tiling normal map; a procedural knit stands in until it loads. */

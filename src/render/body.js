@@ -220,7 +220,7 @@ vec3 buildPos(vec3 p) {
     vec3 q = p + aBulkD * fl.y + aPadD * fl.z;
     float t = lower * smoothstep(0.32, 0.6, p.y);
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
-    q.x = cx + (q.x - cx) * (1.0 - 0.2 * t);
+    q.x = cx + (q.x - cx) * (1.0 - 0.3 * t);
     q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.4 * t) : q.z * (1.0 - 0.08 * t);
     return q;
   }

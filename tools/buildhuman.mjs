@@ -226,7 +226,7 @@ const pad = A.map((p, i) => {
   if (ky <= 0 && plateY <= 0) return [0, 0, 0];
   const k = ky * ky * (3 - 2 * ky), kp = plateY * plateY * plateY * (plateY * (plateY * 6 - 15) + 10);
   const out = Math.min(1, Math.pow(ax, 1.4) * 1.25);
-  const dx = Math.sign(p[0]) * k * 0.075 * out;
+  const dx = Math.sign(p[0]) * k * 0.055 * out;
   // Slope: the trapezius rises toward the neck and the cap sits just above the shoulder line.
   const dyy = k * 0.03 * Math.min(1, ax + 0.2) + 0.012 * k * Math.max(0, 1 - Math.abs(ax - 0.45) * 3);
   // The plates push outward from the torso's axis (not by the sign of z: that flips between neighbors at the sides and tears the surface).
@@ -234,7 +234,7 @@ const pad = A.map((p, i) => {
   let px = 0, pz = 0;
   if (onTorso) {
     const r = Math.hypot(p[0], p[2]) || 1e-6, ux = p[0] / r, uz = p[2] / r;
-    const amt = kp * 0.055 * (0.45 + 0.55 * Math.abs(uz)) + k * 0.012; // front / back plates stand off more than the sides
+    const amt = kp * 0.035 * (0.45 + 0.55 * Math.abs(uz)) + k * 0.012; // front / back plates stand off more than the sides
     px = ux * amt * 0.6; pz = uz * amt;
   }
   return [dx + px, dyy, pz];

@@ -395,6 +395,9 @@ Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest it
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
 menus or trade dress.
 
+### Proportions (measured against the reference jersey / pants)
+Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / thigh width ~0.40 on the CC BY reference; ours were 0.72 / 0.45 / 0.48, so cap width (0.055), plate depth (0.035) in tools/buildhuman.mjs and the hip take-in (0.3) in render/body.js `buildPos` were tightened.
+
 ### Hands
 `tools/buildhuman.mjs` locks the gloves-region vertices (fingers, thumbs) so the simplifier cannot melt them (`simplifyWithAttributes` with a vertex lock, `useExperimentalFeatures`): ~3.2k hand triangles per player on top of the half-cut body (~16.6k tris per player). `curlFingers` bends each phalanx about its joint in the base pose (relaxed curl, `CURL` radians); finger bones are not added (one rigid hand).
 

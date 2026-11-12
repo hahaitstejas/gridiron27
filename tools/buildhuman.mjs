@@ -638,6 +638,12 @@ const keep = [...new Set(simp)].sort((a, b) => a - b);
 const k2 = new Map(keep.map((v, k) => [v, k]));
 const outIdx = Array.from(simp, (v) => k2.get(v));
 const src = keep.map((k) => ids[k]);
+// A second, much lighter index buffer over the same vertices for the sideline players (render/players.js `bodyLod`): the
+// fingers and region borders are free to go (LockBorder still keeps the uniform edges clean).
+const lodPos = new Float32Array(keep.length * 3);
+keep.forEach((k, n) => lodPos.set(pos.subarray(k * 3, k * 3 + 3), n * 3));
+const [lodSimp, lodErr] = MeshoptSimplifier.simplify(new Uint32Array(outIdx), lodPos, 3, Math.floor(outIdx.length * 0.3 / 3) * 3, 0.08, ['LockBorder']);
+console.log(`lod: ${lodSimp.length / 3} triangles (error ${lodErr.toFixed(4)})`);
 console.log(`vertices ${ids.length} → ${src.length}, triangles ${index.length / 3} → ${outIdx.length / 3} (error ${err.toFixed(4)})`);
 
 // ---------- write ----------
@@ -658,6 +664,7 @@ const out = {
   part: u8(src.map((i) => part[i])),
   body: f32(src.flatMap((i) => body[i])),
   index: u16(outIdx),
+  lodIndex: u16(Array.from(lodSimp)),
   decals: { count: decal.pos.length / 3, position: f32(decal.pos), bulk: f32(decal.bulk), pad: f32(decal.pad), skinIndex: u8(decal.si),
     skinWeight: f32(decal.sw), uv: f32(decal.uv), kind: u8(decal.kind), index: u16(decal.idx) },
 };

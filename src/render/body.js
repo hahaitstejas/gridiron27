@@ -204,20 +204,21 @@ varying vec2 vBody;
 flat varying float vPart;
 varying float vBindY;
 varying vec3 vBindN;
+uniform int uRowOff; // the first bone-texture row this mesh draws (the sideline LOD mesh starts after the main players)
 mat4 boneMat(int b) {
   int c = b * 4;
-  return mat4(texelFetch(boneTex, ivec2(c, gl_InstanceID), 0), texelFetch(boneTex, ivec2(c + 1, gl_InstanceID), 0),
-              texelFetch(boneTex, ivec2(c + 2, gl_InstanceID), 0), texelFetch(boneTex, ivec2(c + 3, gl_InstanceID), 0));
+  return mat4(texelFetch(boneTex, ivec2(c, gl_InstanceID + uRowOff), 0), texelFetch(boneTex, ivec2(c + 1, gl_InstanceID + uRowOff), 0),
+              texelFetch(boneTex, ivec2(c + 2, gl_InstanceID + uRowOff), 0), texelFetch(boneTex, ivec2(c + 3, gl_InstanceID + uRowOff), 0));
 }
 vec3 buildPos(vec3 p) {
-  vec4 prm = texelFetch(boneTex, ivec2(${COL_PARAMS}, gl_InstanceID), 0); // width, limb, chest depth
+  vec4 prm = texelFetch(boneTex, ivec2(${COL_PARAMS}, gl_InstanceID + uRowOff), 0); // width, limb, chest depth
   if (aKind < 0.5) { float pad = mix(1.0, prm.w, smoothstep(1.38, 1.56, p.y)); return vec3(p.x * prm.x * pad, p.y, p.z * prm.z); }
   if (aKind < 1.5) { vec3 ax = vec3(aAxis.x * prm.x, aAxis.y, aAxis.z); return ax + (p - aAxis) * vec3(prm.y, 1.0, prm.y); }
   if (aKind > 4.5) {
     // The MakeHuman body: build (tools/buildhuman.mjs mass: neck, chest, belly, arms, thighs; 1 = a ~320 lb lineman) and
     // pads as shape deltas, then the hips, seat and thighs taken in toward each leg's center so the shoulder pads read
     // wider than the hips the way a player in uniform does on TV.
-    vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID), 0);
+    vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID + uRowOff), 0);
     float lower = smoothstep(1.24, 1.08, p.y);
     vec3 q = p + aBulkD * fl.y + aPadD * fl.z;
     float t = lower * smoothstep(0.32, 0.6, p.y);
@@ -231,11 +232,12 @@ vec3 buildPos(vec3 p) {
 mat4 skinMat() { return boneMat(int(aIdx.x)) * aWt.x + boneMat(int(aIdx.y)) * aWt.y + boneMat(int(aIdx.z)) * aWt.z + boneMat(int(aIdx.w)) * aWt.w; }
 `;
 
-function patchVertex(sh, normals = true) {
+function patchVertex(sh, normals = true, rowOff = null) {
   sh.uniforms.boneTex = BODY_UNIFORMS.boneTex;
+  sh.uniforms.uRowOff = rowOff || { value: 0 };
   let v = VERT_HEAD + 'mat4 gSk;\n' + sh.vertexShader;
   if (normals) v = v.replace('#include <beginnormal_vertex>', '#include <beginnormal_vertex>\ngSk = skinMat();\nobjectNormal = normalize(mat3(gSk) * objectNormal);');
-  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;${normals ? ' vBindN = normal;' : ''}`);
+  v = v.replace('#include <begin_vertex>', `#include <begin_vertex>\n${normals ? '' : 'gSk = skinMat();'}\ntransformed = (gSk * vec4(buildPos(position), 1.0)).xyz;\nvInst = float(gl_InstanceID + uRowOff); vRegion = aRegion; vBody = aBody; vPart = aPart; vBindY = position.y;${normals ? ' vBindN = normal;' : ''}`);
   sh.vertexShader = v;
 }
 
@@ -243,11 +245,11 @@ export const BODY_UNIFORMS = { foldTex: { value: null }, boneTex: { value: null 
   regionY: { value: new THREE.Vector4(1.156, 1.531, 1.113, 0.488) }, shoeY: { value: 0.109 }, collarY: { value: 1.79 }, decals: { value: 0 } };
 
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
-export function bodyMaterial(envMap, fabric) {
+export function bodyMaterial(envMap, fabric, rowOff = { value: 0 }) {
   const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.22,
     sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
   m.onBeforeCompile = (sh) => {
-    patchVertex(sh);
+    patchVertex(sh, true, rowOff);
     sh.uniforms.foldTex = BODY_UNIFORMS.foldTex; sh.uniforms.numTex = BODY_UNIFORMS.numTex; sh.uniforms.nameTex = BODY_UNIFORMS.nameTex; sh.uniforms.nameRows = BODY_UNIFORMS.nameRows; sh.uniforms.faceTex = BODY_UNIFORMS.faceTex; sh.uniforms.uSweat = BODY_UNIFORMS.sweat;
     sh.uniforms.uRegY = BODY_UNIFORMS.regionY; sh.uniforms.uShoeY = BODY_UNIFORMS.shoeY; sh.uniforms.uCollarY = BODY_UNIFORMS.collarY; sh.uniforms.uDecals = BODY_UNIFORMS.decals;
     sh.fragmentShader = `uniform sampler2D boneTex; uniform sampler2D numTex; uniform sampler2D nameTex; uniform float nameRows; uniform sampler2D faceTex; uniform sampler2D foldTex; uniform float uSweat;
@@ -466,10 +468,10 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
 }
 
 /** Shadow-pass material with the same skinning (otherwise shadows would be the bind pose). */
-export function bodyDepthMaterial() {
+export function bodyDepthMaterial(rowOff = { value: 0 }) {
   const m = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
   m.onBeforeCompile = (sh) => {
-    patchVertex(sh, false);
+    patchVertex(sh, false, rowOff);
     sh.fragmentShader = 'flat varying float vInst; flat varying float vRegion; varying vec2 vBody; flat varying float vPart; varying float vBindY;\n' + sh.fragmentShader;
   };
   return m;
@@ -520,6 +522,16 @@ export function buildHumanGeometry(h) {
   g.setIndex(new THREE.BufferAttribute(dec(h.index, Uint16Array), 1));
   g.computeVertexNormals();
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
+  return g;
+}
+
+/** The sideline LOD: the same vertices and attributes as the full body with the much lighter index buffer (`lodIndex`). */
+export function buildHumanLodGeometry(full, h) {
+  const dec = (b64, T) => { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return new T(u.buffer); };
+  const g = new THREE.BufferGeometry();
+  for (const [name, attr] of Object.entries(full.attributes)) g.setAttribute(name, attr);
+  g.setIndex(new THREE.BufferAttribute(dec(h.lodIndex, Uint16Array), 1));
+  g.boundingSphere = full.boundingSphere;
   return g;
 }
 

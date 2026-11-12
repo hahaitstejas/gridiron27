@@ -6,7 +6,7 @@ import cleatData from '../assets/cleat.json'; // one cleat's shape from a CC BY 
 import helmetData from '../assets/helmet.json'; // CC0 helmet (BlendSwap, see src/assets/CREDITS.md), built by tools/blender/export_helmet.py
 import { Gait, setClips } from './gait.js';
 import { faceImage, skinToneFromImage, nearestSkin, SKIN_TONES } from '../ui/faces.js';
-import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry, buildDecalGeometry, decalMaterial } from './body.js';
+import { buildBodyGeometry, bodyMaterial, bodyDepthMaterial, fabricNormal, BODY_UNIFORMS, BONE, BONES, bindOrigin, TEX_W, COL_PARAMS, COL_COLORS, COL_NUMBER, COL_NUMCOL, COL_FLAGS, REGION, BIND, applySkeleton, buildHumanGeometry, buildDecalGeometry, decalMaterial, buildHumanLodGeometry } from './body.js';
 
 // Low-poly players drawn with one InstancedMesh per body part (about 15 draw calls for all 22
 // players). Poses are computed procedurally from the sim's animation state every frame.
@@ -110,12 +110,20 @@ export class PlayerRenderer {
     BODY_UNIFORMS.numTex.value = numAtlas;
     BODY_UNIFORMS.nameTex.value = this.nameTex;
     BODY_UNIFORMS.nameRows.value = MAX;
-    this.body = part(buildBodyGeometry(), bodyMaterial(envMap, fabricNormal()), MAX);
+    const fabric = fabricNormal();
+    this.body = part(buildBodyGeometry(), bodyMaterial(envMap, fabric), MAX);
     this.body.customDepthMaterial = bodyDepthMaterial();
     this.body.receiveShadow = true;
+    // Sideline players (the instances after the 22 players and 7 officials) are drawn from a much lighter copy of the body:
+    // its material reads the bone texture from row `rowOff` on.
+    this.rowOff = { value: 0 };
+    this.bodyLod = part(buildBodyGeometry(), bodyMaterial(envMap, fabric, this.rowOff), MAX);
+    this.bodyLod.customDepthMaterial = bodyDepthMaterial(this.rowOff);
+    this.bodyLod.receiveShadow = true;
     const helmetMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.22, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08, envMap, envMapIntensity: 0.9 });
     this.parts = {
       body: this.body,
+      bodyLod: this.bodyLod,
       shoe: part(cleatGeometry(false), mat(0.62, 0, 0.45), MAX), // right foot
       shoeL: part(cleatGeometry(true), mat(0.62, 0, 0.45), MAX), // left foot (mirrored geometry: a negative-scale matrix would flip the faces)
       helmet: part(helmetPart(helmetData.shell, { color: true }), helmetMat, MAX),
@@ -238,6 +246,7 @@ export class PlayerRenderer {
       const old = this.body.geometry;
       this.body.geometry = buildHumanGeometry(h);
       old.dispose();
+      if (h.lodIndex) { const oldLod = this.bodyLod.geometry; this.bodyLod.geometry = buildHumanLodGeometry(this.body.geometry, h); oldLod.dispose(); this.lodReady = true; }
       this.human = true;
       this.colorsKey = '';
       // Uniform edges from the body's own heights, and the printed numbers / name plate as their own patches.
@@ -416,6 +425,10 @@ export class PlayerRenderer {
     const P = this.parts;
     const n = Math.min(MAX, sim.players.length + (refs ? refs.length : 0));
     for (const m of Object.values(P)) m.count = this.pairs.has(m) ? n * 2 : n;
+    // The first 22 + 7 rows (players, officials) use the full body; the sideline rows use the light copy.
+    const nMain = this.lodReady ? Math.min(n, sim.players.length + (refs ? Math.min(7, refs.length) : 0)) : n;
+    P.body.count = nMain; P.bodyLod.count = n - nMain; this.rowOff.value = nMain;
+    if (P.printed) P.printed.count = nMain;
     // A new play: poses start fresh (no crossfade from the last play's players).
     if (sim !== this.poseSim) { this.poseSim = sim; this.lastAnim.length = 0; this.fadeT.length = 0; this.fallAnim.length = 0; }
     const dt = Math.min(0.1, Math.max(0, time - (this.lastTime ?? time)));

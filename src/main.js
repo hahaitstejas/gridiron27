@@ -110,7 +110,7 @@ input2.claiming = true; // a second controller joins whenever its A is pressed (
 let p2Wait = null; // start callback waiting for player 2's controller
 const hud = new Hud(document.getElementById('hud'));
 // Canvas text (field numbers, end zones, jerseys, logos, video boards) is painted once: wait for the font first.
-try { await Promise.all(['500', '700', '800'].map((w) => document.fonts.load(`${w} 40px "Saira Condensed"`))); } catch { /* fall back */ }
+try { await Promise.all([...['500', '700', '800'].map((w) => document.fonts.load(`${w} 40px "Saira Condensed"`)), ...['600', '700'].map((w) => document.fonts.load(`${w} 40px "Oswald"`))]); } catch { /* fall back */ }
 const renderer = new GameRenderer(document.getElementById('game'), teams[prefs.home], teams[prefs.away]);
 await renderer.players.loadHuman(); // the CC0 MakeHuman body (src/assets/human.json)
 const nav = new Nav();

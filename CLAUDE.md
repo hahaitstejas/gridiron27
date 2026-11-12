@@ -396,6 +396,7 @@ rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The de
 menus or trade dress.
 
 ### Fonts
+Jersey numbers and name plates (number atlas + name canvas in `render/players.js`) use Oswald 700 / 600 (narrower block digits that fit the jersey, still very readable); everything else below is Saira Condensed.
 Saira Condensed everywhere (the user's pick): menus, HUD, scorebug and canvas text (field numbers, end zones, jerseys,
 logos, video boards, play diagrams). Bundled with `@fontsource/saira-condensed` (imported at the top of main.js; OFL,
 offline); main.js waits for `document.fonts.load` before the renderer paints its canvases. CSS roles `--fd` / `--fc` /

@@ -50,7 +50,7 @@ function numberAtlas() {
   const g = c.getContext('2d');
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = '800 150px "Saira Condensed", "Arial Narrow", sans-serif';
+  g.font = '700 150px "Oswald", "Arial Narrow", sans-serif';
   g.lineJoin = 'round';
   for (let n = 0; n < 100; n++) {
     const cx = (n % 10) * C + C / 2, cy = Math.floor(n / 10) * C + C * 0.53;
@@ -286,7 +286,7 @@ export class PlayerRenderer {
     const ng = this.nameCanvas.getContext('2d');
     this._names ||= [];
     let namesDirty = false;
-    ng.font = '800 29px "Saira Condensed", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
+    ng.font = '600 29px "Oswald", "Arial Narrow", sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle'; ng.fillStyle = '#fff';
     const paintName = (i, name) => {
       if (i >= MAX || !name) return false;
       if (this._names[i] === name) return true;

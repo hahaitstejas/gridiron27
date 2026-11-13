@@ -41,7 +41,13 @@ export function evaluateTarget(sim, qb, r, kind = 'bullet') {
   sep += Math.min(sep2, 4) * 0.25;
   const gain = (pred.x - sim.losX) * sim.dir;
   let score = sep - lane * 1.6 + clamp(gain, -5, 30) * 0.04;
-  if (sim.firstDownX !== null && (pred.x - sim.firstDownX) * sim.dir >= 0) score += 0.4;
+  if (sim.firstDownX !== null) {
+    const past = (pred.x - sim.firstDownX) * sim.dir;
+    // On 3rd / 4th down the sticks are the point: a catch short of them usually loses the down.
+    const money = sim.down >= 3;
+    if (past >= 0) score += money ? 1.3 : 0.4;
+    else if (money && past < -1.5) score -= Math.min(1.2, (-past - 1.5) * 0.25);
+  }
   if (Math.abs(pred.z) > 25.5) score -= 2;
   return { score, pred, T, dist, gain };
 }

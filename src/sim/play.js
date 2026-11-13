@@ -56,6 +56,7 @@ export class PlaySim {
     this.difficulty = cfg.difficulty || null;
     this.sliders = cfg.sliders || null; // [team0, team1] gameplay sliders, 0..100 (50 = default)
     this.firstDownX = cfg.firstDownX ?? null;
+    this.down = cfg.down ?? 0; // 1-4 on scrimmage plays (the CPU QB throws to the sticks on 3rd / 4th down)
     this.defAdj = cfg.defAdj || null; // pre-snap coverage call: { cover: 'press'|'off', shade: 'in'|'out' }
     this.motion = null; // a player in pre-snap motion (startMotion)
     this.weather = cfg.weather || null; // { type, wind: {x, z}, time } (game/weather.js)

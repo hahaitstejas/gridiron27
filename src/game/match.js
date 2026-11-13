@@ -140,6 +140,7 @@ export class Match {
       offPlay: choice.offPlay,
       defPlay: choice.defPlay,
       firstDownX: this.phase === 'scrimmage' && this.firstYL < 100 ? this.xOf(off, this.firstYL) : null,
+      down: this.phase === 'scrimmage' ? this.down : 0,
     };
   }
 
@@ -347,6 +348,7 @@ export class Match {
     // ----- Scrimmage plays -----
     const pt = r.possTeam;
     if (r.touchdown !== null) {
+      if (r.touchdown === off && this.down === 3 && this.phase === 'scrimmage') this.stats.team[off].thirdConv++; // a TD on 3rd down converts it
       this.addScore(r.touchdown, 6, r.touchdown === off ? 'Touchdown' : (r.interception ? 'Pick six' : 'Fumble return touchdown'));
       if (this.ot && this.ot.suddenDeath) return this.endGame('OT');
       this.setupTry(r.touchdown);

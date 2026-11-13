@@ -486,6 +486,13 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
       const lat = bump((y - (waistY + 0.1)) / 0.5);      // lats: waist..chest
       const waist = bump((y - (waistY - 0.1)) / 0.28);   // the waist itself
       d = [ux * (0.024 * lat - 0.02 * waist) * Math.min(1, Math.abs(p[0]) / 0.12), 0, 0];
+      // The jersey tucks into a narrow waist under broad pads (the TV V-taper): from the chest down, take the sides in and
+      // flatten the belly and the lower back, most at the belt.
+      const tap = smooth01((shY - 0.16 - y) / (shY - 0.16 - waistY)) * (1 - smooth01((waistY - 0.07 - y) / 0.06));
+      if (tap > 0) {
+        d[0] -= ux * 0.03 * tap * Math.min(1, Math.abs(p[0]) / 0.1);
+        d[2] -= (p[2] > 0.02 ? 0.022 : p[2] < -0.04 ? -0.006 : 0) * tap * (1 - Math.min(1, Math.abs(p[0]) / 0.16));
+      }
       if (y > shY + 0.0 && Math.abs(p[0]) < 0.2 && Math.abs(p[0]) > 0.06) d[1] += 0.022 * smooth01((y - shY) / 0.1) * (1 - smooth01((Math.abs(p[0]) - 0.06) / 0.14)); // traps
     }
     if (d[0] || d[1] || d[2]) pad[i] = add(pad[i], mul(d, 1 / PADK));
@@ -499,14 +506,31 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
     const n = cross(sub(A[b], A[a]), sub(A[c], A[a]));
     for (const v of [a, b, c]) nrm[v] = add(nrm[v], n);
   }
+  const seatBack = (() => {
+    const m = new Map();
+    for (const i of ids) if (region[i] === 2 && A[i][2] < 0 && Math.abs(A[i][0]) < 0.14) { const k = Math.round(A[i][1] / 0.02); m.set(k, Math.min(m.get(k) ?? 0, A[i][2])); }
+    return (y) => m.get(Math.round(y / 0.02)) ?? 0;
+  })();
   const THICK = { 0: 0.02, 1: 0.016, 2: 0.006, 3: 0.006, 4: 0.004, 8: 0.012 }; // pants and socks cling (tight football pants)
   for (const i of ids) {
     const t = THICK[region[i]];
     if (!t) continue;
     const n = norm(nrm[i]);
     // The jersey drapes: thicker over the belly and back than the sides.
-    const k = region[i] === 0 ? t * (0.8 + 0.4 * Math.abs(n[2])) : t;
+    // Fitted below the chest (it tucks into the pants), fuller over the pads.
+    const k = region[i] === 0 ? t * (0.8 + 0.4 * Math.abs(n[2])) * (0.55 + 0.45 * smooth01((A[i][1] - waistY) / (shY - 0.12 - waistY))) : t;
     pad[i] = add(pad[i], mul(n, k));
+    // Padded pants are smooth over the seat: fill the cleft between the glutes (it rendered as a dark crease).
+    if (region[i] === 2 && A[i][2] < 0) {
+      const y = A[i][1], ax = Math.abs(A[i][0]);
+      const band = Math.max(0, 1 - Math.abs(y - (hipH - 0.08)) / 0.17);
+      const mid = Math.max(0, 1 - ax / 0.09);
+      if (band > 0 && mid > 0) {
+        const zb = seatBack(y); // the cheeks' depth at this height: the cleft fills out to (just short of) it
+        const fill = Math.max(0, A[i][2] - (zb + 0.012));
+        pad[i] = add(pad[i], [0, 0, -fill * smooth01(band) * smooth01(mid) / 1.3]);
+      }
+    }
     // Thigh and knee pads under the pants: low bumps on the front of each leg.
     if (region[i] === 2 && n[2] > 0.25) {
       const y = A[i][1];
@@ -514,6 +538,62 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
       pad[i] = add(pad[i], mul(n, (thigh * 0.014 + knee * 0.012) * Math.min(1, (n[2] - 0.25) * 2.5)));
     }
   }
+}
+
+// ---------- padded pants: a smooth seat (the bare glutes and the folds under them showed through tight pants) ----------
+{
+  const nb = A.map(() => new Set());
+  for (const [a, b, c] of faces) { nb[a].add(b); nb[a].add(c); nb[b].add(a); nb[b].add(c); nb[c].add(a); nb[c].add(b); }
+  const w = A.map((p, i) => (region[i] === 2 && p[2] < 0.03
+    ? smooth01((p[1] - (hipH - 0.36)) / 0.08) * (1 - smooth01((p[1] - (hipH + 0.02)) / 0.06)) * smooth01((0.03 - p[2]) / 0.05) : 0));
+  const idsS = ids.filter((i) => w[i] > 0);
+  let P = A.map((p, i) => add(p, pad[i]));
+  const pass = (lam) => {
+    const Q = P.map((p) => [...p]);
+    for (const i of idsS) {
+      const n = [...nb[i]];
+      const m = [0, 0, 0];
+      for (const j of n) { m[0] += P[j][0]; m[1] += P[j][1]; m[2] += P[j][2]; }
+      for (let k = 0; k < 3; k++) Q[i][k] = P[i][k] + lam * w[i] * (m[k] / n.length - P[i][k]);
+    }
+    P = Q;
+  };
+  for (let it = 0; it < 40; it++) { pass(0.5); pass(-0.53); }
+  let mx = 0;
+  for (const i of idsS) { const d = sub(P[i], add(A[i], pad[i])); mx = Math.max(mx, len(d)); pad[i] = add(pad[i], d); }
+  console.log('seat smoothing:', idsS.length, 'vertices, max move', mx.toFixed(4));
+}
+
+// ---------- the jersey front stretches across the chest plate: one smooth convex curve per height, no pec lumps ----------
+// Runs on the final padded shape (pads x 1.3, the runtime default): in each 2 cm slab of jersey from the lower ribs to the
+// collarbone, the front's depth at each |x| is pulled onto a superellipse through the slab's centre-front depth and width.
+{
+  const PK = 1.3, lo = shY - 0.36, hi = shY + 0.01;
+  const F = (i) => add(A[i], mul(pad[i], PK));
+  const jersey = ids.filter((i) => region[i] === 0 && wOf(i, 'shL') + wOf(i, 'shR') < 0.5);
+  const slabs = new Map();
+  for (const i of jersey) { const y = A[i][1]; if (y < lo || y > hi) continue; const k = Math.round(y / 0.02); (slabs.get(k) || slabs.set(k, []).get(k)).push(i); }
+  let moved = 0;
+  for (const list of slabs.values()) {
+    const front = list.filter((i) => F(i)[2] > 0.0);
+    if (front.length < 8) continue;
+    const xs = front.map((i) => Math.abs(F(i)[0])).sort((a, b) => a - b), a = xs[Math.floor(xs.length * 0.95)];
+    const mids = front.filter((i) => Math.abs(F(i)[0]) < 0.05);
+    if (!mids.length || a < 0.1) continue;
+    const zf = Math.max(...mids.map((i) => F(i)[2]));
+    const y = list.length ? A[list[0]][1] : 0;
+    const w = smooth01((y - lo) / 0.06) * smooth01((hi - y) / 0.05); // ease in / out at the slab range's ends
+    for (const i of front) {
+      const f = F(i), t = Math.min(1, Math.abs(f[0]) / a);
+      const zt = zf * Math.pow(Math.max(0, 1 - Math.pow(t, 3)), 1 / 3);
+      const keep = smooth01((t - 0.8) / 0.2); // leave the sides (they meet the arms) alone
+      const dz = (zt - f[2]) * w * (1 - keep);
+      const cl = Math.max(-0.02, dz); // fill hollows fully; trim bulges by at most 2 cm
+      pad[i] = add(pad[i], [0, 0, cl / PK]);
+      moved = Math.max(moved, Math.abs(cl));
+    }
+  }
+  console.log('chest plate fair: max move', moved.toFixed(4));
 }
 
 // The shoe region is the rigid cleat's footprint (render/players.js parts.shoe rides on the foot bone): give it to the foot bone

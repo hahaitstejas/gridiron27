@@ -221,16 +221,17 @@ vec3 buildPos(vec3 p, vec3 nrm) {
     // pads as shape deltas, then the hips, seat and thighs taken in toward each leg's center so the shoulder pads read
     // wider than the hips the way a player in uniform does on TV.
     vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID + uRowOff), 0);
-    float lower = smoothstep(1.24, 1.08, p.y);
+    float lower = smoothstep(1.34, 1.12, p.y); // from the lower ribs down: the jersey tapers into the belt, hips and seat trimmed
     vec3 q = p + aBulkD * fl.y + aPadD * fl.z;
     float t = lower * smoothstep(0.32, 0.6, p.y);
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
-    q.x = cx + (q.x - cx) * (1.0 - 0.3 * t);
-    q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.4 * t) : q.z * (1.0 - 0.08 * t);
+    q.x = cx + (q.x - cx) * (1.0 - 0.45 * t);
+    q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.45 * t) : q.z * (1.0 - 0.16 * t);
     if (uShell > 0.0) {
       // Cloth is a layer, not skin: a centimetre or so over the pads and body, looser toward the hem and at the sleeve ends.
       float cl = 0.0;
-      if (aPart < 0.5) cl = 0.009 + 0.017 * smoothstep(uRegY.x + 0.3, uRegY.x - 0.04, p.y);
+      // The jersey is tucked in: a little fuller over the chest, snug at the belt (looseness at the hem flared it into a skirt).
+      if (aPart < 0.5) cl = 0.007 + 0.005 * smoothstep(uRegY.x + 0.12, uRegY.x + 0.35, p.y);
       else if (aPart < 1.5) cl = 0.010 + 0.009 * smoothstep(uRegY.y + 0.18, uRegY.y - 0.02, p.y);
       q += normalize(nrm) * cl * uShell;
     }
@@ -494,7 +495,7 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
         normal = normalize(abs(fdet) * normal - sign(fdet) * (fdh.x * fr1 + fdh.y * fr2));
       }
       vec3 wN = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
-      float ao = mix(0.6, 1.0, smoothstep(-0.8, 0.35, wN.y));
+      float ao = mix(region == 2 ? 0.74 : 0.6, 1.0, smoothstep(-0.8, 0.35, wN.y)); // padded pants: softer under the seat
       if (vPart > -0.5) ao *= mix(0.8, 1.0, smoothstep(0.25, 1.15, vBindY));
       if (region == 5) { // skin: a little warmth where the surface turns away from the light (cheap subsurface scatter)
         float rim = pow(1.0 - clamp(dot(normalize(normal), normalize(vViewPosition)), 0.0, 1.0), 2.0);

@@ -416,6 +416,14 @@ menus or trade dress.
 - **Captains**: roster column `captain` (Y), `src/data/captains.js` (`assignCaptains`: QB, best defender, best other offensive player when a team names none; `captain` on sim entities). Only captains show the badge (the uniform's `captain_patch`; default a rounded patch with a C in the uniform colors), on the wearer's right chest in place of that patch.
 - **Rendering**: `tools/buildhuman.mjs` builds patch decals (kinds 3..7) next to the number decals (front number lowered under the shield); `PlayerRenderer` paints a per-team patch atlas (6 cells: 5 slots + captain) and two number atlases (one font per team, `COL_NUMCOL.w` = 0 official / 1-2 team / +2 captain); the field's end zones read `team.stadium` (`endzone` style, `endzone_color(2)`, `endzone_text_color`, `endzone_outline_color`, `endzone_font`, `endzone_text_left/right`, `endzone_logo_left/right`, `yard_font`).
 
+### Torso / pants pass (UPDATE 4.0)
+V-taper: tools/buildhuman.mjs athletic base takes the jersey's sides in and flattens belly / lower back from the chest to the
+belt (`tap`); the jersey cloth is thinner below the chest; body.js `buildPos` takes hips / seat in from the lower ribs down
+(`lower` 1.34 -> 1.12, x 0.45, back 0.45, front 0.16) and the shell is snug at the hem (looseness there made a skirt).
+Chest plate fair (buildhuman): each 2 cm slab's padded front is pulled onto one convex curve (no pec lumps in the middle).
+Padded pants: the glute cleft is filled to the cheeks' depth (`seatBack`) and the seat is Taubin-smoothed; pants get a
+softer down-facing occlusion (0.74). Measure with the close-up rig in the scratchpad (front / 3-4 / side / back).
+
 ### Layered jersey (shell over the body)
 The jersey is its own layer: `parts.shell` draws the torso / upper-arm triangles again (`human.json` `shellIndex`, `buildHumanShellGeometry`) with `uShell` pushing every vertex out along its normal by the cloth thickness (`buildPos` in body.js: ~1 cm, looser toward the hem and at the sleeve ends), double-sided (the inside is darker) and cut per pixel to the real jersey / sleeve zones; the plain body (`under: true`) paints those zones as a dark undershirt layer, so the arm shows inside the sleeve and the hem and cuffs have depth. The printed numbers / patches (`decalMaterial(env, 1.25)`) ride on the shell's surface. Sideline LOD bodies skip the shell.
 

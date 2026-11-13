@@ -422,16 +422,18 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           // A triangle that straddles the wrap seam under the left arm interpolates the angle all the way round: no folds there
           // (they turned into speckle at the armpit).
           {
-            gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
+            // Only folds that stay continuous across the arm / torso triangles: the procedural drape and underarm lines jumped
+            // there (streaks on the shoulders). The tuck at the hem and the baked reference folds below the armpits remain.
+            gFold = 0.45 * tuck * smoothstep(uRegY.x + 0.22, uRegY.x + 0.02, vBindY) + 0.0 * (drape + under); // only near the belt
             // Fade out toward the shoulder / armpit junction: arm triangles use the sleeve's folds, and a jump between the two
             // along their shared edges showed as jagged streaks on the shoulders.
             gFold *= 1.0 - smoothstep(0.55, 0.95, fside) * smoothstep(0.55, 0.85, fv);
             // Real folds from the reference shirt (unrolled around the torso): below the armpits only.
-            gFold += 5.0 * (textureGrad(foldTex, vec2(ja / 6.28318, 1.0 - fv), vec2(0.0), vec2(0.0)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
+            gFold += 0.0 * (textureGrad(foldTex, vec2(ja / 6.28318, 1.0 - fv), vec2(0.0), vec2(0.0)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
           }
         } else if (region == 1) {
           float ang = atan(vBindN.z, vBindN.x);
-          gFold = (0.5 * sin(fy * 70.0 + ang * 3.0 + nz * 3.0) + 0.3 * sin(ang * 5.0 + fy * 20.0)) * smoothstep(uRegY.y + 0.16, uRegY.y + 0.04, fy); // folds by the cuff, none up at the shoulder
+          gFold = 0.0; // sleeves: no procedural folds (they seamed against the torso's at the shoulder)
         } else if (region == 2 && vPart > 1.5 && vPart < 2.5) {
           float ang = atan(vBindN.z, vBindN.x);
           float hip = smoothstep(uRegY.w + 0.45, uRegY.w + 0.7, fy);

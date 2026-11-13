@@ -431,7 +431,9 @@ its 2x2-block derivative was black / white speckle); triangles across the fabric
 buildhuman smooths the shoulder cap / upper arm junction of the final padded shape (the cap folded over the deltoid).
 Lighting normals come from the dressed shape (base + pads x 1.3, `buildHumanGeometry`), not the bare body: its pecs / abs
 used to show through a smooth jersey; arms hang at `out` 0.24 (clear of the pads); the belly comes in over a long ramp
-(`tf`, 1.5 -> 1.1 yd); jersey folds fade out at the shoulder / armpit and sleeve folds only live near the cuff.
+(`tf`, 1.5 -> 1.1 yd). Jersey / sleeve fold shading is now only the tuck wrinkles near the belt (gated by bind height): the
+procedural drape / underarm / sleeve folds and the baked `jersey_fold.png` term jumped between arm and torso triangles and
+left streaks on the shoulders (the pants' pad creases and hip / knee bunching stay).
 
 ### Faces and officials' caps
 The face frame for photos / the painted face is measured on the mesh (buildhuman `FACE`: chin at v = 0, the nose tip at
@@ -453,7 +455,7 @@ Slim build, sole to head: shoulder width ~0.64 yd, chest depth ~0.30 and hip / t
 `PlayerRenderer.limp()` (players.js) runs damped springs on head, arms and legs while `anim` is falling / tackle / tackle_dive / down (`LIMP_ANIMS`): a kick on impact scaled by speed, ~30% overshoot, settling on the ground, faded in / out so other animations are untouched. Rapier was approved for a full ragdoll but is not needed for this; the sim never sees any of it.
 
 ### Baked folds
-`tools/bakefolds.mjs` unrolls the CC BY reference shirt around the torso into `src/assets/jersey_fold.png` (x = our jersey angle, y = height waist..collar, 128 = flat); body.js adds it to `gFold` below the armpits (x5). The reference geometry is mostly smooth (its seams and mesh panels live in textures), so the effect is subtle.
+`tools/bakefolds.mjs` unrolls the CC BY reference shirt around the torso into `src/assets/jersey_fold.png` (x = our jersey angle, y = height waist..collar, 128 = flat); body.js used to add it to `gFold` below the armpits; it is off now (weight 0: it seamed against the arm triangles).
 
 ### Fabric
 `render/body.js` `fabricNormal()` loads `src/assets/fabric_normal.jpg` (ambientCG Fabric030, CC0) as the body's tiling normal map (repeat 0.6 of the geometry uv, normalScale 0.6); a flat normal stands in until it loads.

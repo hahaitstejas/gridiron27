@@ -1596,8 +1596,8 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .screen.stats-screen .st-table:has(> .st-empty:only-child) { flex: none; }
 /* Pause: the menu clears the scorebug (tighter rows), names upright like the rest. */
 .screen.pz-screen { padding-bottom: 92px !important; }
-.screen.pz-screen .pz-item { min-height: 0 !important; height: 40px !important; padding: 0 16px !important; }
-.screen.pz-screen .pz-list { gap: 4px !important; }
+.screen.pz-screen .pz-item { min-height: 0 !important; height: 37px !important; padding: 0 16px !important; }
+.screen.pz-screen .pz-list { gap: 3px !important; }
 .screen.pz-screen .pz-help { bottom: 64px !important; }
 .screen.pz-screen b, .screen.pz-screen .pz-name b { font-style: normal !important; }
 

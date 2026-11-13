@@ -715,6 +715,7 @@ let time = 0;
 // the limp-limb springs and the gait stay in step with the sim instead of the wall clock.
 let animTime = 0;
 let attract = 0;
+const setCalled = new WeakSet(); // plays whose QB already called "Set!" (render-side bookkeeping, the sim stays untouched)
 let crowdLevel = null; // the stadium crowd this frame (audio): null = no crowd (menus, practice)
 function frameBody(now) {
   crowdLevel = null;
@@ -909,6 +910,9 @@ function frameBody(now) {
     // Wide view for a human on either side, kicks included (the kicker and the rush / coverage in frame).
     renderer.rig.wideView = !playerCam && (session.humanSide === 'defense' || session.humanSide === 'offense');
     renderer.render(dt, focus, camDir, camPhase, snapCam, excite);
+    // The QB's "Set!" once the line-up is done (then "hut" at the snap), once per play, scrimmage snaps only.
+    if (sim && sim.state === 'presnap' && session.state === 'presnap' && !sim.isKick && !setCalled.has(sim) && session.presnapT > 1.8
+      && !session.fast && !session.watching && speed <= 2 && session.match.phase === 'scrimmage') { setCalled.add(sim); SFX.setCall(sim.offIdx ? 1.08 : 0.95); }
     // The home crowd chants on the visitors' big downs at the line (crowdNoise: 3rd / 4th down, red zone, late and close).
     SFX.setChant(!live && session.state === 'presnap' && crowdLevel !== undefined && !session.practice && !session.fast && speed <= 2 ? Math.max(0, noise - 0.25) * 1.3 : 0);
     crowdLevel = session.practice || session.settings.neutral || session.watching || speed > 2 ? (session.settings.neutral && !session.practice ? excite * 0.6 : null) : excite;

@@ -253,6 +253,26 @@ export function hut(pitch = 1) {
   s.connect(sf).connect(sg).connect(sfxBus); s.start(t, Math.random()); s.stop(t + 0.06);
 }
 
+/** The QB's "Set!" once the line is down: an 's' hiss, a short 'eh' vowel, the 't' click. */
+export function setCall(pitch = 1) {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const s = noiseSrc(), sf = ctx.createBiquadFilter(), sg = ctx.createGain();
+  sf.type = 'highpass'; sf.frequency.value = 4200;
+  env(sg, t, 0.01, 0.1, 0.08);
+  s.connect(sf).connect(sg).connect(sfxBus); s.start(t, Math.random()); s.stop(t + 0.12);
+  const v = t + 0.07;
+  const o = ctx.createOscillator(), g = ctx.createGain(), mix = ctx.createGain();
+  o.type = 'sawtooth'; o.frequency.setValueAtTime(165 * pitch, v); o.frequency.exponentialRampToValueAtTime(130 * pitch, v + 0.15);
+  for (const [f, q] of [[560, 4], [1850, 6]]) { const b = ctx.createBiquadFilter(); b.type = 'bandpass'; b.frequency.value = f; b.Q.value = q; o.connect(b).connect(mix); }
+  env(g, v, 0.01, 0.42, 0.13);
+  mix.connect(g).connect(sfxBus); o.start(v); o.stop(v + 0.18);
+  const c = noiseSrc(), cf = ctx.createBiquadFilter(), cg = ctx.createGain();
+  cf.type = 'bandpass'; cf.frequency.value = 3000;
+  env(cg, v + 0.17, 0.002, 0.12, 0.02);
+  c.connect(cf).connect(cg).connect(sfxBus); c.start(v + 0.17, Math.random()); c.stop(v + 0.22);
+}
+
 /** The stadium horn after a home touchdown: a big brassy chord. */
 export function horn() {
   if (!ctx) return;

@@ -568,7 +568,7 @@ wobble, a brighter "roar" band that opens with excitement) driven every frame by
 game, up for the intro run-out, low in replays, none in menus / practice / sped-up or watched games); `crowdSwell` /
 `crowdGroan` react to big plays from the home crowd's side (team 0 cheers, the visitors' plays draw a groan; neutral
 sites only swell); effects: `whistle` (pea-whistle trill; two blasts on pre-snap flags), `hit` (pad crack + thump by power),
-`kick`, `catchSound`, `whoosh` (throws), `hut` (the snap), `horn` (home touchdowns), `uiTick` (nav.js focus moves, select,
+`kick`, `catchSound`, `whoosh` (throws), `setCall` (the QB's "Set!" once the line-up is done, once per scrimmage play: main.js `setCalled`), `hut` (the snap), `horn` (home touchdowns), `uiTick` (nav.js focus moves, select,
 back, tabs), `setChant` (the home crowd's "DE-FENSE, clap clap" on the visitors' big downs at the line, from `crowdNoise`). main.js `soundFor(e)` maps session / sim events to sounds. The context starts on the first key / click / tap
 (`unlockAudio`; pad buttons try too). Settings: Master / Crowd / Effects volume (`prefs.volume`, `crowdVolume`, `sfxVolume`,
 applied by `savePrefs` → `setVolumes`). Dev: `__g27.sfx.audioDebug()`.

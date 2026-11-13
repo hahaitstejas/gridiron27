@@ -8,6 +8,7 @@ import { needsPanel } from './franchiseMore.js';
 import { applyTag, tagSalary } from '../franchise/honors.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { POSITIONS } from '../data/positions.js';
+import { POS_TABS } from './sortable.js';
 import { startNextSeason } from '../franchise/franchise.js';
 import {
   progressPlayers, expiring, resign, contractYears, finishResigning, signFreeAgent, cpuFreeAgency, makeDraft,
@@ -132,7 +133,7 @@ function freeagency(ctx, ui, f, filter = 0) {
   ctx.screens.nav.set([...rows, done], { columns: 1, onBack: ctx.onExit, onTab: (d) => freeagency(ctx, ui, f, (filter + d + tabs.length) % tabs.length) });
 }
 
-function draft(ctx, ui, f, focus = 0) {
+function draft(ctx, ui, f, focus = 0, filter = 0) {
   const d = f.offseason.draft;
   const teams = ctx.teams;
   if (d.at >= d.picks.length) { finishDraft(f, teams); save(ctx); offseasonScreen(ctx, ui); return; }
@@ -144,13 +145,14 @@ function draft(ctx, ui, f, focus = 0) {
   let buttons;
   if (mine) {
     // You see scouting estimates: a range for overall and no potential until you spend a scouting point (X).
-    const board = d.cls.map((p) => ({ p, v: scoutView(p) })).sort((a, b) => b.v.sort - a.v.sort).slice(0, 40);
+    const want = POS_TABS[filter][1];
+    const board = d.cls.filter((p) => !want || want.includes(p.pos)).map((p) => ({ p, v: scoutView(p) })).sort((a, b) => b.v.sort - a.v.sort).slice(0, 40);
     rows = board.map(({ p, v }) => {
       const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
         el(`span.st-num${v.scouted ? '.up' : ''}`, { text: v.ovr }), el('span.st-num', { text: v.pot })]);
       r._pv = { p, v };
       r.activate = () => { makePick(f, teams, p.id); save(ctx); draft(ctx, ui, f); };
-      r.scout = () => { if (scoutProspect(f, p.id)) { save(ctx); draft(ctx, ui, f, rows.indexOf(r)); } };
+      r.scout = () => { if (scoutProspect(f, p.id)) { save(ctx); draft(ctx, ui, f, rows.indexOf(r), filter); } };
       return r;
     });
     buttons = [button('Auto-pick', () => { makePick(f, teams); save(ctx); draft(ctx, ui, f); }, '.secondary'),
@@ -178,12 +180,13 @@ function draft(ctx, ui, f, focus = 0) {
   const wall = el('div.dr-wall', {}, d.picks.slice(Math.max(0, d.at - 24), d.at).map((pk) => el('div.dr-tile', { style: { '--tc': teams[pk.team].colors.primary } },
     logoCanvas(teams[pk.team].logo, 30), el('div', {}, el('small', { text: `R${pk.round} P${pk.pick} · ${pk.player.pos}` }), el('b', { text: (pk.player.first ? `${pk.player.first[0]}. ${pk.player.last}` : pk.player.name.replace(/^(\S)\S*\s/, '$1. ')).toUpperCase() })))));
   ctx.screens.frame('stats-screen dr-screen', el('div.dr-top', {}, clock, head),
-    el('div.dr-body', {}, mine ? el('div.dr-board', {}, el('div.st-row.st-head', {}, ['POS', 'PROSPECT', 'AGE', 'OVR', 'POT'].map((h, i) => el(`span.${i === 1 ? 'st-name' : i === 0 ? 'dc-pos' : 'st-num'}`, { text: h }))), el('div.st-table', {}, rows))
+    el('div.dr-body', {}, mine ? el('div.dr-board', {}, el('div.pc-tabs', {}, POS_TABS.map(([n], i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: n }))), el('div.st-row.st-head', {}, ['POS', 'PROSPECT', 'AGE', 'OVR', 'POT'].map((h, i) => el(`span.${i === 1 ? 'st-name' : i === 0 ? 'dc-pos' : 'st-num'}`, { text: h }))), el('div.st-table', {}, rows))
       : el('div.dr-board', {}, el('div.dc-head', { text: 'Your picks' }), el('div.st-table', {}, myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' }))),
       el('div.dr-side', {}, el('div.dc-head', { text: 'Draft board' }), wall, el('div.dc-head', { text: 'Your roster' }), needsPanel(teams[f.userTeam]))),
     el('div.over-buttons', {}, buttons),
-    el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; <b class="btn X">X</b> scout &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
-  ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit, index: focus });
+    el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; <b class="btn X">X</b> scout &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> position &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
+  ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit, index: focus,
+    onTab: mine ? (dd) => draft(ctx, ui, f, 0, (filter + dd + POS_TABS.length) % POS_TABS.length) : undefined });
   ctx.screens.extraButtons = mine ? (fr) => { if (fr.pressed.X) ctx.screens.nav.items[ctx.screens.nav.index]?.scout?.(); } : null;
 }
 

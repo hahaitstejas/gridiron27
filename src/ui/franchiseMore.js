@@ -3,7 +3,7 @@
 import { el } from './nav.js';
 import { playerTable, actionsPanel, playerCard } from './rosterEditor.js';
 import { logoCanvas } from '../render/logo.js';
-import { sortHead, sortKeys, sortRows } from './sortable.js';
+import { sortHead, sortKeys, sortRows, POS_TABS } from './sortable.js';
 import { gameStatus, reinjuryRisk, injuryLine, placeOnIR, canActivate, activateFromIR, activeCount, IR_MIN, IR_RETURNS } from '../franchise/health.js';
 import { PS_MAX, ELEVATE_MAX, ELEVATE_PER_GAME, addToPS, promoteFromPS, elevate, psEligible, isVeteranPS, unelevate, releaseFromPS } from '../franchise/practiceSquad.js';
 import { standings, rank } from '../franchise/season.js';
@@ -20,8 +20,7 @@ import { scoutView } from '../franchise/extras.js';
 import { pickFile } from '../data/storage.js';
 import { parseCSV, freeAgentsFromRows } from '../data/csv.js';
 
-const POS_FILTERS = [['All', null], ['QB', ['QB']], ['RB', ['HB', 'FB']], ['WR', ['WR']], ['TE', ['TE']], ['OL', ['T', 'G', 'C']],
-  ['DL', ['DE', 'DT']], ['LB', ['OLB', 'MLB']], ['DB', ['CB', 'FS', 'SS']], ['K/P', ['K', 'P']]];
+const POS_FILTERS = POS_TABS;
 
 /** A generic sortable player table. cols = [[label, getter(p, t), fmt?]]. */
 function table(cols, list, sort, onRow) {

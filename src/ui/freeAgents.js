@@ -1,3 +1,4 @@
+import { POS_TABS } from './sortable.js';
 // Franchise → Free Agents: sign players without a team during the season (franchise/freeAgents.js). A full roster
 // picks someone to release first. X imports a CSV of the current free agents (roster.csv format, team column ignored).
 import { el } from './nav.js';
@@ -8,10 +9,7 @@ import { logTransaction } from '../franchise/franchise.js';
 import { parseCSV, freeAgentsFromRows } from '../data/csv.js';
 import { pickFile } from '../data/storage.js';
 
-const FILTERS = [
-  ['All', null], ['QB', ['QB']], ['RB', ['HB', 'FB']], ['WR', ['WR']], ['TE', ['TE']], ['OL', ['T', 'G', 'C']],
-  ['DL', ['DE', 'DT']], ['LB', ['OLB', 'MLB']], ['DB', ['CB', 'FS', 'SS']], ['K/P', ['K', 'P']],
-];
+const FILTERS = POS_TABS;
 const money = (v) => `$${(+v || 0).toFixed(1)}M`;
 
 /** ui = FranchiseUI. note = a status line (signed / problem). */

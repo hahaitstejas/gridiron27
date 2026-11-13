@@ -1,13 +1,11 @@
+import { POS_TABS } from './sortable.js';
 // Fantasy draft screen (franchise/fantasy.js is the logic): the best available players, your roster against the
 // shape you're drafting toward, and the latest picks. A drafts, X auto-picks, Y auto-drafts the rest, LB/RB filter.
 import { el } from './nav.js';
 import { logoCanvas } from '../render/logo.js';
 import { roundOf, draftDone, makeFantasyPick, simToUser, finishFantasyDraft, bestPick, draftValue, TARGET, FANTASY_ROUNDS } from '../franchise/fantasy.js';
 
-const FILTERS = [
-  ['All', null], ['QB', ['QB']], ['RB', ['HB', 'FB']], ['WR', ['WR']], ['TE', ['TE']], ['OL', ['T', 'G', 'C']],
-  ['DL', ['DE', 'DT']], ['LB', ['OLB', 'MLB']], ['DB', ['CB', 'FS', 'SS']], ['K/P', ['K', 'P']],
-];
+const FILTERS = POS_TABS;
 
 /** ui = FranchiseUI (ctx.screens, f, teams, save(), hub()). */
 export function fantasyDraftScreen(ui, filter = 0, focus = 0) {

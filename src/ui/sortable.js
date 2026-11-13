@@ -1,6 +1,10 @@
 // Sortable tables: a column cursor (◀▶) and X to sort by that column (X again flips the order). Used by the stat
 // screens, league leaders, rosters, free agents, the trade screen and the draft board.
 import { el } from './nav.js';
+import { POSITIONS } from '../data/positions.js';
+
+/** Position filter tabs for player lists (free agents, drafts, search...): All, then every position on its own. */
+export const POS_TABS = [['All', null], ...POSITIONS.map((p) => [p, [p]])];
 
 /** Header cells for `labels`; `sort` = { col, asc, cur } (cur = the column the cursor is on). */
 export function sortHead(labels, sort, tag = 'span') {

@@ -3,6 +3,7 @@ import { UNIFORM_NAMES, UNIFORM_KINDS, uniformFor, uniformsClash, isDark as uniD
 import { passerRating } from '../game/boxscore.js';
 import { traitsOf, TRAITS } from '../data/traits.js';
 import { el } from './nav.js';
+import { setVolumes } from '../audio/audio.js';
 import { faceImg } from './faces.js';
 import { logoCanvas } from '../render/logo.js';
 import { teamRatings } from '../data/positions.js';
@@ -15,7 +16,11 @@ import { SCENARIOS } from '../game/scenarios.js';
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
   nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
-  practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false };
+  practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false,
+  volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8 };
+
+const VOL_STEPS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
+const volLabel = (v) => (v ? `${Math.round(v * 100)}%` : 'Off');
 
 // What each setting does (the description panel on settings-style screens), keyed by the row's label, lower case.
 export const OPTION_HELP = {
@@ -30,6 +35,9 @@ export const OPTION_HELP = {
   'name tags': 'Names under the player you control and the ball carrier.',
   'post-play stat card': 'A small card after each play with the key players and their game line.',
   'auto replay big plays': 'Touchdowns, interceptions and big hits replay automatically once the play is over.',
+  'master volume': 'Everything you hear: the crowd, whistles, hits, kicks and menu clicks (all made live in the browser, no sound files).',
+  'crowd volume': 'The stadium: it murmurs between plays, gets loud on big downs and the home team\'s big plays, and groans when the visitors score.',
+  'effects volume': 'Whistles, pad hits, kicks, the snap call, catches, the touchdown horn and menu clicks.',
   'pregame intro': 'The stadium flyover and run-out before kickoff. A, B or Menu skips it.',
   'career camera': 'In Career mode: the camera behind your player, or the broadcast view.',
   'franchise signings: jersey #': 'You pick a new signing\'s number from the ones he can wear, or the game gives him one.',
@@ -72,6 +80,7 @@ export function loadPrefs() {
   try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; } catch { return { ...DEFAULT_PREFS }; }
 }
 export function savePrefs(p) {
+  setVolumes(p);
   try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(p)); } catch { /* storage unavailable */ }
 }
 
@@ -746,6 +755,9 @@ export class Screens {
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
       option('Pregame intro', [true, false], 'intro', (v) => (v ? 'On' : 'Off')),
+      option('Master volume', VOL_STEPS, 'volume', volLabel),
+      option('Crowd volume', VOL_STEPS, 'crowdVolume', volLabel),
+      option('Effects volume', VOL_STEPS, 'sfxVolume', volLabel),
       option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
       option('Franchise signings: jersey #', [false, true], 'autoNumbers', (v) => (v ? 'Automatic' : 'You pick')),
     ];

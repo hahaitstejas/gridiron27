@@ -1,3 +1,4 @@
+import { uiTick } from '../audio/audio.js';
 // Controller/keyboard/mouse navigation for menus. Items are DOM elements laid out in a grid of
 // `columns` columns. Left/right on an item with a `spin(dir)` handler changes its value instead of
 // moving focus (used for team pickers, difficulty, quarter length...).
@@ -44,7 +45,9 @@ export class Nav {
       };
       el.onclick = (e) => { e.stopPropagation(); this.focus(i); this.activate(); };
     }
+    this.ready = false; // no click for the focus a new screen starts on
     this.focus(Math.min(index, this.items.length - 1));
+    this.ready = true;
   }
 
   clear() { this.items = []; this.onBack = null; this.onTab = null; }
@@ -54,7 +57,9 @@ export class Nav {
 
   focus(i) {
     if (!this.items.length) return;
+    const was = this.index;
     this.index = Math.max(0, Math.min(this.items.length - 1, i));
+    if (this.index !== was && this.ready) uiTick('move');
     for (const [j, el] of this.items.entries()) el.classList.toggle('focused', j === this.index);
     const el = this.items[this.index];
     el.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
@@ -66,6 +71,7 @@ export class Nav {
 
   activate() {
     const el = this.current;
+    uiTick('select');
     if (el && this.key) Nav.memory.set(this.key, { index: this.index, text: el.textContent });
     el?.activate?.();
   }
@@ -135,8 +141,8 @@ export class Nav {
     if (dir !== this.held) { this.held = dir; this.repeatT = 0.38; if (dir) this.step(dir); }
     else if (dir) { this.repeatT -= dt; if (this.repeatT <= 0) { this.repeatT = 0.11; this.step(dir); } }
     if (f.pressed.A) { this.activate(); return true; }
-    if (f.pressed.B && this.onBack) { Nav.memory.delete(this.key); this.onBack(); return true; } // backing out of a list: next visit starts fresh
-    if (this.onTab && (f.pressed.LB || f.pressed.RB)) { this.onTab(f.pressed.LB ? -1 : 1); return true; }
+    if (f.pressed.B && this.onBack) { uiTick('back'); Nav.memory.delete(this.key); this.onBack(); return true; } // backing out of a list: next visit starts fresh
+    if (this.onTab && (f.pressed.LB || f.pressed.RB)) { uiTick('move'); this.onTab(f.pressed.LB ? -1 : 1); return true; }
     return !!dir;
   }
 

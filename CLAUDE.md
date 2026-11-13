@@ -84,7 +84,7 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   offsides ~0.7, DPI ~0.5, roughing / grounding ~0.4, the rest 0.05-0.25; ~3.6-4 accepted penalties.
   Home crowd (`crowdNoise(m)` in penalties.js, 0..1 when the visitors — team 1 — have the ball: 3rd/4th down, close 4th
   quarter, red zone; 0 at neutral sites `settings.neutral`): road false starts ×(1 + 1.6·noise), hard-count flinches on
-  the road, a livelier crowd (main.js `excite`) and the HUD `#noise` meter at the line (visual only, no audio).
+  the road, a livelier crowd (main.js `excite`) and the HUD `#noise` meter at the line (and the crowd audio swells with `excite`).
   Defensive offsides is a live foul (`offsides_live`): `rollPresnapFoul` → the session snaps anyway, puts the jumper across
   the line and flags it (`jumpOffsides`) = a free play for the offense. The scorebug shows FLAG while any foul is on the
   field (`sim.fouls`) and during the accept/decline choice. False start / delay of game still kill the play.
@@ -546,6 +546,17 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   backs: `PlayerRenderer.nameCanvas` atlas (one row per instance). Loose balls bounce erratically (play.js `updateBall`).
 - Penalties: `Hud.flag()` is a referee announcement card (foul name, who, enforcement) at the top center.
 
+### Audio (`src/audio/audio.js`, render-side like the HUD)
+Everything is synthesized with Web Audio (no sound files, works offline): a crowd bed (brown + band-passed noise, a slow
+wobble, a brighter "roar" band that opens with excitement) driven every frame by main.js `crowdLevel` (= `excite` in a
+game, up for the intro run-out, low in replays, none in menus / practice / sped-up or watched games); `crowdSwell` /
+`crowdGroan` react to big plays from the home crowd's side (team 0 cheers, the visitors' plays draw a groan; neutral
+sites only swell); effects: `whistle` (pea-whistle trill; two blasts on pre-snap flags), `hit` (pad crack + thump by power),
+`kick`, `catchSound`, `whoosh` (throws), `hut` (the snap), `horn` (home touchdowns), `uiTick` (nav.js focus moves, select,
+back, tabs). main.js `soundFor(e)` maps session / sim events to sounds. The context starts on the first key / click / tap
+(`unlockAudio`; pad buttons try too). Settings: Master / Crowd / Effects volume (`prefs.volume`, `crowdVolume`, `sfxVolume`,
+applied by `savePrefs` → `setVolumes`). Dev: `__g27.sfx.audioDebug()`.
+
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/
 move, ball) from the snap to the end of the play; the session keeps the last one (`session.lastReplay`, not
@@ -768,6 +779,7 @@ src/data/              teams.js (32 original teams), names.js, csv.js (teams/ros
 src/franchise/         season.js (schedule, standings, playoffs, stats), quicksim.js (fast results + box scores),
                        franchise.js (season state machine), offseason.js (progression, contracts, FA, draft, cuts)
 src/replay/replay.js   instant replay recorder + ghost-sim player
+src/audio/audio.js     synthesized crowd, whistles, hits, kicks, menu clicks (Web Audio)
 src/render/            renderer.js (WebGL, lights, adaptive pixel ratio), stadium.js, fieldTexture.js,
                        players.js (instanced low-poly players + procedural poses), camera.js, lines.js, logo.js
 src/render/renderer.js also draws the kick aim arrow, penalty flag and the menu orbit camera.

@@ -56,12 +56,16 @@ import { energyOf } from './game/fatigue.js';
 import { playArt } from './game/playArt.js';
 import { scenarioById, scenarioFinal } from './game/scenarios.js';
 import { crowdNoise } from './game/penalties.js';
+import * as SFX from './audio/audio.js';
 const SPECIAL_ART = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike']);
 
 // ---- Boot ----
 const params = new URLSearchParams(location.search);
 const teams = generateLeagueRosters(defaultTeams(), 2027);
 const prefs = loadPrefs();
+// Sound: Web Audio may only start after a user gesture (a key, a click, a tap; pad buttons try too).
+SFX.setVolumes(prefs);
+for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, () => SFX.unlockAudio(), { passive: true });
 // A saved league (Phase 4) wins; without one, the optional spreadsheets in public/local/ apply.
 let saved = null;
 try {
@@ -591,7 +595,7 @@ window.addEventListener('keydown', (e) => {
 
 // Debug hooks for automated testing.
 window.__g27 = { screens, get session() { return session; }, get speed() { return speed; }, set speed(v) { speed = v; }, // speed: dev slow-motion checks
- get app() { return app; }, get replay() { return replay; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills, showScenarios };
+ get app() { return app; }, get replay() { return replay; }, sfx: SFX, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills, showScenarios };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
@@ -618,7 +622,39 @@ function passCallout(e) {
 }
 const isDarkHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) < 90; };
 
+/** Sounds for game events (audio/audio.js). Team 0 is the home crowd; neutral sites and practice have none. */
+function soundFor(e) {
+  if (!session || session.fast || session.watching || speed > 2) return;
+  const sim = session.sim, crowd = !session.practice && !session.settings.neutral;
+  const home = (team) => team === 0;
+  const cheer = (team, amt) => { if (!crowd) return; if (home(team)) SFX.crowdSwell(amt); else SFX.crowdGroan(amt * 0.8); };
+  const teamOf = (id) => sim?.players?.[id]?.team;
+  switch (e.type) {
+    case 'snap': SFX.hut(0.9 + ((sim?.offIdx ?? 0) ? 0.08 : 0)); break;
+    case 'throw': SFX.whoosh(e.kind === 'bullet' ? 1.2 : 0.8); break;
+    case 'catch': SFX.catchSound(); cheer(teamOf(e.player), 0.25); break;
+    case 'interception': SFX.catchSound(); cheer(teamOf(e.player), 0.9); break;
+    case 'incomplete': if (crowd && sim && e.why !== 'spike') (home(sim.offIdx) ? SFX.crowdGroan(0.25) : SFX.crowdSwell(0.2)); break;
+    case 'deflection': SFX.hit(0.25); break;
+    case 'tackle': SFX.hit(Math.min(1.2, 0.35 + (e.power || 0) * 0.6)); if (sim?.result?.sack) cheer(1 - sim.offIdx, 0.6); break;
+    case 'bigHit': SFX.hit(1.3); cheer(teamOf(e.tackler), 0.45); break;
+    case 'brokenTackle': SFX.hit(0.6); cheer(teamOf(e.player), 0.35); break;
+    case 'fumble': cheer(sim ? 1 - sim.offIdx : 1, 0.6); break;
+    case 'kick': SFX.kick(e.kind === 'fg' ? 0.9 : 1); break;
+    case 'kickBlocked': SFX.hit(0.8); if (sim) cheer(1 - sim.offIdx, 0.8); break;
+    case 'whistle': SFX.whistle(1); break;
+    case 'touchdown': if (crowd) { cheer(e.team, 1); if (home(e.team)) SFX.horn(); } break;
+    case 'flag': if (e.presnap) SFX.whistle(2, 0.22); break;
+    case 'message':
+      if (e.kind === 'timeout') SFX.whistle(1, 0.4);
+      else if (e.kind === 'score' && crowd && /field goal/i.test(session.match.lastScore?.what || '')) cheer(session.match.lastScore?.team ?? 0, 0.8);
+      break;
+    default:
+  }
+}
+
 function onSessionEvent(e) {
+  soundFor(e);
   renderer.presentation.onEvent(e, session);
   if (e.type === 'touchdown' && session && !session.fast) renderer.lightShow();
   // Your touchdown: the celebration wheel (RS: up Dance, left Flex, right Spike, down Team) for a couple of seconds.
@@ -679,7 +715,9 @@ let time = 0;
 // the limp-limb springs and the gait stay in step with the sim instead of the wall clock.
 let animTime = 0;
 let attract = 0;
+let crowdLevel = null; // the stadium crowd this frame (audio): null = no crowd (menus, practice)
 function frameBody(now) {
+  crowdLevel = null;
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;
@@ -867,6 +905,7 @@ function frameBody(now) {
     // Wide view for a human on either side, kicks included (the kicker and the rush / coverage in frame).
     renderer.rig.wideView = !playerCam && (session.humanSide === 'defense' || session.humanSide === 'offense');
     renderer.render(dt, focus, camDir, camPhase, snapCam, excite);
+    crowdLevel = session.practice || session.settings.neutral || session.watching || speed > 2 ? (session.settings.neutral && !session.practice ? excite * 0.6 : null) : excite;
     snapCam = false;
     hud.artOn = artView;
     hud.update(session, renderer, dt, frameMs, playcall.open);
@@ -881,6 +920,10 @@ function frameBody(now) {
     if (ft && ft !== menuFieldTeam) { menuFieldTeam = ft; renderer.setTeams(ft, ft); }
     renderer.renderOrbit(dt, attract);
   }
+  if (app === 'intro') crowdLevel = 0.75; // the crowd up for the run-out
+  else if (app === 'replay') crowdLevel = 0.25;
+  if (Object.values(f.pressed).some(Boolean)) SFX.unlockAudio(); // pad buttons (browsers that count them as a gesture)
+  SFX.updateAudio(dt, crowdLevel, app === 'paused' || app === 'halftime' || app === 'over');
   if (consumed) { input.consume(); input2.consume(); }
   renderer.adapt(frameMs);
   requestAnimationFrame(frame);

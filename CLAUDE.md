@@ -429,6 +429,9 @@ jersey / sleeve vertices); the fold shading reads the jersey angle per pixel fro
 the wrap under the left arm); the fold normal's derivatives are clamped (gFold jumps between arm and torso triangles, and
 its 2x2-block derivative was black / white speckle); triangles across the fabric uv wrap (back centre) skip the knit map;
 buildhuman smooths the shoulder cap / upper arm junction of the final padded shape (the cap folded over the deltoid).
+Lighting normals come from the dressed shape (base + pads x 1.3, `buildHumanGeometry`), not the bare body: its pecs / abs
+used to show through a smooth jersey; arms hang at `out` 0.24 (clear of the pads); the belly comes in over a long ramp
+(`tf`, 1.5 -> 1.1 yd); jersey folds fade out at the shoulder / armpit and sleeve folds only live near the cuff.
 
 ### Faces and officials' caps
 The face frame for photos / the painted face is measured on the mesh (buildhuman `FACE`: chin at v = 0, the nose tip at

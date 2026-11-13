@@ -983,7 +983,7 @@ function computePose(p, time, sim) {
   const sw = Math.sin(cyc);
   const pose = {
     rootY: 0, rootPitch: 0, rootRoll: 0, rootYaw: 0, crouch: 0, lean: 0.08 + run * 0.3, twist: 0, head: 0,
-    arms: [{ pitch: 0, out: 0.15, elbow: 0.4 }, { pitch: 0, out: 0.15, elbow: 0.4 }],
+    arms: [{ pitch: 0, out: 0.24, elbow: 0.4 }, { pitch: 0, out: 0.24, elbow: 0.4 }], // arms hang clear of the pads
     legs: [{ hip: 0, knee: 0.05 }, { hip: 0, knee: 0.05 }],
   };
   const t = p.animT;

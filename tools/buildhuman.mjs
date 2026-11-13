@@ -588,7 +588,7 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
     if (region[i] !== 0 && region[i] !== 1) return 0;
     if (wOf(i, 'elL') + wOf(i, 'elR') > 0.2 || wOf(i, 'head') > 0.2) return 0;
     const ax = Math.abs(p[0]);
-    return smooth01((ax - (Bk.shX - 0.1)) / 0.06) * (1 - smooth01((Math.abs(p[1] - (shY - 0.04)) - 0.12) / 0.06));
+    return smooth01((ax - (Bk.shX - 0.17)) / 0.06) * (1 - smooth01((Math.abs(p[1] - (shY - 0.02)) - 0.15) / 0.06));
   });
   const idsS = ids.filter((i) => w[i] > 0);
   let P = A.map((p, i) => add(p, mul(pad[i], PK)));
@@ -601,7 +601,7 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
     }
     P = Q;
   };
-  for (let it = 0; it < 25; it++) { pass(0.5); pass(-0.53); }
+  for (let it = 0; it < 45; it++) { pass(0.5); pass(-0.53); }
   let mx = 0;
   for (const i of idsS) { const d = sub(P[i], add(A[i], mul(pad[i], PK))); mx = Math.max(mx, len(d)); pad[i] = add(pad[i], mul(d, 1 / PK)); }
   console.log('shoulder junction smoothing:', idsS.length, 'vertices, max move', mx.toFixed(4));
@@ -629,7 +629,7 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
     for (const i of front) {
       const f = F(i), t = Math.min(1, Math.abs(f[0]) / a);
       const zt = zf * Math.pow(Math.max(0, 1 - Math.pow(t, 3)), 1 / 3);
-      const keep = smooth01((t - 0.8) / 0.2); // leave the sides (they meet the arms) alone
+      const keep = smooth01((t - 0.92) / 0.08); // leave the very sides (they meet the arms) alone
       const dz = (zt - f[2]) * w * (1 - keep);
       const cl = Math.max(-0.02, dz); // fill hollows fully; trim bulges by at most 2 cm
       pad[i] = add(pad[i], [0, 0, cl / PK]);

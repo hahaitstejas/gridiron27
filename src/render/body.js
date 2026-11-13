@@ -232,7 +232,10 @@ vec3 buildPos(vec3 p, vec3 nrm) {
     float t = lower * smoothstep(0.32, 0.6, p.y);
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
     q.x = cx + (q.x - cx) * (1.0 - 0.45 * t);
-    q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.45 * t) : q.z * (1.0 - 0.16 * t);
+    // The belly comes in over a longer ramp than the sides / seat: a short ramp left the chest overhanging it (it read as
+    // two pec lumps from the front three-quarter view).
+    float tf = smoothstep(1.5, 1.1, p.y) * smoothstep(0.32, 0.6, p.y);
+    q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.45 * t) : q.z * (1.0 - 0.11 * tf);
     if (uShell < 0.0 && aRegion < 1.5 && aPart < 1.5) q -= normalize(nrm) * 0.013; // under the shell: tucked inside it
     if (uShell > 0.0) {
       // Cloth is a layer, not skin: a centimetre or so over the pads and body, looser toward the hem and at the sleeve ends.
@@ -420,12 +423,15 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           // (they turned into speckle at the armpit).
           {
             gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
+            // Fade out toward the shoulder / armpit junction: arm triangles use the sleeve's folds, and a jump between the two
+            // along their shared edges showed as jagged streaks on the shoulders.
+            gFold *= 1.0 - smoothstep(0.55, 0.95, fside) * smoothstep(0.55, 0.85, fv);
             // Real folds from the reference shirt (unrolled around the torso): below the armpits only.
             gFold += 5.0 * (textureGrad(foldTex, vec2(ja / 6.28318, 1.0 - fv), vec2(0.0), vec2(0.0)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
           }
         } else if (region == 1) {
           float ang = atan(vBindN.z, vBindN.x);
-          gFold = 0.5 * sin(fy * 70.0 + ang * 3.0 + nz * 3.0) + 0.3 * sin(ang * 5.0 + fy * 20.0);
+          gFold = (0.5 * sin(fy * 70.0 + ang * 3.0 + nz * 3.0) + 0.3 * sin(ang * 5.0 + fy * 20.0)) * smoothstep(uRegY.y + 0.16, uRegY.y + 0.04, fy); // folds by the cuff, none up at the shoulder
         } else if (region == 2 && vPart > 1.5 && vPart < 2.5) {
           float ang = atan(vBindN.z, vBindN.x);
           float hip = smoothstep(uRegY.w + 0.45, uRegY.w + 0.7, fy);
@@ -583,7 +589,17 @@ export function buildHumanGeometry(h) {
   for (let i = 0; i < n; i++) { uv[i * 2] = Math.atan2(p[i * 3], p[i * 3 + 2]) * 1.6; uv[i * 2 + 1] = p[i * 3 + 1] * 9; }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setIndex(new THREE.BufferAttribute(dec(h.index, Uint16Array), 1));
-  g.computeVertexNormals();
+  // Normals from the dressed shape (pads x 1.3, the default), not the bare MakeHuman body: those carried its pecs and abs
+  // into the lighting through a smooth jersey (two round lumps on the chest from the front three-quarter view).
+  {
+    const pos = g.attributes.position.array, pad = g.attributes.aPadD.array, dressed = new Float32Array(pos.length);
+    for (let k = 0; k < pos.length; k++) dressed[k] = pos[k] + pad[k] * 1.3;
+    const t = new THREE.BufferGeometry();
+    t.setAttribute('position', new THREE.BufferAttribute(dressed, 3));
+    t.setIndex(g.index);
+    t.computeVertexNormals();
+    g.setAttribute('normal', t.attributes.normal);
+  }
   g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e4);
   return g;
 }

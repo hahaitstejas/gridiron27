@@ -905,6 +905,8 @@ function frameBody(now) {
     // Wide view for a human on either side, kicks included (the kicker and the rush / coverage in frame).
     renderer.rig.wideView = !playerCam && (session.humanSide === 'defense' || session.humanSide === 'offense');
     renderer.render(dt, focus, camDir, camPhase, snapCam, excite);
+    // The home crowd chants on the visitors' big downs at the line (crowdNoise: 3rd / 4th down, red zone, late and close).
+    SFX.setChant(!live && session.state === 'presnap' && crowdLevel !== undefined && !session.practice && !session.fast && speed <= 2 ? Math.max(0, noise - 0.25) * 1.3 : 0);
     crowdLevel = session.practice || session.settings.neutral || session.watching || speed > 2 ? (session.settings.neutral && !session.practice ? excite * 0.6 : null) : excite;
     snapCam = false;
     hud.artOn = artView;
@@ -920,6 +922,7 @@ function frameBody(now) {
     if (ft && ft !== menuFieldTeam) { menuFieldTeam = ft; renderer.setTeams(ft, ft); }
     renderer.renderOrbit(dt, attract);
   }
+  if (app !== 'game') SFX.setChant(0);
   if (app === 'intro') crowdLevel = 0.75; // the crowd up for the run-out
   else if (app === 'replay') crowdLevel = 0.25;
   if (Object.values(f.pressed).some(Boolean)) SFX.unlockAudio(); // pad buttons (browsers that count them as a gesture)

@@ -114,6 +114,37 @@ export function updateAudio(dt, crowd, paused = false) {
   bed.gain.gain.setTargetAtTime((paused ? 0.25 : 1) * (0.18 + 0.22 * e), t, 0.15);
   bed.roar.gain.setTargetAtTime(Math.max(0, e - 0.35) * 0.55, t, 0.12);
   bed.rf.frequency.setTargetAtTime(1100 + 600 * e, t, 0.3);
+  // The chant: one "DE-FENSE (clap clap)" bar every 1.45 s while it's on.
+  if (chant > 0.05 && !paused) {
+    if (chantNext < t) chantNext = t + 0.05;
+    while (chantNext < t + 0.3) { chantBeat(chantNext, chant); chantNext += 1.45; }
+  } else chantNext = 0;
+}
+
+// The home crowd's two-syllable "DE-FENSE" chant while the visitors are at the line on a big down: thousands of voices
+// = band-passed noise shaped like two vowels ("eh" short, then "ehns" longer and lower), with a clap on each beat.
+let chant = 0, chantNext = 0;
+/** 0..1: how hard the crowd chants (0 stops it). */
+export function setChant(v) { chant = Math.max(0, Math.min(1, v || 0)); }
+
+function chantBeat(t, amt) {
+  const syl = (at, f1, f2, len, a) => {
+    for (const [f, q, g0] of [[f1, 4, 1], [f2, 5, 0.6]]) {
+      const s = noiseSrc(), bf = ctx.createBiquadFilter(), g = ctx.createGain();
+      bf.type = 'bandpass'; bf.frequency.value = f; bf.Q.value = q;
+      g.gain.setValueAtTime(0.0001, at); g.gain.exponentialRampToValueAtTime(a * g0, at + 0.05);
+      g.gain.setValueAtTime(a * g0, at + len * 0.6); g.gain.exponentialRampToValueAtTime(0.0001, at + len);
+      s.connect(bf).connect(g).connect(crowdBus); s.start(at, Math.random() * 2); s.stop(at + len + 0.05);
+    }
+  };
+  syl(t, 560, 1700, 0.28, 1.1 * amt);        // DE
+  syl(t + 0.42, 470, 1500, 0.5, 1.2 * amt);  // FENSE
+  for (const at of [t + 0.84, t + 1.05]) {   // clap clap
+    const s = noiseSrc(), bf = ctx.createBiquadFilter(), g = ctx.createGain();
+    bf.type = 'bandpass'; bf.frequency.value = 1500; bf.Q.value = 0.8;
+    env(g, at, 0.004, 0.55 * amt, 0.08);
+    s.connect(bf).connect(g).connect(crowdBus); s.start(at, Math.random() * 2); s.stop(at + 0.15);
+  }
 }
 
 /** A burst of crowd reaction: `amt` 0..1 (a roar that fades over a few seconds). */

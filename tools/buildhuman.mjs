@@ -566,6 +566,36 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
   console.log('seat smoothing:', idsS.length, 'vertices, max move', mx.toFixed(4));
 }
 
+// ---------- shoulder cap / upper arm junction: iron out the fold where the pad cap pushes out over the deltoid ----------
+// The cap and the deltoid bulge overlapped there, so the jersey folded over itself (two sheets z-fighting: dark speckle on
+// the shoulders). Taubin smoothing of the final padded shape (pads x 1.3) around each shoulder, faded at the edges.
+{
+  const PK = 1.3;
+  const nb = A.map(() => new Set());
+  for (const [a, b, c] of faces) { nb[a].add(b); nb[a].add(c); nb[b].add(a); nb[b].add(c); nb[c].add(a); nb[c].add(b); }
+  const w = A.map((p, i) => {
+    if (region[i] !== 0 && region[i] !== 1) return 0;
+    if (wOf(i, 'elL') + wOf(i, 'elR') > 0.2 || wOf(i, 'head') > 0.2) return 0;
+    const ax = Math.abs(p[0]);
+    return smooth01((ax - (Bk.shX - 0.1)) / 0.06) * (1 - smooth01((Math.abs(p[1] - (shY - 0.04)) - 0.12) / 0.06));
+  });
+  const idsS = ids.filter((i) => w[i] > 0);
+  let P = A.map((p, i) => add(p, mul(pad[i], PK)));
+  const pass = (lam) => {
+    const Q = P.map((p) => [...p]);
+    for (const i of idsS) {
+      const m = [0, 0, 0], n = [...nb[i]];
+      for (const j of n) { m[0] += P[j][0]; m[1] += P[j][1]; m[2] += P[j][2]; }
+      for (let k = 0; k < 3; k++) Q[i][k] = P[i][k] + lam * w[i] * (m[k] / n.length - P[i][k]);
+    }
+    P = Q;
+  };
+  for (let it = 0; it < 25; it++) { pass(0.5); pass(-0.53); }
+  let mx = 0;
+  for (const i of idsS) { const d = sub(P[i], add(A[i], mul(pad[i], PK))); mx = Math.max(mx, len(d)); pad[i] = add(pad[i], mul(d, 1 / PK)); }
+  console.log('shoulder junction smoothing:', idsS.length, 'vertices, max move', mx.toFixed(4));
+}
+
 // ---------- the jersey front stretches across the chest plate: one smooth convex curve per height, no pec lumps ----------
 // Runs on the final padded shape (pads x 1.3, the runtime default): in each 2 cm slab of jersey from the lower ribs to the
 // collarbone, the front's depth at each |x| is pulled onto a superellipse through the slab's centre-front depth and width.

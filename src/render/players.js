@@ -132,7 +132,7 @@ export class PlayerRenderer {
     BODY_UNIFORMS.nameRows.value = MAX;
     const fabric = fabricNormal();
     this.body = part(buildBodyGeometry(), bodyMaterial(envMap, fabric, { value: 0 }, { under: true }), MAX);
-    this.body.customDepthMaterial = bodyDepthMaterial();
+    this.body.customDepthMaterial = bodyDepthMaterial({ value: 0 }, -1); // its jersey zones tucked inside the shell in the shadow pass too (acne on the shell)
     this.body.receiveShadow = true;
     // Sideline players (the instances after the 22 players and 7 officials) are drawn from a much lighter copy of the body:
     // its material reads the bone texture from row `rowOff` on.

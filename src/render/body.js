@@ -227,6 +227,7 @@ vec3 buildPos(vec3 p, vec3 nrm) {
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
     q.x = cx + (q.x - cx) * (1.0 - 0.45 * t);
     q.z = q.z < -0.03 ? -0.03 + (q.z + 0.03) * (1.0 - 0.45 * t) : q.z * (1.0 - 0.16 * t);
+    if (uShell < 0.0 && aRegion < 1.5 && aPart < 1.5) q -= normalize(nrm) * 0.013; // under the shell: tucked inside it
     if (uShell > 0.0) {
       // Cloth is a layer, not skin: a centimetre or so over the pads and body, looser toward the hem and at the sleeve ends.
       float cl = 0.0;
@@ -259,7 +260,9 @@ export const BODY_UNIFORMS = { numTex2: { value: null }, patchTex: { value: null
 /** The body's material: per-instance region colors, numbers / name printed on the jersey, fabric sheen. */
 /** opts.shell: draw as the jersey shell (cloth thickness, cut to the jersey zones); opts.under: the plain body hides its jersey zones behind a dark undershirt layer. */
 export function bodyMaterial(envMap, fabric, rowOff = { value: 0 }, opts = {}) {
-  const uShell = { value: opts.shell || 0 }, uUnder = { value: opts.under ? 1 : 0 };
+  // The plain body under the jersey shell gets uShell = -1: its jersey / sleeve zones sit a little inside (buildPos), so the
+  // shell never has the body poking through it (it showed as dark sawtooth patches on the shoulders and back).
+  const uShell = { value: opts.under ? -1 : opts.shell || 0 }, uUnder = { value: opts.under ? 1 : 0 };
   const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.22,
     sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
   m.onBeforeCompile = (sh) => {
@@ -398,18 +401,21 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
         float fy = vBindY;
         float nz = vn(vec2(fy * 6.0, vInst * 0.37));
         if (region == 0 && vBody.y > 0.0) {
-          float fa = vBody.x - 1.5708, fv = vBody.y;
+          // The jersey angle per pixel from the bind normal (front = PI/2, the wrap under the left arm, like vBody.x):
+          // interpolating vBody.x across a triangle that straddles the wrap gave checkered speckle on the left shoulder.
+          vec3 nbj = normalize(vBindN);
+          float ja = 3.14159265 - atan(nbj.z, nbj.x);
+          float fa = ja - 1.5708, fv = vBody.y;
           float drape = sin(fa * 7.0 + nz * 3.0 + sin(fy * 9.0) * 0.8);
           float tuck = sin(fy * 120.0 + fa * 3.0 + nz * 4.0);
           float fside = smoothstep(0.55, 0.9, abs(sin(fa)));
           float under = sin(fy * 55.0 - fa * 8.0) * smoothstep(0.5, 0.85, fv) * fside;
           // A triangle that straddles the wrap seam under the left arm interpolates the angle all the way round: no folds there
           // (they turned into speckle at the armpit).
-          float seamJ = abs(dFdx(vBody.x)) + abs(dFdy(vBody.x));
-          if (seamJ < 0.6) {
+          {
             gFold = 0.55 * drape * (0.4 + 0.6 * (1.0 - fv)) + 0.45 * tuck * smoothstep(0.3, 0.0, fv) + 0.5 * under;
             // Real folds from the reference shirt (unrolled around the torso): below the armpits only.
-            gFold += 5.0 * (texture2D(foldTex, vec2(vBody.x / 6.28318, 1.0 - fv)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
+            gFold += 5.0 * (textureGrad(foldTex, vec2(ja / 6.28318, 1.0 - fv), vec2(0.0), vec2(0.0)).r - 0.5) * smoothstep(0.7, 0.5, fv) * smoothstep(0.0, 0.04, fv);
           }
         } else if (region == 1) {
           float ang = atan(vBindN.z, vBindN.x);
@@ -492,11 +498,16 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
       // Cheap occlusion: surfaces facing the turf (under the arms, the undersides of the pads, inside the legs) and the
       // lower legs get less of the sky; whites are cloth, not paint (a touch under pure white so folds and shading read).
       if (region == 5) normal = nonPerturbedNormal; // no cloth weave on skin
+      // A triangle across the fabric uv's wrap (down the middle of the back) samples the knit map across the whole texture:
+      // no weave there (speckle otherwise). Its uv derivative is huge and the same over the whole triangle.
+      if (fwidth(vNormalMapUv.x) > 1.5) normal = nonPerturbedNormal;
       if (gFold != 0.0) {
         vec3 fsx = dFdx(-vViewPosition), fsy = dFdy(-vViewPosition);
         vec3 fr1 = cross(fsy, normal), fr2 = cross(normal, fsx);
         float fdet = dot(fsx, fr1);
-        vec2 fdh = vec2(dFdx(gFold), dFdy(gFold)) * 0.007;
+        // Clamped: gFold jumps where triangles of different parts meet (arm / torso), and the derivative of that jump in a
+        // 2x2 pixel block was a black / white speckle along the seam. Real folds change far less than this per pixel.
+        vec2 fdh = clamp(vec2(dFdx(gFold), dFdy(gFold)), -0.12, 0.12) * 0.007;
         normal = normalize(abs(fdet) * normal - sign(fdet) * (fdh.x * fr1 + fdh.y * fr2));
       }
       vec3 wN = normalize((vec4(normal, 0.0) * viewMatrix).xyz);

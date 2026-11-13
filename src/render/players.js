@@ -159,7 +159,7 @@ export class PlayerRenderer {
       chin: part(helmetPart(helmetData.chin, { color: true }), Object.assign(mat(0.45, 0.1, 0.6), { vertexColors: true }), MAX, false),
       decal: part(decalGeo, decalMat, MAX * 2, false),
       // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
-      visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), Object.assign(mat(0.08, 0.3, 1.2), { transparent: true, opacity: 0.5, depthWrite: false }), MAX, false), // see-through: the face stays readable behind the tint
+      visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), Object.assign(mat(0.04, 0.2, 0.65), { transparent: true, opacity: 0.4, depthWrite: false }), MAX, false), // see-through: the face stays readable behind the tint
       towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
     };
     this.parts.face.geometry.setAttribute('aFace', this.faceAttr);
@@ -1393,7 +1393,7 @@ function gearOf(p) {
   const towel = look.towel && look.towel !== 'auto' ? look.towel === 'yes' : p.pos === 'QB' || (skill && k % 3 === 0);
   return { visor, towel };
 }
-export const VISOR_COLORS = { dark: '#1a1f2a', gold: '#3a2a10', clear: '#9fb4c8' };
+export const VISOR_COLORS = { dark: '#0d1016', gold: '#3a2a10', clear: '#56636e' }; // the clear one a cool grey: brighter read as a milky band over the eyes
 
 // ---------- matrix helpers ----------
 /** A BufferGeometry from one helmet.json part (position / normal / optional color / uv, indexed; yards, helmet space). */

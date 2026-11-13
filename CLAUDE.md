@@ -265,8 +265,14 @@ rounds}, history[], seed, offseason{step, …} }`.
   adding sudden-death periods — franchise playoff games use it too). Play / Sim Game / Finish the Round; state in
   localStorage `g27.tournament` (team indexes of the current league); the final screen's button returns to the bracket
   (`session.tournamentGame` → `recordPlayed`).
+- Trade Finder (hub → Trade, `tradeFinder` in ui/franchiseMoney.js): LB/RB picks the position you want; the 60 best there on
+  other teams, sortable, each with the cheapest package of yours that team would take (`cheapestPackage` / `tradeAssets` in
+  trades.js: one to three players / picks, least overshoot that passes `evaluateDeal`); A loads it into the builder (Cancel
+  returns to the finder), Y = pick a team the old way. Player Search (`playerSearch` in franchiseMore.js): a live name box
+  (`.ps-search`, Menu jumps in; each word matches the start of a first / last name or team), empty = the league's best by
+  overall. Position tabs everywhere are `POS_TABS` (sortable.js): All + each of the 17 positions (no DB / OL groups).
 - In-season free agents (`franchise/freeAgents.js`, hub → Free Agents, `ui/freeAgents.js`): `f.freeAgents` from day one
-  (`seedFreeAgents`: ~55 depth veterans, every position), or the user's list — X on the screen imports a roster-format CSV
+  (`seedFreeAgents`: ~55 depth veterans, every position; generated free agents are aimed under the league's starters at their position, `posLevels` / `fitOverall`, practice squads take at most 1-2 per position (`PS_POS_CAP`) and `topUpPool` keeps 20+ at every position; old saves are tamed once, `tamePool` / `f.faTamed`), or the user's list — X on the screen imports a roster-format CSV
   (`freeAgentsFromRows` in csv.js, team column ignored), and `public/local/free_agents.csv` is loaded automatically when a
   franchise starts; either replaces the pool. `signInSeason`: one-year deal at `inSeasonAsk` (60% of market), must fit
   the cap; a full roster (53) picks someone to release first (he joins the pool, as does anyone released from the roster

@@ -33,3 +33,17 @@ describe('free-agent pool', () => {
     expect(tamePool(f, teams)).toBe(0);
   });
 });
+
+describe('trade finder', () => {
+  it('prices a target with a package the CPU accepts', async () => {
+    const { ensurePicks, cheapestPackage, evaluateDeal } = await import('../src/franchise/trades.js');
+    const teams = generateLeagueRosters(defaultTeams(), 13);
+    const f = createFranchise(teams, { userTeam: 0, weeks: 6, seed: 4 });
+    ensurePicks(f, teams);
+    const wr = [...teams[5].roster].filter((p) => p.pos === 'WR').sort((a, b) => b.ovr - a.ovr)[1];
+    const pkg = cheapestPackage(f, teams, 5, wr, 0);
+    expect(pkg).not.toBeNull();
+    expect(pkg.players.length + pkg.picks.length).toBeLessThanOrEqual(3);
+    expect(evaluateDeal(f, teams, 5, { players: pkg.players, picks: pkg.picks }, 0, { players: [wr], picks: [] }).accept).toBe(true);
+  });
+});

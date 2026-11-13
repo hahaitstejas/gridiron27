@@ -68,6 +68,46 @@ export function evaluateDeal(f, teams, cpu, gets, other, gives, cap = f.cap) {
   return { accept: any && capOk && rosterOk && vGets >= vGives * want, capOk, vGets, vGives, ratio: vGives ? vGets / (vGives * want) : 0 };
 }
 
+/**
+ * Everything a team could offer (never the career player): players and picks with their trade value, cheapest first.
+ */
+export function tradeAssets(f, teams, ti) {
+  const out = teams[ti].roster.filter((p) => !p.career).map((p) => ({ p, v: tradeValue(p) }));
+  for (const pk of picksOf(f, ti)) out.push({ pk, v: pickValue(f, teams, pk) });
+  return out.sort((a, b) => a.v - b.v);
+}
+
+/**
+ * The cheapest package from team `me` that team `cpu` would take for `target` (one of its players): one asset, two or
+ * three, whichever overshoots the least and passes evaluateDeal (value, cap, roster size). `assets` = tradeAssets(me),
+ * passed in when pricing many targets. Returns { players, picks, v } or null when nothing works.
+ */
+export function cheapestPackage(f, teams, cpu, target, me, assets = null) {
+  assets ||= tradeAssets(f, teams, me);
+  const need = tradeValue(target) * 1.08 * (target.tradeRequest ? 0.9 : 1);
+  const cands = [];
+  // One asset: the cheapest that covers it.
+  const one = assets.find((a) => a.v >= need);
+  if (one) cands.push([one]);
+  // Two or three: the biggest few under the need, completed by the cheapest that covers the rest.
+  const under = assets.filter((a) => a.v < need).slice(-10);
+  for (const a of under) {
+    const b = assets.find((x) => x !== a && a.v + x.v >= need);
+    if (b) cands.push([a, b]);
+    else {
+      const c = [...under].reverse().find((x) => x !== a);
+      const d = c && assets.find((x) => x !== a && x !== c && a.v + c.v + x.v >= need);
+      if (d) cands.push([a, c, d]);
+    }
+  }
+  cands.sort((x, y) => x.reduce((s, a) => s + a.v, 0) - y.reduce((s, a) => s + a.v, 0));
+  for (const c of cands) {
+    const gives = { players: c.filter((a) => a.p).map((a) => a.p), picks: c.filter((a) => a.pk).map((a) => a.pk) };
+    if (evaluateDeal(f, teams, cpu, gives, me, { players: [target], picks: [] }).accept) return { ...gives, v: c.reduce((s, a) => s + a.v, 0) };
+  }
+  return null;
+}
+
 /** Carry out a deal: players change rosters, picks change owners. */
 export function executeDeal(f, teams, a, giveA, b, giveB) {
   for (const p of giveA.players) { delete p.onBlock; delete p.tradeRequest; p.morale = Math.max(p.morale ?? 70, 65); tradePlayer(teams[a], teams[b], p.id); }

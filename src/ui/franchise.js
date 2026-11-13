@@ -19,6 +19,7 @@ import { gameWhen } from '../franchise/nflSchedule.js';
 const SLOT_NAMES = { TNF: 'Thursday Night', SNF: 'Sunday Night', MNF: 'Monday Night', Opener: 'Kickoff Opener', Thanksgiving: 'Thanksgiving', Christmas: 'Christmas Day', International: 'International' };
 export const slotName = (g) => (g.slot === 'International' && g.venue ? `${g.venue.city} game` : SLOT_NAMES[g.slot] || '');
 import { STAT_TABS } from '../game/boxscore.js';
+import { sortHead, sortKeys, sortRows } from './sortable.js';
 import { listSaves, readSave, setActiveSlot } from '../data/storage.js';
 import { deserializeLeague } from '../data/league.js';
 import { newCareer, careerScreen } from './career.js';
@@ -542,27 +543,34 @@ export class FranchiseUI {
   }
 
   // ---------- season stats (same tabs as the end-of-game stats) ----------
-  teamStatsScreen(tab = 0, mine = true) {
+  teamStatsScreen(tab = 0, mine = true, sort = null) {
     const { screens } = this.ctx;
     const f = this.f, teams = this.teams, t = STAT_TABS[tab];
-    const list = Object.values(f.stats).filter((s) => (!mine || s.teamIdx === f.userTeam) && t.has(s)).sort((a, b) => t.sort(b) - t.sort(a));
-    const head = el('div.st-row.st-head', {}, el('span.st-team', { text: 'TM' }), el('span.st-name', { text: 'Player' }), el('span.st-num', { text: 'GP' }),
-      t.cols.map(([c]) => el('span.st-num', { text: c })));
+    sort ||= { col: null, asc: false, cur: 0 };
+    // Sortable columns: GP, then the category's own (◀▶ picks one, X sorts by it, X again flips).
+    const getters = [(s) => s.gp, ...t.cols.map(([, fn]) => (s) => { const v = fn(s); const n = parseFloat(v); return Number.isFinite(n) ? n : -1e9; })];
+    let list = Object.values(f.stats).filter((s) => (!mine || s.teamIdx === f.userTeam) && t.has(s)).sort((a, b) => t.sort(b) - t.sort(a));
+    list = sortRows(list, sort, getters);
+    const head = el('div.st-row.st-head', {}, el('span.st-team', { text: 'TM' }), el('span.st-name', { text: 'Player' }),
+      sortHead(['GP', ...t.cols.map(([c]) => c)], sort, 'span.st-num'));
     const rows = list.map((s) => {
       const tm = teams[s.teamIdx];
       return el('div.st-row', { style: { borderLeftColor: tm?.colors.primary } }, el('span.st-team', { text: s.team }),
-        el('span.st-name', {}, el('b', { text: s.name }), el('small', { text: ` ${s.pos}` })), el('span.st-num', { text: String(s.gp) }),
-        t.cols.map(([, fn]) => el('span.st-num', { text: String(fn(s)) })));
+        el('span.st-name', {}, el('b', { text: s.name }), el('small', { text: ` ${s.pos}` })),
+        [String(s.gp), ...t.cols.map(([, fn]) => String(fn(s)))].map((v, i) => el(`span.st-num${i === sort.col ? '.sorted' : ''}`, { text: v })));
     });
     const empty = el('div.st-empty', { text: 'No stats yet this season.' });
     const go = (d) => this.teamStatsScreen((tab + d + STAT_TABS.length) % STAT_TABS.length, mine);
     screens.frame('stats-screen', el('h1', { text: `${f.year} Season Stats` }),
-      el('div.pc-tabs', {}, STAT_TABS.map((x, i) => el(`div.pc-tab${i === tab ? '.on' : ''}`, { text: x.label }))),
+      el('div.pc-tabs', {}, STAT_TABS.map((x, i) => el(`div.pc-tab${i === tab ? '.on' : ''}`, { text: x.label, onclick: () => go(i - tab) }))),
       el('div.st-team-filter', { text: mine ? `${teams[f.userTeam].city} ${teams[f.userTeam].name}` : 'Whole league' }),
       el('div.st-table', {}, head, rows.length ? rows : empty),
-      el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> category &nbsp; <b class="btn X">X</b> my team / league &nbsp; ▲▼ scroll &nbsp; <b class="btn B">B</b> back' }));
+      el('div.setup-help', { html: '<b class="btn LB">LB</b>/<b class="btn RB">RB</b> category &nbsp; ◀▶ column &nbsp; <b class="btn X">X</b> sort by it &nbsp; <b class="btn Y">Y</b> my team / league &nbsp; ▲▼ scroll &nbsp; <b class="btn B">B</b> back' }));
     screens.nav.set(rows.length ? rows : [empty], { columns: 1, onBack: () => this.hub(), onTab: go });
-    screens.extraButtons = (fr) => { if (fr.pressed.X) this.teamStatsScreen(tab, !mine); };
+    screens.extraButtons = (fr) => {
+      if (sortKeys(fr, sort, t.cols.length + 1, () => this.teamStatsScreen(tab, mine, sort))) return;
+      if (fr.pressed.Y) this.teamStatsScreen(tab, !mine, sort);
+    };
   }
 
   // ---------- injuries ----------

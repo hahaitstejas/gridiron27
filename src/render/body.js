@@ -419,6 +419,11 @@ float gFold = 0.0; // cloth fold height (-1..1): shades the creases and bends th
           float hip = smoothstep(uRegY.w + 0.45, uRegY.w + 0.7, fy);
           float knee = smoothstep(0.1, 0.0, abs(fy - uRegY.w - 0.07));
           gFold = 0.35 * hip * sin(fy * 45.0 + ang * 6.0 + nz * 3.0) + 0.3 * knee * sin(fy * 95.0 + ang * 2.0 + nz * 5.0);
+          // The pads under the pants (tools/buildhuman.mjs): a crease along the thigh plate's top and bottom edges and round
+          // the knee cap, on the front of the leg (knee = uRegY.w + 0.07).
+          float front = smoothstep(0.25, 0.6, normalize(vBindN).z);
+          float edge = smoothstep(0.035, 0.0, abs(abs(fy - uRegY.w - 0.32) - 0.125)) + 0.6 * smoothstep(0.03, 0.0, abs(abs(fy - uRegY.w - 0.085) - 0.06));
+          gFold -= 0.55 * edge * front;
         }
       }
       col *= 1.0 + 0.12 * gFold; // creases read darker, ridges lighter

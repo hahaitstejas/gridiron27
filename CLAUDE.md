@@ -422,7 +422,7 @@ belt (`tap`); the jersey cloth is thinner below the chest; body.js `buildPos` ta
 (`lower` 1.34 -> 1.12, x 0.45, back 0.45, front 0.16) and the shell is snug at the hem (looseness there made a skirt).
 Chest plate fair (buildhuman): each 2 cm slab's padded front is pulled onto one convex curve (no pec lumps in the middle).
 Padded pants: the glute cleft is filled to the cheeks' depth (`seatBack`) and the seat is Taubin-smoothed; pants get a
-softer down-facing occlusion (0.74). Measure with the close-up rig in the scratchpad (front / 3-4 / side / back).
+softer down-facing occlusion (0.74). Thigh pad = a ~9 in plate on the front of the thigh, knee pad = a rounded cap (buildhuman clothing block), with soft creases at their edges in the pants fold shading (body.js `edge`). Measure with the close-up rig in the scratchpad (front / 3-4 / side / back).
 
 ### Layered jersey (shell over the body)
 The jersey is its own layer: `parts.shell` draws the torso / upper-arm triangles again (`human.json` `shellIndex`, `buildHumanShellGeometry`) with `uShell` pushing every vertex out along its normal by the cloth thickness (`buildPos` in body.js: ~1 cm, looser toward the hem and at the sleeve ends), double-sided (the inside is darker) and cut per pixel to the real jersey / sleeve zones; the plain body (`under: true`) paints those zones as a dark undershirt layer, so the arm shows inside the sleeve and the hem and cuffs have depth. The printed numbers / patches (`decalMaterial(env, 1.25)`) ride on the shell's surface. Sideline LOD bodies skip the shell.

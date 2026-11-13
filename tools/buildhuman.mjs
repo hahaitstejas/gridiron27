@@ -531,11 +531,13 @@ function smooth01(t) { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * 
         pad[i] = add(pad[i], [0, 0, -fill * smooth01(band) * smooth01(mid) / 1.3]);
       }
     }
-    // Thigh and knee pads under the pants: low bumps on the front of each leg.
-    if (region[i] === 2 && n[2] > 0.25) {
+    // Thigh and knee pads under the pants: the thigh pad is a plate (flat face, short rounded edges, ~9 in tall) on the
+    // front of the thigh; the knee pad a rounded cap over the kneecap.
+    if (region[i] === 2 && n[2] > 0.2) {
       const y = A[i][1];
-      const thigh = Math.max(0, 1 - Math.abs(y - (kneeY + 0.24)) / 0.12), knee = Math.max(0, 1 - Math.abs(y - (kneeY + 0.02)) / 0.05);
-      pad[i] = add(pad[i], mul(n, (thigh * 0.014 + knee * 0.012) * Math.min(1, (n[2] - 0.25) * 2.5)));
+      const thigh = smooth01((0.125 - Math.abs(y - (kneeY + 0.25))) / 0.03) * smooth01((n[2] - 0.3) / 0.25);
+      const kt = Math.abs(y - (kneeY + 0.015)) / 0.065, knee = kt < 1 ? Math.cos(kt * Math.PI / 2) ** 2 * smooth01((n[2] - 0.35) / 0.3) : 0;
+      pad[i] = add(pad[i], mul(n, thigh * 0.017 + knee * 0.02));
     }
   }
 }

@@ -24,7 +24,7 @@ const POS_FILTERS = POS_TABS;
 
 /** A generic sortable player table. cols = [[label, getter(p, t), fmt?]]. */
 function table(cols, list, sort, onRow) {
-  const head = el('div.st-row.st-head', {}, sortHead(cols.map((c) => c[0]), sort, 'span.st-num'));
+  const head = el('div.st-row.st-head', {}, sortHead(cols.map((c) => c[0]), sort, 'span.st-num').map((h, i) => { if (cols[i][3]) h.classList.add(cols[i][3]); return h; }));
   const rows = sortRows(list, sort, cols.map((c) => (x) => c[1](x))).map((x) => {
     const r = el(`div.st-row${x.mine ? '.mine' : ''}`, {}, cols.map((c, i) => el(`span.st-num${i === sort.col ? '.sorted' : ''}${c[3] ? '.' + c[3] : ''}`, { text: String(c[2] ? c[2](x) : c[1](x)) })));
     r.activate = () => onRow?.(x);
@@ -191,37 +191,57 @@ export function waiversScreen(ui) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-/** Every player in the league: position filter (LB/RB), team filter (Y), sortable columns, your players highlighted. */
+/**
+ * Every player in the league: a name search box (type; Menu jumps into it), position filter (LB/RB), team filter (Y),
+ * sortable columns, your players highlighted. With no search it is the league's best players by overall.
+ */
 export function playerSearch(ui, state = null) {
   const { screens } = ui.ctx;
   const f = ui.f, teams = ui.teams;
-  const st = state || { filter: 0, team: null, sort: { col: 3, asc: false, cur: 3 } };
+  const st = state || { filter: 0, team: null, q: '', sort: { col: 3, asc: false, cur: 3 } };
+  const words = (st.q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  // Each typed word matches the start of the first name, last name or team ("mi" finds Miles and Mitchell, not Dominic).
+  const hit = (p, t) => {
+    if (!words.length) return true;
+    const toks = `${p.first} ${p.last} ${t.abbr || ''}`.toLowerCase().split(/[\s'.-]+/);
+    return words.every((w) => toks.some((k) => k.startsWith(w)));
+  };
   const [fname, positions] = POS_FILTERS[st.filter];
   const order = alphaOrder(teams);
   const list = [];
   teams.forEach((t, ti) => {
     if (st.team !== null && st.team !== ti) return;
-    for (const p of t.roster) if (!positions || positions.includes(p.pos)) list.push({ p, t, ti, mine: ti === f.userTeam });
+    for (const p of t.roster) if ((!positions || positions.includes(p.pos)) && hit(p, t)) list.push({ p, t, ti, mine: ti === f.userTeam });
   });
-  if (st.team === -1 || st.team === null) for (const p of f.freeAgents || []) if (!positions || positions.includes(p.pos)) list.push({ p, t: { abbr: 'FA' }, ti: -1 });
+  if (st.team === -1 || st.team === null) for (const p of f.freeAgents || []) if ((!positions || positions.includes(p.pos)) && hit(p, { abbr: 'FA' })) list.push({ p, t: { abbr: 'FA' }, ti: -1 });
   const cols = [['TM', (x) => x.t.abbr], ['POS', (x) => x.p.pos], ['PLAYER', (x) => `${x.p.first} ${x.p.last}`, null, 'wide'], ['OVR', (x) => x.p.ovr], ['AGE', (x) => x.p.age ?? 0],
     ['$M', (x) => x.p.salary ?? 0, (x) => (x.p.salary ?? 0).toFixed(1)], ['YRS', (x) => x.p.years ?? 0], ['MOOD', (x) => moraleOf(x.p)],
     ['TRAITS', (x) => traitsOf(x.p).length, (x) => traitsOf(x.p).map((id) => TRAITS[id].name).join(', ') || '', 'wide']];
   const all = sortRows(list, st.sort, cols.map((c) => (x) => c[1](x))).slice(0, 150);
-  const head = el('div.st-row.st-head', {}, sortHead(cols.map((c) => c[0]), st.sort, 'span.st-num'));
+  const head = el('div.st-row.st-head', {}, sortHead(cols.map((c) => c[0]), st.sort, 'span.st-num').map((h, i) => { if (cols[i][3]) h.classList.add(cols[i][3]); return h; }));
   const rows = all.map((x) => {
     const r = el(`div.st-row${x.mine ? '.mine' : ''}`, {}, cols.map((c, i) => el(`span.st-num${i === st.sort.col ? '.sorted' : ''}${c[3] ? '.' + c[3] : ''}`, { text: String(c[2] ? c[2](x) : c[1](x)) })));
     r.activate = () => { if (x.ti >= 0) ui.ctx.rosterScreen(x.ti, () => playerSearch(ui, st)); };
     return r;
   });
   const teamLabel = st.team === null ? 'Whole league + free agents' : `${teams[st.team].city} ${teams[st.team].name}`;
-  screens.frame('stats-screen wide-table', el('h1', { text: 'Player Search' }),
+  // The search box: every keystroke filters (the game's keyboard controls ignore a focused text field).
+  const box = el('input.ps-search', { type: 'text', placeholder: 'Type a name to search (Menu)…', spellcheck: 'false' });
+  box.value = st.q || '';
+  const refocus = st.typing; // read before the re-render: the old box losing focus clears st.typing
+  box.addEventListener('input', () => { st.q = box.value; st.typing = true; playerSearch(ui, st); });
+  box.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape' || e.key === 'ArrowDown') { e.preventDefault(); st.typing = false; box.blur(); } });
+  box.addEventListener('focus', () => { st.typing = true; });
+  box.addEventListener('blur', () => { st.typing = false; });
+  screens.frame('stats-screen wide-table', el('h1', { text: 'Player Search' }), box,
     el('div.pc-tabs', {}, POS_FILTERS.map(([n], i) => el(`div.pc-tab${i === st.filter ? '.on' : ''}`, { text: n }))),
-    el('div.st-team-filter', { text: `${teamLabel} · ${list.length} players${list.length > 150 ? ' (top 150 shown)' : ''}` }),
+    el('div.st-team-filter', { text: `${words.length ? `"${st.q.trim()}" · ` : 'Top players · '}${teamLabel} · ${list.length} players${list.length > 150 ? ' (top 150 shown)' : ''}` }),
     el('div.st-table', {}, head, rows.length ? rows : el('div.st-empty', { text: 'Nobody.' })),
-    el('div.setup-help', { html: `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> ${fname} &nbsp; ◀▶ column <b class="btn X">X</b> sort &nbsp; <b class="btn Y">Y</b> team &nbsp; <b class="btn A">A</b> open roster &nbsp; <b class="btn B">B</b> back` }));
+    el('div.setup-help', { html: `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> ${fname} &nbsp; ◀▶ column <b class="btn X">X</b> sort &nbsp; <b class="btn Y">Y</b> team &nbsp; <b class="btn A">A</b> open roster &nbsp; <b class="btn Menu">☰</b> search &nbsp; <b class="btn B">B</b> back` }));
   screens.nav.set(rows.length ? rows : [el('div')], { columns: 1, onBack: () => ui.hub('Front Office'), onTab: (d) => playerSearch(ui, { ...st, filter: (st.filter + d + POS_FILTERS.length) % POS_FILTERS.length }) });
+  if (refocus) { st.typing = true; box.focus(); box.setSelectionRange(box.value.length, box.value.length); }
   screens.extraButtons = (fr) => {
+    if (fr.pressed.Menu) { box.focus(); return; }
     if (sortKeys(fr, st.sort, cols.length, () => playerSearch(ui, st))) return;
     if (fr.pressed.Y) {
       const i = st.team === null ? -1 : order.indexOf(st.team);

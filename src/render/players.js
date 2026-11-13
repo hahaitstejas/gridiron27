@@ -602,6 +602,10 @@ export class PlayerRenderer {
       this.fallAnim[i] = true;
     } else if (!falling) this.fallAnim[i] = false;
     FALL = pileFall || (falling ? this.fall[i] : null);
+    TSTYLE = p.anim === 'tackle' ? this.tackleStyle(i, p, sim) : null;
+    // Interceptions are high-pointed only when the ball was high: remember the ball's last height in the air.
+    if (sim?.ball?.state === 'air') this.airY = sim.ball.y;
+    if (p.anim === 'pick') { const pk = (this.pickH ||= []); if (!pk[i] || p.animT < pk[i].t - 0.02) pk[i] = { h: this.airY ?? 1.5, t: p.animT }; else pk[i].t = p.animT; PICKH = Math.max(0, Math.min(1, (pk[i].h - 1.55) / 0.75)); }
     const pose = this.blend(i, holdingKick(p, sim) ? 'hold' : p.anim, computePose(p, time, sim), dt);
     if (!official) this.limp(i, p, pose, dt);
     if (pileLift) pose.rootY += pileLift; // on top of the pile
@@ -763,6 +767,29 @@ export class PlayerRenderer {
    * instead of being posed rigidly. A kick on impact (scaled by his speed) starts the swing; the layer fades in and
    * out so normal animations are untouched.
    */
+  /**
+   * How a tackler takes the runner down (render-only, picked when the tackle starts and kept through the fall): from
+   * behind he drags him down by the shoulders, a fast head-on hit is a shoulder, some go low at the legs, the rest wrap up.
+   */
+  tackleStyle(i, p, sim) {
+    const st = (this.tst ||= [])[i];
+    if (st && p.animT >= st.t - 0.02) { st.t = p.animT; return st.style; }
+    let style = 'form';
+    const c = sim?.ball?.carrier >= 0 ? sim.players[sim.ball.carrier] : null;
+    const h = ((p.id || 0) * 2654435761 + Math.floor((sim?.t || 0) * 7)) >>> 0;
+    if (p.gang) style = h % 2 ? 'low' : 'form';
+    else if (c && c !== p) {
+      const fx = Math.cos(p.facing), fz = Math.sin(p.facing), cs = Math.hypot(c.vx, c.vz);
+      const along = cs > 1.5 ? (fx * c.vx + fz * c.vz) / cs : 0; // > 0: he is running away from the tackler (from behind)
+      const rel = Math.hypot(p.vx - c.vx, p.vz - c.vz);
+      if (along > 0.45) style = 'drag';
+      else if (along < -0.3 && rel > 7) style = 'shoulder';
+      else style = h % 10 < 3 ? 'low' : 'form';
+    }
+    this.tst[i] = { style, t: p.animT };
+    return style;
+  }
+
   limp(i, p, pose, dt) {
     const st = (this.limpS[i] ||= { x: new Float32Array(POSE_N), v: new Float32Array(POSE_N), w: 0, on: false, init: false });
     const on = LIMP_ANIMS.has(p.anim);
@@ -931,6 +958,8 @@ function unpackPose(a, p) {
 
 // ---------- Procedural poses ----------
 let FALL = null; // fall direction of the player being posed (set by drawPlayer)
+let PICKH = 1; // how high the intercepted ball was (0 = chest height or lower, 1 = well overhead)
+let TSTYLE = null; // the tackler's style for this tackle (PlayerRenderer.tackleStyle): form | low | drag | shoulder
 /** The holder on a field goal / PAT kneels from the set until the kick (render-only; standing still, so not while jogging to the line). */
 function holdingKick(p, sim) {
   if (!sim || p.slot !== 'H' || p.team !== sim.offIdx || sim.offPlay?.type !== 'fg') return false;
@@ -1083,13 +1112,20 @@ function computePose(p, time, sim) {
       break;
     }
     case 'pick': {
-      // Interception: a leap for the ball, high-pointing it, then the tuck.
-      const k = Math.min(1, t / 0.45);
-      pose.rootY = Math.sin(Math.min(1, t / 0.4) * Math.PI) * 0.45;
-      pose.arms[0].pitch = pose.arms[1].pitch = 3.0 - k * 1.8;
-      pose.arms[0].elbow = pose.arms[1].elbow = 0.15 + k * 1.6;
-      pose.legs[0].hip = 0.9 * (1 - k); pose.legs[0].knee = 1.3 * (1 - k); pose.legs[1].knee = 0.4;
-      pose.head = -0.4 + k * 0.5;
+      // Interception, high-pointed: up off one leg with the other knee driven high, both arms locked straight overhead at
+      // the top of the jump, then the ball pulled down into the chest and a bent-knee landing.
+      const air = Math.min(1, t / 0.5), top = Math.min(1, t / 0.22), pull = Math.min(1, Math.max(0, (t - 0.26) / 0.24));
+      const pe = pull * pull * (3 - 2 * pull), land = Math.sin(Math.min(1, Math.max(0, (t - 0.42) / 0.3)) * Math.PI);
+      const hi = PICKH; // a low ball is scooped in front, no leap
+      pose.rootY = Math.sin(air * Math.PI) * 0.55 * hi;
+      pose.arms[0].pitch = pose.arms[1].pitch = ((1.6 + 1.45 * hi) * top + (1 - top) * 1.2) * (1 - pe) + 0.9 * pe;
+      pose.arms[0].elbow = pose.arms[1].elbow = 0.08 + pe * 1.85;
+      pose.arms[0].out = pose.arms[1].out = 0.12 * (1 - pe) - 0.1 * pe;
+      const up = Math.sin(air * Math.PI);
+      pose.legs[0].hip = 1.15 * up * hi; pose.legs[0].knee = 1.5 * up * hi + land * 0.5;
+      pose.legs[1].hip = -0.15 * up * hi + land * 0.45; pose.legs[1].knee = 0.5 * up * hi + land * 0.7;
+      pose.crouch = -0.16 * land - 0.12 * (1 - hi) * (1 - pe); pose.lean = 0.1 * pe + 0.3 * (1 - hi) * (1 - pe);
+      pose.head = (-0.6 * hi) * (1 - pe) + 0.15 * pe; // eyes up on a high ball, then down at the tuck
       break;
     }
     case 'falling': {
@@ -1107,14 +1143,43 @@ function computePose(p, time, sim) {
       break;
     }
     case 'tackle': {
-      // Tackler: drive in with arms wrapped, then go down with the runner.
       const f = FALL || { fwd: 1, side: 0 };
-      const k = Math.min(1, t / 0.4), e = k * k * (3 - 2 * k);
-      pose.rootPitch = e * 1.35; pose.rootRoll = -e * f.side * 0.6; pose.rootY = -e * 0.15; pose.lean = 0.45;
-      pose.arms[0].pitch = pose.arms[1].pitch = 1.6; pose.arms[0].elbow = pose.arms[1].elbow = 1.3;
-      pose.arms[0].out = pose.arms[1].out = -0.35; // wrapped around the ball carrier
-      pose.legs[0].hip = -0.4; pose.legs[1].hip = 0.2; pose.legs[0].knee = 0.6; pose.legs[1].knee = 0.9;
-      pose.head = -0.4;
+      const style = TSTYLE || 'form';
+      if (style === 'low') {
+        // At the legs: dives low, arms around the knees, head up and to the side, legs trailing out behind.
+        const k = Math.min(1, t / 0.32), e = k * k * (3 - 2 * k);
+        pose.rootPitch = e * 1.5; pose.rootRoll = -e * f.side * 0.4; pose.rootY = -e * 0.3; pose.lean = 0.6;
+        pose.arms[0].pitch = pose.arms[1].pitch = 2.3; pose.arms[0].elbow = pose.arms[1].elbow = 0.9;
+        pose.arms[0].out = pose.arms[1].out = -0.25;
+        pose.legs[0].hip = -0.7; pose.legs[1].hip = -0.45; pose.legs[0].knee = 0.25; pose.legs[1].knee = 0.5;
+        pose.head = 0.1;
+      } else if (style === 'drag') {
+        // From behind: grabs the shoulder pads, sits back to pull him over, then falls on top of him.
+        const k = Math.min(1, t / 0.6), e = k * k * (3 - 2 * k), pull = Math.sin(Math.min(1, t / 0.35) * Math.PI);
+        pose.rootPitch = e * 1.25 - pull * 0.25; pose.rootRoll = -e * f.side * 0.5; pose.rootY = -e * 0.12 - pull * 0.08; pose.lean = 0.3;
+        pose.arms[0].pitch = pose.arms[1].pitch = 2.5; pose.arms[0].elbow = pose.arms[1].elbow = 1.1;
+        pose.arms[0].out = pose.arms[1].out = -0.15;
+        pose.legs[0].hip = 0.5 * pull - 0.2; pose.legs[1].hip = 0.3 * pull; pose.legs[0].knee = 0.9 + 0.4 * pull; pose.legs[1].knee = 1.0;
+        pose.head = -0.2;
+      } else if (style === 'shoulder') {
+        // A head-on hit: shoulder leads (twisted into it), one arm wraps, the other drives; drives him back and down.
+        const k = Math.min(1, t / 0.45), e = k * k * (3 - 2 * k), hit = Math.sin(Math.min(1, t / 0.2) * Math.PI);
+        const sd = (p.id || 0) % 2 ? 1 : -1;
+        pose.rootPitch = e * 1.2 + hit * 0.15; pose.rootRoll = -e * f.side * 0.6; pose.rootY = -e * 0.15; pose.lean = 0.7;
+        pose.twist = sd * 0.45 * (1 - e * 0.5);
+        pose.arms[0].pitch = 1.5; pose.arms[1].pitch = 1.1; pose.arms[0].elbow = 1.35; pose.arms[1].elbow = 1.7;
+        pose.arms[0].out = -0.4; pose.arms[1].out = -0.1;
+        pose.legs[0].hip = -0.55; pose.legs[1].hip = 0.35; pose.legs[0].knee = 0.5; pose.legs[1].knee = 1.0;
+        pose.head = -0.5;
+      } else {
+        // Form tackle: drive in with arms wrapped, then go down with the runner.
+        const k = Math.min(1, t / 0.4), e = k * k * (3 - 2 * k);
+        pose.rootPitch = e * 1.35; pose.rootRoll = -e * f.side * 0.6; pose.rootY = -e * 0.15; pose.lean = 0.45;
+        pose.arms[0].pitch = pose.arms[1].pitch = 1.6; pose.arms[0].elbow = pose.arms[1].elbow = 1.3;
+        pose.arms[0].out = pose.arms[1].out = -0.35; // wrapped around the ball carrier
+        pose.legs[0].hip = -0.4; pose.legs[1].hip = 0.2; pose.legs[0].knee = 0.6; pose.legs[1].knee = 0.9;
+        pose.head = -0.4;
+      }
       break;
     }
     case 'down': {

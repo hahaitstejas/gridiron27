@@ -14,7 +14,7 @@ import { SCENARIOS } from '../game/scenarios.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
-  nameTags: true, statCard: true, autoReplay: true, intro: true, catchCam: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
+  nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false };
 
 // What each setting does (the description panel on settings-style screens), keyed by the row's label, lower case.
@@ -30,7 +30,6 @@ export const OPTION_HELP = {
   'name tags': 'Names under the player you control and the ball carrier.',
   'post-play stat card': 'A small card after each play with the key players and their game line.',
   'auto replay big plays': 'Touchdowns, interceptions and big hits replay automatically once the play is over.',
-  'catch camera': 'A quick close-up from behind the player who makes a catch or an interception, following him for a moment before the broadcast view comes back.',
   'pregame intro': 'The stadium flyover and run-out before kickoff. A, B or Menu skips it.',
   'career camera': 'In Career mode: the camera behind your player, or the broadcast view.',
   'franchise signings: jersey #': 'You pick a new signing\'s number from the ones he can wear, or the game gives him one.',
@@ -747,7 +746,6 @@ export class Screens {
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
       option('Pregame intro', [true, false], 'intro', (v) => (v ? 'On' : 'Off')),
-      option('Catch camera', [true, false], 'catchCam', (v) => (v ? 'On' : 'Off')),
       option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
       option('Franchise signings: jersey #', [false, true], 'autoNumbers', (v) => (v ? 'Automatic' : 'You pick')),
     ];

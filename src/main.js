@@ -200,10 +200,6 @@ applyCamera();
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
 let celWheel = null; // the touchdown celebration picker (RS)
-// Catch cam (Settings → Catch camera): a quick cut to a low, tight shot behind and beside the player who just caught the
-// ball (or picked it off), following him for a moment. From behind him, so up on the stick is still upfield.
-let catchCam = null;
-const CATCH_CAM_T = 1.6;
 let artView = false;
 let fgBroke = null; // the field-goal PlaySim whose kick was blocked / fumbled (camera back to broadcast)
 let artSim = null, artReleased = false; // RT play art needs a fresh press at the line (see the render loop) // RT play art: the camera pulls back over the whole field
@@ -605,18 +601,6 @@ if (params.has('auto')) startGame({ ...prefs, side: 'cpu', quarterMinutes: +(par
 else if (params.has('play')) startGame({ ...prefs, side: params.get('side') || 'home' }, { seed: +(params.get('seed') || Date.now() % 1e9) });
 else screens.title(padName, LEAGUE.logo);
 
-/** The catch cam's shot this frame (null = the normal camera). Ends after CATCH_CAM_T, when he goes down or the play dies. */
-function catchShot(sim, dt) {
-  const c = catchCam;
-  if (!c) return null;
-  const p = c.sim === sim ? sim.players[c.id] : null;
-  // Through the tackle too (a short catch and a hit is the shot); a fumble or the next play ends it.
-  if (!p || (c.t += dt) > CATCH_CAM_T || sim.state === 'finished' || sim.ball.carrier !== c.id || app !== 'game') { catchCam = null; return null; }
-  const shot = { x: p.x, z: p.z, facing: c.facing, dist: 5, side: 1.8 * (p.z > 0 ? 1 : -1) * (c.facing ? -1 : 1), up: 2.9, lead: 2.5, close: 0.7, k: 9, cut: c.cut };
-  c.cut = false;
-  return shot;
-}
-
 /** Make it obvious who ended up with a pass: a call-out with the player and a ring flash in his team's color. */
 function passCallout(e) {
   const sim = session?.sim;
@@ -657,14 +641,7 @@ function onSessionEvent(e) {
   else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);
   else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
-  if ((e.type === 'catch' || e.type === 'interception') && prefs.catchCam && session && !session.fast && !session.watching && speed <= 1) {
-    const sim = session.sim, p = sim?.players[e.player];
-    if (p && !sim.isKick) {
-      const run = e.type === 'interception' ? -sim.dir : sim.dir; // the way he'll run
-      catchCam = { sim, id: e.player, t: 0, facing: run > 0 ? Math.PI : 0, cut: true };
-    }
-  }
-  if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
+  else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
   else if (e.type === 'scenarioDone') hud.banner(e.success ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED', e.text, 2.4, e.success ? 'score' : 'miss');
   else if (e.type === 'push') hud.ticker(e.quality >= 1 ? 'Perfect push!' : e.quality >= 0.6 ? 'Good push' : e.quality > 0 ? 'Late push' : 'Missed the push');
   else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');
@@ -889,7 +866,6 @@ function frameBody(now) {
     renderer.updateLighting(dt, (Math.min(m.quarter, 4) - 1 + (1 - m.clock / Math.max(1, m.periodLength()))) / 4);
     // Wide view for a human on either side, kicks included (the kicker and the rush / coverage in frame).
     renderer.rig.wideView = !playerCam && (session.humanSide === 'defense' || session.humanSide === 'offense');
-    renderer.extraShot = catchShot(sim, dt);
     renderer.render(dt, focus, camDir, camPhase, snapCam, excite);
     snapCam = false;
     hud.artOn = artView;

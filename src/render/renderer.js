@@ -18,8 +18,10 @@ import { Presentation } from './presentation.js';
 // Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
 const TIME_LOOKS = {
   day: { hemi: [0xdfeaff, 0x3a4a2a, 0.72], key: [0xfff2dc, 3.9], rim: [0xffffff, 0.6], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1 },
-  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.7], key: [0xffb070, 3.0], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5 },
-  night: { hemi: [0xb8c8ff, 0x203018, 0.62], key: [0xfff4e0, 3.0], rim: [0xaabbff, 0.6], fog: [0x0b1020, 160, 420], sky: [[0.015, 0.03, 0.08], [0.06, 0.09, 0.2], [0.22, 0.2, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.15 },
+  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.7], key: [0xffb070, 3.0], rim: [0x8899ff, 0.6], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5, dim: 0.85 },
+  // Night: a near-black sky with a little haze over the bowl, less ambient fill, the floodlit field carries the picture
+  // (the crowd and stands dim: `dim`).
+  night: { hemi: [0xb8c8ff, 0x18220f, 0.42], key: [0xf6f8ff, 3.3], rim: [0xaabbff, 0.75], fog: [0x070a14, 160, 420], sky: [[0.004, 0.008, 0.022], [0.02, 0.03, 0.07], [0.12, 0.11, 0.16]], lamps: 0xfffaf0, exposure: 1.08, grey: 0.15, dim: 0.62 },
 };
 
 /** Owns the WebGL renderer, scene, lights and all visual sub-systems. */
@@ -136,6 +138,7 @@ export class GameRenderer {
     this.stadium.lampMat.color.set(look.lamps);
     this.stadium.glow.material.opacity = c.time === 'night' ? 0.9 : c.time === 'dusk' ? 0.55 : 0;
     this.stadium.snow.visible = c.type === 'snow';
+    this.stadium.setDim?.(look.dim ?? 1);
     this.renderer.toneMappingExposure = look.exposure;
     this.precip.set(c.type, c.wind, c.holiday || null);
     this.baseExposure = look.exposure;

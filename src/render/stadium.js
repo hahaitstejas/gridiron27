@@ -458,6 +458,9 @@ export function buildStadium(renderer, home, away) {
   snow.visible = false;
   group.add(snow);
 
+  let dim = 1;
+  const seatBase = standMat.color.clone();
+  const applyDim = () => { standMat.color.copy(seatBase).multiplyScalar(dim); crowdMat.color.setScalar(dim); };
   return {
     group,
     sky: skyUniforms,
@@ -469,7 +472,10 @@ export function buildStadium(renderer, home, away) {
       // Seats: the stadium creator's color, else a dark tint of the home color.
       if (h.stadium?.seats && !opts?.neutral) standMat.color.set(h.stadium.seats).multiplyScalar(0.85);
       else standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85);
+      seatBase.copy(standMat.color); applyDim();
     },
+    /** Under the lights the field is lit and the bowl around it falls off (1 = day, ~0.6 = night). */
+    setDim(k) { dim = k; applyDim(); },
     setBoardText,
     setBoardGame,
     update(dt, excitement) {

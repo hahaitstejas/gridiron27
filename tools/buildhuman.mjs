@@ -265,6 +265,17 @@ const ankleY = (an[0][1] + an[1][1]) / 2, kneeY = (kn[0][1] + kn[1][1]) / 2, wri
 const waistY = hipH + 0.08;
 const collarY = hipH + Bk.headY - 0.1;
 const region = [], body = [];
+// The face frame for photos / the painted face, measured on the mesh: chin (the lowest point of the face's centre line)
+// at v = 0, ~0.25 yd of face above it (the nose tip lands at ~0.37, the eyes at ~0.58, like the painting expects).
+// It used to sit 0.1 yd above the head centre: the painted eyes ended up on the forehead.
+const FACE = (() => {
+  let nose = null, chin = null;
+  for (let i = 0; i < A.length; i++) { const p = A[i]; if (wOf(i, 'head') > 0.5 && Math.abs(p[0]) < 0.02 && (!nose || p[2] > nose[2])) nose = p; }
+  for (let i = 0; i < A.length; i++) { const p = A[i]; if (wOf(i, 'head') > 0.5 && Math.abs(p[0]) < 0.02 && p[2] > nose[2] - 0.07 && p[1] > nose[1] - 0.2 && (!chin || p[1] < chin[1])) chin = p; }
+  const h = (nose[1] - chin[1]) / 0.375;
+  console.log('face frame: chin', chin[1].toFixed(3), 'nose', nose[1].toFixed(3), 'height', h.toFixed(3));
+  return { y0: chin[1], h };
+})();
 for (let i = 0; i < A.length; i++) {
   const p = A[i];
   const arm = wOf(i, 'shL') + wOf(i, 'shR'), fore = wOf(i, 'elL') + wOf(i, 'elR');
@@ -274,8 +285,8 @@ for (let i = 0; i < A.length; i++) {
   if (hd > 0.5 || p[1] > collarY + 0.02) {
     r = REGION.skin;
     // Face photo coordinates: the front of the head projected flat (x, y around the face center), v + 10 marks them.
-    const fc = [0, hipH + Bk.headY + 0.1, Bk.headZ + 0.05];
-    if (p[2] > fc[2] - 0.02) b = [(p[0] - fc[0]) / 0.16 + 0.5, (p[1] - fc[1]) / 0.2 + 0.5 + 10];
+    const fc = [0, FACE.y0 + FACE.h / 2, Bk.headZ + 0.05];
+    if (p[2] > fc[2] - 0.02) b = [(p[0] - fc[0]) / 0.16 + 0.5, (p[1] - FACE.y0) / FACE.h + 10];
   } else if (fore > 0.5 || (arm > 0.5 && p[1] < shY - 0.2)) r = p[1] < wristY + 0.01 ? REGION.gloves : REGION.forearm;
   else if (arm > 0.5) r = REGION.sleeve;
   else if (foot > 0.4 || p[1] < ankleY + 0.02) r = REGION.shoe;

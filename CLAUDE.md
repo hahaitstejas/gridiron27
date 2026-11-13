@@ -430,6 +430,13 @@ the wrap under the left arm); the fold normal's derivatives are clamped (gFold j
 its 2x2-block derivative was black / white speckle); triangles across the fabric uv wrap (back centre) skip the knit map;
 buildhuman smooths the shoulder cap / upper arm junction of the final padded shape (the cap folded over the deltoid).
 
+### Faces and officials' caps
+The face frame for photos / the painted face is measured on the mesh (buildhuman `FACE`: chin at v = 0, the nose tip at
+~0.37, ~0.25 yd tall); it used to sit 0.1 yd too high, which put the painted eyes on the forehead. Officials and coaches
+wear a real ball cap (`parts.capC` crown + `parts.capB` curved brim, fit in `CAP` on the skull frame `hg`; the referee's
+is white with a black brim); body.js tucks the top of an unpadded body's skull in a little (`fl.z == 0`) so it never pokes
+through. Visors are glossy polycarbonate (opacity 0.4, `VISOR_COLORS` clear = cool grey).
+
 ### Layered jersey (shell over the body)
 The jersey is its own layer: `parts.shell` draws the torso / upper-arm triangles again (`human.json` `shellIndex`, `buildHumanShellGeometry`) with `uShell` pushing every vertex out along its normal by the cloth thickness (`buildPos` in body.js: ~1 cm, looser toward the hem and at the sleeve ends), double-sided (the inside is darker) and cut per pixel to the real jersey / sleeve zones; the plain body (`under: true`) paints those zones as a dark undershirt layer, so the arm shows inside the sleeve and the hem and cuffs have depth. The printed numbers / patches (`decalMaterial(env, 1.25)`) ride on the shell's surface. Sideline LOD bodies skip the shell.
 

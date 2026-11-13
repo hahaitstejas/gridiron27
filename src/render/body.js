@@ -223,6 +223,12 @@ vec3 buildPos(vec3 p, vec3 nrm) {
     vec4 fl = texelFetch(boneTex, ivec2(${COL_FLAGS}, gl_InstanceID + uRowOff), 0);
     float lower = smoothstep(1.34, 1.12, p.y); // from the lower ribs down: the jersey tapers into the belt, hips and seat trimmed
     vec3 q = p + aBulkD * fl.y + aPadD * fl.z;
+    // Officials / coaches (no pads) wear a ball cap: the top of the skull is tucked in a little so it never pokes through it.
+    if (fl.z < 0.01 && aPart > 2.5) {
+      float capK = smoothstep(1.93, 1.98, p.y) * 0.13;
+      vec3 hc = vec3(0.0, 1.95, 0.035);
+      q = hc + (q - hc) * (1.0 - capK);
+    }
     float t = lower * smoothstep(0.32, 0.6, p.y);
     float cx = 0.105 * clamp(q.x / 0.05, -1.0, 1.0);
     q.x = cx + (q.x - cx) * (1.0 - 0.45 * t);

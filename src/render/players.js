@@ -161,6 +161,9 @@ export class PlayerRenderer {
       // Gear: a tinted visor on some helmets, a towel tucked in the front of some skill players' pants.
       visor: part(new THREE.SphereGeometry(0.52, 10, 4, Math.PI * 0.18, Math.PI * 0.64, Math.PI * 0.4, Math.PI * 0.16), Object.assign(mat(0.04, 0.2, 0.65), { transparent: true, opacity: 0.4, depthWrite: false }), MAX, false), // see-through: the face stays readable behind the tint
       towel: part(new THREE.BoxGeometry(0.11, 0.24, 0.015).translate(0, -0.12, 0), mat(0.9), MAX, false),
+      // Officials' / coaches' ball cap: a rounded six-panel crown and a curved front brim (unit sizes, scaled per instance).
+      capC: part(new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2), mat(0.85), MAX, false),
+      capB: part(new THREE.CylinderGeometry(1, 1, 1, 18, 1, false, -Math.PI / 2, Math.PI), mat(0.8), MAX, false),
     };
     this.parts.face.geometry.setAttribute('aFace', this.faceAttr);
     this.pairs = new Set([this.parts.decal]);
@@ -427,7 +430,7 @@ export class PlayerRenderer {
       P.mask.setColorAt(i, c.set(facemask));
       const vl = p.look?.visor;
       P.visor.setColorAt(i, c.set(VISOR_COLORS[vl] || (p.number % 3 === 0 ? VISOR_COLORS.dark : p.number % 3 === 1 ? VISOR_COLORS.clear : VISOR_COLORS.gold)));
-      P.towel.setColorAt(i, c.set('#f4f4f4'));
+      P.towel.setColorAt(i, c.set('#f4f4f4')); P.capC.setColorAt(i, c.set('#f4f4f4')); P.capB.setColorAt(i, c.set('#f4f4f4'));
       for (let k = 0; k < 2; k++) {
         this.decalAttr.setXY(i * 2 + k, p.team, k);
         (k ? P.shoe : P.shoeL).setColorAt(i, c.set(uni.cleats || (i % 3 ? '#151515' : '#f0f0f0')));
@@ -444,7 +447,7 @@ export class PlayerRenderer {
       this.number(i, (r * 13 + 7) % 100, '#111111');
       flags(i, true, 0.15, 0);
       this.region(i, REGION.shoe, '#0e0e0e');
-      P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap)); P.chin.setColorAt(i, c.set(cap));
+      P.face.setColorAt(i, c.set(skin)); P.helmet.setColorAt(i, c.set(skin)); P.towel.setColorAt(i, c.set(cap)); P.capC.setColorAt(i, c.set(cap)); P.capB.setColorAt(i, c.set(r === 0 ? '#141414' : cap)); P.stripe.setColorAt(i, c.set(cap)); P.mask.setColorAt(i, c.set(cap)); P.chin.setColorAt(i, c.set(cap));
       for (let k = 0; k < 2; k++) (k ? P.shoe : P.shoeL).setColorAt(i, c.set('#0e0e0e'));
     }
     // Sideline players and coaches (Presentation.bench) after the officials.
@@ -465,7 +468,7 @@ export class PlayerRenderer {
       this.region(i, REGION.shoe, '#151515');
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
-      P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
+      P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.capC.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.capB.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333')); P.chin.setColorAt(i, c.set('#f2f2f2'));
       for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); (s2 ? P.shoe : P.shoeL).setColorAt(i, c.set('#151515')); }
     });
@@ -662,12 +665,15 @@ export class PlayerRenderer {
       // Officials and coaches: a bare head (the helmet part, skin-colored) under a cap: the towel part is the
       // crown, the helmet stripe the brim.
       P.helmet.setMatrixAt(i, this.human ? ZERO : cl(head).multiply(trans(0, 0.01, 0.01)).multiply(scaleM(0.23, 0.27, 0.25)));
-      P.towel.setMatrixAt(i, cl(hg).multiply(trans(0, this.human ? 0.115 : 0.185, this.human ? -0.01 : 0)).multiply(scaleM(2.3, 0.33, 16.5)));
-      P.stripe.setMatrixAt(i, cl(hg).multiply(trans(0, this.human ? 0.075 : 0.07, this.human ? 0.1 : 0.07)).multiply(scaleM(0.5, 0.2, 0.3)));
+      P.towel.setMatrixAt(i, ZERO); P.stripe.setMatrixAt(i, ZERO);
+      const cy = this.human ? CAP.y : 0.1, cz = this.human ? CAP.z : 0;
+      P.capC.setMatrixAt(i, cl(hg).multiply(trans(0, cy, cz)).multiply(scaleM(CAP.rx, CAP.ry, CAP.rz)));
+      P.capB.setMatrixAt(i, cl(hg).multiply(trans(0, cy + 0.004, cz + CAP.bz)).multiply(rotX(CAP.tilt)).multiply(scaleM(CAP.bw, 0.008, CAP.bl)));
       P.mask.setMatrixAt(i, ZERO); P.chin.setMatrixAt(i, ZERO); P.face.setMatrixAt(i, ZERO);
       P.decal.setMatrixAt(i * 2, ZERO); P.decal.setMatrixAt(i * 2 + 1, ZERO);
       P.visor.setMatrixAt(i, ZERO);
     } else {
+      P.capC.setMatrixAt(i, ZERO); P.capB.setMatrixAt(i, ZERO);
       // The whole helmet assembly (shell, mask, chin strap, decals, visor) a touch smaller and sitting a little lower and
       // further forward on the skull: a real helmet is ~10 in wide on ~23 in of shoulder pads, not a bobblehead.
       hgS.copy(hg).multiply(trans(0, -0.01, 0.0)).multiply(scaleM(HELM_K, HELM_K, HELM_K));
@@ -959,7 +965,9 @@ function unpackPose(a, p) {
 // ---------- Procedural poses ----------
 let FALL = null; // fall direction of the player being posed (set by drawPlayer)
 let PICKH = 1; // how high the intercepted ball was (0 = chest height or lower, 1 = well overhead)
-let TSTYLE = null; // the tackler's style for this tackle (PlayerRenderer.tackleStyle): form | low | drag | shoulder
+let TSTYLE = null;
+// Cap fit on the MakeHuman skull (helmet space `hg`: the skull centre): crown radii, height, brim width / length / tilt.
+const CAP = { y: 0.006, z: 0.012, rx: 0.1, ry: 0.112, rz: 0.134, bz: 0.118, bw: 0.086, bl: 0.088, tilt: 0.16 }; // the tackler's style for this tackle (PlayerRenderer.tackleStyle): form | low | drag | shoulder
 /** The holder on a field goal / PAT kneels from the set until the kick (render-only; standing still, so not while jogging to the line). */
 function holdingKick(p, sim) {
   if (!sim || p.slot !== 'H' || p.team !== sim.offIdx || sim.offPlay?.type !== 'fg') return false;

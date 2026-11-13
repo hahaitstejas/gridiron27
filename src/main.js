@@ -899,7 +899,11 @@ function frameBody(now) {
     }
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;
-    const excite = sim && sim.state === 'live' ? 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) : hud.bannerT > 0 ? 1 : 0.15 + noise * 0.7;
+    // Live: the crowd builds as a runner gets into the open (yards past the line), on top of the ball being in the air.
+    let gainX = 0;
+    if (sim && sim.state === 'live' && sim.ball.state === 'held' && sim.ball.carrier >= 0 && !sim.isKick) gainX = (sim.players[sim.ball.carrier].x - sim.losX) * sim.dir;
+    else if (sim && sim.state === 'live' && sim.isKick && sim.ballLiveRun && sim.ball.carrier >= 0) gainX = 12; // a return under way
+    const excite = sim && sim.state === 'live' ? Math.min(1, 0.35 + (sim.ball.state === 'air' ? 0.3 : 0) + Math.max(0, gainX - 6) / 28) : hud.bannerT > 0 ? 1 : 0.15 + noise * 0.7;
     boardFrame(m, dt);
     renderer.updateLighting(dt, (Math.min(m.quarter, 4) - 1 + (1 - m.clock / Math.max(1, m.periodLength()))) / 4);
     // Wide view for a human on either side, kicks included (the kicker and the rush / coverage in frame).

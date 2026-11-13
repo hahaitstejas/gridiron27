@@ -568,7 +568,7 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   international games, short weeks), `health.js` (specific injuries, Out/Doubtful/Questionable/IR, practice injuries),
   `practiceSquad.js` (16, elevations, waivers), `development.js` (growth every two weeks, morale, trade requests),
   `trades.js` (picks, trade block, offers, compensatory picks), `draftClass.js` (class all season, scouting, CSV import),
-  `honors.js` (All-Pro, Pro Bowl, franchise tag); CPU teams sign free agents in-season; +500 created FAs, 300 UDFAs a year.
+  `honors.js` (All-Pro, Pro Bowl, franchise tag); CPU teams sign free agents in-season; +800 created FAs (aimed under the league's starters at each position: `posLevels` / `fitOverall`), 300 UDFAs a year.
   Hub = four boxes (Season, Team, Front Office, League) → `boxMenu`; more screens in `ui/franchiseMore.js`; around-the-league
   ticker in franchise games (`session.ticker`).
 - Spreadsheets (`data/extraCSV.js`, also read from public/local/): retired_numbers.csv, coaches.csv (tendencies feed the CPU),

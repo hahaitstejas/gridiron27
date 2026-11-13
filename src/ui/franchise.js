@@ -1,4 +1,4 @@
-import { addGeneratedFreeAgents } from '../franchise/freeAgents.js';
+import { addGeneratedFreeAgents, posLevels, topUpPool } from '../franchise/freeAgents.js';
 import { cpuFillPS } from '../franchise/practiceSquad.js';
 import { el } from './nav.js';
 import { LEAGUE } from '../data/leagueInfo.js';
@@ -139,7 +139,7 @@ export class FranchiseUI {
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Quarter length (games you play)', [1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15], 'quarterMinutes', (v) => `${v} min`),
       option('Rosters', ['current', 'fantasy'], 'rosters', (v) => (v === 'fantasy' ? 'Fantasy draft: every team drafts from scratch' : 'Keep the current rosters')),
-      option('Extra free agents', [true, false], 'extraFA', (v) => (v ? 'Add 500 created players to the pool' : 'Only the pool / your CSV')),
+      option('Extra free agents', [true, false], 'extraFA', (v) => (v ? 'Add 800 created players to the pool' : 'Only the pool / your CSV')),
     ];
     const start = el('div.start-btn', { text: mode === 'season' ? 'Start Season' : 'Start Franchise' });
     start.activate = async () => {
@@ -156,9 +156,10 @@ export class FranchiseUI {
       // Your own list of current free agents (public/local/free_agents.csv, roster format) replaces the generated pool.
       await loadLocalFreeAgents(L.franchise);
       await loadLocalSchedule(L.franchise, this.teams);
-      // Depth for everyone: 500 created (mostly fringe) players on top of the free-agent list, and practice squads.
-      if (opts.extraFA !== false) addGeneratedFreeAgents(L.franchise, 500, seed * 3);
+      // Depth for everyone: 800 created (mostly fringe) players on top of the free-agent list, and practice squads.
+      if (opts.extraFA !== false) addGeneratedFreeAgents(L.franchise, 800, seed * 3, { levels: posLevels(this.teams) });
       for (const t of this.teams) cpuFillPS(t, L.franchise.freeAgents);
+      if (opts.extraFA !== false) topUpPool(L.franchise, posLevels(this.teams), seed * 5); // every position keeps a real pool
       L.name = L.franchise.name;
       L.slot = null;
       await L.saveNow();

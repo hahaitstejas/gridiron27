@@ -2,7 +2,7 @@
 //   phase: 'regular' -> 'playoffs' -> 'offseason' (see offseason.js) -> next season's 'regular'.
 // Games the human plays are recorded from their Match; everything else goes through quickSim().
 import { archiveSeason } from './legacy.js';
-import { seedFreeAgents, poolAfterOffseason } from './freeAgents.js';
+import { seedFreeAgents, poolAfterOffseason, posLevels, tamePool } from './freeAgents.js';
 import { makeSchedule, standings, seeds, nextPlayoffRound, championOf, addStats, STAT_FIELDS, rank } from './season.js';
 import { nflSchedule, assignSlots, isPrimetime, holidayOf } from './nflSchedule.js';
 import { teamRatings } from '../data/positions.js';
@@ -52,7 +52,8 @@ export function createFranchise(teams, { userTeam, weeks = 17, difficulty = 'pro
   f.weeks = f.schedule.length;
   ensurePicks(f, teams);
   ensureDraftClass(f);
-  seedFreeAgents(f, seed * 17 + year); // in-season free agents (freeAgents.js)
+  seedFreeAgents(f, seed * 17 + year, posLevels(teams)); // in-season free agents (freeAgents.js)
+  f.faTamed = true;
   ensureSpecialists(f, teams, new RNG(f.seed + 3), teams.map((_, i) => i)); // a league file without kickers still kicks
   trimRosters(f, teams);
   f.trimmed = true;
@@ -143,7 +144,8 @@ export function upgradeFranchise(f, teams) {
   f.records ||= { game: {}, season: {} };
   f.recordsSince ??= f.year;
   f.awards ||= {};
-  if (!f.freeAgents) seedFreeAgents(f, f.seed);
+  if (!f.freeAgents) seedFreeAgents(f, f.seed, posLevels(teams));
+  tamePool(f, teams); // once: older saves' pools were far too strong at WR / HB / CB
   if (f.phase !== 'offseason') { ensurePicks(f, teams); ensureDraftClass(f); }
 }
 

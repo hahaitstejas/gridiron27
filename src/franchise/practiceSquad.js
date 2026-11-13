@@ -115,12 +115,18 @@ export function cpuElevations(team) {
 export function cpuFillPS(team, pool) {
   const out = [];
   pool.sort((a, b) => psValue(b) - psValue(a));
+  // A real squad is spread over the positions (and keeps no kickers): taking the best 16 by value emptied the pool
+  // at some positions (two centers, one punter left for the whole league).
+  const have = {};
+  for (const q of team.ps || []) have[q.pos] = (have[q.pos] || 0) + 1;
   for (let i = 0; i < pool.length && (team.ps || []).length < PS_MAX; i++) {
     const p = pool[i];
-    if (psEligible(team, p)) { pool.splice(i--, 1); addToPS(team, p); out.push(p); }
+    if ((have[p.pos] || 0) >= (PS_POS_CAP[p.pos] ?? 2)) continue;
+    if (psEligible(team, p)) { have[p.pos] = (have[p.pos] || 0) + 1; pool.splice(i--, 1); addToPS(team, p); out.push(p); }
   }
   return out;
 }
+const PS_POS_CAP = { QB: 1, FB: 1, C: 1, MLB: 1, FS: 1, SS: 1, K: 0, P: 0 };
 const psValue = (p) => p.ovr + Math.max(0, 25 - (p.age ?? 25)) * 1.5 + (p.pot ?? 0) * 0.05;
 
 // ---------------------------------------------------------------------------------------------------------------

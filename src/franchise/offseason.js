@@ -1,7 +1,7 @@
 import { tagSalary } from './honors.js';
 import { generateClass } from './draftClass.js';
 import { compPicks, noteFreeAgentMove } from './trades.js';
-import { generatePool } from './freeAgents.js';
+import { generatePool, posLevels } from './freeAgents.js';
 // Franchise offseason (pure logic): progression and retirements, contracts, free agency, the draft and
 // cut-downs. Steps run in order; f.offseason.step says where the user is:
 //   summary -> progression -> resign -> freeagency -> draft -> cutdown -> (next season)
@@ -222,7 +222,7 @@ export function finishDraft(f, teams) {
   while (f.offseason.draft.at < f.offseason.draft.picks.length) makePick(f, teams);
   for (const p of f.offseason.draft.cls.slice(0, 30)) { p.salary = MIN_SALARY; p.years = 2; f.offseason.pool.push(p); }
   // Undrafted free agents: 300 more rookies join the pool every year (practice-squad and camp bodies).
-  for (const p of generatePool(300, f.seed * 7 + f.year, { udfa: true })) { p.salary = MIN_SALARY; p.years = 2; f.offseason.pool.push(p); }
+  for (const p of generatePool(300, f.seed * 7 + f.year, { udfa: true, levels: posLevels(teams) })) { p.salary = MIN_SALARY; p.years = 2; f.offseason.pool.push(p); }
   f.offseason.step = 'cutdown';
 }
 

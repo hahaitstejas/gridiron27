@@ -32,7 +32,7 @@ export function expectedSlot(f, teams, orig, year) {
 export function pickValue(f, teams, pick) {
   const slot = expectedSlot(f, teams, pick.orig, pick.year);
   const base = ROUND_VALUE[pick.round - 1] || 0.3;
-  const k = 1 + ((16.5 - slot) / 32) * (pick.round === 1 ? 1.1 : 0.5);
+  const k = 1 + ((16.5 - slot) / 32) * (pick.round === 1 ? 0.9 : 0.5); // pick 32 ~ 56% of pick 16 (trade charts: ~55-60%)
   return base * k * (pick.year > f.year + 1 ? 0.85 : 1);
 }
 
@@ -57,8 +57,12 @@ const pickKey = (p) => `${p.year}:${p.round}:${p.orig}`;
  */
 export function evaluateDeal(f, teams, cpu, gets, other, gives, cap = f.cap) {
   const val = (side) => side.players.reduce((s, p) => s + tradeValue(p), 0) + side.picks.reduce((s, p) => s + pickValue(f, teams, p), 0);
+  // What the CPU takes in: quality over quantity. Its best incoming player counts in full, each further one less (roster
+  // spots, and two good players don't make a star); picks keep their full value (they're the league's real currency).
+  const incoming = (side) => side.players.map(tradeValue).sort((a, b) => b - a).reduce((s, v, k) => s + v * (k === 0 ? 0.8 : k === 1 ? 0.5 : 0.35), 0)
+    + side.picks.reduce((s, p) => s + pickValue(f, teams, p), 0);
   const sal = (side) => side.players.reduce((s, p) => s + (p.salary || 0), 0);
-  const vGets = val(gets), vGives = val(gives);
+  const vGets = incoming(gets), vGives = val(gives);
   const capOk = fits(teams[cpu], sal(gets), sal(gives), cap) && fits(teams[other], sal(gives), sal(gets), cap);
   const rosterOk = teams[cpu].roster.length - gives.players.length + gets.players.length <= 55;
   // A player who asked out is worth less to his own team (it's motivated to move him).
@@ -85,22 +89,25 @@ export function tradeAssets(f, teams, ti) {
 export function cheapestPackage(f, teams, cpu, target, me, assets = null) {
   assets ||= tradeAssets(f, teams, me);
   const need = tradeValue(target) * 1.08 * (target.tradeRequest ? 0.9 : 1);
+  // Players count for less coming in (evaluateDeal `incoming`, x0.8): a package of picks is the natural price.
+  const eff = assets.map((a) => ({ ...a, e: a.p ? a.v * 0.8 : a.v })).sort((x, y) => x.e - y.e);
   const cands = [];
-  // One asset: the cheapest that covers it.
-  const one = assets.find((a) => a.v >= need);
-  if (one) cands.push([one]);
+  // One asset: the few cheapest that cover it.
+  for (const one of eff.filter((a) => a.e >= need).slice(0, 3)) cands.push([one]);
   // Two or three: the biggest few under the need, completed by the cheapest that covers the rest.
-  const under = assets.filter((a) => a.v < need).slice(-10);
+  const under = eff.filter((a) => a.e < need).slice(-10);
   for (const a of under) {
-    const b = assets.find((x) => x !== a && a.v + x.v >= need);
+    const b = eff.find((x) => x !== a && a.e + x.e * (a.p && x.p ? 0.62 : 1) >= need);
     if (b) cands.push([a, b]);
     else {
       const c = [...under].reverse().find((x) => x !== a);
-      const d = c && assets.find((x) => x !== a && x !== c && a.v + c.v + x.v >= need);
+      const d = c && eff.find((x) => x !== a && x !== c && a.e + c.e + x.e >= need * 1.1);
       if (d) cands.push([a, c, d]);
     }
   }
-  cands.sort((x, y) => x.reduce((s, a) => s + a.v, 0) - y.reduce((s, a) => s + a.v, 0));
+  // Cheapest first, but a player in the deal counts a bit extra (most real trades are for picks only).
+  const rankOf = (c) => c.reduce((s, a) => s + a.v + (a.p ? 0.35 * a.v + 0.4 : 0), 0);
+  cands.sort((x, y) => rankOf(x) - rankOf(y));
   for (const c of cands) {
     const gives = { players: c.filter((a) => a.p).map((a) => a.p), picks: c.filter((a) => a.pk).map((a) => a.pk) };
     if (evaluateDeal(f, teams, cpu, gives, me, { players: [target], picks: [] }).accept) return { ...gives, v: c.reduce((s, a) => s + a.v, 0) };
@@ -160,7 +167,7 @@ function buildOffer(f, teams, ti, p, rng) {
   const spare = [...t.roster].filter((q) => q.pos !== p.pos && !q.career && !q.injury && tradeValue(q) <= want * 0.9).sort((a, b) => tradeValue(b) - tradeValue(a));
   const give = { players: [], picks: [] };
   let v = 0;
-  if (spare.length && rng.chance(0.55)) { give.players.push(spare[0]); v += tradeValue(spare[0]); }
+  if (spare.length && rng.chance(0.2)) { give.players.push(spare[0]); v += tradeValue(spare[0]); } // mostly picks, like the real league
   const sorted = [...picks].sort((a, b) => pickValue(f, teams, b) - pickValue(f, teams, a));
   for (const pk of sorted) {
     if (v >= want * 0.95) break;
@@ -176,19 +183,27 @@ function buildOffer(f, teams, ti, p, rng) {
 /** CPU-to-CPU deals can include picks too (a contender buys a veteran for a pick). */
 export function cpuPickTrade(f, teams, rng) {
   ensurePicks(f, teams);
-  if (!rng.chance(0.3)) return null;
+  if (!rng.chance(0.4)) return null;
   const rows = rank(standings(teams, f.schedule));
   const buyer = rows[rng.int(0, 7)].team, seller = rows[rows.length - 1 - rng.int(0, 7)].team;
   if (buyer === f.userTeam || seller === f.userTeam || buyer === seller) return null;
-  const vet = teams[seller].roster.filter((p) => (p.age ?? 26) >= 28 && p.ovr >= 76 && !p.injury && needsPosition(teams[buyer], p)).sort((a, b) => b.ovr - a.ovr)[0];
+  const vet = teams[seller].roster.filter((p) => (p.age ?? 26) >= 28 && p.ovr >= 76 && p.pos !== 'K' && p.pos !== 'P' && p.pos !== 'FB' && !p.injury && needsPosition(teams[buyer], p)).sort((a, b) => b.ovr - a.ovr)[0];
   if (!vet) return null;
   const want = tradeValue(vet);
-  const pk = picksOf(f, buyer).filter((x) => x.round <= 4).sort((a, b) => Math.abs(pickValue(f, teams, a) - want) - Math.abs(pickValue(f, teams, b) - want))[0];
-  if (!pk || pickValue(f, teams, pk) < want * 0.9) return null;
-  const give = { players: [], picks: [pk] }, get = { players: [vet], picks: [] };
+  // One pick, or two (the best that fits under the price plus the one that gets it there): Hill went for five picks.
+  const own = picksOf(f, buyer).filter((x) => x.round <= 5).map((pk) => ({ pk, v: pickValue(f, teams, pk) })).sort((a, b) => b.v - a.v);
+  let pks = null;
+  const one = own.filter((x) => x.v >= want * 0.95).sort((a, b) => a.v - b.v)[0];
+  if (one && one.v <= want * 1.35) pks = [one];
+  else for (const a of own.filter((x) => x.v < want)) {
+    const b = own.filter((x) => x !== a && a.v + x.v >= want * 0.95).sort((x, y) => x.v - y.v)[0];
+    if (b && a.v + b.v <= want * 1.35) { pks = [a, b]; break; }
+  }
+  if (!pks) return null;
+  const give = { players: [], picks: pks.map((x) => x.pk) }, get = { players: [vet], picks: [] };
   if (!evaluateDeal(f, teams, seller, give, buyer, get).capOk) return null;
   executeDeal(f, teams, buyer, give, seller, get);
-  return `${teams[buyer].abbr} acquire ${vet.pos} ${vet.first} ${vet.last} from ${teams[seller].abbr} for a ${pickLabel(pk, teams)} pick`;
+  return `${teams[buyer].abbr} acquire ${vet.pos} ${vet.first} ${vet.last} from ${teams[seller].abbr} for ${dealText(teams, give)}`;
 }
 
 /** Draft day: teams picking later offer to trade up into the user's slot (their pick now + a later one). */

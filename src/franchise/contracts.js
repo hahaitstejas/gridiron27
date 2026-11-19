@@ -75,14 +75,18 @@ export function fits(team, salary, freed = 0, cap = SALARY_CAP) {
  * Trade value: what a player is worth to a team in "points". Overall dominates (nonlinear: stars are
  * worth a lot more than depth), youth and potential add, a contract above market value subtracts.
  */
+// Calibrated on real veteran trades in draft-pick terms (a 1st round pick = 10, see trades.js ROUND_VALUE): a young star
+// receiver (~88-90) ~ a 1st + 3rd (A.J. Brown), an elite 28-year-old (~94) ~ a 1st + 2nd + more (Tyreek Hill), elite young
+// defenders ~ two 1sts (Ramsey, Mack), a good starting edge (~84) ~ a 2nd (Sweat). Value doubles about every 5 overall,
+// so two good players never add up to one star.
 export function tradeValue(p) {
   const ovr = p.ovr ?? overall(p);
-  let v = Math.pow(Math.max(0, ovr - 50) / 10, 2.2) * (0.6 + 0.4 * Math.min(1.6, POS_PAY[p.pos] ?? 0.8));
-  const age = p.age || 26;
-  v *= age <= 24 ? 1.25 : age <= 27 ? 1.1 : age <= 30 ? 1 : Math.pow(0.82, age - 30);
+  let v = 11 * Math.exp(0.15 * (ovr - 90)) * Math.min(1.5, Math.max(p.pos === 'K' || p.pos === 'P' || p.pos === 'FB' ? 0.12 : 0.45, POS_PAY[p.pos] ?? 0.8)); // backs cheap, specialists cheaper (late picks), QBs / edges dear
+  const age = (p.age || 26) - (p.pos === 'QB' ? 4 : p.pos === 'K' || p.pos === 'P' ? 6 : 0); // QBs and kickers age slower
+  v *= age <= 24 ? 1.25 : age <= 27 ? 1.1 : age <= 28 ? 1 : age <= 30 ? 0.85 : 0.85 * Math.pow(0.75, age - 30);
   v *= 1 + ((p.pot ?? 0.5) - 0.5) * (age <= 25 ? 0.5 : 0.1);
-  v -= Math.max(0, (p.salary || 0) - marketValue(p)) * 0.4;
-  return Math.max(0.1, v);
+  v -= Math.max(0, (p.salary || 0) - marketValue(p)) * 0.25;
+  return Math.max(0.05, v);
 }
 
 /**
@@ -112,7 +116,7 @@ export function executeTrade(teamA, giveA, teamB, giveB) {
 export function cpuTrades(f, teams, rng, cap = SALARY_CAP) {
   const out = [];
   const cpu = teams.map((_, i) => i).filter((i) => i !== f.userTeam);
-  const tries = rng.int(0, 3) === 0 ? 1 : 0; // ~one CPU trade every few weeks
+  const tries = rng.int(0, 9) === 0 ? 1 : 0; // player-for-player swaps are rare (most real trades are for picks: trades.js cpuPickTrade)
   for (let k = 0; k < tries; k++) {
     const a = teams[rng.pick(cpu)], b = teams[rng.pick(cpu)];
     if (a === b) continue;

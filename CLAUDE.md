@@ -306,6 +306,12 @@ rounds}, history[], seed, offseason{step, …} }`.
   Offseason: re-signing at the asking price within the cap (`projectedPayroll`), free agents cost their asking price,
   cut-downs also get under the cap (`cutDown(team, 53, cap)`), short rosters refill with affordable FAs (`fillRoster`).
   Old saves get money on load (`upgradeFranchise`).
+- Trade values (calibrated on real veteran trades in pick terms, a 1st = 10): `tradeValue` = 11·e^(0.15·(ovr−90)) × position
+  (POS_PAY clamped 0.45..1.5, K / P / FB 0.12) × age (QBs count 4 years younger, K / P 6); a young ~89 WR ≈ a 1st + 3rd, an elite
+  28-year-old ≈ a 1st + 2nd + more, a good starting edge ≈ a 2nd, specialists ≈ late picks. `evaluateDeal` discounts players
+  the CPU takes in (best ×0.8, next ×0.5, ×0.35) so picks are the natural price and two good players never buy a star; the
+  Trade Finder prefers pick-only packages. CPU-CPU player swaps are rare (`cpuTrades` ~1 in 10 weeks); most CPU deals are a
+  contender buying a 28+ veteran for one or two picks (`cpuPickTrade`). Pick 32 ≈ 56% of pick 16.
 - `extras.js`: news feed (`addNews`, `f.news`: notable results, your games, injuries to your players / stars, trades,
   awards, records, draft headlines, the champion), records (`f.records.game/season` for `RECORD_CATS`, announced only
   after the first season, `recordsSince`), awards at the end of the regular season (title-game MVP: `championshipMVP` from `recordGame`) (`giveAwards`: MVP, OPOY, DPOY,

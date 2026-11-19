@@ -1,3 +1,5 @@
+// The offline file (opened from disk) and the public web build have no local league folder: skip those reads.
+const NO_LOCAL = typeof location !== 'undefined' && (location.protocol === 'file:' || import.meta.env?.MODE === 'web');
 import { addGeneratedFreeAgents, posLevels, topUpPool } from '../franchise/freeAgents.js';
 import { cpuFillPS } from '../franchise/practiceSquad.js';
 import { el } from './nav.js';
@@ -38,7 +40,7 @@ import { localBook } from '../data/localLeague.js';
 
 async function loadLocalFreeAgents(f) {
   if (localBook.freeAgents?.length) { setFreeAgents(f, localBook.freeAgents.map((p) => ({ ...p, ratings: { ...p.ratings } }))); return; }
-  if (location.protocol === 'file:') return;
+  if (NO_LOCAL) return;
   try {
     const res = await fetch('local/free_agents.csv', { cache: 'no-store' });
     if (!res.ok || !/text|csv|octet/.test(res.headers.get('content-type') || 'text')) return;
@@ -52,7 +54,7 @@ async function loadLocalFreeAgents(f) {
 /** public/local/schedule.csv (week, away, home[, day, date, time]) replaces the generated first season. */
 async function loadLocalSchedule(f, teams) {
   if (localBook.schedule) { setSchedule(f, teams, localBook.schedule.map((wk) => wk.map((g) => ({ ...g, score: null })))); return; }
-  if (location.protocol === 'file:') return;
+  if (NO_LOCAL) return;
   try {
     const res = await fetch('local/schedule.csv', { cache: 'no-store' });
     if (!res.ok) return;

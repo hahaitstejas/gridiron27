@@ -38,6 +38,7 @@ export class Hud {
       <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
+      <div id="quickstart" class="hidden"></div>
       <div id="fps"></div>
       <div id="playcall" class="hidden"></div>`;
     this.$ = (id) => root.querySelector('#' + id);
@@ -124,6 +125,22 @@ export class Hud {
     if (!c) { c = document.createElement('div'); c.className = 'in-cap'; el.appendChild(c); }
     c.textContent = text || '';
     c.style.display = text ? 'block' : 'none';
+  }
+
+  /** First game in a browser: a small quick-start card (the essentials, controller and keyboard). */
+  quickstart(on) {
+    const el = this.$('quickstart');
+    if (on) el.innerHTML = `<b>QUICK START</b><table>
+      <tr><th></th><th>Controller</th><th>Keyboard</th></tr>
+      <tr><td>Move</td><td>Left stick</td><td>W A S D</td></tr>
+      <tr><td>Sprint</td><td>RT</td><td>Shift</td></tr>
+      <tr><td>Pick play / snap</td><td>A</td><td>J or Space</td></tr>
+      <tr><td>Throw</td><td>receiver's button</td><td>J K U I O</td></tr>
+      <tr><td>Switch defender</td><td>B</td><td>K</td></tr>
+      <tr><td>Juke / truck</td><td>Right stick</td><td>Arrows</td></tr>
+      <tr><td>Pause</td><td>Menu</td><td>Esc</td></tr></table>
+      <small>All controls: H · this card hides after a few plays</small>`;
+    el.classList.toggle('hidden', !on);
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }

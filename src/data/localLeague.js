@@ -1,3 +1,5 @@
+// The offline file (opened from disk) and the public web build have no local league folder: skip those reads.
+const NO_LOCAL = typeof location !== 'undefined' && (location.protocol === 'file:' || import.meta.env?.MODE === 'web');
 import { viaRelay } from './storage.js';
 import { parseCSV, importRosterRows, importTeamsRows, importDepthRows } from './csv.js';
 import { importRetired, importCoaches, importUniforms, importStadiums } from './extraCSV.js';
@@ -16,7 +18,7 @@ export const localBook = { freeAgents: null, schedule: null, loaded: false };
 
 async function fetchCSV(path, firstCol) {
   // The offline single-file build opens from disk, where fetch can't read files: saves/imports cover that case.
-  if (location.protocol === 'file:') return null;
+  if (NO_LOCAL) return null;
   try {
     const res = await fetch(path, { cache: 'no-store' });
     if (!res.ok) return null;
@@ -41,7 +43,7 @@ function loadImage(src) {
 }
 
 async function fetchText(path) {
-  if (location.protocol === 'file:') return null;
+  if (NO_LOCAL) return null;
   try { const res = await fetch(path, { cache: 'no-store' }); if (!res.ok) return null; const t = await res.text(); return /<html/i.test(t.slice(0, 200)) ? null : t; } catch { return null; }
 }
 

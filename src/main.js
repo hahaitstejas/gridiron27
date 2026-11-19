@@ -204,6 +204,7 @@ applyCamera();
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
 let celWheel = null; // the touchdown celebration picker (RS)
+let firstHelp = 0; // first game in this browser: snaps left before the quick-start card hides
 let artView = false;
 let fgBroke = null; // the field-goal PlaySim whose kick was blocked / fumbled (camera back to broadcast)
 let artSim = null, artReleased = false; // RT play art needs a fresh press at the line (see the render loop) // RT play art: the camera pulls back over the whole field
@@ -217,6 +218,7 @@ let padName = '';
 let menuFocus = 0; // which home-menu mode to open on (set just before toMenu by screens that came from one)
 function toMenu() {
   restoreDepth();
+  firstHelp = 0; hud.quickstart(false);
   // Leaving a franchise: its trades and signings stay in its save; the menus get the real league back.
   if (league.franchise) { league.leaveFranchise().then(toMenu, (e) => { console.warn(e); league.franchise = null; toMenu(); }); return; }
   app = 'menu';
@@ -296,6 +298,9 @@ function startGame(p, opts = {}) {
   hud.ticker(conditionsText(conditions));
   screens.clear();
   hud.toggleHelp(false);
+  // First game in this browser: a quick-start card with the essentials for the first three snaps (H = all controls).
+  firstHelp = 0; hud.quickstart(false);
+  try { if (session.humanTeam !== null && !localStorage.getItem('g27.seenHelp')) { localStorage.setItem('g27.seenHelp', '1'); firstHelp = 3; hud.quickstart(true); } } catch { /* storage blocked */ }
   app = 'game';
   snapCam = true;
   lastSim = null;
@@ -491,6 +496,7 @@ function restoreDepth() {
 
 function leaveGame() {
   restoreDepth();
+  firstHelp = 0; hud.quickstart(false);
   app = 'menu';
   session = null;
   lastSim = null;
@@ -655,6 +661,7 @@ function soundFor(e) {
 
 function onSessionEvent(e) {
   soundFor(e);
+  if (firstHelp && e.type === 'snap' && --firstHelp === 0) hud.quickstart(false);
   renderer.presentation.onEvent(e, session);
   if (e.type === 'touchdown' && session && !session.fast) renderer.lightShow();
   // Your touchdown: the celebration wheel (RS: up Dance, left Flex, right Spike, down Team) for a couple of seconds.

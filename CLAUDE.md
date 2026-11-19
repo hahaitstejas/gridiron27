@@ -534,6 +534,13 @@ The kick hint shows the wind (arrow from the camera's view). `npm run games -- -
 `ipcRenderer.sendSync`. electron-builder config is the `build` key in package.json (arm64 dmg + zip, ad-hoc signed
 `identity: "-"`, icon `build/icon.png`, or a personal `public/local/app-icon.png` when present: tools/app-build.mjs); output in `release/` (git-ignored).
 
+### Website (GitHub Pages)
+`npm run build:web` (vite mode `web`: relative base, no `public/` copied, `dist-web/`) builds the public site;
+`.github/workflows/pages.yml` runs it on every push to main and deploys to `https://<owner>.github.io/gridiron27/` (one-time:
+repo Settings → Pages → Source "GitHub Actions"). Built from the repo only, so git-ignored personal files never ship; the
+local-league reads (`localLeague.js`, franchise free agents / schedule CSVs) are skipped in that mode (`NO_LOCAL`). First
+game in a browser: a small quick-start card (`Hud.quickstart`, localStorage `g27.seenHelp`) for the first three snaps.
+
 ### Offline single file
 `npm run build:offline` (vite mode `offline`, `vite-plugin-singlefile`, then `tools/offline.mjs` renames it) inlines all JS,
 CSS and the Saira fonts into `dist-offline/Gridiron27.html` (git-ignored, ~1.5 MB). It never copies `public/` and skips the

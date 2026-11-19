@@ -235,6 +235,7 @@ function toMenu() {
     onRosters: () => league.onRosters(() => { menuFocus = 2; toMenu(); }),
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
+    onCredits: () => screens.credits({ onBack: toMenu }),
     onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
     onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
     onSaves: () => league.saves(0, toMenu),

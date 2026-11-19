@@ -24,6 +24,7 @@ const volLabel = (v) => (v ? `${Math.round(v * 100)}%` : 'Off');
 
 // What each setting does (the description panel on settings-style screens), keyed by the row's label, lower case.
 export const OPTION_HELP = {
+  'credits…': 'Who made the art, motion capture and fonts this game is built on, and the licenses they come under.',
   'quarter length': 'Minutes in each quarter. Stats and the clock scale with it; 5-8 minutes with the accelerated clock plays like a full game.',
   'accelerated clock': 'Between plays the play clock runs down to this many seconds before the snap is allowed, so short quarters still have realistic play counts.',
   'difficulty': 'Rookie gives the easiest challenge; Legend is the toughest. It changes CPU reactions, accuracy, tackling, blitzing and play calling.',
@@ -293,7 +294,7 @@ export class Screens {
     // The user's reference: a thin icon rail on the left (wordmark on top, one icon per mode, settings at the bottom), the
     // focused mode's summary (crumbs, big title, one line) with its sub-modes as big cards right on the darkened stadium,
     // and a black hint bar along the bottom. Black / white / gray.
-    const { onPlayNow, onPractice, onDrills, onScenarios, onFranchise, onRosters, onLeague, onPlaybook, onControls, onSettings, onSaves } = acts;
+    const { onPlayNow, onPractice, onDrills, onScenarios, onFranchise, onRosters, onLeague, onPlaybook, onControls, onSettings, onSaves, onCredits } = acts;
     const fr = info.franchise;
     featuredCard(info.teams || [], this); // picks the star whose home field turns behind the menu (main.js)
     const MODES = [
@@ -308,7 +309,7 @@ export class Screens {
         cards: [['Rosters', 'people', onRosters], ['Teams & League', 'shield', onLeague], ['Playbook', 'clipboard', onPlaybook], ['Saves', 'disk', onSaves]] },
       { label: 'Settings', icon: 'gear', bottom: true, crumbs: ['Camera', 'Gameplay', 'Controls'],
         blurb: 'Camera, graphics, name tags, replays, difficulty, quarter length and the gameplay sliders. Controls shows every button.',
-        cards: [['Settings', 'gear', onSettings], ['Controls', 'pad', onControls]] },
+        cards: [['Settings', 'gear', onSettings], ['Controls', 'pad', onControls], ['Credits', 'list', onCredits]] },
     ];
     let cur = -1, cards = [];
     const body = el('div.mm2-body');
@@ -734,6 +735,28 @@ export class Screens {
     this.nav.set([back], { onBack });
   }
 
+  /** Credits: the third-party assets and the attribution their licenses ask for (CC BY 4.0, CMU mocap). */
+  credits({ onBack }) {
+    const rows = [
+      ['Game', 'Gridiron 27: an original game. All teams, players, logos and leagues are fictional. Not affiliated with or endorsed by any professional league, players\' association or game publisher.'],
+      ['Cleat model, jersey folds', '"American Football Player" by Stuffed Dog Digital (Sketchfab), CC BY 4.0, creativecommons.org/licenses/by/4.0. Geometry adapted; original textures not used.'],
+      ['Motion capture', 'The data used in this project was obtained from mocap.cs.cmu.edu. The database was created with funding from NSF EIA-0196217. (BVH conversion by Bruce Hahne.)'],
+      ['Player body', 'MakeHuman base mesh and skeleton (makehumancommunity), CC0 1.0.'],
+      ['Helmet', '"American Football Helmet" by Noseferrit (BlendSwap), CC0 1.0.'],
+      ['Uniform reference', '"American Football Uniform" by ds89 (BlendSwap), CC0 1.0.'],
+      ['Sky lighting', '"Hochsal Field" by Greg Zaal (Poly Haven), CC0 1.0.'],
+      ['Fabric', '"Fabric030" from ambientCG, CC0 1.0.'],
+      ['Fonts', 'Oswald, Saira Condensed and the uniform fonts via Fontsource, SIL Open Font License 1.1.'],
+      ['Engine', 'three.js (MIT), Vite (MIT).'],
+    ];
+    const back = el('div.start-btn', { text: 'Back' });
+    back.activate = onBack;
+    this.frame('controls-screen', el('h1', { text: 'Credits' }),
+      el('table.ctl.credits', { html: rows.map(([a, b]) => `<tr><td class="k">${a}</td><td>${b}</td></tr>`).join('') }),
+      back);
+    this.nav.set([back], { onBack });
+  }
+
   settings(prefs, { onSave, onBack }) {
     const p = { ...prefs };
     const option = (label, values, key, fmt = (v) => v) => {
@@ -763,10 +786,12 @@ export class Screens {
     ];
     const sliders = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Gameplay sliders…' }));
     sliders.activate = () => this.sliders(p, { onSave: (sl) => { p.sliders = sl; this.settings(p, { onSave, onBack }); }, onBack: () => this.settings(p, { onSave, onBack }) });
+    const credits = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Credits…' }));
+    credits.activate = () => this.credits({ onBack: () => this.settings(p, { onSave, onBack }) });
     const save = el('div.start-btn', { text: 'Save' });
     save.activate = () => onSave(p);
-    this.frame('setup-screen', el('h1', { text: 'Settings' }), el('div.setup-opts', {}, ...rows, sliders, save));
-    this.nav.set([...rows, sliders, save], { onBack });
+    this.frame('setup-screen', el('h1', { text: 'Settings' }), el('div.setup-opts', {}, ...rows, sliders, credits, save));
+    this.nav.set([...rows, sliders, credits, save], { onBack });
   }
 
   /**

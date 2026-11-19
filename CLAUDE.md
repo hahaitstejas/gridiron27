@@ -32,6 +32,8 @@ Optional browser smoke test (needs Playwright: `npm i -D playwright && npx playw
 `node tools/smoke.mjs http://localhost:5173/ test-output` — drives the menus, a stretch of a human game (play
 calls, snaps, kicks), the pause menu and a full 1-minute-quarter CPU game; fails on console errors.
 
+Credits (`Screens.credits`: Settings → Credits…, and the home screen's Settings cards) show the attribution CC BY / CMU assets require; add a row there for any new asset that asks for credit.
+
 In-game: `H` toggles the controls panel, `` ` `` toggles the FPS / draw-call overlay.
 
 ## Architecture

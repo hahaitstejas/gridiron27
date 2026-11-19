@@ -92,7 +92,7 @@ export class Gait {
       g.sp = sp; g.f = f; g.vx = vx; g.vz = vz;
     }
     const want = !pose.noGait && GAIT_ANIMS.has(p.anim) && Math.abs(pose.rootPitch) < 0.3 && p.state !== 'down' && p.state !== 'tackled' ? 1 : 0;
-    g.w += (want - g.w) * Math.min(1, dt * 8);
+    g.w += (want - g.w) * Math.min(1, dt * (pose.noGait ? 25 : 8)); // a kick / hold cuts the running legs off at once
     if (want) { pose.lean += g.lean; pose.rootRoll += g.roll * Math.min(1, sp / 4); pose.crouch -= Math.min(0.1, Math.abs(g.roll) * 0.16); }
     this.head(g, pose, x, z, f, look, dt);
     if (g.w < 0.02) return;

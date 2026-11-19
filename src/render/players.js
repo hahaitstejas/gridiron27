@@ -606,10 +606,12 @@ export class PlayerRenderer {
     } else if (!falling) this.fallAnim[i] = false;
     FALL = pileFall || (falling ? this.fall[i] : null);
     TSTYLE = p.anim === 'tackle' ? this.tackleStyle(i, p, sim) : null;
+    KICKKIND = sim?.kick?.type || null;
     // Interceptions are high-pointed only when the ball was high: remember the ball's last height in the air.
     if (sim?.ball?.state === 'air') this.airY = sim.ball.y;
     if (p.anim === 'pick') { const pk = (this.pickH ||= []); if (!pk[i] || p.animT < pk[i].t - 0.02) pk[i] = { h: this.airY ?? 1.5, t: p.animT }; else pk[i].t = p.animT; PICKH = Math.max(0, Math.min(1, (pk[i].h - 1.55) / 0.75)); }
     const pose = this.blend(i, holdingKick(p, sim) ? 'hold' : p.anim, computePose(p, time, sim), dt);
+    if (!official) kickWindup(p, sim, pose);
     if (!official) this.limp(i, p, pose, dt);
     if (pileLift) pose.rootY += pileLift; // on top of the pile
     // Planted feet, lean into cuts and a head that follows the ball (render/gait.js).
@@ -948,7 +950,7 @@ const HEAD_AT = POSE_KEYS.indexOf('head'); // the springs start at the head, the
 const LIMB_AT = POSE_KEYS.length;
 const LIMP_ANIMS = new Set(['falling', 'tackle', 'tackle_dive', 'down']);
 const TMP = new Float32Array(POSE_N);
-const FAST_FADE = new Set(['tackle', 'falling', 'dive', 'tackle_dive', 'hitstick', 'juke', 'spin', 'catch', 'throw', 'swat']);
+const FAST_FADE = new Set(['tackle', 'falling', 'dive', 'tackle_dive', 'hitstick', 'juke', 'spin', 'catch', 'throw', 'swat', 'kick']);
 function packPose(p, a) {
   let j = 0;
   for (const k of POSE_KEYS) a[j++] = p[k] || 0;
@@ -966,8 +968,39 @@ function unpackPose(a, p) {
 let FALL = null; // fall direction of the player being posed (set by drawPlayer)
 let PICKH = 1; // how high the intercepted ball was (0 = chest height or lower, 1 = well overhead)
 let TSTYLE = null;
+let KICKKIND = null; // the kick type for the kick pose (kickoff | punt | fg)
 // Cap fit on the MakeHuman skull (helmet space `hg`: the skull centre): crown radii, height, brim width / length / tilt.
 const CAP = { y: 0.006, z: 0.012, rx: 0.1, ry: 0.112, rz: 0.134, bz: 0.118, bw: 0.086, bl: 0.088, tilt: 0.16 }; // the tackler's style for this tackle (PlayerRenderer.tackleStyle): form | low | drag | shoulder
+/**
+ * The wind-up before a kick (render only): the sim launches the ball the moment the kick starts, so the last steps of the
+ * approach carry the kicking leg back, the plant and the arms out. Kickoff: by the distance to the ball on the tee; field
+ * goal: to the holder; punt: the punter holds the ball out in both hands, then drops it and draws the leg back.
+ */
+function kickWindup(p, sim, pose) {
+  const k = sim?.kick;
+  if (!k || k.launched || p.task?.type !== 'kicker' || p.state !== 'active') return;
+  let w = 0, punt = false;
+  if (k.type === 'kickoff') { const b = sim.ball; w = 1 - Math.min(1, Math.max(0, (Math.hypot(b.x - p.x, b.z - p.z) - 0.4) / 1.6)); }
+  else if (k.type === 'fg') { const h = sim.bySlot?.(sim.offIdx, 'H'); if (h && sim.ball.carrier === h.id) w = 1 - Math.min(1, Math.max(0, (Math.hypot(h.x - p.x, h.z - p.z) - 0.6) / 1.4)); }
+  else if (k.type === 'punt' && sim.ball.carrier === p.id) { punt = true; w = Math.min(1, (k.heldT || 0) / 0.9); }
+  if (w <= 0) return;
+  const e = w * w * (3 - 2 * w), mix = (a, b) => a + (b - a) * e;
+  if (punt) { // ball held out over the kicking leg, then the leg draws back as he steps into it
+    pose.arms[0].pitch = mix(pose.arms[0].pitch, 1.35); pose.arms[1].pitch = mix(pose.arms[1].pitch, 1.35);
+    pose.arms[0].elbow = mix(pose.arms[0].elbow, 0.35); pose.arms[1].elbow = mix(pose.arms[1].elbow, 0.35);
+    pose.arms[0].out = mix(pose.arms[0].out, -0.15); pose.arms[1].out = mix(pose.arms[1].out, -0.15);
+    const back = Math.max(0, (w - 0.75) / 0.25);
+    pose.legs[1].hip = pose.legs[1].hip + (-0.5 - pose.legs[1].hip) * back; pose.legs[1].knee = pose.legs[1].knee + (1.2 - pose.legs[1].knee) * back;
+    pose.head = mix(pose.head, 0.3);
+  } else { // last stride: plant leg forward, kicking leg cocked back, opposite arm out
+    pose.legs[0].hip = mix(pose.legs[0].hip, 0.35); pose.legs[0].knee = mix(pose.legs[0].knee, 0.4);
+    pose.legs[1].hip = mix(pose.legs[1].hip, -0.75); pose.legs[1].knee = mix(pose.legs[1].knee, 1.5);
+    pose.arms[0].pitch = mix(pose.arms[0].pitch, 0.3); pose.arms[0].out = mix(pose.arms[0].out, 0.9);
+    pose.lean = mix(pose.lean, -0.05); pose.head = mix(pose.head, 0.3);
+    pose.noGait = pose.noGait || e > 0.6;
+  }
+}
+
 /** The holder on a field goal / PAT kneels from the set until the kick (render-only; standing still, so not while jogging to the line). */
 function holdingKick(p, sim) {
   if (!sim || p.slot !== 'H' || p.team !== sim.offIdx || sim.offPlay?.type !== 'fg') return false;
@@ -1078,6 +1111,24 @@ function computePose(p, time, sim) {
       pose.legs[0].knee = pose.legs[1].knee = 0.9; pose.legs[0].hip = pose.legs[1].hip = 0.45;
       pose.arms[0].pitch = pose.arms[1].pitch = 0.75; pose.arms[0].elbow = pose.arms[1].elbow = 1.25; pose.arms[0].out = pose.arms[1].out = 0.18;
       break;
+    case 'kick': {
+      // The kick (right foot, legs[1]): the ball leaves at animT 0, so the pose starts at contact (leg nearly straight
+      // through the ball), whips up into the follow-through (higher on a punt), the body leans back up onto the plant
+      // toe with the left arm out for balance, then the leg comes down. A punter's hands have just dropped the ball.
+      const punt = KICKKIND === 'punt';
+      const up = Math.min(1, t / 0.22), down = Math.max(0, Math.min(1, (t - 0.38) / 0.3));
+      const ue = 1 - (1 - up) * (1 - up), de = down * down * (3 - 2 * down);
+      const top = punt ? 2.35 : 1.95;
+      pose.legs[1].hip = (1.15 + (top - 1.15) * ue) * (1 - de) + 0.25 * de; pose.legs[1].knee = 0.25 * (1 - ue) + 0.05 + 0.5 * de;
+      pose.legs[0].hip = 0.25 - 0.15 * ue; pose.legs[0].knee = 0.35 - 0.2 * ue; // plant leg straightens, up on the toe
+      pose.rootY = 0.04 * ue * (1 - de);
+      pose.lean = -0.08 - 0.32 * ue * (1 - de) + 0.15 * de; pose.twist = -0.25 * ue * (1 - de);
+      pose.arms[0].pitch = 0.35 + 0.2 * ue; pose.arms[0].out = 1.25 * (1 - de) + 0.2; pose.arms[0].elbow = 0.3; // flung out to the side
+      pose.arms[1].pitch = punt ? 0.9 * (1 - ue) + 0.2 : -0.35 * ue; pose.arms[1].out = 0.45 * ue; pose.arms[1].elbow = 0.3;
+      pose.head = 0.25 * (1 - ue) - 0.1; // eyes down on the ball through contact
+      pose.noGait = true;
+      break;
+    }
     case 'throw': {
       // Load (ball back by the ear, front shoulder closed, weight on the back foot), stride and whip (hips open
       // first, then the shoulders, the arm comes over the top), then follow through across the body.

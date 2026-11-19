@@ -812,8 +812,8 @@ export class PlayerRenderer {
       const wrapper = p.anim === 'tackle' || p.anim === 'tackle_dive';
       for (let s2 = 0; s2 < 2 && !wrapper; s2++) {
         const sg = s2 ? 1 : -1, base = LIMB_AT + s2 * ARM_KEYS.length;
-        v[base] += (-3.5 + h1 * 2) * m;           // arms fling back / up
-        v[base + 1] += (3.2 + h2 * 2) * m;       // and out
+        v[base] += (-1.7 + h1 * 1.2) * m;         // arms jolt back / up (not a ragdoll fling over the head)
+        v[base + 1] += (2.0 + h2 * 1.2) * m;     // and out
         v[base + 2] += sg * 2.5 * m * (0.5 + h1); // elbows whip
       }
       for (let s2 = 0; s2 < 2; s2++) {
@@ -821,7 +821,7 @@ export class PlayerRenderer {
         v[base] += (s2 ? -2.6 : 2.6) * m * (0.7 + h2); // legs kick apart
         v[base + 1] += (s2 ? 2.2 : -1.2) * m;
       }
-      v[HEAD_AT] += -3.0 * m;                    // head snaps back
+      v[HEAD_AT] += -2.0 * m;                    // head snaps back
     }
     st.on = on;
     st.w = on ? Math.min(1, st.w + dt * 10) : Math.max(0, st.w - dt * 5);
@@ -1189,17 +1189,31 @@ function computePose(p, time, sim) {
       break;
     }
     case 'falling': {
-      // Ball carrier going down: pitch/roll toward the fall direction; on his back after a big hit.
+      // A tackled runner going down: the legs buckle first (knees, a jolt at the hips), then he pitches over onto his knees
+      // and hip and reaches down with the free arm to break the fall, the ball arm tucked; knees stay bent (no plank).
+      // On his back after a big hit: knees come up, arms out.
       const f = FALL || { fwd: 1, side: 0 };
-      const k = Math.min(1, t / 0.45), e = k * k * (3 - 2 * k);
+      const k = Math.min(1, t / 0.55), e = k * k * (3 - 2 * k);
+      const buckle = Math.min(1, t / 0.18), bk = buckle * (2 - buckle);
       const back = f.fwd < -0.25;
-      pose.rootPitch = e * (back ? -1.35 : 1.4 * Math.max(0.3, f.fwd));
-      pose.rootRoll = -e * f.side * 1.2;
-      pose.rootY = -e * 0.12; pose.lean = back ? -0.2 : 0.3;
-      pose.arms[0].pitch = pose.arms[1].pitch = back ? 2.6 : 1.7; pose.arms[0].elbow = pose.arms[1].elbow = 0.5;
-      pose.arms[0].out = pose.arms[1].out = 0.35 + e * 0.4;
-      pose.legs[0].hip = back ? 1.0 * e : -0.35; pose.legs[1].hip = back ? 0.6 * e : -0.1; pose.legs[0].knee = 0.5; pose.legs[1].knee = 0.3;
-      pose.head = back ? 0.5 : -0.2;
+      pose.rootPitch = e * (back ? -1.3 : 1.35 * Math.max(0.35, f.fwd)) + (back ? 0 : 0.18 * bk * (1 - e));
+      pose.rootRoll = -e * f.side * 1.1;
+      pose.rootY = -0.1 * bk * (1 - e) - e * 0.1; pose.crouch = -0.18 * bk * (1 - e);
+      pose.lean = back ? -0.25 : 0.25 + 0.2 * bk;
+      if (back) {
+        pose.arms[0].pitch = pose.arms[1].pitch = 1.2 + 1.2 * e; pose.arms[0].elbow = pose.arms[1].elbow = 0.6;
+        pose.arms[0].out = pose.arms[1].out = 0.4 + e * 0.5;
+        pose.legs[0].hip = 0.9 * e + 0.2; pose.legs[1].hip = 0.5 * e + 0.1; pose.legs[0].knee = 0.9 + 0.5 * e; pose.legs[1].knee = 0.6 + 0.4 * e;
+        pose.head = 0.45;
+      } else {
+        // free arm (left unless the ball is in the left arm) reaches down and forward to catch himself
+        const fa = pose.arms[0];
+        fa.pitch = 0.9 + 0.35 * e; fa.elbow = 0.4 + 0.9 * e * e; fa.out = 0.3 + 0.35 * e; // gives as he lands (no locked arm)
+        pose.arms[1].pitch = 0.8 + 0.6 * e; pose.arms[1].elbow = 1.2; pose.arms[1].out = 0.15;
+        pose.legs[0].hip = 0.35 * bk + 0.25 * e; pose.legs[0].knee = 0.9 * bk + 0.3 * e; // knees hit first
+        pose.legs[1].hip = 0.15 * bk - 0.1 * e; pose.legs[1].knee = 0.6 * bk + 0.4 * e;
+        pose.head = -0.25 + 0.35 * e; // chin up as he lands
+      }
       break;
     }
     case 'tackle': {
@@ -1237,7 +1251,7 @@ function computePose(p, time, sim) {
         pose.rootPitch = e * 1.35; pose.rootRoll = -e * f.side * 0.6; pose.rootY = -e * 0.15; pose.lean = 0.45;
         pose.arms[0].pitch = pose.arms[1].pitch = 1.6; pose.arms[0].elbow = pose.arms[1].elbow = 1.3;
         pose.arms[0].out = pose.arms[1].out = -0.35; // wrapped around the ball carrier
-        pose.legs[0].hip = -0.4; pose.legs[1].hip = 0.2; pose.legs[0].knee = 0.6; pose.legs[1].knee = 0.9;
+        pose.legs[0].hip = -0.25 + 0.5 * e; pose.legs[1].hip = 0.35 + 0.35 * e; pose.legs[0].knee = 0.8 + 0.4 * e; pose.legs[1].knee = 1.0 + 0.4 * e; // driving, then knees down
         pose.head = -0.4;
       }
       break;
@@ -1321,8 +1335,10 @@ function computePose(p, time, sim) {
     case 'hitstick': {
       const k = Math.min(1, t / 0.35);
       pose.rootPitch = (p.anim === 'hitstick' ? 0.6 : 1.4) * k; pose.rootY = (p.anim === 'hitstick' ? 0 : Math.sin(k * Math.PI) * 0.25) - k * 0.2;
-      pose.arms[0].pitch = pose.arms[1].pitch = 2.0; pose.arms[0].elbow = pose.arms[1].elbow = 0.3;
-      pose.legs[0].hip = -0.5; pose.legs[1].hip = -0.3;
+      // Arms out at the target, then they close (wrap) as he lands; knees bent, not a stiff board.
+      pose.arms[0].pitch = pose.arms[1].pitch = 2.0 - 0.5 * k; pose.arms[0].elbow = pose.arms[1].elbow = 0.3 + 0.9 * k;
+      pose.arms[0].out = pose.arms[1].out = 0.2 - 0.45 * k;
+      pose.legs[0].hip = -0.4; pose.legs[1].hip = -0.15; pose.legs[0].knee = 0.5 + 0.4 * k; pose.legs[1].knee = 0.9;
       break;
     }
     case 'slide':

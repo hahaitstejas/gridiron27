@@ -1132,11 +1132,12 @@ function computePose(p, time, sim) {
     case 'throw': {
       // Load (ball back by the ear, front shoulder closed, weight on the back foot), stride and whip (hips open
       // first, then the shoulders, the arm comes over the top), then follow through across the body.
-      const k = Math.min(1, t / 0.42);
-      const load = Math.min(1, k / 0.38), rel = Math.max(0, Math.min(1, (k - 0.38) / 0.3)), fol = Math.max(0, (k - 0.68) / 0.32);
+      // Timed to the sim: the ball leaves at 0.2 s (passing.js WINDUP), so the whip runs 0.1-0.24 s and the arm is forward
+      // and high at release (it used to still be cocked behind the helmet when the ball came out).
+      const load = Math.min(1, t / 0.1), rel = Math.max(0, Math.min(1, (t - 0.1) / 0.14)), fol = Math.max(0, Math.min(1, (t - 0.24) / 0.2));
       const e = rel * rel * (3 - 2 * rel);
       pose.twist = -0.75 * load + 1.3 * e - 0.15 * fol;
-      pose.arms[1].pitch = 2.25 + 0.45 * load - 1.9 * e - 0.5 * fol; pose.arms[1].out = 0.85 - 0.35 * e; pose.arms[1].elbow = 1.7 - 1.45 * e + 0.5 * fol;
+      pose.arms[1].pitch = 2.25 + 0.45 * load - 0.6 * e - 1.4 * fol; // high and forward at release, down across the body after pose.arms[1].out = 0.85 - 0.35 * e; pose.arms[1].elbow = 1.7 - 1.45 * e + 0.5 * fol;
       pose.arms[0].pitch = 1.45 - 1.0 * e; pose.arms[0].out = 0.25 + 0.2 * e; pose.arms[0].elbow = 1.1 + 0.4 * e;
       pose.legs[0].hip = 0.15 + 0.4 * load - 0.1 * e; pose.legs[0].knee = 0.25 + 0.15 * e; // front foot strides at the target
       pose.legs[1].hip = -0.1 - 0.3 * e; pose.legs[1].knee = 0.35 + 0.35 * e; // back foot pushes off

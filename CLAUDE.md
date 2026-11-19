@@ -698,7 +698,7 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   by speed): stance = foot locked in world space, swing = arc to the predicted landing; two-bone IK → `legs[s].hip/knee/out`,
   `flat` keeps the shoe level. Only for `GAIT_ANIMS`, blended in/out (`g.w`). Also lean from acceleration / turn rate and
   `pose.headYaw` toward the ball. Arm IK for catches (`reachForBall` in players.js, `REACH_ANIMS`). Head pitch: negative = up.
-  QB throw: load / stride / whip / follow-through.
+  QB throw: load / stride / whip / follow-through, timed to the sim's release at 0.2 s (whip 0.1-0.24 s: the arm is high and forward when the ball leaves).
 - Field: MeshStandardMaterial with a grass normal map (`normalFromHeight` from the blade tile), patchy macro color, natural
   turf palette; PCF soft shadows.
 - Post (`GameRenderer.setupPost` / `draw(cam)`): HDR MSAA target → UnrealBloom (threshold 1.6) → OutputPass → grade

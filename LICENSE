@@ -1,0 +1,13 @@
+Copyright (c) 2026 hahaitstejas. All rights reserved.
+
+Gridiron 27, its source code, game design, original art, team names, logos and
+other original content are the property of the copyright holder. No license is
+granted to copy, modify, distribute, sell, host or create derivative works from
+any part of this repository without prior written permission.
+
+You may view the source on GitHub and play the official build at
+https://hahaitstejas.github.io/gridiron27/ for personal, non-commercial use.
+
+Third-party assets keep their own licenses and are listed, with their sources,
+in src/assets/CREDITS.md (CC0, CC BY 4.0, the CMU motion-capture terms) and in
+the in-game Credits screen. npm dependencies are covered by their own licenses.

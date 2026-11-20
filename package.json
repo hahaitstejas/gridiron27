@@ -2,6 +2,7 @@
   "name": "gridiron27",
   "version": "0.1.0",
   "private": true,
+  "license": "UNLICENSED",
   "description": "Gridiron 27 - an original browser 3D American football game",
   "type": "module",
   "scripts": {

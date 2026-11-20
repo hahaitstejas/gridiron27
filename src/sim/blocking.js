@@ -55,8 +55,16 @@ export function updateBlocking(sim, dt) {
       engage(sim, b, best, mode);
     }
   }
-  // Double teams: a free pass blocker adjacent to an engaged rusher helps (not on kicks: everyone has a gap).
-  for (const b of sim.kick ? [] : sim.players) {
+  // Double teams: a free pass blocker adjacent to an engaged rusher helps (not on kicks: everyone has a gap) — unless a
+  // rusher is coming free at the quarterback (a blitzer from out wide), who is his first job (UPDATE 5.1).
+  const qb = sim.bySlot(sim.offIdx, 'QB');
+  const freeRusher = qb && !sim.passThrown && sim.players.some((d) => d.team !== sim.offIdx && d.state === 'active' && !d.engagement
+    && Math.hypot(d.x - qb.x, d.z - qb.z) < 9 && (d.x - qb.x) * sim.dir > 0.5);
+  if (freeRusher) for (const e of sim.engagements) {
+    // Release helpers to go get him (once the double team is underway).
+    for (const h of [...e.helpers]) if (h.task?.type === 'pass_block' && h.task.target === undefined && e.t > 0.25) { e.helpers.splice(e.helpers.indexOf(h), 1); h.engagement = null; h.task.target = -1; }
+  }
+  for (const b of sim.kick || freeRusher ? [] : sim.players) {
     if (!canBlock(sim, b) || b.task.type !== 'pass_block' || b.task.target !== undefined) continue;
     for (const e of sim.engagements) {
       if (e.helpers.length || Math.hypot(e.d.x - b.x, e.d.z - b.z) > ENGAGE_DIST) continue;

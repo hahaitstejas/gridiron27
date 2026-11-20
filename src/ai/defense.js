@@ -322,8 +322,25 @@ function bracket(sim, p) {
 function plaster(sim) {
   const qb = sim.carrier();
   if (!qb || qb.slot !== 'QB' || qb.team !== sim.offIdx || sim.passThrown || sim.qbCrossed || sim.ballLiveRun || sim.offPlay.type !== 'pass') return;
+  // A quarterback who keeps the ball and runs around in the backfield (UPDATE 5.1: a human could circle for 30+ s and
+  // lose 30 yds a snap): the longer he holds it and the deeper he drifts behind the line, the more of the defense
+  // collapses on him. Blocks don't last forever either. Tight man coverage stays on its receiver until it's late.
+  const depth = (sim.losX - qb.x) * sim.dir;
+  if (sim.t > 5.5 || depth > 11) {
+    const late = sim.t > 7.5 || depth > 16;
+    for (const d of sim.players) {
+      if (d.team === qb.team || d.state !== 'active' || d.task?.type === 'pursue') continue;
+      if (d.engagement) { if (d.engagement.d === d && (late || d.engagement.t > 3.5)) sim.breakEngagement(d.engagement); continue; }
+      if (!late && d.task?.type === 'man') {
+        const r = sim.players[d.task.target];
+        if (r && Math.hypot(r.x - d.x, r.z - d.z) < 4) continue;
+      }
+      d.task = { type: 'pursue', at: sim.t, hunt: true };
+    }
+    return;
+  }
   if (sim.t < 4.0) return;
-  const want = sim.t > 6 ? 3 : sim.t > 5 ? 2 : 1;
+  const want = sim.t > 5 ? 2 : 1;
   let have = 0;
   for (const d of sim.players) if (d.team !== qb.team && d.task?.plaster) have++;
   if (have >= want) return;
@@ -407,6 +424,10 @@ function rush(sim, p) {
   if (sim.ballLiveRun && c) { p.task = { type: 'pursue', at: sim.t }; return; }
   const goal = c || qb;
   if (!goal) { stop(p); return; }
+  // A free rusher after a quarterback on the move takes a pursuit angle instead of chasing his back.
+  if (goal === qb && sim.ball.carrier === qb.id && !sim.passThrown && sim.t > 1.8 && Math.hypot(qb.vx, qb.vz) > 3.5 && Math.hypot(qb.x - p.x, qb.z - p.z) > 1.5) {
+    p.task = { type: 'pursue', at: sim.t, hunt: true }; return;
+  }
   let tx = goal.x, tz = goal.z;
   // Edge rushers keep contain early in the down.
   if (((p.slot === 'LE' || p.slot === 'RE') && sim.t < 1.6 && !p.task.blitz) || (p.task.contain && sim.t < 2.2)) {

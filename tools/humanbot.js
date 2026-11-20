@@ -45,6 +45,10 @@ const strategies = {
   smartTapRAC: { plays: (p) => p.type === 'pass', smart: true, tap: true, catchBtn: 'X', input: () => ({}) },
   smartTapPossession: { plays: (p) => p.type === 'pass', smart: true, tap: true, catchBtn: 'B', input: () => ({}) },
   holdBall: { plays: (p) => p.type === 'pass', input: () => ({}) },
+  // Retreat and zig-zag in the backfield holding the ball (time-wasting exploit): should end in a sack quickly.
+  qbRetreat: { plays: (p) => p.type === 'pass', input: (t) => ({ ly: t > 0.4 ? 0.8 : 0, lx: t > 0.4 ? Math.sin(t * 0.9) : 0, rt: 1 }) },
+  // Smarter: always run away from the nearest defender (stays in bounds), never throw.
+  qbEvade: { plays: (p) => p.type === 'pass', evade: true, input: () => ({}) },
   runUpfield: { plays: (p) => p.type === 'run', input: (t) => ({ ly: t > 0.9 ? -1 : 0, rt: 1 }) },
 };
 
@@ -61,6 +65,15 @@ for (const [name, st] of Object.entries(strategies)) {
     let k = 0, catchSent = false;
     while (!sim.finished && k < 3000) {
       const s = st.input(sim.t);
+      if (st.evade && sim.t > 0.4) {
+        const qb = sim.bySlot(0, 'QB');
+        let nx = 0, nz = 0, nd = 99;
+        for (const d of sim.players) if (d.team !== 0 && d.state === 'active') { const dd = Math.hypot(d.x - qb.x, d.z - qb.z); if (dd < nd) { nd = dd; nx = d.x; nz = d.z; } }
+        let ax = qb.x - nx, az = qb.z - nz; const al = Math.hypot(ax, az) || 1; ax /= al; az /= al;
+        az -= Math.max(0, Math.abs(qb.z) - 20) * Math.sign(qb.z) * 0.3; // stay off the sideline
+        if (qb.x < -55) ax = Math.abs(ax); // and out of his own end zone
+        s.ly = -ax; s.lx = az; s.rt = 1;
+      }
       if (st.catchBtn && sim.ball.state === 'air' && sim.ball.intended === sim.controlledId && !catchSent) { s.press = st.catchBtn; catchSent = true; }
       if (st.smart && sim.t > 1.7 && sim.t < 1.72) {
         let bestBtn = null, bestSep = -1;
@@ -89,10 +102,10 @@ for (const [name, st] of Object.entries(strategies)) {
     }
     const r = sim.result;
     if (r.passAttempt) att++; if (r.complete) { cmp++; yac += r.spotX - r.catchX; air += r.catchX - r.losX; } if (r.interception) ints++;
-    if (name === 'holdBall') { holdT = (holdT || 0) + r.duration; }
+    if (name === 'holdBall' || name === 'qbRetreat' || name === 'qbEvade') { holdT = (holdT || 0) + r.duration; st._max = Math.max(st._max || 0, r.duration); st._minY = Math.min(st._minY ?? 0, r.yards); }
     n++; yds += r.yards; if (r.touchdown === 0) td++; if (r.yards >= 20) big++;
   }
-  if (name === 'holdBall') console.log(`holdBall: avg time until play ends ${(holdT / n).toFixed(2)}s`);
+  if (name === 'holdBall' || name === 'qbRetreat' || name === 'qbEvade') { console.log(`${name}: avg time until play ends ${(holdT / n).toFixed(2)}s (longest ${st._max.toFixed(1)}s, worst ${st._minY.toFixed(0)} yds)`); holdT = 0; }
   console.log(`${name.padEnd(16)} avg ${(yds / n).toFixed(1)} yds  20+ yd plays ${(100 * big / n).toFixed(0)}%  TD ${td}/${n}` + (att ? `  cmp ${cmp}/${att} air ${(air / Math.max(1, cmp)).toFixed(1)} yac ${(yac / Math.max(1, cmp)).toFixed(1)} int ${ints} sep@arrival ${(sep / Math.max(1, sepN)).toFixed(1)}` : ''));
 }
 
@@ -148,4 +161,62 @@ for (const moves of [false, true]) {
     n++; if (sim.result.sack) sacks++; if (pressured) pres++;
   }
   console.log(`userEdge${moves ? 'Moves' : 'Stick'}`.padEnd(17) + `pressure ${(100 * pres / n).toFixed(0)}%  sacks ${(100 * sacks / n).toFixed(0)}%  move wins ${wins}`);
+}
+
+// User-controlled rusher looping very wide first (exploit: a free run at the QB around the edge). DE, DT and MLB.
+for (const pos of ['DE', 'DT', 'MLB']) {
+  let sacks = 0, pres = 0, n = 0, tSack = 0;
+  for (let i = 0; i < N; i++) {
+    const ops = listOffPlays().filter((p) => p.type === 'pass');
+    const sim = new PlaySim({ rng: new RNG(5000 + i), teams: [teams[i % 32], teams[(i + 7) % 32]], offIdx: 0, dir: 1, losX: -25, ballZ: 0,
+      offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 1, camDir: 1, ...DIFF });
+    const me0 = sim.defense().find((p) => p.pos === pos) || sim.defense()[0];
+    sim.controlledId = me0.id;
+    sim.snap();
+    const f = emptyFrame();
+    const side = me0.z >= 0 ? 1 : -1;
+    let k = 0, pressured = false, phase = 0;
+    while (!sim.finished && k < 3000) {
+      const me = sim.players[sim.controlledId];
+      const qb = sim.bySlot(0, 'QB');
+      // Phase 0: sprint for a spot 9 yds outside the tackle box and 2 yds into the backfield; then straight at the QB.
+      const wx = sim.losX - 2, wz = side * 11;
+      if (phase === 0 && Math.hypot(wx - me.x, wz - me.z) < 1.2) phase = 1;
+      const tx = phase ? qb.x : wx, tz = phase ? qb.z : wz;
+      const dx = tx - me.x, dz = tz - me.z, l = Math.hypot(dx, dz) || 1;
+      f.ly = -dx / l; f.lx = dz / l; f.rt = 1;
+      sim.tick(STEP, f); k++;
+      if (!sim.passThrown && Math.hypot(qb.x - me.x, qb.z - me.z) < 2.5) pressured = true;
+    }
+    n++; if (sim.result.sack) { sacks++; tSack += sim.result.duration; } if (pressured) pres++;
+  }
+  console.log(`userWide${pos}`.padEnd(17) + `pressure ${(100 * pres / n).toFixed(0)}%  sacks ${(100 * sacks / n).toFixed(0)}%  avg sack time ${(tSack / Math.max(1, sacks)).toFixed(1)}s`);
+}
+
+// User walks his rusher way outside before the snap (LS), then rushes the QB.
+for (const pos of ['DE', 'DT', 'MLB']) {
+  let sacks = 0, pres = 0, n = 0, unblocked = 0;
+  for (let i = 0; i < N; i++) {
+    const ops = listOffPlays().filter((p) => p.type === 'pass');
+    const sim = new PlaySim({ rng: new RNG(6000 + i), teams: [teams[i % 32], teams[(i + 7) % 32]], offIdx: 0, dir: 1, losX: -25, ballZ: 0,
+      offPlay: ops[i % ops.length], defPlay: listDefPlays()[i % listDefPlays().length], humanTeam: 1, camDir: 1, ...DIFF });
+    const me0 = sim.defense().find((p) => p.pos === pos) || sim.defense()[0];
+    sim.controlledId = me0.id;
+    const side = me0.z >= 0 ? 1 : -1;
+    me0.x = me0.px = sim.losX + 1.2; me0.z = me0.pz = side * 9; me0.userMoved = true;
+    sim.snap();
+    const f = emptyFrame();
+    let k = 0, pressured = false, touched = false;
+    while (!sim.finished && k < 3000) {
+      const me = sim.players[sim.controlledId];
+      const qb = sim.bySlot(0, 'QB');
+      const dx = qb.x - me.x, dz = qb.z - me.z, l = Math.hypot(dx, dz) || 1;
+      f.ly = -dx / l; f.lx = dz / l; f.rt = 1;
+      sim.tick(STEP, f); k++;
+      if (me.engagement) touched = true;
+      if (!sim.passThrown && Math.hypot(qb.x - me.x, qb.z - me.z) < 2.5) pressured = true;
+    }
+    n++; if (sim.result.sack) sacks++; if (pressured) pres++; if (!touched) unblocked++;
+  }
+  console.log(`userSplit${pos}`.padEnd(17) + `pressure ${(100 * pres / n).toFixed(0)}%  sacks ${(100 * sacks / n).toFixed(0)}%  never blocked ${(100 * unblocked / n).toFixed(0)}%`);
 }

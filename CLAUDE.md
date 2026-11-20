@@ -629,6 +629,12 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Trick plays (`sim/tricks.js`, formation family "Trick Plays"): Hail Mary, flea flicker, hook and ladder, throwback, swap
   special, reverse; laterals (LB as a carrier, CPU last-gasp `cfg.lastGasp`); defenses don't fall for the same trick twice
   (`session.tricksRun` → `cfg.trickSeen`). Fakes are read (`fakeKickAssign`: contain, jammers on gunners, spy).
+- UPDATE 5.1 exploits: a QB who keeps the ball in the backfield gets the defense collapsing on him (`plaster`: after 5.5 s or
+  11 yds deep everyone not in tight man coverage pursues, blocks give way; free rushers chasing a moving QB take pursuit
+  angles), bot `qbEvade` longest 34 s → ~7 s; blockers pick up a free rusher when their man isn't coming (`coming()` in
+  offense.js `passBlock`; idle double-team helpers peel off in blocking.js), the CPU QB throws hot when an unblocked rusher
+  is closing (`incoming` in qb.js) and with a clean pocket late checks down / scrambles instead of throwing it away. Bots:
+  `qbRetreat`, `qbEvade`, `userWide*`, `userSplit*` (rusher walked out wide pre-snap: MLB sacks 18% → ~15%).
 - QB exploits: coverage holds until the QB crosses the line; `plaster()` sends extra rushers after 4 s; the CPU spies a
   human who scrambles (`defAdj.spy`); pressure / fading / getting hit ruin throws. FG block: the human is the edge rusher
   (B8, free outside the wing), X dives across the kick; long kicks get blocked more. Juke = plant + lateral cut

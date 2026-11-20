@@ -291,6 +291,23 @@ function passBlock(sim, p) {
     const l = sim.toLocal(p.x, p.z);
     p.task.home = sim.toWorld(Math.min(l.down - 1.2, -1.5), l.lat * 1.1);
   }
+  // Pick up a free rusher (UPDATE 5.1: a defender who loops wide around the line had a free run at the QB): a blocker
+  // whose man is taken (or gone) takes the nearest unblocked rusher closing on the quarterback.
+  // His man isn't coming (dropped into coverage, spying) when he isn't rushing and isn't closing on the QB.
+  // (A rusher = assigned to rush, or simply closing on the QB fast: a user-controlled defender keeps his coverage task.)
+  const coming = (d) => ['rush', 'pursue'].includes(d.task?.type) || (qb && ((qb.x - d.x) * d.vx + (qb.z - d.z) * d.vz) / (Math.hypot(qb.x - d.x, qb.z - d.z) || 1) > 2.5);
+  const idle = tgt && !coming(tgt) && Math.hypot(tgt.x - qb?.x, tgt.z - qb?.z) > 3.5;
+  if (qb && (!tgt || tgt.engagement || tgt.state !== 'active' || idle) && sim.t > 0.35 && !sim.passThrown) {
+    let best = null, bd = 4.5;
+    for (const d of sim.players) {
+      if (d.team === p.team || d.engagement || d.state !== 'active' || d.noEngageT > 0 || !coming(d)) continue;
+      if ((sim.toLocal(d.x, d.z).down - sim.toLocal(qb.x, qb.z).down) < 0.5 || Math.hypot(d.x - qb.x, d.z - qb.z) > 9) continue; // still in front of the QB
+      const taken = sim.players.some((o) => o !== p && o.team === p.team && o.task?.type === 'pass_block' && o.task.target === d.id && !o.engagement);
+      const dd = Math.hypot(d.x - p.x, d.z - p.z) + (taken ? 3 : 0);
+      if (dd < bd) { bd = dd; best = d; }
+    }
+    if (best && best !== tgt) { p.task.target = best.id; return passBlock(sim, p); }
+  }
   if (tgt && qb && !tgt.engagement) {
     let ux = qb.x - tgt.x, uz = qb.z - tgt.z;
     const ul = Math.hypot(ux, uz) || 1;
@@ -298,7 +315,9 @@ function passBlock(sim, p) {
     // Never chase past the line of scrimmage.
     const lx = sim.losX - sim.dir * 0.3;
     const cx = sim.dir > 0 ? Math.min(px, lx) : Math.max(px, lx);
-    seek(p, cx, pz, 0.85, 0.5);
+    // A man looping outside of him: kick-slide at full speed to stay in front of him.
+    const wide = Math.abs(sim.toLocal(tgt.x, tgt.z).lat - sim.toLocal(p.x, p.z).lat) > 1.2;
+    seek(p, cx, pz, wide ? 1 : 0.85, 0.5);
     p.face = { x: tgt.x, z: tgt.z };
   } else {
     // Max protect: nobody to block → help on the nearest rusher a teammate is already blocking (a double team),

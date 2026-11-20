@@ -90,7 +90,21 @@ export function qbDecide(sim, qb, dt) {
   if (pressure > 0.55) threshold = Math.min(threshold, -0.5);
   const noise = (100 - awr) * 0.02;
 
-  const hot = pressure > 0.6;
+  // A free blitzer coming (UPDATE 5.1): an unblocked defender closing fast from within 7 yds that the QB can see — he
+  // gets the ball out to his hot read before the rusher arrives instead of waiting to feel him.
+  let incoming = false;
+  if (awr > 40) for (const d of sim.players) {
+    if (d.team === qb.team || d.engagement || d.state !== 'active') continue;
+    const dx = qb.x - d.x, dz = qb.z - d.z, dist = Math.hypot(dx, dz);
+    if (dist > 7 || dist < 0.5) continue;
+    const closing = (dx * d.vx + dz * d.vz) / dist;
+    const seen = (-dx * Math.cos(qb.facing) - dz * Math.sin(qb.facing)) / dist > -0.35 || awr > 85;
+    // Truly free: no blocker within 2 yds of him; an aware QB spots it more often.
+    const blocked = sim.players.some((o) => o.team === qb.team && o !== qb && Math.hypot(o.x - d.x, o.z - d.z) < 2);
+    if (closing > 3.5 && seen && !blocked && sim.rng.next() < 0.15 + awr * 0.006) { incoming = true; break; }
+  }
+  if (incoming) threshold = Math.min(threshold, -0.3);
+  const hot = pressure > 0.6 || incoming;
   let pick = null, best = null;
   for (let i = 0; i < order.length; i++) {
     const r = order[i];
@@ -105,6 +119,17 @@ export function qbDecide(sim, qb, dt) {
   }
   if (pick) {
     startThrow(sim, qb, pick.r, pick.kind);
+    return;
+  }
+  // Clean pocket and nothing open late (UPDATE 5.1: he used to throw it away with nobody near him): check it down to
+  // anyone halfway open, or take off if he can run; otherwise keep looking (the coverage won't hold forever either).
+  const clean = pressure < 0.3 && !incoming;
+  if (clean && t > (few ? 3.2 : 4.2) && t < 6.8) {
+    if (best && best.s > -1.6) { startThrow(sim, qb, best.r, best.kind); return; }
+    if (sim.R(qb, 'speed') > 70 && task.phase !== 'scramble' && t > (few ? 3.6 : 4.8)) {
+      task.phase = 'scramble';
+      task.side = sim.rng.chance(0.5) ? 1 : -1;
+    }
     return;
   }
   // Under heavy pressure or holding too long: best available, scramble or throw it away.

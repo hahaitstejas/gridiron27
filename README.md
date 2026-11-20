@@ -1,11 +1,40 @@
 # Gridiron 27
 
-An original 3D American football game that runs in the browser (Three.js + Vite), played with an
-Xbox controller or the keyboard. All teams, players and branding are fictional.
+A 3D American football game you play in your browser. Controller or keyboard. All teams, players and leagues are fictional.
 
-## Play it
+## Play now
 
-Requires [Node.js](https://nodejs.org) 20.19+ (the current LTS is fine).
+**[▶ hahaitstejas.github.io/gridiron27](https://hahaitstejas.github.io/gridiron27/)**: no install, no account.
+Also on **[itch.io](https://hahaitstejas.itch.io/gridiron-27)**. Desktop Chrome, Edge or Safari.
+
+Press any button, pick **Play Now**, choose two teams, play. Your first game shows the basic controls; press **H** in a
+game for all of them. Saves stay in your browser.
+
+## Controls (the essentials)
+
+| | Controller | Keyboard |
+|---|---|---|
+| Move · sprint | Left stick · RT | WASD · Shift |
+| Pick a play · snap | X / A / Y · A | U / J / I · J or Space |
+| Throw to a receiver | his button (tap = lob, hold = bullet) | J K U I O |
+| Juke · truck | Right stick ◀▶ · ▲ | Arrow keys |
+| Switch defender | B | K |
+| Timeout · pause | View / both triggers · Menu | T · Esc |
+
+Everything else (audibles, hot routes, coverage calls, rush moves, catch types) is on the in-game **H** panel and in
+Settings → Controls.
+
+## Modes
+
+- **Quick Play**: any two teams, vs the CPU (4 difficulties) or a friend on one screen (no peeking: calls stay hidden).
+- **Franchise**: seasons, playoffs, trades, free agency, contracts and the cap, the draft, the offseason. Also a single
+  season, a tournament and **Career** (one player, earn your way up).
+- **Practice**: any play from any spot, skills drills with medals, late-game scenarios.
+- **Edit League**: rosters, ratings, teams, logos, uniforms, depth charts, your own plays.
+
+## Run it yourself
+
+Needs [Node.js](https://nodejs.org) 20.19+.
 
 ```bash
 git clone https://github.com/hahaitstejas/gridiron27.git
@@ -14,139 +43,13 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** in Chrome or Safari. Turn on your Xbox controller (paired over Bluetooth)
-and press **A** — or press **Enter** to use the keyboard. Pick **Play Now**, choose teams, which side you
-control, difficulty (Rookie / Pro / All-Pro / Legend), quarter length and penalties, then **Start Game**.
+Then open **http://localhost:5173**. No internet later? `npm run build:offline` makes one file,
+`dist-offline/Gridiron27.html`, that you can double-click anywhere.
 
-**No wifi?** Build one self-contained file once:
+**Your own league:** `npm run export-league` writes editable spreadsheets to `public/local/` (teams, rosters, depth
+charts, uniforms, stadiums, coaches); edit them in any spreadsheet app and reload. That folder never leaves your computer.
 
-```bash
-npm run build:offline
-```
+Developers: see [CLAUDE.md](CLAUDE.md) for architecture, data formats and tests. Credits for third-party art and motion
+data are in Settings → Credits and [src/assets/CREDITS.md](src/assets/CREDITS.md).
 
-Then double-click `dist-offline/Gridiron27.html` (or drag it onto Chrome / Safari) anytime: no server, no internet.
-Copy it anywhere you like. A file opened from disk keeps its own saves, so to bring your league over use
-League → Saves & Files → Export, then Import in the offline copy.
-
-### Controls
-| | Xbox | Keyboard |
-|---|---|---|
-| Menus: move · select · back · tabs | D-pad / left stick · A · B · LB/RB | WASD or 1–4 · J · K · Q/O |
-| Play call: formation · more plays · call the left/middle/right play | LB/RB · stick ◀▶ (▲▼ jumps a group) · X / A / Y | Q/O · A/D · U / J / I |
-| Play call: flip · no huddle · timeout | RT · LS click · View | Shift · F · T |
-| Snap | A | J or Space |
-| Pause | Menu | Enter / Esc |
-| Move | Left stick | W A S D |
-| Sprint | RT | Shift |
-| Throw to receiver | A B X Y RB (tap = lob, hold = bullet) | J K U I O |
-| Throw away | RS click | R |
-| High / low pass | hold LB / LT while throwing | Q / E |
-| Pump fake | LS click | F |
-| Pass-rush moves (defense, engaged with a blocker) | A bull rush · X swim · Y spin · RS ↓ rip (rating contest vs the blocker) | J · U · I · ↓ |
-| Option: pitch / keep | LB pitches (speed option); hold LT through the mesh to keep (zone read) | Q / E |
-| Juke / truck / hit stick | Right stick ← → / ↑ | Arrow keys |
-| Stiff arm · Spin · Dive (QB: slide) · Hurdle | A · B · X · Y | J · K · U · I |
-| Switch defender (pre-snap and during the play) | B | K |
-| Defense: dive tackle · strip · swat/catch | X · Y · A | U · I · J |
-| Kick meter: start · power · accuracy | A · A · A | J · J · J |
-| Returner: fair catch · kneel in end zone | Y · X | I · U |
-| Penalty against the CPU: accept / decline | A / X | J / U |
-| Spike (at the line) | B | K |
-| Hard count (at the line, once per play: may draw the defense offside) | LT | E |
-| Catch type (ball in the air to your receiver): aggressive · run after catch · possession | Y · X · B | I · U · K |
-| Defense, ball in the air: go for the interception | Y | I |
-| No-huddle: rerun last play (play-call screen) | Y | I |
-| Timeout (between plays) | View (or Share) | T |
-| Audible (pre-snap) | X, then A/B/X/Y/RB | U, then J/K/U/I/O |
-| Hot route (pre-snap) | Y, receiver button, then left stick (A = block) | I, receiver key, then WASD |
-| Motion (pre-snap, offense) | RB, receiver button, then left stick (toward the ball = across) | O, receiver key, then A/D |
-| Defensive hot route (pre-snap, the defender you control) | Y, then A blitz / X QB spy / Y hook zone / B deep zone / RB flat zone | I, then J / U / I / K / O |
-| Coverage (pre-snap, defense) | LB, then A press / B off / X shade inside / Y shade outside / RB disguise the shell / LT reset | Q, then the same keys |
-| Front (pre-snap, defense) | RB, then A pinch / B spread / X show blitz / Y crowd the line / LT reset | O, then the same keys |
-| Pass protection (pre-snap, offense, pass plays) | LB, then A slide left / B slide right / X max protect / Y everyone out / LT reset | Q, then the same keys |
-| Play art (pre-snap, one player) | hold RT | hold Shift |
-| Block a field goal / punt | get in front of the holder, A jump / X lay out at the kick | J / U |
-| Coach's challenge (close call against you) | Y challenge / A play on | I / J |
-| Instant replay (between plays) | RS click; LB/RB switch camera angle | R; Q/O |
-| Depth chart (pause menu → Coaching) | A pick up / drop, ▲▼ move, X remove | J, W/S, U |
-| Controls panel | — | H |
-
-Kicks use a three-press meter: press A to start the kicker, A again to set power on the way up, and A a
-third time as the needle comes back to set accuracy (closest to the line = straightest).
-
-**Career** (Franchise → New Career): create a player, pick his position and team, and play only as him: the CPU calls
-the plays (unless he's your QB or middle linebacker) and fast-forwards the snaps he sits out. Every game earns XP for skill
-points you spend on his ratings in **My Player**; reaching a trait's thresholds unlocks it.
-
-**Traits**: stars have abilities that come from their ratings (Sure Hands, Lockdown, Enforcer, Edge Bender, Brick Wall,
-Ballhawk, Bruiser, Pocket Poise, Cannon, Route Technician, Big Leg). A ★ callout appears when one decides a play.
-
-**Broadcast touches**: a skippable pregame intro, huddles and officials who signal and announce penalties, touchdown
-celebrations, a play-by-play line after every play, drive summaries, a halftime stats card, the chain crew, sidelines with
-reserves and coaches, and a Player of the Game on the final screen.
-
-**Practice** (main menu) runs any play from any spot and situation with no clock. It also has **Skills Drills** (passing
-targets, rushing gauntlet, kicking challenge, pass rush, lockdown coverage: scored reps, bronze/silver/gold medals, best
-scores kept) and **Scenarios** (seven late-game challenges: a two-minute drill, a last-gasp touchdown, a goal-line stand,
-protecting a lead, fourth and long, a 17-point comeback and a tied finish). **Settings** has the camera (standard / wide / tight / high), name tags, the post-play stat card and automatic replays of big plays.
-
-Debug: `http://localhost:5173/?auto&speed=6` watches a full CPU-vs-CPU game at 6x speed
-(`&q=1` for 1-minute quarters).
-
-### Two players
-Play Now → **You play as: 2 players**. Player 1 (home) uses the first controller (or the keyboard), player 2 (away)
-presses A on a second controller when asked. Each picks their own plays and controls their own team.
-
-### Playbook editor
-League → **Playbook**: design your own plays. Pick a formation, give every receiver a route (or a block), the
-primary read, QB drop, play action or a bootleg, or build a run (ball carrier, direction, hole, zone or power
-blocking). Test runs it against CPU defenses. Your plays appear in the **My Plays** tab when you call a play.
-
-### Trick plays
-Zone read and speed option, jet sweep (the snap button starts the motion, the ball is snapped as he reaches the QB),
-designed QB runs, and fake punts / a fake field goal in the Special Teams tab on 4th down. The CPU calls QB runs
-only with a mobile quarterback and fakes now and then on 4th and short.
-
-### League identity
-League → Teams & Logos → **League & Conferences**: rename the league, the championship game and both conferences,
-and build or upload a league logo. It's painted at both 25-yard lines, and at midfield in the championship game.
-
-### Weather
-Play Now has Weather (clear, rain, snow, windy, random) and Time of day (day, dusk, night, random). Rain makes the ball
-slippery, snow slows footing, and wind pushes kicks and deep passes (the kick hint shows it). Franchise games get
-their own weather, with snow late in the season.
-
-### Franchise
-Main menu → **Franchise**: pick your team and season length (6, 10 or 17 games). Play your games or sim them,
-follow standings, results and league leaders, make the playoffs, then run the offseason: progression and
-retirements, re-sign players, free agency, a 7-round draft and cut-downs to 53. Several franchises can be saved;
-the Franchise menu lists them. Start a franchise with a **fantasy draft** (every team drafts a new roster from one pool,
-53 rounds; auto-pick or auto-draft any time). The Franchise menu also has **New Season** (one season to a championship,
-no offseason) and **Tournament** (4, 8 or 16 teams, single elimination at neutral sites). The **Hall of Fame** keeps every
-player's career (stats, awards, championship rings) and inducts the great ones when they retire.
-Playoffs use the NFL format: 7 teams per conference, the 4 division winners are seeds 1–4 (the 1 seed gets a bye),
-the 3 best other teams are wild cards 5–7 (Standings → Playoff Picture shows it during the season).
-**Free agents** are available all season (hub → Free Agents): sign one on a one-year deal if it fits the cap, releasing
-someone if your roster is full. Press X there to import your own list of current free agents from a CSV (same columns as
-roster.csv; the team column is ignored), or put it in `public/local/free_agents.csv` to load it when a franchise starts.
-Money: every player has a salary and contract years under a salary cap (Contracts & Cap in the hub). Trade with CPU
-teams before the deadline (they want fair value and both teams must fit under the cap); CPU teams trade too
-(Transactions). Re-signing, free agents and cut-downs all have to fit under the cap.
-News follows the league (big results, injuries, trades, records); awards (MVP, Player and Rookie of the Year) are
-handed out after the regular season; league records and past champions are kept. In the draft you see scouting
-estimates: spend scouting points (X) to reveal a prospect's real overall and potential.
-
-### Your league
-Main menu → **League**: edit rosters (every player and rating, add, trade, release), teams and logos (logo builder
-or your own image), depth charts, and save your league (it autosaves; Saves & Files also backs it up to a file).
-Spreadsheets exports/imports the CSV files below from inside the game.
-
-### Customize your league with spreadsheets (personal use)
-```bash
-npm run export-league
-```
-creates `public/local/teams.csv`, `roster.csv` and `depth.csv`. Open them in Numbers, Excel or Google Sheets,
-edit team names/colors, players, numbers, ratings and depth charts, save as CSV (same names), and reload the
-game. That folder is not uploaded to GitHub.
-
-See [CLAUDE.md](CLAUDE.md) for architecture, data formats and testing.
+© 2026 hahaitstejas. All rights reserved (see [LICENSE](LICENSE)).

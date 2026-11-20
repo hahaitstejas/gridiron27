@@ -180,10 +180,10 @@ export class PlayerRenderer {
       this.contact.frustumCulled = false; this.contact.renderOrder = 1; this.contact.count = 0;
       scene.add(this.contact);
     }
-    // Ring under the user-controlled player.
+    // Marker under the user-controlled player: a blue hexagon outline (UPDATE 5.1; a flat side facing each way).
     this.ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.55, 0.75, 32),
-      new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.9, depthWrite: false }),
+      new THREE.RingGeometry(0.58, 0.74, 6, 1, Math.PI / 6),
+      new THREE.MeshBasicMaterial({ color: 0x2f8cff, transparent: true, opacity: 0.95, depthWrite: false }),
     );
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.position.y = 0.03;
@@ -522,7 +522,7 @@ export class PlayerRenderer {
       if (!cp) return;
       ring.position.x = cp.px + (cp.x - cp.px) * alpha;
       ring.position.z = cp.pz + (cp.z - cp.pz) * alpha;
-      ring.material.color.set(cp.team === sim.possTeam ? 0xffe14d : 0x4dd2ff);
+      ring.material.color.set(i === 0 ? 0x2f8cff : 0xff8a2f); // player 1 blue; player 2 (local 2-player) orange
     });
   }
 

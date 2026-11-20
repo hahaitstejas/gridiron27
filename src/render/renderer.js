@@ -291,7 +291,7 @@ export class GameRenderer {
         if (best >= 0) {
           const hs = players.hands[best];
           const k = 1 - Math.max(0, b.T - b.t) / 0.3, e = k * k * (3 - 2 * k);
-          off.copy(hs[0]).add(hs[1]).multiplyScalar(0.5).sub(bm.position).multiplyScalar(e);
+          players.gripPoint(best, off).sub(bm.position).multiplyScalar(e); // one hand or both
           if (off.length() > 2) off.setLength(2);
         } else off.multiplyScalar(Math.exp(-dt * 12));
       } else off.multiplyScalar(Math.exp(-dt * 12));

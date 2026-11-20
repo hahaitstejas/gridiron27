@@ -619,7 +619,7 @@ export class PlayerRenderer {
     const b = sim?.ball;
     const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
     this.gait.apply(p, i, pose, x, z, f, sc, official ? 1 : wide, dt, look);
-    if (b && REACH_ANIMS.has(p.anim) && (b.state === 'air' || b.state === 'kick')) reachForBall(pose, p, b, x, z, f, sc, wide, alpha);
+    if (b && REACH_ANIMS.has(p.anim) && (b.state === 'air' || b.state === 'kick')) { reachForBall(pose, p, b, x, z, f, sc, wide, alpha); this.ballHand[i] = pose.ballHand ?? -1; }
     else if (b && b.state === 'air' && b.target && !b.resolved && b.kind !== 'throwaway' && b.T - b.t < 0.55 && p.state === 'active' && !p.engagement
       && Math.hypot(p.x - b.target.x, p.z - b.target.z) < 2.2 && sim.players[b.intended]) {
       // A contested ball: everyone at the catch point goes up for it, not just the man the sim picked to reach. Teammates of the
@@ -865,6 +865,12 @@ export class PlayerRenderer {
    * the cradle of his ball arm (along the forearm, tucked to the chest), also while he is tackled and on the ground; a
    * passer holds it in both hands at the chest, then in the throwing hand; a catcher holds it in his hands.
    */
+  /** Where a ball being caught goes: the one reaching hand, else between both hands. */
+  gripPoint(i, out) {
+    const hs = this.hands[i], bh = this.ballHand?.[i] ?? -1;
+    return bh >= 0 ? out.copy(hs[bh]) : out.copy(hs[0]).add(hs[1]).multiplyScalar(0.5);
+  }
+
   carryPoint(sim, i, alpha, out, quat = null) {
     const p = sim.players[i];
     const hs = this.hands[i], cr = this.cradle[i];
@@ -924,12 +930,24 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha, mode = null) {
     const j = Math.min(1, (Math.abs(lx) - 0.7) / 0.9) * k * near;
     pose.rootRoll += Math.sign(lx) * 0.38 * j; pose.lean += 0.15 * j;
   }
+  // Catch variety (UPDATE 5.0). A ball well wide of a receiver at speed: a one-handed grab at full stretch (the other arm
+  // keeps pumping). A deep ball dropping in over his shoulder from behind: a basket catch, hands out in front at the
+  // chest, shoulders turned back toward it.
+  const vv = Math.hypot(b.vx || 0, b.vz || 0);
+  const fromBehind = !swat && !mode && vv > 1 && ((b.vx * cos + b.vz * sin) / vv) > 0.55 && lz < 0.6 && Math.hypot(p.vx, p.vz) > 3;
+  const oneHand = !swat && !mode && !fromBehind && Math.abs(lx) > 1.15 && near > 0 && Math.hypot(p.vx, p.vz) > 2.5;
+  let tx = lx, ty = by / sc, tz = lz;
+  if (oneHand) pose.ballHand = lx >= 0 ? 1 : 0; // the ball goes to that hand (carryPoint / the arriving ball)
+  if (fromBehind) {
+    tx = lx * 0.25; ty = Math.min(by / sc, shY - 0.22); tz = 0.42;
+    pose.twist += (lx >= 0 ? -0.35 : 0.35) * k; pose.head += -0.25 * k;
+  }
   for (let s = 0; s < 2; s++) {
-    if (swat && (s ? 1 : -1) !== (lx >= 0 ? 1 : -1)) continue; // a swat: only the arm on the ball's side
+    if ((swat || oneHand) && (s ? 1 : -1) !== (lx >= 0 ? 1 : -1)) continue; // a swat / one-hander: only the arm on the ball's side
     // Two-bone IK: each hand to its side of the ball (they meet there, thumbs together). The upper arm aims at the hand
     // target minus the shoulder angle of the bend, so a ball inside arm's length is met with bent elbows, not overreached.
     const side = s ? 1 : -1, a = pose.arms[s];
-    const dx = lx + side * (swat ? 0 : 0.07) - side * B.shX * w, dy = by / sc - shY, dz = lz;
+    const dx = tx + side * (swat || oneHand ? 0 : 0.07) - side * B.shX * w, dy = ty - shY, dz = tz;
     const U = B.upper, F = B.fore + 0.05;
     const len = Math.max(Math.abs(U - F) + 0.02, Math.min(U + F - 0.005, Math.hypot(dx, dy, dz) || 1));
     const bend = Math.PI - Math.acos(Math.max(-1, Math.min(1, (U * U + F * F - len * len) / (2 * U * F))));

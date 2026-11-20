@@ -12,7 +12,7 @@ import { POS_TABS } from './sortable.js';
 import { startNextSeason } from '../franchise/franchise.js';
 import {
   progressPlayers, expiring, resign, contractYears, finishResigning, signFreeAgent, cpuFreeAgency, makeDraft,
-  makePick, simToUserPick, finishDraft, cutDown, cpuCutDowns, ROSTER_LIMIT, askingSalary, projectedPayroll, fillRoster,
+  makePick, simToUserPick, finishDraft, cutDown, cutDownCharged, cpuCutDowns, ROSTER_LIMIT, askingSalary, projectedPayroll, fillRoster,
 } from '../franchise/offseason.js';
 import { payroll, money } from '../franchise/contracts.js';
 import { logTransaction } from '../franchise/franchise.js';
@@ -214,7 +214,7 @@ function pickOffers(ctx, ui, f) {
 function cutdown(ctx, ui, f) {
   const team = ctx.teams[f.userTeam];
   const next = () => {
-    cutDown(team, ROSTER_LIMIT, f.cap); // anyone still over (and back under the cap)
+    cutDownCharged(f, team, f.cap); // anyone still over (and back under the cap), with dead money
     fillRoster(f, team, 46); // a short roster gets the best affordable free agents
     cpuCutDowns(f, ctx.teams);
     startNextSeason(f, ctx.teams);

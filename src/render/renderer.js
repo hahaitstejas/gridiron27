@@ -327,12 +327,12 @@ export class GameRenderer {
 
   /** Aim arrow while the human sets up a kick. */
   setAim(sim) {
-    const show = sim && sim.meter && sim.isKick && !(sim.kick && sim.kick.launched);
+    const show = sim && ((sim.meter && sim.isKick && !(sim.kick && sim.kick.launched)) || sim.fakeLook); // 2P: a fake shows the arrow too
     this.aim.visible = !!show;
     if (!show) return;
     const b = sim.ball;
     let yaw;
-    if (sim.offPlay.type === 'fg') yaw = Math.atan2((sim.kickAim || 0) * 6 - b.z, 60 * sim.dir - b.x);
+    if (sim.offPlay.type === 'fg' || sim.offPlay.fake === 'fg') yaw = Math.atan2((sim.kickAim || 0) * 6 - b.z, 60 * sim.dir - b.x);
     else yaw = Math.atan2((sim.kickAim || 0) * (sim.offPlay.type === 'punt' ? 14 : 18), sim.dir * 40);
     this.aim.position.set(b.x, 0.04, b.z);
     this.aim.rotation.y = -yaw;

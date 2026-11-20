@@ -18,7 +18,7 @@ import { revertElevations, cpuElevations, release as releaseToWaivers, processWa
 import { cutDown } from './offseason.js';
 import { buildDepthChart } from '../data/depthChart.js';
 import { cpuSignFreeAgents, addFreeAgent, ensureSpecialists } from './freeAgents.js';
-import { fits, chargeRelease } from './contracts.js';
+import { fits, chargeRelease, rollDeadMoney } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
 import { ensureDraftClass, weeklyScouting } from './draftClass.js';
 import { ensureCoaches } from '../data/extraCSV.js';
@@ -385,6 +385,7 @@ export function advance(f, teams) {
     if (f.mode === 'season') { f.phase = 'done'; return true; }
     f.phase = 'offseason';
     f.offseason = { step: 'summary' };
+    rollDeadMoney(teams); // the offseason plans next season's cap: its dead money is what counts now
     return true;
   }
   return false;
@@ -410,7 +411,6 @@ export function startNextSeason(f, teams) {
   f.stats = {};
   f.playoffs = null;
   resetPSSeason(teams);
-  for (const t of teams) { t.deadCap = t.deadNext || 0; t.deadNext = 0; } // last season's dead money is gone, offseason cuts land
   poolAfterOffseason(f, f.offseason?.pool); // the unsigned are next season's free agents
   f.offseason = null;
 }

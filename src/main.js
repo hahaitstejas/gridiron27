@@ -782,7 +782,9 @@ function frameBody(now) {
     // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
     const p1 = session.p1Team ?? 0; // 2 players: the game team player 1 has (0 home, 1 away)
     if (pcOpen) { playcall.update(two && session.humanTeam !== p1 ? input2.frame : f, dt); }
-    hud.peek = two && (f.down.Up || input2.frame.down?.Up); // 2 players: hold D-pad ▲ to see a pre-snap menu
+    // 2 players: hold D-pad ▲ to see a pre-snap menu (only the pad of the player whose menu it is).
+    hud.peek = !!(two && session.audible && (session.audible.team === p1 ? f : input2.frame).down?.Up);
+    if (session.sim) session.sim.fakeLook = two && session.sim.state === 'presnap' && !!session.sim.offPlay?.fake; // a fake dresses like the kick
     // Co-op: player 2's frame rides along (PlaySim runs his man with it, sim.withCoop).
     const gameInput = two ? { perTeam: true, [p1]: f, [1 - p1]: input2.frame } : session.settings.coop && input2.connected ? { ...f, coop: input2.frame } : f;
     // Career: snaps your player sits out run at 4x (the next one he's in comes up quickly).
@@ -908,7 +910,7 @@ function frameBody(now) {
     // Field goals and PATs (not fakes): low behind the kicker with the uprights ahead, from the line-up through the kick, like
     // a TV game's kick shot. A block or a fumble (the ball comes loose) goes back to the broadcast view for the rest of the play.
     if (sim && sim.offPlay?.type === 'fg' && sim.ball.state === 'loose') fgBroke = sim;
-    if (sim && sim.offPlay?.type === 'fg' && fgBroke !== sim && session.state !== 'playcall' && sim.state !== 'finished' && !session.watching) {
+    if (sim && (sim.offPlay?.type === 'fg' || (sim.fakeLook && sim.offPlay.fake === 'fg')) && fgBroke !== sim && session.state !== 'playcall' && sim.state !== 'finished' && !session.watching) {
       focus = { x: losX, z: sim.ballZ }; camPhase = 'fg';
     }
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).

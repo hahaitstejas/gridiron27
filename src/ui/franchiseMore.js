@@ -7,7 +7,7 @@ import { sortHead, sortKeys, sortRows, POS_TABS } from './sortable.js';
 import { gameStatus, reinjuryRisk, injuryLine, placeOnIR, canActivate, activateFromIR, activeCount, IR_MIN, IR_RETURNS } from '../franchise/health.js';
 import { PS_MAX, ELEVATE_MAX, ELEVATE_PER_GAME, addToPS, promoteFromPS, promoteAsk, elevate, psEligible, isVeteranPS, unelevate, releaseFromPS } from '../franchise/practiceSquad.js';
 import { posLevels } from '../franchise/freeAgents.js';
-import { payroll, money } from '../franchise/contracts.js';
+import { payroll, money, chargeRelease } from '../franchise/contracts.js';
 import { standings, rank } from '../franchise/season.js';
 import { gameWhen } from '../franchise/nflSchedule.js';
 import { moraleOf } from '../franchise/development.js';
@@ -128,7 +128,7 @@ export function cutDownScreen(ui, { onDone, onAuto = null, limit = 53, title = '
     rows: list.map((p, i) => ({ p, team: me, cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, (p.salary ?? 0).toFixed(2), psEligible(me, p, levels) ? 'YES' : '—'],
       act: () => actionsPanel(screens, `${p.first} ${p.last}`, [
         psEligible(me, p, levels) ? ['Move to Practice Squad', () => { addToPS(me, p, levels); logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`); ui.save(); again(i); }, `${(me.ps || []).length}/${PS_MAX} on the squad`] : null,
-        ['Release', () => { releasePlayer(me, p.id); addFreeAgent(f, p); logTransaction(f, `${me.abbr} cut-down: released ${p.pos} ${p.first} ${p.last}`); ui.save(); again(i); }, 'he becomes a free agent'],
+        ['Release', () => { if (f.phase === 'offseason') chargeRelease(f, me, p); releasePlayer(me, p.id); addFreeAgent(f, p); logTransaction(f, `${me.abbr} cut-down: released ${p.pos} ${p.first} ${p.last}`); ui.save(); again(i); }, 'he becomes a free agent'],
         ['Keep', () => again(i)],
       ], () => again(i)) })),
     count: over > 0 ? `${me.roster.length} players · ${over} more to go (practice squad ${(me.ps || []).length}/${PS_MAX})` : `${me.roster.length} players: you're set`,

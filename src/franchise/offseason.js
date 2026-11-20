@@ -13,7 +13,7 @@ import { OVERALL_WEIGHTS, ROSTER_COUNTS, overall } from '../data/positions.js';
 import { addPlayer, releasePlayer } from '../data/rosterOps.js';
 import { standings, rank } from './season.js';
 import { setupScouting, addNews } from './extras.js';
-import { SALARY_CAP, MIN_SALARY, marketValue, rookieSalary, payroll, fits, tradeValue } from './contracts.js';
+import { SALARY_CAP, MIN_SALARY, marketValue, rookieSalary, payroll, fits, tradeValue, chargeRelease } from './contracts.js';
 
 const capOf = (f) => f.cap ?? SALARY_CAP;
 
@@ -249,10 +249,19 @@ export function cutDown(team, limit = ROSTER_LIMIT, cap = Infinity) {
   return cut;
 }
 
+/** Offseason cut-down with dead money: each cut leaves its bonus share on the cap, so keep cutting until under it. */
+export function cutDownCharged(f, team, cap) {
+  for (let i = 0; i < 12; i++) {
+    const cut = cutDown(team, ROSTER_LIMIT, cap);
+    for (const p of cut) chargeRelease(f, team, p);
+    if (!cut.length || payroll(team) <= cap) break;
+  }
+}
+
 export function cpuCutDowns(f, teams) {
   teams.forEach((t, ti) => {
     if (ti === f.userTeam) return;
-    cutDown(t, ROSTER_LIMIT, capOf(f));
+    cutDownCharged(f, t, capOf(f));
     fillRoster(f, t, 50);
     specialistsFromPool(f, t);
   });

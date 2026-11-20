@@ -296,7 +296,15 @@ export class PlaySim {
   }
 
   /** Receiver buttons. `all` = every eligible receiver, blockers too (for hot routes). */
-  computeIcons(all = false) { this.icons = this.iconMap(all); }
+  computeIcons(all = false) {
+    if (!all && this.humanTeams?.length === 2 && this.offPlay.type === 'pass') {
+      // 2 players: the same buttons the decoys get on a run, so the letters don't change at the snap.
+      const real = new Set(Object.values(this.iconMap(false)));
+      this.icons = Object.fromEntries(Object.entries(this.iconMap(true)).filter(([, id]) => real.has(id)));
+      return;
+    }
+    this.icons = this.iconMap(all);
+  }
 
   /** Button -> player id map for the receivers (every eligible man with `all`). */
   iconMap(all = false) {

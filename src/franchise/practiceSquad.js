@@ -126,7 +126,7 @@ export function cpuElevations(team) {
 }
 
 /** CPU teams keep 16 on the practice squad: the best young free agents (rebuilding depth). */
-export function cpuFillPS(team, pool) {
+export function cpuFillPS(team, pool, levels = null) {
   const out = [];
   pool.sort((a, b) => psValue(b) - psValue(a));
   // A real squad is spread over the positions (and keeps no kickers): taking the best 16 by value emptied the pool
@@ -136,7 +136,7 @@ export function cpuFillPS(team, pool) {
   for (let i = 0; i < pool.length && (team.ps || []).length < PS_MAX; i++) {
     const p = pool[i];
     if ((have[p.pos] || 0) >= (PS_POS_CAP[p.pos] ?? 2)) continue;
-    if (psEligible(team, p)) { have[p.pos] = (have[p.pos] || 0) + 1; pool.splice(i--, 1); addToPS(team, p); out.push(p); }
+    if (psEligible(team, p, levels)) { have[p.pos] = (have[p.pos] || 0) + 1; pool.splice(i--, 1); addToPS(team, p, levels); out.push(p); }
   }
   return out;
 }

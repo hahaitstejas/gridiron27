@@ -391,7 +391,7 @@ export class Hud {
     } else if (pre && session.humanSide === 'offense') {
       const two = session.twoPlayer; // 2 players on one screen: nothing here may tell the defense run / pass / fake
       const kickLook = sim.isKick || (two && sim.offPlay.fake);
-      h = kickLook ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
+      h = kickLook ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' || sim.offPlay.fake === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${(sim.offPlay.type === 'pass' || two) && session.match.phase === 'scrimmage' ? `<b class="btn LB">LB</b> Protection${two ? '' : protTag(sim.offPlay)} &nbsp; ` : ''}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art + read &nbsp; '}<b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'defense') h = `${fgTag(session, sim)}<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${retTag(sim)}${sim.isKick && sim.offPlay.type !== 'kickoff' ? (sim.offPlay.type === 'fg' ? 'Edge rush: come off the end, <b class="btn X">X</b> dive across the kick as it\'s struck (<b class="btn A">A</b> jump) &nbsp; ' : 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ') : ''}<b class="btn view">View</b> Timeout${session.twoPlayer ? '' : coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
@@ -524,7 +524,10 @@ export class Hud {
     this.artOverlay(this.artOn && !playcallOpen ? sim : null, renderer, session);
 
     // Receiver icons while the human QB can still throw.
-    const two = session.twoPlayer && sim && sim.state === 'presnap' && !sim.isKick && !sim.offPlay.fake; // fakes look like the kick
+    // 2 players: every eligible man keeps a button before the snap and, on a run, until the handoff (play action / draws
+    // look like passes); the buttons are the same ones a pass play gives (sim.computeIcons, 2P).
+    const qbHas = sim && sim.ball.carrier >= 0 && sim.players[sim.ball.carrier]?.slot === 'QB' && sim.ball.state === 'held';
+    const two = session.twoPlayer && sim && !sim.isKick && !sim.offPlay.fake && (sim.state === 'presnap' || (sim.offPlay.type !== 'pass' && qbHas && sim.t < 2.5));
     const showIcons = sim && !playcallOpen && (two || (sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass')) && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';
     if (two && (!sim._allIcons || sim._allIconsKey !== sim.offPlay)) { sim._allIcons = sim.iconMap(true); sim._allIconsKey = sim.offPlay; }
     const iconSet = two ? sim._allIcons : sim?.icons;
@@ -544,9 +547,15 @@ export class Hud {
     // Kick meter.
     const km = this.$('kickmeter');
     const meter = sim?.meter;
-    const showMeter = meter && sim.isKick && (sim.state === 'presnap' || !sim.kick?.launched) && !playcallOpen;
+    const fakeMeter = !meter && sim?.fakeLook && !playcallOpen; // 2P: a fake shows the meter at rest, like the kick
+    const showMeter = (meter && sim.isKick && (sim.state === 'presnap' || !sim.kick?.launched) && !playcallOpen) || fakeMeter;
     km.classList.toggle('hidden', !showMeter);
-    if (showMeter) {
+    if (fakeMeter) {
+      km.querySelector('.km-fill').style.height = '0%';
+      km.querySelector('.km-needle').style.display = 'none';
+      km.querySelector('.km-zone').style.bottom = `${((METER.accLine - METER.floor) / (1 - METER.floor)) * 100}%`;
+      km.querySelector('.km-label').textContent = sim.offPlay.fake === 'fg' ? `FG ${Math.ceil(Math.abs(60 * sim.dir - sim.losX) + 7 - 1e-6)} yd` : 'PUNT';
+    } else if (showMeter) {
       const fill = meter.phase === 'power' ? meter.value : meter.power;
       km.querySelector('.km-fill').style.height = `${fill * 100}%`;
       const needle = meter.phase === 'accuracy' ? meter.needle : meter.phase === 'done' ? meter.accuracy + METER.accLine : -1;
@@ -664,7 +673,7 @@ function retTag(sim) {
 }
 
 function fgTag(session, sim) {
-  if (!sim.isKick || sim.offPlay.type !== 'fg') return '';
+  if (!(sim.isKick && sim.offPlay.type === 'fg') && !(sim.fakeLook && sim.offPlay.fake === 'fg')) return '';
   const m = session.match;
   return `<b class="fg-att">${fgDistance(m.phase === 'try' ? 85 : m.yardLine)}-YARD ATTEMPT</b> &nbsp; `;
 }

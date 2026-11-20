@@ -150,7 +150,7 @@ describe('franchise money', () => {
       O.makeDraft(f, lg);
       O.finishDraft(f, lg);
       O.cpuCutDowns(f, lg);
-      O.cutDown(lg[5], 53, f.cap);
+      O.cutDownCharged(f, lg[5], f.cap);
       O.fillRoster(f, lg[5], 46);
       for (const t of lg) {
         expect(C.payroll(t)).toBeLessThanOrEqual(f.cap + 1e-6);

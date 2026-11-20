@@ -4,7 +4,7 @@ import { generateLeagueRosters } from '../src/data/generator.js';
 import { createFranchise, releasedPlayer } from '../src/franchise/franchise.js';
 import { posLevels } from '../src/franchise/freeAgents.js';
 import { psEligible, addToPS, promoteFromPS, promoteAsk } from '../src/franchise/practiceSquad.js';
-import { payroll, deadMoney } from '../src/franchise/contracts.js';
+import { payroll, deadMoney, deadSplit } from '../src/franchise/contracts.js';
 import { releasePlayer } from '../src/data/rosterOps.js';
 
 // The "practice squad cheese": sign a star to the practice squad for $0.25M, then sign him to the 53 for the
@@ -41,11 +41,12 @@ describe('practice squad and dead money', () => {
     const p = [...me.roster].sort((a, b) => b.salary - a.salary)[0];
     p.years = 3;
     const before = payroll(me);
-    const dead = deadMoney(f, p);
-    expect(dead).toBeGreaterThan(p.salary); // all of this season plus prorated later years
+    expect(deadMoney(f, p)).toBeGreaterThan(p.salary); // all of this season plus prorated later years
+    const { now, next } = deadSplit(f, p);
     releasePlayer(me, p.id);
     releasedPlayer(f, lg, me, p);
-    expect(me.deadCap).toBeCloseTo(dead, 5);
-    expect(payroll(me)).toBeCloseTo(before - p.salary + dead, 5);
+    expect(me.deadCap).toBeCloseTo(now, 5);
+    expect(me.deadNext).toBeCloseTo(next, 5);
+    expect(payroll(me)).toBeCloseTo(before - p.salary + now, 5);
   });
 });

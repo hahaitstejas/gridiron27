@@ -160,7 +160,7 @@ export class FranchiseUI {
       await loadLocalSchedule(L.franchise, this.teams);
       // Depth for everyone: 800 created (mostly fringe) players on top of the free-agent list, and practice squads.
       if (opts.extraFA !== false) addGeneratedFreeAgents(L.franchise, 800, seed * 3, { levels: posLevels(this.teams) });
-      for (const t of this.teams) cpuFillPS(t, L.franchise.freeAgents);
+      { const lv = posLevels(this.teams); for (const t of this.teams) cpuFillPS(t, L.franchise.freeAgents, lv); }
       if (opts.extraFA !== false) topUpPool(L.franchise, posLevels(this.teams), seed * 5); // every position keeps a real pool
       L.name = L.franchise.name;
       L.slot = null;

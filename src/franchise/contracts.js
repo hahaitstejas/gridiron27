@@ -61,24 +61,32 @@ export function payroll(team) {
 }
 
 /**
- * Dead money for cutting a player now: what's left of this season's salary (it's guaranteed once the season starts)
- * plus a quarter of each later year (prorated bonus). Offseason cuts land on next season's cap (`team.deadNext`).
- * Without it, cutting a starter and signing a cheap replacement was a free way around the cap.
+ * Dead money for cutting a player. In season: what's left of this year's salary (guaranteed once the season starts) now,
+ * plus a quarter of each later year (prorated bonus) on next season's cap. In the offseason (the cap being planned is
+ * next season's) only the bonus share: a quarter of each remaining year. Without it, cutting a starter and signing a
+ * cheap replacement was a free way around the cap.
+ * Returns { now, next }: `now` lands on the cap being counted (`team.deadCap`), `next` on next season's (`team.deadNext`).
  */
-export function deadMoney(f, p) {
-  const s = p.salary || 0, later = Math.max(0, Math.min(3, (p.years || 1) - 1));
-  const left = f.phase === 'regular' ? Math.max(0, (f.weeks - f.week) / Math.max(1, f.weeks)) : f.phase === 'offseason' ? 1 : 0;
-  return round05(s * left + 0.25 * s * later);
+export function deadSplit(f, p) {
+  const s = p.salary || 0, yrs = Math.max(1, p.years || 1);
+  if (f.phase === 'offseason') return { now: round05(0.25 * s * Math.min(3, yrs)), next: 0 };
+  const left = f.phase === 'regular' ? Math.max(0, (f.weeks - f.week) / Math.max(1, f.weeks)) : 0;
+  return { now: round05(s * left), next: round05(0.25 * s * Math.min(3, yrs - 1)) };
 }
+/** Total dead money for cutting him now ($M, this season + later). */
+export function deadMoney(f, p) { const d = deadSplit(f, p); return round05(d.now + d.next); }
 
-/** Charge a release to the team's cap (this season, or next season's in the offseason). Returns the amount. */
+/** Charge a release to the cap. Returns the amount counted against the current cap. */
 export function chargeRelease(f, team, p) {
   if (!f || p.career || p.practiceSquad) return 0;
-  const d = deadMoney(f, p);
-  if (f.phase === 'offseason') team.deadNext = round05((team.deadNext || 0) + d);
-  else team.deadCap = round05((team.deadCap || 0) + d);
-  return d;
+  const d = deadSplit(f, p);
+  team.deadCap = round05((team.deadCap || 0) + d.now);
+  team.deadNext = round05((team.deadNext || 0) + d.next);
+  return d.now;
 }
+
+/** The season is over: the cap being planned is next season's, so its dead money (`deadNext`) becomes the current one. */
+export function rollDeadMoney(teams) { for (const t of teams) { t.deadCap = t.deadNext || 0; t.deadNext = 0; } }
 
 export function capSpace(team, cap = SALARY_CAP) {
   return cap - payroll(team);

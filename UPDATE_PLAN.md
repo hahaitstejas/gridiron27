@@ -217,3 +217,31 @@ environment's network policy (the user can allow them in the environment setting
       for players with stats (face photo), field-level shot after big plays.
 - [x] Extra (user priority: player look): helmet / facemask / chin strap, V-neck, sleeve + sock stripes, gloves, printed
       numbers as projected patches, athletic-mesh fabric normal map, drape / tuck / knee wrinkle shading, big helmet logos.
+
+## Update 5.0: Realism III (animation, franchise realism, controls)
+User's list: every animation item, better contract talks, more realism, stronger trade AI, button remapping,
+analytics; practice-squad loophole; no tells in 2-player; later: phones, commentary.
+Done: practice squad / dead money (d67adc2, bd4b596), 2-player no tells (903b4e4, bd4b596).
+
+### Animation reference notes (user's console-football clips, 30 fps, low resolution; reference only, nothing copied)
+- Line at the snap: OL fire out of 3-point / 2-point stances with hips low; within ~0.2 s they're chest to chest with
+  a DL, hands inside on the pads, heads up, feet wide and choppy. Pairs drift as a unit; a beaten blocker turns his
+  hips and gets shoved aside; bodies end up on the ground at the line on runs (piles of 3-5).
+- QB: under center he's bent at the knees and waist, hands under; shotgun = hands out at the belt, knees bent. On the
+  drop the ball rides high at the chest in both hands, shoulders turned side-on; hands off with the far arm extended
+  into the back's pocket (back: inside arm up, outside arm under).
+- Tackle (sideline, ~0.5 s): the tackler leaves his feet at ~1.5 yd, arms wrap the waist/thighs, both bodies rotate
+  and land together, they SLIDE ~1 yd on the turf after landing, the runner's legs kick up, the ball arm stays tucked.
+  Gang tacklers arrive late and drop onto the pile, knees first.
+- Catch: receiver turns his chest to the ball, arms extended forward with hands together ~0.3 s before it arrives;
+  defender jumps with BOTH arms straight up to bat it; a loose ball draws players bending deep at the waist.
+- Runner: ball tucked high and tight, strong forward lean in the first steps, long strides in the open; pursuit runs
+  with arms pumping hard and a lower trunk.
+- Presnap: receivers in a staggered 2-point stance (one foot back, hands on thighs or loose), linebackers with
+  hands on knees, DBs bent with weight forward, DL in 3/4-point stances with the hips higher than the shoulders.
+
+### Animation slices (one commit each; stances keyed to position / formation only, never the play call: no 2P tells)
+1. Stances  2. QB drops / play action / throw on the run  3. Line engagement + visible rush moves
+4. Paired tackles (wrap + land together + slide)  5. Catch variety  6. Cuts / DB footwork  7. More mocap (if reachable)
+Every new anim name: HOLD / HOLD_TIME, FAST_FADE, GAIT_ANIMS / noGait, LIMP_ANIMS, REACH_ANIMS, MOCAP_ANIMS,
+Presentation proxies, replay encoding.

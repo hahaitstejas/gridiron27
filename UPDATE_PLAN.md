@@ -245,3 +245,21 @@ Done: practice squad / dead money (d67adc2, bd4b596), 2-player no tells (903b4e4
 4. Paired tackles (wrap + land together + slide)  5. Catch variety  6. Cuts / DB footwork  7. More mocap (if reachable)
 Every new anim name: HOLD / HOLD_TIME, FAST_FADE, GAIT_ANIMS / noGait, LIMP_ANIMS, REACH_ANIMS, MOCAP_ANIMS,
 Presentation proxies, replay encoding.
+
+### 5.0 visual notes (the user's Drive folder, Nov 20 screenshots; reference only: our own designs, no copied marks)
+In game: blue line of scrimmage + yellow line to gain (LOS red on 4th down); a slanted down & distance / play clock tag on
+the turf beside the ball pre-snap, colored per broadcast package; time-slot packages (afternoon / Sunday night / Monday night /
+Thursday night: scorebug colors + an intro shield badge on a tunnel road); top-right callout pills with the button
+("POSSESSION CATCH!", contextual tips); celebration picker as a list bottom-left; touchdown lower third = full-width team-color
+band, team name over a giant TOUCHDOWN; field goal panel (FIELD GOAL, wind mph + arrow, aim) + a "TEAM 42 YARD FG" chip + a
+curved meter by the kicker; scorebug middle swaps to a stat comparison between plays (4th down conversions 0 0) and short
+banners ("DEFENSE FLIPPED"); crowd dB meter; bottom ticker with milestones + progress bar; defensive play art labels each zone
+(DEEP ZONE / HOOK CURL / CURL FLAT); controlled player = hexagon (done), names white (done).
+Menus: final-score banner (two team halves, FINAL, score); post-game player stats = header photo card + LT/RT chips + table;
+play history list (pause); gameday: the better OVR/OFF/DEF badge green, giant faded team letters behind logos; matchup page
+(team stat ranks both sides + each side's top 3 players); team-info page (my rankings with league rank + top prospects for
+needs); manage roster: morale / health / cap-space rings with a cap breakdown (salaries, dead cap); roster table with
+morale + contract columns and a player card side panel; draft: board of picks in team colors, on-the-clock panel with next
+teams, pick ticker, prospect table (rank, projection, talent, scout % bar, archetype, letter grades), scouting report
+(notes, top fits, key ratings as letter grades, team needs with grade / active / required), a pick grade after your
+selection (GOOD PICK + letter, true-value rank vs pick), draft class table; playoff bracket board; QB sneak timing meter.

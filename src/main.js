@@ -204,7 +204,7 @@ applyCamera();
 let app = 'title'; // title | menu | game | paused | over | replay
 let replay = null; // instant replay viewer state
 let celWheel = null; // the touchdown celebration picker (RS)
-let firstHelp = 0; // first game in this browser: snaps left before the quick-start card hides
+let firstHelp = 0; // first game in this browser: session.plays count at which the quick-start card hides (0 = not shown)
 let artView = false;
 let fgBroke = null; // the field-goal PlaySim whose kick was blocked / fumbled (camera back to broadcast)
 let artSim = null, artReleased = false; // RT play art needs a fresh press at the line (see the render loop) // RT play art: the camera pulls back over the whole field
@@ -301,7 +301,7 @@ function startGame(p, opts = {}) {
   hud.toggleHelp(false);
   // First game in this browser: a quick-start card with the essentials for the first three snaps (H = all controls).
   firstHelp = 0; hud.quickstart(false);
-  try { if (session.humanTeam !== null && !localStorage.getItem('g27.seenHelp')) { localStorage.setItem('g27.seenHelp', '1'); firstHelp = 3; hud.quickstart(true); } } catch { /* storage blocked */ }
+  try { if (session.humanTeam !== null && !localStorage.getItem('g27.seenHelp')) { localStorage.setItem('g27.seenHelp', '1'); firstHelp = session.plays + 3; hud.quickstart(true); } } catch { /* storage blocked */ }
   app = 'game';
   snapCam = true;
   lastSim = null;
@@ -662,7 +662,6 @@ function soundFor(e) {
 
 function onSessionEvent(e) {
   soundFor(e);
-  if (firstHelp && e.type === 'snap' && --firstHelp === 0) hud.quickstart(false);
   renderer.presentation.onEvent(e, session);
   if (e.type === 'touchdown' && session && !session.fast) renderer.lightShow();
   // Your touchdown: the celebration wheel (RS: up Dance, left Flex, right Spike, down Team) for a couple of seconds.
@@ -799,6 +798,9 @@ function frameBody(now) {
       if (app !== 'game') break;
     }
     if (steps >= 6 * sp) acc = 0;
+    // Quick-start card: hide after three plays. (Counted by plays: the sim's 'snap' event is cleared by its next tick
+    // before the session copies it.)
+    if (firstHelp && session.plays >= firstHelp) { firstHelp = 0; hud.quickstart(false); }
     if (celWheel) {
       const cf = two ? (celWheel.team === p1 ? f : input2.frame) : f;
       celWheel.t += dt;

@@ -409,6 +409,7 @@ export class GameSession {
     if (foul?.type === 'offsides') {
       this.audible = null;
       sim.snap();
+      this.emit('snap'); // the sim's own 'snap' event is cleared by its next tick before 'live' copies events
       jumpOffsides(sim, foul.player);
       if (!this.fast) { this.recorder.reset(); this.recorder.capture(sim); }
       this.state = 'live';
@@ -429,6 +430,7 @@ export class GameSession {
     this.audible = null;
     const motion = !!sim.motion;
     sim.snap();
+    this.emit('snap'); // the sim's own 'snap' event is cleared by its next tick before 'live' copies events
     // Illegal formation / illegal motion: flagged at the snap, the play goes on (a live-ball foul).
     if (m.phase === 'scrimmage' && !sim.isKick && this.rng.next() < 0.002 * this.penaltyRate()) {
       const skill = sim.offense().filter((p) => ['WR', 'TE', 'HB', 'FB'].includes(p.pos));

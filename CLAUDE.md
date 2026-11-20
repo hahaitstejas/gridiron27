@@ -318,6 +318,16 @@ rounds}, history[], seed, offseason{step, …} }`.
   the CPU takes in (best ×0.8, next ×0.5, ×0.35) so picks are the natural price and two good players never buy a star; the
   Trade Finder prefers pick-only packages. CPU-CPU player swaps are rare (`cpuTrades` ~1 in 10 weeks); most CPU deals are a
   contender buying a 28+ veteran for one or two picks (`cpuPickTrade`). Pick 32 ≈ 56% of pick 16.
+- Contract talks (UPDATE 5.0, `franchise/negotiation.js`, offseason Re-sign step: A = `talksPanel`): each expiring player opens
+  with a demand (`openingDemand`: market value, stars +6%, for `wantedYears`: 4-5 young, 3-4 prime, 2 at 30-32, 1 after);
+  `makeOffer` judges money vs his ask, years away from what he wants, morale and whether the team wins (`teamMode`) →
+  accept (`talks.done`, re-signed at those terms) / counter (he comes 30% of the way, years meet halfway) / walk after
+  `PATIENCE` 3 (a lowball under 86% costs 2). Kept players without a deal sign at their current demand.
+- Trade AI (UPDATE 5.0): `teamMode(f, teams, ti)` = contend / middle / rebuild from the record (more weight as the season
+  goes) and roster strength; `evaluateDeal` values incoming players by fit (need ×1.12, surplus ×0.82; rebuilders discount
+  29+ year-olds ×0.7 and like youth, contenders like vets), picks ×1.15 for rebuilders / ×0.88 for contenders, guards a
+  starting QB (×1.35 ask), never gives up its only K / P, and contenders hold their starters in season; CPU-CPU pick trades
+  only go contender ← non-contender.
 - `extras.js`: news feed (`addNews`, `f.news`: notable results, your games, injuries to your players / stars, trades,
   awards, records, draft headlines, the champion), records (`f.records.game/season` for `RECORD_CATS`, announced only
   after the first season, `recordsSince`), awards at the end of the regular season (title-game MVP: `championshipMVP` from `recordGame`) (`giveAwards`: MVP, OPOY, DPOY,

@@ -1,5 +1,7 @@
 import { el } from './nav.js';
 import { cutDownScreen } from './franchiseMore.js';
+import { actionsPanel } from './rosterEditor.js';
+import { talksWith, makeOffer, PATIENCE } from '../franchise/negotiation.js';
 import { numberPicker } from './rosterEditor.js';
 import { logoCanvas } from '../render/logo.js';
 import { draftDayOffers, executeDeal, dealText } from '../franchise/trades.js';
@@ -62,30 +64,35 @@ function progression(ctx, ui, f) {
     [button('Contracts', () => { f.offseason.step = 'resign'; save(ctx); offseasonScreen(ctx, ui); })], '▲▼ scroll', { rows });
 }
 
-function resignStep(ctx, ui, f, focus = 0) {
+function resignStep(ctx, ui, f, focus = 0, note = null) {
   const team = ctx.teams[f.userTeam];
   const keep = (f.offseason.keep ||= Object.fromEntries(expiring(team).map((p) => [p.id, p.ovr >= 68 && p.age < 32])));
   const list = expiring(team).sort((a, b) => b.ovr - a.ovr);
+  // Contract talks (UPDATE 5.0): his terms = the deal agreed, else what he's asking now.
+  const terms = (p) => { const t = talksWith(f, p); return t.done || { salary: t.salary, years: t.years }; };
+  for (const p of list) if (talksWith(f, p).walked) keep[p.id] = false;
   const keepIds = () => new Set(list.filter((p) => keep[p.id]).map((p) => p.id));
-  const proj = projectedPayroll(team, keepIds());
+  const proj = projectedPayroll(team, keepIds(), terms);
   const rows = list.map((p, i) => {
+    const t = talksWith(f, p), tm = terms(p);
+    const status = t.walked ? 'Walked' : !keep[p.id] ? 'Let go' : t.done ? `Signed ${tm.years} yr` : `Asks ${tm.years} yr`;
     const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
-      el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: `${money(p.salary || 0)} → ${money(askingSalary(p))}` }),
-      el(`span.st-num${keep[p.id] ? '.up' : '.down'}`, { text: keep[p.id] ? `Re-sign ${contractYears(p)} yr` : 'Let go' })]);
-    r.activate = () => { keep[p.id] = !keep[p.id]; resignStep(ctx, ui, f, i); };
+      el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: `${money(p.salary || 0)} → ${money(tm.salary)}` }),
+      el(`span.st-num${keep[p.id] && !t.walked ? '.up' : '.down'}`, { text: status })]);
+    r.activate = () => talksPanel(ctx, ui, f, p, keep, i);
     return r;
   });
   const done = button('Done: on to free agency', () => {
-    if (projectedPayroll(team, keepIds()) > f.cap) { window.alert(`That's over the ${money(f.cap)} salary cap: let someone go.`); return; }
-    for (const p of list) if (keep[p.id]) resign(team, p.id);
-    delete f.offseason.keep;
+    if (projectedPayroll(team, keepIds(), terms) > f.cap) { window.alert(`That's over the ${money(f.cap)} salary cap: let someone go.`); return; }
+    for (const p of list) if (keep[p.id]) resign(team, p.id, terms(p));
+    delete f.offseason.keep; delete f.offseason.talks;
     finishResigning(f, ctx.teams);
     save(ctx);
     offseasonScreen(ctx, ui);
   });
-  frame(ctx, 'Re-sign Players', list.length ? `${list.length} contracts expired · next season's payroll ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (over the cap!)' : ''}${f.tagUsed === f.year ? ' · franchise tag used' : ''}` : 'No contracts expired this year',
+  frame(ctx, 'Re-sign Players', note || (list.length ? `${list.length} contracts expired · next season's payroll ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (over the cap!)' : ''}${f.tagUsed === f.year ? ' · franchise tag used' : ''}` : 'No contracts expired this year'),
     el('div.fr-sched', {}, el('div.st-table', {}, rows), el('div.fr-week', {}, el('div.dc-head', { text: 'Your roster (under contract)' }), needsPanel({ roster: team.roster.filter((p) => p.years > 0 || keep[p.id]) }))),
-    [done], `Salary now → asking price. &nbsp; <b class="btn A">A</b> re-sign / let go &nbsp; <b class="btn Y">Y</b> franchise tag (1 year, top-5 average at his position)`, { rows, index: focus });
+    [done], `Salary now → his terms (kept players sign at them when you're done). &nbsp; <b class="btn A">A</b> negotiate &nbsp; <b class="btn Y">Y</b> franchise tag (1 year, top-5 average at his position)`, { rows, index: focus });
   ctx.screens.extraButtons = (fr) => {
     if (!fr.pressed.Y) return;
     const p = list[ctx.screens.nav.index];
@@ -97,6 +104,33 @@ function resignStep(ctx, ui, f, focus = 0) {
     logTransaction(f, `${team.abbr} use the franchise tag on ${p.pos} ${who(p)} (${money(r.salary)})`);
     save(ctx); resignStep(ctx, ui, f);
   };
+}
+
+/** Contract talks with one expiring player: offers at his ask / below it / with more or fewer years, or let him go. */
+function talksPanel(ctx, ui, f, p, keep, i, msg = null) {
+  const team = ctx.teams[f.userTeam];
+  const t = talksWith(f, p);
+  const back = (note = null) => resignStep(ctx, ui, f, i, note);
+  const offer = (salary, years) => () => {
+    const r = makeOffer(f, ctx.teams, team, p, { salary, years });
+    if (r.result === 'accept') keep[p.id] = true;
+    if (r.result === 'walk') keep[p.id] = false;
+    save(ctx);
+    if (r.result === 'counter') talksPanel(ctx, ui, f, p, keep, i, r.text); else back(r.text);
+  };
+  const r05 = (v) => Math.round(v * 20) / 20;
+  const dots = '●'.repeat(Math.max(0, t.patience)) + '○'.repeat(Math.max(0, PATIENCE - t.patience));
+  const title = `${who(p)} · ${p.pos} ${p.ovr} · asks ${t.years} yr at ${money(t.salary)} · patience ${dots}${msg ? ` · ${msg}` : ''}`;
+  if (t.walked || t.done) { back(t.walked ? `${who(p)} is testing free agency.` : `${who(p)} is signed: ${t.done.years} yr at ${money(t.done.salary)}.`); return; }
+  actionsPanel(ctx.screens, title, [
+    [`Meet his ask: ${t.years} yr, ${money(t.salary)}`, offer(t.salary, t.years), 'he signs'],
+    [`Offer 5% less (${money(r05(t.salary * 0.95))})`, offer(r05(t.salary * 0.95), t.years), 'a small ask'],
+    [`Offer 12% less (${money(r05(t.salary * 0.88))})`, offer(r05(t.salary * 0.88), t.years), 'he may counter'],
+    [`Offer 20% less (${money(r05(t.salary * 0.8))})`, offer(r05(t.salary * 0.8), t.years), 'lowballs cost patience'],
+    t.years > 1 ? [`One year shorter (${t.years - 1} yr) at his ask`, offer(t.salary, t.years - 1), (p.age ?? 27) <= 29 ? 'young players want security' : 'older players mind less'] : null,
+    [`One year longer (${t.years + 1} yr), 4% less`, offer(r05(t.salary * 0.96), t.years + 1), (p.age ?? 27) >= 30 ? 'a vet likes the security' : ''],
+    keep[p.id] ? ['Let him go', () => { keep[p.id] = false; back(); }, 'he becomes a free agent'] : ['Keep him (at his terms)', () => { keep[p.id] = true; back(); }, ''],
+  ], () => back());
 }
 
 function freeagency(ctx, ui, f, filter = 0) {

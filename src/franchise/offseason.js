@@ -78,15 +78,16 @@ export function contractYears(p) { return p.age <= 25 ? 4 : p.age <= 28 ? 3 : p.
 export function askingSalary(p) { return marketValue(p); }
 
 /** Payroll next season if these expiring players are re-signed at their asking price (the rest leave). */
-export function projectedPayroll(team, keepIds) {
+export function projectedPayroll(team, keepIds, terms = null) {
   let pay = payroll(team);
-  for (const p of expiring(team)) pay += (keepIds.has(p.id) ? askingSalary(p) : 0) - (p.salary || 0);
+  for (const p of expiring(team)) pay += (keepIds.has(p.id) ? (terms?.(p)?.salary ?? askingSalary(p)) : 0) - (p.salary || 0);
   return pay;
 }
 
-export function resign(team, id) {
+/** Re-sign at `deal` ({ salary, years }: the terms agreed in contract talks), else at his asking price. */
+export function resign(team, id, deal = null) {
   const p = team.roster.find((q) => q.id === id);
-  if (p) { p.years = contractYears(p); p.salary = askingSalary(p); }
+  if (p) { p.years = deal?.years ?? contractYears(p); p.salary = deal?.salary ?? askingSalary(p); }
 }
 
 /** Close re-signing: CPU teams keep good players; everyone left without a contract becomes a free agent. */

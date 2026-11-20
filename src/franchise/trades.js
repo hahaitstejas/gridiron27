@@ -55,21 +55,51 @@ const pickKey = (p) => `${p.year}:${p.round}:${p.orig}`;
  * The CPU wants ~8% more value than it sends (more for a team that's contending and giving up a starter), and the
  * cap has to work for both teams.
  */
+/**
+ * A CPU team's situation (UPDATE 5.0 trade AI): 'contend' (winning, or a strong roster early in the year), 'rebuild'
+ * (losing, or a weak roster), else 'middle'. Contenders pay for proven veterans and value picks less; rebuilders want
+ * picks and youth and pay less for 29+ year-olds.
+ */
+export function teamMode(f, teams, ti) {
+  let w = 0, g = 0;
+  for (const wk of f.schedule || []) for (const gm of wk) if (gm.score && (gm.home === ti || gm.away === ti)) {
+    g++; const mine = gm.home === ti ? gm.score[0] : gm.score[1], theirs = gm.home === ti ? gm.score[1] : gm.score[0];
+    w += mine > theirs ? 1 : mine === theirs ? 0.5 : 0;
+  }
+  const ovr = (t) => { const top = [...t.roster].sort((a, b) => b.ovr - a.ovr).slice(0, 22); return top.reduce((s, p) => s + p.ovr, 0) / Math.max(1, top.length); };
+  const rank = [...teams].map((t, i) => [i, ovr(t)]).sort((a, b) => b[1] - a[1]).findIndex(([i]) => i === ti);
+  const pct = g ? w / g : 0.5, trust = Math.min(1, g / 6); // the record speaks louder as the season goes on
+  const score = (pct - 0.5) * 2 * trust + (1 - trust) * (0.5 - rank / Math.max(1, teams.length - 1)) * 1.4;
+  return score > 0.25 ? 'contend' : score < -0.3 ? 'rebuild' : 'middle';
+}
+
 export function evaluateDeal(f, teams, cpu, gets, other, gives, cap = f.cap) {
   const val = (side) => side.players.reduce((s, p) => s + tradeValue(p), 0) + side.picks.reduce((s, p) => s + pickValue(f, teams, p), 0);
+  const mode = teamMode(f, teams, cpu), t = teams[cpu];
+  // How much a player coming in is worth to THIS team: a need is worth more, a position it's stacked at less; a contender
+  // wants veterans who help now, a rebuilder wants youth.
+  const fit = (p) => (needsPosition(t, p) ? 1.12 : 0.82)
+    * (mode === 'rebuild' ? ((p.age ?? 26) >= 29 ? 0.7 : (p.age ?? 26) <= 25 ? 1.1 : 1) : mode === 'contend' ? ((p.age ?? 26) >= 28 ? 1.08 : 0.95) : 1);
+  const pickMul = mode === 'rebuild' ? 1.15 : mode === 'contend' ? 0.88 : 1;
   // What the CPU takes in: quality over quantity. Its best incoming player counts in full, each further one less (roster
-  // spots, and two good players don't make a star); picks keep their full value (they're the league's real currency).
-  const incoming = (side) => side.players.map(tradeValue).sort((a, b) => b - a).reduce((s, v, k) => s + v * (k === 0 ? 0.8 : k === 1 ? 0.5 : 0.35), 0)
-    + side.picks.reduce((s, p) => s + pickValue(f, teams, p), 0);
+  // spots, and two good players don't make a star); picks keep their value (the league's real currency).
+  const incoming = (side) => side.players.map((p) => tradeValue(p) * fit(p)).sort((a, b) => b - a).reduce((s, v, k) => s + v * (k === 0 ? 0.8 : k === 1 ? 0.5 : 0.35), 0)
+    + side.picks.reduce((s, p) => s + pickValue(f, teams, p) * pickMul, 0);
   const sal = (side) => side.players.reduce((s, p) => s + (p.salary || 0), 0);
   const vGets = incoming(gets), vGives = val(gives);
   const capOk = fits(teams[cpu], sal(gets), sal(gives), cap) && fits(teams[other], sal(gives), sal(gets), cap);
   const rosterOk = teams[cpu].roster.length - gives.players.length + gets.players.length <= 55;
   // A player who asked out is worth less to his own team (it's motivated to move him).
   const motivated = gives.players.some((p) => p.tradeRequest) ? 0.9 : 1;
-  const want = 1.08 * motivated;
+  // Its starting quarterback isn't for sale at a fair price (only a big overpay), nor its only kicker / punter.
+  const qb1 = [...t.roster].filter((p) => p.pos === 'QB').sort((a, b) => b.ovr - a.ovr)[0];
+  const guard = gives.players.some((p) => p === qb1 && p.ovr >= 75) ? 1.35 : 1;
+  const lastSpec = gives.players.some((p) => ['K', 'P'].includes(p.pos) && t.roster.filter((q) => q.pos === p.pos).length <= 1 && !gets.players.some((q) => q.pos === p.pos));
+  // A contender is reluctant to sell a starter during the season; a rebuilder happily moves its veterans.
+  const sellMul = mode === 'contend' && f.phase === 'regular' && gives.players.some((p) => (p.age ?? 26) >= 27 && p.ovr >= 78) ? 1.1 : 1;
+  const want = 1.08 * motivated * guard * sellMul;
   const any = gets.players.length + gets.picks.length > 0 && gives.players.length + gives.picks.length > 0;
-  return { accept: any && capOk && rosterOk && vGets >= vGives * want, capOk, vGets, vGives, ratio: vGives ? vGets / (vGives * want) : 0 };
+  return { accept: any && capOk && rosterOk && !lastSpec && vGets >= vGives * want, capOk, vGets, vGives, mode, ratio: vGives ? vGets / (vGives * want) : 0 };
 }
 
 /**
@@ -187,6 +217,7 @@ export function cpuPickTrade(f, teams, rng) {
   const rows = rank(standings(teams, f.schedule));
   const buyer = rows[rng.int(0, 7)].team, seller = rows[rows.length - 1 - rng.int(0, 7)].team;
   if (buyer === f.userTeam || seller === f.userTeam || buyer === seller) return null;
+  if (teamMode(f, teams, seller) === 'contend' || teamMode(f, teams, buyer) === 'rebuild') return null; // contenders buy, rebuilders sell
   const vet = teams[seller].roster.filter((p) => (p.age ?? 26) >= 28 && p.ovr >= 76 && p.pos !== 'K' && p.pos !== 'P' && p.pos !== 'FB' && !p.injury && needsPosition(teams[buyer], p)).sort((a, b) => b.ovr - a.ovr)[0];
   if (!vet) return null;
   const want = tradeValue(vet);

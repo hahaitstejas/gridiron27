@@ -157,8 +157,15 @@ export class PlayCallScreen {
     const help = el('div.pc-help', { html:
       `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> formation &nbsp; ◀▶ more plays &nbsp; ▲▼ group &nbsp; <b class="btn X">X</b> <b class="btn A">A</b> <b class="btn Y">Y</b> call play` +
       (this.side === 'offense' ? ` &nbsp; <b class="btn RB">RT</b> flip${this.flipped ? ' (on)' : ''}` : '') +
-      (this.side === 'offense' && this.session.lastOffPlay && m.phase === 'scrimmage' && !m.justWarned ? ` &nbsp; <b class="btn LB">LS</b> no huddle (${this.session.lastOffPlay.name})` : '') +
+      (this.side === 'offense' && this.session.lastOffPlay && m.phase === 'scrimmage' && !m.justWarned ? ` &nbsp; <b class="btn LB">LS</b> no huddle${s.twoPlayer ? '' : ` (${this.session.lastOffPlay.name})`}` : '') +
       ` &nbsp; <b class="btn view">View</b> / <b class="btn LB">LT</b>+<b class="btn RB">RT</b> timeout (${m.timeouts[s.humanTeam]})` });
+    // 2 players on one screen: the plays stay covered until the caller holds LT (the other player looks away).
+    const secret = !!s.twoPlayer;
+    this.root.classList.toggle('pc-secret', secret);
+    if (secret) {
+      const other = m.teams[1 - s.humanTeam];
+      this.root.append(el('div.pc2-lookaway', { html: `<b>${(m.teams[s.humanTeam]?.abbr || '').toUpperCase()} CALLING</b> · ${(other?.abbr || '').toUpperCase()} LOOK AWAY · hold <b class="btn LB">LT</b> to see your plays` }));
+    }
     this.root.append(top, strip, el('div.pc2-body', {}, crumb, el('div.pc2-cards', {}, cards)), pager, help);
     this.root.querySelector('.pc2-pill.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
     this.nav.clear();
@@ -188,6 +195,7 @@ export class PlayCallScreen {
     if (!this.open) return;
     // The situation changed underneath us (e.g. a penalty or timeout re-opened the call): rebuild.
     if (this.situationKey(this.session) !== this.key) { this.show(this.session, this.onPick); return; }
+    if (this.session.twoPlayer) this.root.classList.toggle('peek', !!f.down?.LT); // hold LT: see your plays
     const n = this.list.length;
     if (f.pressed.LB || f.pressed.RB) { this.g = (this.g + (f.pressed.LB ? -1 : 1) + n) % n; this.page = 0; this.render(); return; }
     // Stick / d-pad with repeat: left/right page, up/down jump to the next family of formations.

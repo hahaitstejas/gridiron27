@@ -478,7 +478,7 @@ export class GameSession {
     } else if (mode === 'front') {
       this.audible = { mode: 'adjust', options: FRONT_CALLS, team, title: 'Front' };
     } else if (mode === 'protect') {
-      if (this.sim.offPlay.type === 'pass') this.audible = { mode, options: PROTECTION_CALLS, team };
+      if (this.sim.offPlay.type === 'pass' || this.twoPlayer) this.audible = { mode, options: PROTECTION_CALLS, team }; // 2P: on runs too (no tell)
     } else if (mode === 'dhot') {
       const me = this.sim.withHuman(team, () => this.sim.players[this.sim.controlledId]);
       if (me) this.audible = { mode, options: DEF_HOT, team, slot: me.slot, name: me.name };

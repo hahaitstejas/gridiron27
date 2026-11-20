@@ -180,6 +180,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   `inputFor(input, team)` splits `{ perTeam: true, 0: frame, 1: frame }`. `PlaySim` keeps `controlled[team]` per
   human and runs human control in each team's context (`withHuman`); two rings show both controlled players.
   Difficulty boosts don't apply (no CPU side).
+  No tells on the shared screen (UPDATE 5.0): the play-call screen is covered (`.pc-secret`: blurred diagrams, masked names /
+  badges / formation strip) until the caller holds LT (`.peek`, banner "X CALLING · Y LOOK AWAY"); pre-snap menus mask their
+  labels unless D-pad ▲ is held (`hud.peek`, `#audible.secret`); receiver icons show on every snap before it (`sim.iconMap(true)`),
+  the protection menu opens on runs too, the hint is the same for runs / passes / fakes, and audible tickers carry no names.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).
@@ -320,6 +324,10 @@ rounds}, history[], seed, offseason{step, …} }`.
   offensive/defensive rookie of the year from `p.rookieYear`; `f.awards[year]`), draft scouting (`setupScouting`: each
   prospect's shown overall is a range around a hidden error, potential '?', `SCOUT_POINTS` per draft reveal the truth
   with X; the CPU drafts on true value). Hub: News, Awards & Records (awards, season/game records, champions).
+- Practice squad / dead money (UPDATE 5.0): only fringe players sign to a practice squad (`psEligible(team, p, levels)`:
+  more than `PS_GAP` 7 under `posLevels` at the position = he wants a real deal); moving one up pays `promoteAsk` (the in-season
+  ask) within the cap (`promoteFromPS(team, p, cap)`); releasing a player charges `deadMoney` (rest of this season's salary +
+  25% of each later year) to `team.deadCap` (`team.deadNext` in the offseason, rolled over in `startNextSeason`), counted in `payroll`.
 - Opening cut-down (`trimRosters`, at `createFranchise` and once for older saves via `upgradeFranchise` / `f.trimmed`): CPU teams
   over 53 send the least valuable (`cutDown`) to the practice squad (youngest first, `addToPS`), the rest to free agency; your team
   gets `f.needsCut` and the hub opens `cutDownScreen` (A = practice squad / release, Y = auto-cut) until you're at 53. CPU depth

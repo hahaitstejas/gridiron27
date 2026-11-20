@@ -679,6 +679,7 @@ function onSessionEvent(e) {
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
   else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); if (session.match.lastPlayText && !session.practice) hud.pbp('PLAY', session.match.lastPlayText); }
+  else if (e.type === 'audible' && session?.twoPlayer) hud.ticker(`${e.side === 'defense' ? 'Defense' : 'Offense'}: adjustment at the line`); // no names: the other player is watching
   else if (e.type === 'audible') hud.ticker(['Coverage', 'Protection', 'Front'].includes(e.play) ? `${e.play}: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);
   else if (e.type === 'review' && e.phase === 'review') hud.ticker(e.booth ? 'The booth is reviewing the play' : `${session.teams[e.by].abbr} challenges the ruling`);
   else if (e.type === 'reviewDone') hud.banner(e.reversed ? 'REVERSED' : 'CALL STANDS', e.text.replace(/^After review, /, ''), 2.6, e.reversed ? 'score' : 'miss');
@@ -781,6 +782,7 @@ function frameBody(now) {
     // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
     const p1 = session.p1Team ?? 0; // 2 players: the game team player 1 has (0 home, 1 away)
     if (pcOpen) { playcall.update(two && session.humanTeam !== p1 ? input2.frame : f, dt); }
+    hud.peek = two && (f.down.Up || input2.frame.down?.Up); // 2 players: hold D-pad ▲ to see a pre-snap menu
     // Co-op: player 2's frame rides along (PlaySim runs his man with it, sim.withCoop).
     const gameInput = two ? { perTeam: true, [p1]: f, [1 - p1]: input2.frame } : session.settings.coop && input2.connected ? { ...f, coop: input2.frame } : f;
     // Career: snaps your player sits out run at 4x (the next one he's in comes up quickly).

@@ -389,9 +389,11 @@ export class Hud {
       const me = sim.players[sim.lockId];
       h = `Career: you're <b>#${me.number} ${me.name || ''}</b> (${me.slot}) &nbsp; the CPU calls and snaps &nbsp; <b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'offense') {
-      h = sim.isKick ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
-        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${sim.offPlay.type === 'pass' && session.match.phase === 'scrimmage' ? `<b class="btn LB">LB</b> Protection${protTag(sim.offPlay)} &nbsp; ` : ''}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art + read &nbsp; '}<b class="btn view">View</b> Timeout`;
-    } else if (pre && session.humanSide === 'defense') h = `${fgTag(session, sim)}<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${retTag(sim)}${sim.isKick && sim.offPlay.type !== 'kickoff' ? (sim.offPlay.type === 'fg' ? 'Edge rush: come off the end, <b class="btn X">X</b> dive across the kick as it\'s struck (<b class="btn A">A</b> jump) &nbsp; ' : 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ') : ''}<b class="btn view">View</b> Timeout${coverageTag(session.defAdj)}`;
+      const two = session.twoPlayer; // 2 players on one screen: nothing here may tell the defense run / pass / fake
+      const kickLook = sim.isKick || (two && sim.offPlay.fake);
+      h = kickLook ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
+        : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${(sim.offPlay.type === 'pass' || two) && session.match.phase === 'scrimmage' ? `<b class="btn LB">LB</b> Protection${two ? '' : protTag(sim.offPlay)} &nbsp; ` : ''}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art + read &nbsp; '}<b class="btn view">View</b> Timeout`;
+    } else if (pre && session.humanSide === 'defense') h = `${fgTag(session, sim)}<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${retTag(sim)}${sim.isKick && sim.offPlay.type !== 'kickoff' ? (sim.offPlay.type === 'fg' ? 'Edge rush: come off the end, <b class="btn X">X</b> dive across the kick as it\'s struck (<b class="btn A">A</b> jump) &nbsp; ' : 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ') : ''}<b class="btn view">View</b> Timeout${session.twoPlayer ? '' : coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
     else if (sim && sim.state === 'live' && session.humanSide === 'defense' && sim.players[sim.controlledId]?.engagement?.d === sim.players[sim.controlledId]) h = '<b class="btn A">A</b> Bull rush &nbsp; <b class="btn X">X</b> Swim &nbsp; <b class="btn Y">Y</b> Spin &nbsp; RS ↓ Rip';
     else if (sim && sim.state === 'live' && sim.ball.state === 'air' && !sim.kick && session.humanSide === 'offense' && sim.ball.intended === sim.controlledId) {
@@ -404,6 +406,8 @@ export class Hud {
     const au = this.$('audible');
     const a = pre ? session.audible : null;
     au.classList.toggle('hidden', !a);
+    // 2 players: the menu's choices are covered unless the player holds D-pad ▲ (the other player looks away).
+    au.classList.toggle('secret', !!(a && session.twoPlayer && !this.peek));
     if (a) {
       const key = a.mode === 'menu' ? 'm' + a.options.map((o) => o.play.id).join() : a.mode + (a.slot || '');
       if (au.dataset.key !== key) {
@@ -411,7 +415,7 @@ export class Hud {
         if (a.mode === 'menu') {
           au.innerHTML = `<div class="au-title">${session.humanSide === 'offense' ? 'Audible' : 'Defensive audible'}</div>` +
             a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span><small>${o.play.name}</small></div>`).join('') +
-            `<div class="au-foot"><b class="btn LB">LB</b> cancel</div>`;
+            `<div class="au-foot"><b class="btn LB">LB</b> cancel${session.twoPlayer ? ' &nbsp; hold ▲ to see' : ''}</div>`;
         } else if (a.mode === 'dhot') {
           au.innerHTML = `<div class="au-title">Hot route: ${a.name} (${a.slot})</div>` +
             a.options.map((o) => `<div class="au-row"><b class="btn ${o.btn}">${o.btn}</b><span>${o.label}</span></div>`).join('') +
@@ -520,9 +524,12 @@ export class Hud {
     this.artOverlay(this.artOn && !playcallOpen ? sim : null, renderer, session);
 
     // Receiver icons while the human QB can still throw.
-    const showIcons = sim && !playcallOpen && sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass' && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';
+    const two = session.twoPlayer && sim && sim.state === 'presnap' && !sim.isKick && !sim.offPlay.fake; // fakes look like the kick
+    const showIcons = sim && !playcallOpen && (two || (sim.humanTeam === sim.offIdx && sim.offPlay.type === 'pass')) && !sim.passThrown && !sim.qbCrossed && sim.state !== 'dead';
+    if (two && (!sim._allIcons || sim._allIconsKey !== sim.offPlay)) { sim._allIcons = sim.iconMap(true); sim._allIconsKey = sim.offPlay; }
+    const iconSet = two ? sim._allIcons : sim?.icons;
     for (const [btn, elx] of Object.entries(this.icons)) {
-      const id = sim?.icons?.[btn];
+      const id = iconSet?.[btn];
       if (!showIcons || id === undefined) { elx.style.display = 'none'; continue; }
       const p = sim.players[id];
       const s = renderer.project(p.x, p.height + 0.25, p.z);

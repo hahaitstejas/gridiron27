@@ -296,19 +296,23 @@ export class PlaySim {
   }
 
   /** Receiver buttons. `all` = every eligible receiver, blockers too (for hot routes). */
-  computeIcons(all = false) {
-    this.icons = {};
-    if (this.offPlay.type !== 'pass' && !all) return;
+  computeIcons(all = false) { this.icons = this.iconMap(all); }
+
+  /** Button -> player id map for the receivers (every eligible man with `all`). */
+  iconMap(all = false) {
+    const icons = {};
+    if (this.offPlay.type !== 'pass' && !all) return icons;
     const routes = this.offPlay.routes || {};
     const runners = this.offense().filter((p) => (all ? !OL_SLOTS.has(p.slot) && p.slot !== 'QB' : routes[p.slot] && ROUTES[routes[p.slot].replace(/_(l|r)$/, '')]));
     const loc = (p) => this.toLocal(p.x, p.z);
     const free = new Set(runners);
-    const give = (btn, p) => { if (p && free.has(p)) { this.icons[btn] = p.id; free.delete(p); } };
+    const give = (btn, p) => { if (p && free.has(p)) { icons[btn] = p.id; free.delete(p); } };
     give('RB', runners.find((p) => loc(p).down < -2.5 && Math.abs(loc(p).lat) < 4.5));
     give('X', [...free].sort((a, b) => loc(a).lat - loc(b).lat)[0]);
     give('B', [...free].sort((a, b) => loc(b).lat - loc(a).lat)[0]);
     give('Y', [...free].find((p) => p.pos === 'TE'));
-    for (const btn of ['A', 'Y', 'RB']) if (!this.icons[btn]) give(btn, [...free][0]);
+    for (const btn of ['A', 'Y', 'RB']) if (!icons[btn]) give(btn, [...free][0]);
+    return icons;
   }
 
   defaultDefender() {

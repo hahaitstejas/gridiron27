@@ -1681,3 +1681,15 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 /* Credits screen: one wide table of attributions */
 .ctl.credits { max-width: 980px; width: 100%; margin: 0 auto 18px; }
 .ctl.credits td.k { white-space: nowrap; vertical-align: top; }
+
+/* 2 players on one screen: plays and pre-snap menus stay covered until the caller holds LT / D-pad up. */
+#playcall.pc-secret:not(.peek) .pc2-art canvas { filter: blur(18px) brightness(0.5); }
+#playcall.pc-secret:not(.peek) .pc2-kind, #playcall.pc-secret:not(.peek) .pc2-stats { visibility: hidden; }
+#playcall.pc-secret:not(.peek) .pc2-name, #playcall.pc-secret:not(.peek) .pc2-sub,
+#playcall.pc-secret:not(.peek) .pc2-pill, #playcall.pc-secret:not(.peek) .pc2-count { color: transparent !important; text-shadow: none; }
+#playcall.pc-secret:not(.peek) .pc2-name::before { content: '▮▮▮▮▮'; color: rgba(255,255,255,0.35); }
+.pc2-lookaway { position: fixed; z-index: 30; left: 50%; top: 14px; transform: translateX(-50%); padding: 6px 14px;
+  background: rgba(0,0,0,0.75); color: #fff; font-family: var(--fo, sans-serif); letter-spacing: 0.06em; font-size: 15px; white-space: nowrap; border-radius: 4px; }
+#playcall.pc-secret.peek .pc2-lookaway { background: #b3261e; }
+#audible.secret .au-row span, #audible.secret .au-row small { color: transparent !important; }
+#audible.secret .au-row span::before { content: '▮▮▮▮'; color: rgba(255,255,255,0.35); }

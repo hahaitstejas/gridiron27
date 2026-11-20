@@ -543,6 +543,9 @@ repo Settings → Pages → Source "GitHub Actions"). Built from the repo only, 
 local-league reads (`localLeague.js`, franchise free agents / schedule CSVs) are skipped in that mode (`NO_LOCAL`). First
 game in a browser: a small quick-start card (`Hud.quickstart`, localStorage `g27.seenHelp`) for the first three snaps.
 
+`npm run build:itch` (tools/itch.mjs) = the same web build zipped for itch.io (index.html at the root, checks itch's 1000-file /
+500 MB limits) → `release/gridiron27-itch.zip`; upload as Kind of project: HTML, "played in the browser".
+
 ### Offline single file
 `npm run build:offline` (vite mode `offline`, `vite-plugin-singlefile`, then `tools/offline.mjs` renames it) inlines all JS,
 CSS and the Saira fonts into `dist-offline/Gridiron27.html` (git-ignored, ~1.5 MB). It never copies `public/` and skips the

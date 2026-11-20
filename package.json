@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:web": "vite build --mode web",
+    "build:itch": "node tools/itch.mjs",
     "build:offline": "vite build --mode offline && node tools/offline.mjs",
     "preview": "vite preview",
     "test": "vitest run",

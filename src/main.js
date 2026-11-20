@@ -44,6 +44,8 @@ import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
 import { logoCanvas } from './render/logo.js';
 import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS } from './ui/screens.js';
+import { setKeymap } from './input/keyboard.js';
+
 import { PlayCallScreen } from './ui/playcall.js';
 import { ReplayPlayer } from './replay/replay.js';
 import { depthChartScreen, coachingScreen, resetBench } from './ui/depthEditor.js';
@@ -66,6 +68,7 @@ const teams = generateLeagueRosters(defaultTeams(), 2027);
 const prefs = loadPrefs();
 // Sound: Web Audio may only start after a user gesture (a key, a click, a tap; pad buttons try too).
 SFX.setVolumes(prefs);
+setKeymap(prefs.keys); // the player's own key bindings (Settings → Button Mapping)
 for (const ev of ['pointerdown', 'keydown', 'touchstart']) window.addEventListener(ev, () => SFX.unlockAudio(), { passive: true });
 // A saved league (Phase 4) wins; without one, the optional spreadsheets in public/local/ apply.
 let saved = null;
@@ -237,7 +240,7 @@ function toMenu() {
     onFranchise: () => franchiseUI.open(),
     onControls: () => screens.controls({ onBack: toMenu }),
     onCredits: () => screens.credits({ onBack: toMenu }),
-    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); applyCamera(); toMenu(); }, onBack: toMenu }),
+    onSettings: () => screens.settings(prefs, { onSave: (p) => { Object.assign(prefs, p); savePrefs(prefs); setKeymap(prefs.keys); applyCamera(); toMenu(); }, onBack: () => { setKeymap(prefs.keys); toMenu(); } }), // unsaved key changes are dropped
     onPlaybook: () => playbookScreen({ screens, teams, onBack: toMenu }),
     onSaves: () => league.saves(0, toMenu),
   }, {
@@ -732,6 +735,9 @@ function frameBody(now) {
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;
   time += dt;
+  // Button mapping applies in games only (menus keep the standard A select / B back).
+  const remap = app === 'game' && prefs.remap && Object.keys(prefs.remap).length ? prefs.remap : null;
+  input.state.remap = remap; input2.state.remap = remap;
   input.poll(dt);
   input2.poll(dt);
   if (p2Wait && input2.connected) { const go = p2Wait; p2Wait = null; input2.consume(); go(); }

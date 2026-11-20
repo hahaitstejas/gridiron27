@@ -1,5 +1,7 @@
 // Unified controller state used by the game. Both the Xbox pad and the keyboard feed this.
 export const BUTTONS = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'View', 'Menu', 'LS', 'RS', 'Up', 'Down', 'Left', 'Right'];
+/** The controller buttons that can be swapped in Settings → Button Mapping (triggers stay analog, menus stay standard). */
+export const REMAPPABLE = ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LS', 'RS'];
 
 export function emptyFrame() {
   const f = { lx: 0, ly: 0, rx: 0, ry: 0, lt: 0, rt: 0, down: {}, pressed: {}, released: {}, held: {}, flick: { left: false, right: false, up: false, down: false } };
@@ -18,6 +20,13 @@ export class ControllerState {
   }
   update(raw, dt) {
     const f = this.frame;
+    // Button remapping (Settings → Button Mapping): `remap` = { logical: physical } for the action buttons, applied in games
+    // only (the session sets it; menus keep the standard layout so nobody can lock themselves out).
+    if (this.remap) {
+      const src = raw.buttons, out = { ...src };
+      for (const [logical, physical] of Object.entries(this.remap)) out[logical] = !!src[physical];
+      raw = { ...raw, buttons: out };
+    }
     f.lx = raw.lx; f.ly = raw.ly; f.rx = raw.rx; f.ry = raw.ry; f.lt = raw.lt; f.rt = raw.rt;
     for (const b of BUTTONS) {
       const now = !!raw.buttons[b];

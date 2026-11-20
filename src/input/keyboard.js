@@ -1,9 +1,15 @@
 // Keyboard fallback for testing without a controller. See KEY_HELP for the layout.
-const KEYMAP = {
+export const DEFAULT_KEYMAP = {
   KeyJ: 'A', Space: 'A', KeyK: 'B', KeyU: 'X', KeyI: 'Y', KeyO: 'RB', KeyQ: 'LB',
   ShiftLeft: 'RT', ShiftRight: 'RT', KeyE: 'LT', KeyT: 'View', Enter: 'Menu', Escape: 'Menu', KeyR: 'RS', KeyF: 'LS',
   Digit1: 'Up', Digit2: 'Down', Digit3: 'Left', Digit4: 'Right',
 };
+// The live key map: the defaults, or the player's own bindings (Settings → Button Mapping, prefs.keys = { code: button }).
+let KEYMAP = { ...DEFAULT_KEYMAP };
+export function setKeymap(map) { KEYMAP = map && Object.keys(map).length ? { ...map } : { ...DEFAULT_KEYMAP }; }
+export const keymap = () => KEYMAP;
+/** The key(s) bound to a button, for help text ("J / Space"). */
+export function keysFor(button) { return Object.entries(KEYMAP).filter(([, b]) => b === button).map(([c]) => c.replace(/^Key|^Digit/, '').replace('ShiftLeft', 'Shift').replace('ShiftRight', 'R-Shift')); }
 
 export const KEY_HELP = [
   ['Move (left stick)', 'W A S D'],

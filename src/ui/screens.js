@@ -8,7 +8,8 @@ import { faceImg } from './faces.js';
 import { logoCanvas } from '../render/logo.js';
 import { teamRatings } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
-import { KEY_HELP } from '../input/keyboard.js';
+import { KEY_HELP, keymap, setKeymap, DEFAULT_KEYMAP } from '../input/keyboard.js';
+import { REMAPPABLE, BUTTONS } from '../input/actions.js';
 import { gameXP, lineText } from '../franchise/career.js';
 import { DRILLS, DRILL_IDS, MEDALS, medalFor } from '../game/drills.js';
 import { SCENARIOS } from '../game/scenarios.js';
@@ -24,6 +25,7 @@ const volLabel = (v) => (v ? `${Math.round(v * 100)}%` : 'Off');
 
 // What each setting does (the description panel on settings-style screens), keyed by the row's label, lower case.
 export const OPTION_HELP = {
+  'button mapping…': 'Swap the controller buttons used in games (menus keep A select / B back) and rebind any keyboard key. Reset puts the defaults back.',
   'credits…': 'Who made the art, motion capture and fonts this game is built on, and the licenses they come under.',
   'quarter length': 'Minutes in each quarter. Stats and the clock scale with it; 5-8 minutes with the accelerated clock plays like a full game.',
   'accelerated clock': 'Between plays the play clock runs down to this many seconds before the snap is allowed, so short quarters still have realistic play counts.',
@@ -735,6 +737,68 @@ export class Screens {
     this.nav.set([back], { onBack });
   }
 
+  /**
+   * Button mapping: swap the controller's action buttons (used in games; menus keep the standard layout so you can always
+   * get back here) and rebind any keyboard key. Saved with the settings (prefs.remap = { logical: physical }, prefs.keys =
+   * { code: button }); Save on the Settings screen keeps them.
+   */
+  buttonMap(p, back, focus = 0) {
+    p.remap ||= {};
+    const rows = [];
+    const label = (txt, val) => [el('span.opt-label', { text: txt }), el('span.opt-val', { text: val })];
+    const head = (t) => el('div.bm-head', { text: t });
+    // Controller: logical button -> the physical one that does it.
+    const padRows = REMAPPABLE.map((b) => {
+      const r = el('div.opt-row', {}, ...label(`${b} action`, `press ${p.remap[b] || b}`));
+      r.dataset.desc = `Which button does what ${b} normally does in a game. Press A, then the button you want: the two swap.`;
+      r.activate = () => {
+        r.lastChild.textContent = 'press a button…';
+        this.extraButtons = (fr) => {
+          const phys = REMAPPABLE.find((x) => fr.pressed[x] && !(x === 'A' && fr.held?.A > 0.25));
+          if (!phys) return;
+          this.extraButtons = null;
+          const cur = { ...Object.fromEntries(REMAPPABLE.map((x) => [x, p.remap[x] || x])) };
+          const other = REMAPPABLE.find((x) => cur[x] === phys);
+          if (other && other !== b) cur[other] = cur[b]; // swap, so every button still does exactly one thing
+          cur[b] = phys;
+          p.remap = Object.fromEntries(Object.entries(cur).filter(([k, v]) => k !== v));
+          this.buttonMap(p, back, rows.indexOf(r));
+        };
+      };
+      return r;
+    });
+    // Keyboard: every button, the keys that press it; A rebinds (the next key pressed).
+    const keyName = (c) => c.replace(/^Key|^Digit/, '').replace('ShiftLeft', 'Shift').replace('ShiftRight', 'R-Shift');
+    const kbRows = BUTTONS.map((b) => {
+      const keys = Object.entries(keymap()).filter(([, x]) => x === b).map(([c]) => keyName(c));
+      const r = el('div.opt-row', {}, ...label(`Key for ${b}`, keys.join(' / ') || '—'));
+      r.dataset.desc = `The keyboard key for ${b}. Press A (or J / Space), then any key. Esc cancels. The key stops doing anything else.`;
+      r.activate = () => {
+        r.lastChild.textContent = 'press a key…';
+        const onKey = (e) => {
+          e.preventDefault(); e.stopImmediatePropagation();
+          window.removeEventListener('keydown', onKey, true);
+          if (e.code === 'Escape') { this.buttonMap(p, back, rows.indexOf(r)); return; }
+          const km = { ...keymap() };
+          for (const [c, x] of Object.entries(km)) if (x === b) delete km[c]; // one key per button (the new one)
+          km[e.code] = b; // (and the key leaves whatever it did before)
+          p.keys = km; setKeymap(km);
+          this.buttonMap(p, back, rows.indexOf(r));
+        };
+        window.addEventListener('keydown', onKey, true);
+      };
+      return r;
+    });
+    const reset = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Reset to defaults' }));
+    reset.activate = () => { p.remap = {}; p.keys = null; setKeymap(null); this.buttonMap(p, back); };
+    const done = el('div.start-btn', { text: 'Done' });
+    done.activate = back;
+    rows.push(...padRows, ...kbRows, reset, done);
+    this.frame('setup-screen bm-screen', el('h1', { text: 'Button Mapping' }),
+      el('div.setup-opts', {}, head('Controller (in games · menus keep A select / B back)'), ...padRows, head('Keyboard'), ...kbRows, reset, done));
+    this.nav.set(rows, { onBack: back, index: Math.min(focus, rows.length - 1) });
+  }
+
   /** Credits: the third-party assets and the attribution their licenses ask for (CC BY 4.0, CMU mocap). */
   credits({ onBack }) {
     const rows = [
@@ -786,12 +850,14 @@ export class Screens {
     ];
     const sliders = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Gameplay sliders…' }));
     sliders.activate = () => this.sliders(p, { onSave: (sl) => { p.sliders = sl; this.settings(p, { onSave, onBack }); }, onBack: () => this.settings(p, { onSave, onBack }) });
+    const mapping = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Button Mapping…' }));
+    mapping.activate = () => this.buttonMap(p, () => this.settings(p, { onSave, onBack }));
     const credits = el('div.opt-row.action', {}, el('span.opt-label', { text: 'Credits…' }));
     credits.activate = () => this.credits({ onBack: () => this.settings(p, { onSave, onBack }) });
     const save = el('div.start-btn', { text: 'Save' });
     save.activate = () => onSave(p);
-    this.frame('setup-screen', el('h1', { text: 'Settings' }), el('div.setup-opts', {}, ...rows, sliders, credits, save));
-    this.nav.set([...rows, sliders, credits, save], { onBack });
+    this.frame('setup-screen', el('h1', { text: 'Settings' }), el('div.setup-opts', {}, ...rows, sliders, mapping, credits, save));
+    this.nav.set([...rows, sliders, mapping, credits, save], { onBack });
   }
 
   /**

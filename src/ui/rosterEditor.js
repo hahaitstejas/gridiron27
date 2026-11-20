@@ -231,7 +231,8 @@ function actions(ctx, x) {
     item('Edit Player', () => playerCard(ctx, ti, p.id)),
     item('Trade Player', () => tradeTo(ctx, x)),
     item('Release Player', () => {
-      if (!window.confirm(`Release ${p.first} ${p.last}?`)) return;
+      const dead = ctx.deadMoney?.(p) || 0; // franchise: cutting him leaves dead money on the cap
+      if (!window.confirm(`Release ${p.first} ${p.last}?${dead ? ` $${dead.toFixed(1)}M of dead money stays on your cap.` : ''}`)) return;
       releasePlayer(ctx.teams[ti], p.id);
       ctx.onRelease?.(p);
       ctx.onChange();

@@ -5,7 +5,7 @@ import { RNG } from '../core/rng.js';
 import { generatePlayer } from '../data/generator.js';
 import { addPlayer, releasePlayer } from '../data/rosterOps.js';
 import { overall, OVERALL_WEIGHTS } from '../data/positions.js';
-import { marketValue, fits, MIN_SALARY } from './contracts.js';
+import { marketValue, fits, MIN_SALARY, chargeRelease, deadMoney } from './contracts.js';
 
 export const ROSTER_MAX = 53;
 const STARTERS = { QB: 1, HB: 1, FB: 1, WR: 3, TE: 1, T: 2, G: 2, C: 1, DE: 2, DT: 2, OLB: 2, MLB: 1, CB: 3, FS: 1, SS: 1, K: 1, P: 1 };
@@ -118,8 +118,9 @@ export function signInSeason(f, team, id, releaseId = null, cap = f.cap) {
   const out = releaseId !== null ? team.roster.find((p) => p.id === releaseId) : null;
   if (team.roster.length >= ROSTER_MAX && !out) return { ok: false, reason: 'roster-full' };
   if (out?.career) return { ok: false, reason: 'You can\'t release your own player.' };
-  if (!fits(team, ask, out?.salary || 0, cap)) return { ok: false, reason: `Not enough cap space ($${ask.toFixed(1)}M asked).` };
-  if (out) { releasePlayer(team, out.id); addFreeAgent(f, out); }
+  const dead = out ? deadMoney(f, out) : 0;
+  if (!fits(team, ask, (out?.salary || 0) - dead, cap)) return { ok: false, reason: `Not enough cap space ($${ask.toFixed(1)}M asked${dead ? `, $${dead.toFixed(1)}M dead money for the release` : ''}).` };
+  if (out) { chargeRelease(f, team, out); releasePlayer(team, out.id); addFreeAgent(f, out); }
   const [p] = pool.splice(pool.indexOf(pool.find((q) => q.id === id)), 1);
   p.salary = ask;
   p.years = 1;

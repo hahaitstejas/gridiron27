@@ -5,7 +5,9 @@ import { playerTable, actionsPanel, playerCard } from './rosterEditor.js';
 import { logoCanvas } from '../render/logo.js';
 import { sortHead, sortKeys, sortRows, POS_TABS } from './sortable.js';
 import { gameStatus, reinjuryRisk, injuryLine, placeOnIR, canActivate, activateFromIR, activeCount, IR_MIN, IR_RETURNS } from '../franchise/health.js';
-import { PS_MAX, ELEVATE_MAX, ELEVATE_PER_GAME, addToPS, promoteFromPS, elevate, psEligible, isVeteranPS, unelevate, releaseFromPS } from '../franchise/practiceSquad.js';
+import { PS_MAX, ELEVATE_MAX, ELEVATE_PER_GAME, addToPS, promoteFromPS, promoteAsk, elevate, psEligible, isVeteranPS, unelevate, releaseFromPS } from '../franchise/practiceSquad.js';
+import { posLevels } from '../franchise/freeAgents.js';
+import { payroll, money } from '../franchise/contracts.js';
 import { standings, rank } from '../franchise/season.js';
 import { gameWhen } from '../franchise/nflSchedule.js';
 import { moraleOf } from '../franchise/development.js';
@@ -71,17 +73,18 @@ export function practiceSquadScreen(ui, mode = 'squad', filter = 0, focus = 0) {
   const { screens } = ui.ctx;
   const f = ui.f, me = ui.teams[f.userTeam];
   const ps = me.ps ||= [];
+  const levels = posLevels(ui.teams); // practice squads are for fringe players: starters / good backups want a real deal
   if (mode === 'add') {
     const [fname, positions] = POS_FILTERS[filter];
-    const pool = (f.freeAgents || []).filter((p) => (!positions || positions.includes(p.pos)) && psEligible(me, p)).sort((a, b) => b.ovr - a.ovr || (a.age ?? 30) - (b.age ?? 30)).slice(0, 60);
+    const pool = (f.freeAgents || []).filter((p) => (!positions || positions.includes(p.pos)) && psEligible(me, p, levels)).sort((a, b) => b.ovr - a.ovr || (a.age ?? 30) - (b.age ?? 30)).slice(0, 60);
     playerTable(screens, {
       title: 'Add to Practice Squad', head: ['PLAYER', 'POS', 'OVR', 'AGE', 'TYPE'],
       rows: pool.map((p) => ({ p, team: me, cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, isVeteranPS(p) ? 'VET' : 'YOUNG'], act: () => {
         f.freeAgents.splice(f.freeAgents.indexOf(p), 1);
-        if (addToPS(me, p)) logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} to the practice squad`);
+        if (addToPS(me, p, levels)) logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} to the practice squad`);
         ui.save(); practiceSquadScreen(ui);
       } })),
-      chips: [`<b class="btn LB">LB</b><b class="btn RB">RB</b> ${fname.toUpperCase()}`], count: `${ps.length}/${PS_MAX} on the squad · up to 6 veterans`,
+      chips: [`<b class="btn LB">LB</b><b class="btn RB">RB</b> ${fname.toUpperCase()}`], count: `${ps.length}/${PS_MAX} on the squad · up to 6 veterans · only players below backup level sign here`,
       bar: '<span><b class="btn A">A</b> SIGN TO THE PRACTICE SQUAD</span><span><b class="btn B">B</b> BACK</span>', empty: 'Nobody eligible here.',
       onBack: () => practiceSquadScreen(ui), onTab: (d) => practiceSquadScreen(ui, 'add', (filter + d + POS_FILTERS.length) % POS_FILTERS.length),
     });
@@ -101,7 +104,7 @@ export function practiceSquadScreen(ui, mode = 'squad', filter = 0, focus = 0) {
       if (fr.pressed.X) { screens.extraButtons = null; practiceSquadScreen(ui, 'add'); return; }
       if (fr.pressed.Y) {
         const p = screens.nav.current?.player;
-        if (p && promoteFromPS(me, p)) { logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} off the practice squad`); ui.save(); }
+        if (p && promoteFromPS(me, p, f.cap)) { logTransaction(f, `${me.abbr} sign ${p.pos} ${p.first} ${p.last} off the practice squad (${money(p.salary)})`); ui.save(); }
         again();
       }
     },
@@ -119,11 +122,12 @@ export function cutDownScreen(ui, { onDone, onAuto = null, limit = 53, title = '
   const over = me.roster.length - limit;
   const again = (i = 0) => cutDownScreen(ui, { onDone, onAuto, limit, title, focus: i });
   const list = [...me.roster].sort((a, b) => a.ovr - b.ovr || (b.age ?? 25) - (a.age ?? 25));
+  const levels = posLevels(ui.teams);
   const items = playerTable(screens, {
     title, head: ['PLAYER', 'POS', 'OVR', 'AGE', '$M', 'PS'],
-    rows: list.map((p, i) => ({ p, team: me, cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, (p.salary ?? 0).toFixed(2), psEligible(me, p) ? 'YES' : '—'],
+    rows: list.map((p, i) => ({ p, team: me, cells: [`${p.first[0]}. ${p.last}`, p.pos, p.ovr, p.age, (p.salary ?? 0).toFixed(2), psEligible(me, p, levels) ? 'YES' : '—'],
       act: () => actionsPanel(screens, `${p.first} ${p.last}`, [
-        psEligible(me, p) ? ['Move to Practice Squad', () => { addToPS(me, p); logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`); ui.save(); again(i); }, `${(me.ps || []).length}/${PS_MAX} on the squad`] : null,
+        psEligible(me, p, levels) ? ['Move to Practice Squad', () => { addToPS(me, p, levels); logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`); ui.save(); again(i); }, `${(me.ps || []).length}/${PS_MAX} on the squad`] : null,
         ['Release', () => { releasePlayer(me, p.id); addFreeAgent(f, p); logTransaction(f, `${me.abbr} cut-down: released ${p.pos} ${p.first} ${p.last}`); ui.save(); again(i); }, 'he becomes a free agent'],
         ['Keep', () => again(i)],
       ], () => again(i)) })),
@@ -136,7 +140,7 @@ export function cutDownScreen(ui, { onDone, onAuto = null, limit = 53, title = '
         screens.extraButtons = null;
         if (onAuto) { onAuto(); return; }
         for (const p of cutDown(me, limit).sort((a, b) => (a.age ?? 25) - (b.age ?? 25))) {
-          if (addToPS(me, p)) logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`);
+          if (addToPS(me, p, levels)) logTransaction(f, `${me.abbr} cut-down: ${p.pos} ${p.first} ${p.last} to the practice squad`);
           else { addFreeAgent(f, p); logTransaction(f, `${me.abbr} cut-down: released ${p.pos} ${p.first} ${p.last}`); }
         }
         ui.save(); onDone();
@@ -160,8 +164,9 @@ function psActions(ui, p, back) {
       ? ['Undo Elevation', () => { unelevate(me, p); done(); }, 'he stays on the practice squad this week']
       : ['Elevate for This Game', () => { if (elevate(me, p)) done(`${me.abbr} elevate ${name} from the practice squad`); },
         (p.elevations || 0) >= ELEVATE_MAX ? 'used all elevations: sign him to play' : full ? `already ${ELEVATE_PER_GAME} elevated: undo one first` : `${ELEVATE_MAX - (p.elevations || 0)} elevations left this season`],
-    ['Sign to the 53', () => { if (promoteFromPS(me, p)) done(`${me.abbr} sign ${name} off the practice squad`); },
-      me.roster.filter((q) => !q.injury?.ir && !q.elevated).length >= 53 ? 'roster full: release someone first' : 'a regular contract'],
+    ['Sign to the 53', () => { if (promoteFromPS(me, p, f.cap)) done(`${me.abbr} sign ${name} off the practice squad (${money(p.salary)})`); },
+      me.roster.filter((q) => !q.injury?.ir && !q.elevated).length >= 53 ? 'roster full: release someone first'
+        : payroll(me) + promoteAsk(p) > f.cap ? `asks ${money(promoteAsk(p))}: not enough cap space` : `one year at ${money(promoteAsk(p))}`],
     ['Release', () => { releaseFromPS(me, p, (q) => addFreeAgent(f, q)); done(`${me.abbr} release ${name} from the practice squad`); }, 'he becomes a free agent'],
   ], back);
 }

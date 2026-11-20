@@ -1,5 +1,6 @@
 import { tradeScreen } from './ui/franchiseMoney.js';
 import { releasedPlayer } from './franchise/franchise.js';
+import { deadMoney } from './franchise/contracts.js';
 import { passerRating } from './game/boxscore.js';
 // Bundled font (offline): Saira Condensed for every menu, HUD and canvas text.
 import { downText, yardLineText, clockText } from './game/match.js';
@@ -171,7 +172,7 @@ const franchiseUI = new FranchiseUI({
       gameDay: { short: (g.short || []).map((ti) => (ti === g.home ? 0 : 1)), prime: /Opener|TNF|SNF|MNF|Thanksgiving|Christmas|8:\d\d PM/.test(`${g.slot || ''} ${g.time || ''}`) } });
     if (session) session.ticker = tick;
   },
-  rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back, onRelease: (p) => league.franchise && releasedPlayer(league.franchise, teams, teams[ti], p),
+  rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back, onRelease: (p) => league.franchise && releasedPlayer(league.franchise, teams, teams[ti], p), deadMoney: (p) => (league.franchise ? deadMoney(league.franchise, p) : 0),
     onTrade: (p, from) => (from === league.franchise.userTeam ? tradeScreen(franchiseUI, { give: [p.id] }) : tradeScreen(franchiseUI, { team: from, get: [p.id] })) }, ti),
   depthScreen: (ti, back) => depthChartScreen(screens, teams[ti], { onDone: back, onChange: () => league.changed() }),
   offseason: (ui) => offseasonScreen({ screens, teams, league, onExit: () => toMenu() }, ui),

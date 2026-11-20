@@ -57,7 +57,27 @@ export function setupMoney(teams, seed = 1, year = null) {
 }
 
 export function payroll(team) {
-  return team.roster.reduce((s, p) => s + (p.salary || 0), 0);
+  return team.roster.reduce((s, p) => s + (p.salary || 0), 0) + (team.deadCap || 0);
+}
+
+/**
+ * Dead money for cutting a player now: what's left of this season's salary (it's guaranteed once the season starts)
+ * plus a quarter of each later year (prorated bonus). Offseason cuts land on next season's cap (`team.deadNext`).
+ * Without it, cutting a starter and signing a cheap replacement was a free way around the cap.
+ */
+export function deadMoney(f, p) {
+  const s = p.salary || 0, later = Math.max(0, Math.min(3, (p.years || 1) - 1));
+  const left = f.phase === 'regular' ? Math.max(0, (f.weeks - f.week) / Math.max(1, f.weeks)) : f.phase === 'offseason' ? 1 : 0;
+  return round05(s * left + 0.25 * s * later);
+}
+
+/** Charge a release to the team's cap (this season, or next season's in the offseason). Returns the amount. */
+export function chargeRelease(f, team, p) {
+  if (!f || p.career || p.practiceSquad) return 0;
+  const d = deadMoney(f, p);
+  if (f.phase === 'offseason') team.deadNext = round05((team.deadNext || 0) + d);
+  else team.deadCap = round05((team.deadCap || 0) + d);
+  return d;
 }
 
 export function capSpace(team, cap = SALARY_CAP) {

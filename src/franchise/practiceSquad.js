@@ -8,6 +8,7 @@
 //    order of the standings (worst first). Vested veterans become free agents right away.
 import { addPlayer, releasePlayer } from '../data/rosterOps.js';
 import { DEPTH_SLOTS } from '../data/depthChart.js';
+import { marketValue, fits, MIN_SALARY } from './contracts.js';
 
 export const PS_MAX = 16;
 export const PS_VETERANS = 6;
@@ -21,15 +22,23 @@ export const proYears = (p) => p.proYears ?? Math.max(0, (p.age ?? 23) - 22);
 export const isVeteranPS = (p) => proYears(p) > 2 && (p.age ?? 23) > 24;
 const vested = (p) => proYears(p) >= 4;
 
-export function psEligible(team, p) {
+/**
+ * Practice squads are for developmental / fringe players: anyone clearly good enough to be a backup or better
+ * (within PS_GAP of the league's starter level at his position, `levels` from posLevels) wants a real contract
+ * instead. Without this, stars signed for $0.25M and moved up to the 53 for the minimum.
+ */
+export const PS_GAP = 7;
+export const psTooGood = (p, levels) => !!levels && (p.ovr ?? 0) > (levels[p.pos] ?? 99) - PS_GAP;
+
+export function psEligible(team, p, levels = null) {
   const ps = team.ps || [];
-  if (ps.length >= PS_MAX || p.career) return false;
+  if (ps.length >= PS_MAX || p.career || psTooGood(p, levels)) return false;
   return !isVeteranPS(p) || ps.filter(isVeteranPS).length < PS_VETERANS;
 }
 
 /** Move a player (from the roster or the free agents) onto the practice squad. */
-export function addToPS(team, p) {
-  if (!psEligible(team, p)) return false;
+export function addToPS(team, p, levels = null) {
+  if (!psEligible(team, p, levels)) return false;
   if (team.roster.includes(p)) releasePlayer(team, p.id);
   p.practiceSquad = true;
   p.elevations ||= 0;
@@ -38,14 +47,19 @@ export function addToPS(team, p) {
   return true;
 }
 
-/** Sign a practice-squad player to the 53 (needs a spot). */
-export function promoteFromPS(team, p) {
+/** What a practice-squad player asks to sign to the 53: an in-season deal like any free agent's (60% of market). */
+export const promoteAsk = (p) => Math.max(MIN_SALARY, Math.round(marketValue(p) * 0.6 * 20) / 20);
+
+/** Sign a practice-squad player to the 53: needs a spot and cap room for his asking price (`cap` given). */
+export function promoteFromPS(team, p, cap = null) {
   const ps = team.ps || [];
   const i = ps.indexOf(p);
   if (i < 0 || activeRoster(team) >= ROSTER_MAX) return false;
+  const ask = promoteAsk(p);
+  if (cap !== null && !fits(team, ask, 0, cap)) return false;
   ps.splice(i, 1);
   delete p.practiceSquad; delete p.elevated;
-  p.salary = Math.max(p.salary || 0, 0.9); p.years = Math.max(p.years || 1, 1);
+  p.salary = ask; p.years = 1;
   addPlayer(team, p);
   return true;
 }

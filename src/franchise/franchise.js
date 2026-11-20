@@ -18,7 +18,7 @@ import { revertElevations, cpuElevations, release as releaseToWaivers, processWa
 import { cutDown } from './offseason.js';
 import { buildDepthChart } from '../data/depthChart.js';
 import { cpuSignFreeAgents, addFreeAgent, ensureSpecialists } from './freeAgents.js';
-import { fits } from './contracts.js';
+import { fits, chargeRelease } from './contracts.js';
 import { ensurePicks, weeklyOffers, cpuPickTrade } from './trades.js';
 import { ensureDraftClass, weeklyScouting } from './draftClass.js';
 import { ensureCoaches } from '../data/extraCSV.js';
@@ -151,6 +151,7 @@ export function upgradeFranchise(f, teams) {
 
 /** A team released a player: young players go on waivers for a week, vested veterans straight to free agency. */
 export function releasedPlayer(f, teams, team, p) {
+  chargeRelease(f, team, p); // dead money
   f.teamsIdx = (t) => teams.indexOf(t);
   const to = releaseToWaivers(f, team, p, (q) => addFreeAgent(f, q));
   delete f.teamsIdx;
@@ -409,6 +410,7 @@ export function startNextSeason(f, teams) {
   f.stats = {};
   f.playoffs = null;
   resetPSSeason(teams);
+  for (const t of teams) { t.deadCap = t.deadNext || 0; t.deadNext = 0; } // last season's dead money is gone, offseason cuts land
   poolAfterOffseason(f, f.offseason?.pool); // the unsigned are next season's free agents
   f.offseason = null;
 }

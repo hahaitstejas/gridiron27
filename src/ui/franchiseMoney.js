@@ -13,7 +13,8 @@ const back = (fn, label = 'Back') => { const b = el('div.start-btn', { text: lab
 /** One line for the hub: payroll and cap space. */
 export function capLine(f, team) {
   const pay = payroll(team);
-  return `Payroll ${money(pay)} of ${money(f.cap)} · ${pay > f.cap ? 'over the cap by ' + money(pay - f.cap) : money(f.cap - pay) + ' cap space'}`;
+  const dead = team.deadCap ? ` (incl. ${money(team.deadCap)} dead money)` : '';
+  return `Payroll ${money(pay)}${dead} of ${money(f.cap)} · ${pay > f.cap ? 'over the cap by ' + money(pay - f.cap) : money(f.cap - pay) + ' cap space'}`;
 }
 
 export function contractsScreen(ui, sortBy = 0) {

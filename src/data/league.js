@@ -30,6 +30,7 @@ export function serializeLeague(teams, { name = 'My League', playAs = null, fran
         stadium: t.stadium ? { ...t.stadium } : undefined,
         retired: t.retired ? [...t.retired] : undefined,
         irReturns: t.irReturns || 0,
+        deadCap: t.deadCap || 0, deadNext: t.deadNext || 0, // franchise dead money ($M)
         depth: Object.fromEntries(Object.entries(t.depth || {}).map(([k, v]) => [k, [...v]])),
       };
     }),

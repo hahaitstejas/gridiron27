@@ -23,6 +23,7 @@ export class FieldLines {
   set(losX, firstX, down = null) {
     this.los.position.x = losX;
     this.los.visible = losX !== null;
+    this.los.material.color.setHex(down === 4 ? 0xff3b2f : 0x2a7bff); // 4th down: the line of scrimmage turns red
     this.first.visible = firstX !== null && Math.abs(firstX) < 50;
     if (firstX !== null) this.first.position.x = firstX;
     const c = this.chains;

@@ -198,6 +198,14 @@ export function makePick(f, teams, id = null) {
   const team = teams[pick.team];
   let p = id !== null ? d.cls.find((q) => q.id === id) : null;
   if (!p) p = [...d.cls].sort((a, b) => draftValue(team, b) - draftValue(team, a))[0];
+  // Pick grade (your picks): where his true value ranks among the prospects still on the board, against the pick spent.
+  if (pick.team === f.userTeam) {
+    const tv = (q) => (q.ovr ?? 0) + Math.max(0, (q.pot ?? q.ovr ?? 0) - (q.ovr ?? 0)) * 0.5 - Math.max(0, (q.age ?? 22) - 22) * 0.6;
+    const ahead = d.cls.filter((q) => q !== p && tv(q) > tv(p)).length; // better prospects (true value) left on the board
+    const g = ahead === 0 ? ['A', 'GREAT PICK'] : ahead <= 3 ? ['B+', 'GOOD PICK'] : ahead <= 10 ? ['B', 'SOLID PICK'] : ahead <= 25 ? ['C', 'REACH'] : ['D', 'BIG REACH'];
+    const trueRank = ahead + 1;
+    d.lastGrade = { at: d.at, name: `${p.first} ${p.last}`, pos: p.pos, letter: g[0], word: g[1], trueRank, pick: d.at + 1 };
+  }
   d.cls.splice(d.cls.indexOf(p), 1);
   p.salary = rookieSalary(d.at + 1);
   p.rookieYear = f.year + 1; // the draft happens before next season

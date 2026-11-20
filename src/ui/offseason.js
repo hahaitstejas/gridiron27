@@ -163,6 +163,10 @@ function draft(ctx, ui, f, focus = 0, filter = 0) {
       button('Sim the rest of the draft', () => { finishDraft(f, teams); save(ctx); offseasonScreen(ctx, ui); }, '.secondary'),
     ];
   }
+  // Your last pick's grade (shown until the next pick of yours).
+  const lg = d.lastGrade && d.at - d.lastGrade.at <= 8 ? d.lastGrade : null;
+  const gradeCard = lg ? el('div.dr-grade', {}, el('small', { text: `${lg.pos} ${lg.name.toUpperCase()}` }), el('b', { text: lg.word }),
+    el('div.dr-gl', {}, el('span.dr-letter', { text: lg.letter }), el('span', { text: `#${lg.trueRank} on the board by true value when you took him (pick ${lg.pick})` }))) : null;
   // Slide 8: the clock panel, the focused prospect's header, the board, and the wall of picks so far.
   const ot = teams[pick.team];
   const clock = el('div.dr-clock', { style: { '--tc': ot.colors.primary } }, logoCanvas(ot.logo, 54),
@@ -179,7 +183,7 @@ function draft(ctx, ui, f, focus = 0, filter = 0) {
   else showProspect(null);
   const wall = el('div.dr-wall', {}, d.picks.slice(Math.max(0, d.at - 24), d.at).map((pk) => el('div.dr-tile', { style: { '--tc': teams[pk.team].colors.primary } },
     logoCanvas(teams[pk.team].logo, 30), el('div', {}, el('small', { text: `R${pk.round} P${pk.pick} · ${pk.player.pos}` }), el('b', { text: (pk.player.first ? `${pk.player.first[0]}. ${pk.player.last}` : pk.player.name.replace(/^(\S)\S*\s/, '$1. ')).toUpperCase() })))));
-  ctx.screens.frame('stats-screen dr-screen', el('div.dr-top', {}, clock, head),
+  ctx.screens.frame('stats-screen dr-screen', el('div.dr-top', {}, clock, head, gradeCard),
     el('div.dr-body', {}, mine ? el('div.dr-board', {}, el('div.pc-tabs', {}, POS_TABS.map(([n], i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: n }))), el('div.st-row.st-head', {}, ['POS', 'PROSPECT', 'AGE', 'OVR', 'POT'].map((h, i) => el(`span.${i === 1 ? 'st-name' : i === 0 ? 'dc-pos' : 'st-num'}`, { text: h }))), el('div.st-table', {}, rows))
       : el('div.dr-board', {}, el('div.dc-head', { text: 'Your picks' }), el('div.st-table', {}, myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' }))),
       el('div.dr-side', {}, el('div.dc-head', { text: 'Draft board' }), wall, el('div.dc-head', { text: 'Your roster' }), needsPanel(teams[f.userTeam]))),

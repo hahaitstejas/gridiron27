@@ -508,6 +508,14 @@ applied by `deserializeLeague` → `setLeagueInfo`). Edited in League → Teams 
 (`makeFieldCanvas(home, away, { championship })`) paints the league logo at both 25-yard lines and, in the
 championship game (`renderer.setTeams(..., { championship })` from startGame), at midfield.
 
+### Broadcast touches (UPDATE 5.0)
+The line of scrimmage turns red on 4th down (lines.js); the slanted down & distance / play clock tag sits on the turf beside the
+ball before every scrimmage snap (hud `artOverlay(..., names)`: RT still adds the names; never on kicks or fakes); a touchdown
+is a full-width team-color lower third (`hud.tdBand`); catch type / going for the pick confirm with a top-right pill
+(`hud.pill`); lining up a field goal shows an "ABR 42 YARD FG" chip (`#kickchip`); defensive play art labels each zone
+(`playArt` zone `label` → `hud.zoneLabels`); the franchise gameday lights the better OVR/OFF/DEF badge green with the team's
+letters huge behind its logo; your draft picks get a grade (`d.lastGrade` in offseason.js `makePick`, `.dr-grade`).
+
 ### Scorebug
 `Hud.renderBug()`: a full-width bar along the bottom (layout from the user's design): GRIDIRON 27 | away logo panel |
 `(rec) AWY [timeout bars] • score × score • HOM (rec)` (dot = possession) | home logo panel | quarter, clock and a boxed

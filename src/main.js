@@ -871,7 +871,9 @@ function frameBody(now) {
     if (rtNow < 0.25) artReleased = true;
     const showArt = sim && artReleased && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
       && session.humanTeam !== null && session.humanTeam !== undefined && (input.frame.rt || 0) > 0.5 && !SPECIAL_ART.has(sim.offPlay.type);
-    renderer.playArt.update(showArt ? playArt(sim, session.humanTeam) : null, dt);
+    const art = showArt ? playArt(sim, session.humanTeam) : null;
+    renderer.playArt.update(art, dt);
+    hud.zoneLabels(art?.zones, renderer); // each zone's name painted over it (DEEP THIRD, HOOK MIDDLE, CURL FLAT...)
     hud.readout(showArt && session.humanSide === 'offense' ? coverageRead(sim) : null);
     artView = !!showArt;
     const b = renderer.ball.position;

@@ -83,7 +83,7 @@ function defenseArt(sim, out) {
       if (!z) continue;
       const c = sim.toWorld(z.down, z.lat);
       const color = z.deep ? ART_COLORS.deepZone : ART_COLORS.zone;
-      out.zones.push({ x: c.x, z: c.z, rx: z.r * 0.55, rz: z.r * 0.75, color });
+      out.zones.push({ x: c.x, z: c.z, rx: z.r * 0.55, rz: z.r * 0.75, color, label: a.slice(5).replace(/_[lr]$/, '').replace(/_/g, ' ').toUpperCase() });
       out.lines.push({ pts: [from, c], color, dashed: true, width: 0.18 });
     } else if (a.startsWith('man:')) {
       const r = man.get(d.id);

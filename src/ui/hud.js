@@ -24,7 +24,7 @@ export class Hud {
       <div id="tags"><div class="tag me"></div><div class="tag other"></div></div>
       <div id="banner" class="hidden"><div class="big"></div><div class="small"></div></div>
       <div id="intro" class="hidden"></div><div id="halfcard" class="hidden"></div><div id="pbp" class="hidden"><span class="pb-tag"></span><span class="pb-text"></span></div><div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
-      <div id="ticker"></div>
+      <div id="ticker"></div><div id="pill" class="hidden"></div><div id="tdband" class="hidden"></div><div id="kickchip" class="hidden"></div>
       <div id="callout"></div>
       <div id="statcard" class="hidden"></div>
       <div id="audible" class="hidden"></div>
@@ -166,7 +166,9 @@ export class Hud {
     if (k === 'score') {
       const what = session.match.lastScore?.what || 'Score';
       const big = /touchdown|pick six/i.test(what) ? (/pick six/i.test(what) ? 'PICK SIX!' : 'TOUCHDOWN!') : /field goal/i.test(what) ? 'FIELD GOAL' : /safety/i.test(what) ? 'SAFETY' : /PAT/.test(what) ? 'EXTRA POINT' : /2-point/.test(what) ? 'TWO-POINT CONVERSION' : what.toUpperCase();
-      this.banner(big, msg.text.replace(/^[^!]*!\s*/, ''), 2.6, 'score');
+      const st0 = session.match.lastScore?.team;
+      if (/TOUCHDOWN|PICK SIX/.test(big) && session.teams[st0]) this.tdBand(session.teams[st0], big.replace(/!$/, ''));
+      else this.banner(big, msg.text.replace(/^[^!]*!\s*/, ''), 2.6, 'score');
       // The scorebug's middle turns into the scoring team's TOUCHDOWN / FIELD GOAL bar for a few seconds (slide 6).
       const st = session.match.lastScore?.team;
       if (st !== undefined && !/PAT|2-point/.test(what)) { this.bugTake = { text: big.replace(/!$/, ''), team: st, until: performance.now() + 5000 }; this._bugKey = null; }
@@ -244,7 +246,7 @@ export class Hud {
    * Hold-RT play art (slide 4): last names under your eleven and a down & distance / play clock badge by the ball.
    * Elements are pooled; text is only rewritten when it changes (no per-frame layout work).
    */
-  artOverlay(sim, renderer, session) {
+  artOverlay(sim, renderer, session, names = true) {
     if (!this._art) {
       const box = document.createElement('div');
       box.id = 'artlayer';
@@ -257,11 +259,12 @@ export class Hud {
     A.box.style.display = 'block';
     const team = session.humanTeam;
     // Skill players and the QB (linemen bunch up and their names would pile on each other).
-    const mine = sim.players.filter((p) => p.team === team && !['T', 'G', 'C', 'DT'].includes(p.pos));
+    const mine = names ? sim.players.filter((p) => p.team === team && !['T', 'G', 'C', 'DT'].includes(p.pos)) : [];
     while (A.names.length < mine.length) { const d = document.createElement('div'); d.className = 'art-name'; A.box.append(d); A.names.push(d); }
     const bugTop = this._bugTop || innerHeight;
     A.names.forEach((d, i) => {
       const p = mine[i];
+      if (!p) { d.style.display = 'none'; return; }
       const s = p && renderer.project(p.x, 0, p.z);
       if (!p || !s.visible) { d.style.display = 'none'; return; }
       const words = (p.name || '').split(' ').filter((w) => !/^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(w));
@@ -346,6 +349,39 @@ export class Hud {
     this.calloutAt = performance.now();
   }
 
+  /** Touchdown lower third: a full-width band in the scoring team's color, its name over a giant TOUCHDOWN. */
+  tdBand(team, word = 'TOUCHDOWN') {
+    const b = this.$('tdband');
+    b.style.setProperty('--tc', team.colors?.primary || '#1f3a8a');
+    b.innerHTML = `<div class="tdb-team">${(team.city + ' ' + team.name).toUpperCase()}</div><div class="tdb-word">${word}</div>`;
+    b.classList.remove('hidden', 'show'); void b.offsetWidth; b.classList.add('show');
+    clearTimeout(this._tdT); this._tdT = setTimeout(() => b.classList.add('hidden'), 3400);
+  }
+
+  /** Zone names over the defensive play art (projected to the screen). */
+  zoneLabels(zones, renderer) {
+    const box = (this._zl ||= (() => { const d = document.createElement('div'); d.id = 'zonelabels'; this.root.append(d); return d; })());
+    const list = zones || [];
+    while (box.children.length < list.length) box.append(document.createElement('div'));
+    [...box.children].forEach((d, i) => {
+      const z = list[i];
+      const s = z && renderer.project(z.x, 0, z.z);
+      if (!z || !z.label || !s.visible) { d.style.display = 'none'; return; }
+      if (d.textContent !== z.label) d.textContent = z.label;
+      d.style.display = 'block';
+      d.style.transform = `translate(${Math.round(s.x)}px, ${Math.round(s.y)}px) translate(-50%, -50%)`;
+    });
+  }
+
+  /** Top-right callout pill with the button that did it (catch type, going for the pick...). */
+  pill(text, btn, color = '#2fbf5a', ms = 1500) {
+    const p = this.$('pill');
+    p.style.setProperty('--pc', color);
+    p.innerHTML = `<span>${text}</span>${btn ? `<b class="btn ${btn}">${btn}</b>` : ''}`;
+    p.classList.remove('hidden', 'show'); void p.offsetWidth; p.classList.add('show');
+    clearTimeout(this._pillT); this._pillT = setTimeout(() => p.classList.add('hidden'), ms);
+  }
+
   ticker(text) {
     const t = this.$('ticker');
     const d = document.createElement('div');
@@ -358,6 +394,24 @@ export class Hud {
 
   /** Update everything that depends on the game state. */
   update(session, renderer, dt, frameMs, playcallOpen) {
+    // Catch-type / go-for-the-pick confirmation pill (top right).
+    const bl = session.sim?.ball;
+    const ct = bl && bl.state === 'air' ? (bl.catchType || (bl.pickT ? 'pick' : null)) : null;
+    if (ct && ct !== this._ct) {
+      const P = { aggressive: ['AGGRESSIVE CATCH!', 'Y', '#e0a01a'], rac: ['RUN AFTER CATCH!', 'X', '#2a7bff'], possession: ['POSSESSION CATCH!', 'B', '#2fbf5a'], pick: ['GOING FOR THE PICK!', 'Y', '#e04a3a'] }[ct];
+      if (P) this.pill(P[0], P[1], P[2]);
+    }
+    this._ct = ct;
+    // Field goal chip (bottom left) while lining up a kick: "ABR 42 YARD FG".
+    const ks = session.sim;
+    const fgOn = ks && ks.state === 'presnap' && session.state === 'presnap' && !playcallOpen && (ks.offPlay?.type === 'fg' || (ks.fakeLook && ks.offPlay?.fake === 'fg'));
+    const kc = this.$('kickchip');
+    kc.classList.toggle('hidden', !fgOn);
+    if (fgOn) {
+      const m = session.match, t = session.teams[m.possession];
+      const html = `<span class="kc-abbr" style="--tc:${t?.colors?.primary || '#333'}">${t?.abbr || ''}</span>${fgDistance(m.phase === 'try' ? 85 : m.yardLine)} YARD ${m.phase === 'try' ? 'PAT' : 'FG'}`;
+      if (kc._h !== html) { kc._h = html; kc.innerHTML = html; }
+    }
     this._bugTop = this.$('scorebug').getBoundingClientRect().top; // read layout before this frame's writes
     const m = session.match;
     const sim = session.sim;
@@ -521,7 +575,9 @@ export class Hud {
     this.placeTag(tagMe, me && me.team === session.humanTeam ? me : null, renderer, session);
     this.placeTag(tagOther, carrier && carrier !== me ? carrier : null, renderer, session);
 
-    this.artOverlay(this.artOn && !playcallOpen ? sim : null, renderer, session);
+    // The slanted down & distance tag sits on the turf beside the ball before every scrimmage snap; holding RT adds the names.
+    const tagOn = sim && !playcallOpen && sim.state === 'presnap' && session.state === 'presnap' && session.match.phase === 'scrimmage' && !sim.isKick && !sim.offPlay.fake; // (fakes stay off it: a real punt shows none)
+    this.artOverlay((this.artOn || tagOn) && !playcallOpen ? sim : null, renderer, session, !!this.artOn);
 
     // Receiver icons while the human QB can still throw.
     // 2 players: every eligible man keeps a button before the snap and, on a run, until the handoff (play action / draws

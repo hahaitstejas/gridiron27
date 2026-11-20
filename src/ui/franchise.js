@@ -331,10 +331,12 @@ export class FranchiseUI {
     }
     let center;
     if (g && !g.score) {
+      const rAway = teamRatings(teams[g.away]), rHome = teamRatings(teams[g.home]);
       const side = (ti, al) => {
-        const t = teams[ti], r = teamRatings(t), rec = recordOf(f, teams, ti);
-        const badges = el('div.gd-badges', {}, [['OVR', r.ovr], ['OFF', r.off], ['DEF', r.def]].map(([l, v]) => el('div.gd-badge', {}, el('b', { text: String(v) }), el('small', { text: l }))));
-        return el(`div.gd-team.${al}`, { style: { '--tc': t.colors.primary } }, el('div.gd-logo', {}, logoCanvas(t.logo, 190)), badges,
+        const t = teams[ti], r = ti === g.home ? rHome : rAway, o = ti === g.home ? rAway : rHome, rec = recordOf(f, teams, ti);
+        // The better side of each rating matchup is lit green.
+        const badges = el('div.gd-badges', {}, [['OVR', 'ovr'], ['OFF', 'off'], ['DEF', 'def']].map(([l, k]) => el(`div.gd-badge${r[k] > o[k] ? '.better' : ''}`, {}, el('b', { text: String(r[k]) }), el('small', { text: l }))));
+        return el(`div.gd-team.${al}`, { style: { '--tc': t.colors.primary } }, el('div.gd-ghost', { text: t.abbr }), el('div.gd-logo', {}, logoCanvas(t.logo, 190)), badges,
           el('div.gd-name', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() }), el('span', { text: recText(rec) })));
       };
       const cond = gameConditions(f, g);

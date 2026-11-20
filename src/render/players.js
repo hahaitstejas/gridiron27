@@ -1009,6 +1009,124 @@ function holdingKick(p, sim) {
   return sim.state === 'presnap' || b.state === 'snap' || (b.state === 'held' && b.carrier === p.id);
 }
 
+// ---- Pre-snap stances (UPDATE 5.0) ----
+// Keyed to the position and where he lined up, never to the play call (2 players share a screen: no tells).
+// Angles: lean bends the chest forward from the lower spine (the pelvis stays upright), so an arm points straight
+// down at pitch ≈ lean; leg `hip` swings the thigh forward from the upright pelvis; crouch lowers the hips.
+const OL_POS = new Set(['T', 'G', 'C']);
+const stanceLoc = (p, sim) => (sim && sim.toLocal ? sim.toLocal(p.x, p.z) : { down: 0, lat: 0 });
+const breathe = (time, p) => Math.sin(time * 1.6 + p.id * 0.7) * 0.012; // a little life while he waits
+
+/** Three- (and four-) point stances: linemen, inline tight ends. */
+function stance3(pose, p, sim, time) {
+  const L = stanceLoc(p, sim);
+  const front = L.lat > 0 ? 1 : 0, back = 1 - front; // the outside foot is back (a right tackle drops his right foot)
+  const hand = L.lat > 0 ? 1 : 0; // the down hand is on the side of the back foot
+  if (p.pos === 'C' || p.slot === 'C') {
+    // Center: feet square and wide, hips high, both hands on the ball (the snap hand reaching furthest).
+    pose.crouch = -0.36; pose.lean = 1.2; pose.head = -0.75;
+    pose.legs[0].hip = pose.legs[1].hip = 0.95; pose.legs[0].knee = pose.legs[1].knee = 1.45;
+    pose.legs[0].out = pose.legs[1].out = 0.32;
+    pose.arms[1].pitch = 1.5; pose.arms[1].elbow = 0.05; pose.arms[1].out = 0.02;
+    pose.arms[0].pitch = 1.3; pose.arms[0].elbow = 0.5; pose.arms[0].out = 0.08;
+    pose.rootY = breathe(time, p);
+    return;
+  }
+  const dl = p.side === 'D';
+  const four = dl && (p.slot === 'NT' || (p.pos === 'DT' && (p.id % 3) === 0)); // some interior linemen get in a four-point
+  // Offensive linemen sit back a little (they may pass set), defensive linemen load up with the hips above the shoulders.
+  pose.crouch = dl ? -0.33 : -0.37;
+  pose.lean = dl ? 1.3 : 1.12;
+  pose.head = dl ? -0.95 : -0.85; // eyes up at the man across from him
+  pose.legs[front].hip = dl ? 1.05 : 1.0; pose.legs[front].knee = dl ? 1.5 : 1.6;
+  pose.legs[back].hip = dl ? 0.55 : 0.62; pose.legs[back].knee = dl ? 1.35 : 1.4;
+  pose.legs[0].out = pose.legs[1].out = dl ? 0.24 : 0.2;
+  // The down hand: straight arm to the turf just inside the front foot; the other forearm rests on his thigh.
+  pose.arms[hand].pitch = pose.lean + 0.12; pose.arms[hand].elbow = 0.06; pose.arms[hand].out = 0.06;
+  if (four) {
+    pose.arms[1 - hand].pitch = pose.lean + 0.12; pose.arms[1 - hand].elbow = 0.06; pose.arms[1 - hand].out = 0.06;
+    pose.crouch -= 0.03; pose.lean += 0.08;
+  } else {
+    pose.arms[1 - hand].pitch = 0.62; pose.arms[1 - hand].elbow = 1.55; pose.arms[1 - hand].out = 0.12;
+  }
+  pose.rootY = breathe(time, p);
+  if (dl && sim?.state === 'presnap') pose.rootY += Math.max(0, Math.sin(time * 0.9 + p.id)) * 0.01; // coiled, rocking
+}
+
+/** Two-point stances by position. Returns false to fall back to the generic stance. */
+function stance2(pose, p, sim, time) {
+  const L = stanceLoc(p, sim);
+  const front = L.lat > 0 ? 0 : 1, back = 1 - front; // receivers: inside foot up
+  const presnap = sim?.state === 'presnap';
+  if (p.side !== 'D' && (p.pos === 'WR' || (p.pos === 'TE' && Math.abs(L.lat) > 5))) {
+    // Receiver: staggered sprinter's stance, weight on the front foot, front arm cocked, back hand loose.
+    pose.crouch = -0.16; pose.lean = 0.62; pose.head = -0.45;
+    pose.legs[front].hip = 0.62; pose.legs[front].knee = 0.85;
+    pose.legs[back].hip = -0.28; pose.legs[back].knee = 0.55;
+    pose.legs[0].out = pose.legs[1].out = 0.06;
+    pose.arms[back].pitch = 0.95; pose.arms[back].elbow = 1.45; // opposite arm to the front foot
+    pose.arms[front].pitch = -0.25; pose.arms[front].elbow = 1.1;
+    pose.rootY = breathe(time, p) * 0.5;
+    return true;
+  }
+  if (p.side !== 'D' && (p.pos === 'HB' || p.pos === 'FB')) {
+    // Back: square, hands resting on the thighs just above the knees, eyes up.
+    pose.crouch = -0.2; pose.lean = 0.78; pose.head = -0.55;
+    pose.legs[0].hip = pose.legs[1].hip = 0.62; pose.legs[0].knee = pose.legs[1].knee = 0.92;
+    pose.legs[0].out = pose.legs[1].out = 0.16;
+    pose.arms[0].pitch = pose.arms[1].pitch = 0.88; pose.arms[0].elbow = pose.arms[1].elbow = 0.32;
+    pose.arms[0].out = pose.arms[1].out = 0.16;
+    pose.rootY = breathe(time, p) * 0.5;
+    return true;
+  }
+  if (p.side === 'D' && p.pos === 'CB') {
+    // Corner: low, staggered, weight forward, hands loose in front, eyes in on the receiver / quarterback.
+    pose.crouch = -0.24; pose.lean = 0.72; pose.head = -0.5;
+    pose.legs[0].hip = 0.78; pose.legs[0].knee = 1.05; pose.legs[1].hip = 0.15; pose.legs[1].knee = 0.85;
+    pose.legs[0].out = pose.legs[1].out = 0.12;
+    pose.arms[0].pitch = pose.arms[1].pitch = 0.75; pose.arms[0].elbow = pose.arms[1].elbow = 0.9;
+    pose.arms[0].out = pose.arms[1].out = 0.08;
+    pose.rootY = presnap ? Math.abs(Math.sin(time * 2.4 + p.id)) * 0.02 : 0; // feet alive
+    return true;
+  }
+  if (p.side === 'D' && (p.pos === 'OLB' || p.pos === 'MLB')) {
+    const edge = p.pos === 'OLB' && Math.abs(L.lat) > 3.5 && Math.abs(L.down) < 2; // a standing edge rusher on the line
+    if (edge) {
+      // Two-point rush stance: staggered, outside foot back, hips sunk, hands up and ready.
+      const out = L.lat > 0 ? 0 : 1; // the defense's frame: lat is the offense's, but either way the outside foot drops
+      pose.crouch = -0.26; pose.lean = 0.85; pose.head = -0.6;
+      pose.legs[1 - out].hip = 0.85; pose.legs[1 - out].knee = 1.15; pose.legs[out].hip = 0.2; pose.legs[out].knee = 0.95;
+      pose.legs[0].out = pose.legs[1].out = 0.16;
+      pose.arms[0].pitch = pose.arms[1].pitch = 1.05; pose.arms[0].elbow = pose.arms[1].elbow = 1.35;
+      pose.arms[0].out = pose.arms[1].out = -0.05;
+      return true;
+    }
+    // Linebacker: square, hips down, hands up in front ready to take on a block, reading the backfield.
+    pose.crouch = -0.22; pose.lean = 0.7; pose.head = -0.5;
+    pose.legs[0].hip = pose.legs[1].hip = 0.7; pose.legs[0].knee = pose.legs[1].knee = 1.0;
+    pose.legs[0].out = pose.legs[1].out = 0.22;
+    pose.arms[0].pitch = pose.arms[1].pitch = 0.9; pose.arms[0].elbow = pose.arms[1].elbow = 1.2;
+    pose.arms[0].out = pose.arms[1].out = 0.02;
+    if (presnap) {
+      const ph = time * 1.7 + p.id * 1.3;
+      pose.rootY = Math.abs(Math.sin(ph * 2.2)) * 0.025;
+      if ((ph % 6) < 0.9) { pose.arms[1].pitch = 1.6; pose.arms[1].elbow = 0.1; pose.arms[1].out = Math.sin(p.id) * 0.5; pose.lean = 0.35; pose.head = -0.05; }
+    }
+    return true;
+  }
+  if (p.side === 'D' && (p.pos === 'FS' || p.pos === 'SS')) {
+    // Safety: taller, hands on the knees between looks, weight on the balls of his feet.
+    pose.crouch = -0.14; pose.lean = 0.62; pose.head = -0.5;
+    pose.legs[0].hip = 0.55; pose.legs[0].knee = 0.75; pose.legs[1].hip = 0.3; pose.legs[1].knee = 0.65;
+    pose.legs[0].out = pose.legs[1].out = 0.16;
+    pose.arms[0].pitch = pose.arms[1].pitch = 0.72; pose.arms[0].elbow = pose.arms[1].elbow = 0.35;
+    pose.arms[0].out = pose.arms[1].out = 0.18;
+    if (presnap && ((time * 1.7 + p.id * 1.3) % 6) < 0.9) { pose.arms[1].pitch = 1.6; pose.arms[1].elbow = 0.1; pose.arms[1].out = Math.sin(p.id) * 0.5; pose.lean = 0.25; pose.head = 0; }
+    return true;
+  }
+  return false;
+}
+
 function computePose(p, time, sim) {
   const sp = Math.hypot(p.vx, p.vz);
   const run = Math.min(1, sp / 8);
@@ -1036,12 +1154,10 @@ function computePose(p, time, sim) {
   };
   switch (holdingKick(p, sim) ? 'hold' : p.anim) {
     case 'stance3':
-      pose.crouch = -0.38; pose.lean = 1.15; pose.head = -0.9;
-      pose.legs[0].hip = 1.0; pose.legs[0].knee = 1.6; pose.legs[1].hip = 0.7; pose.legs[1].knee = 1.4;
-      pose.arms[1].pitch = 1.25; pose.arms[1].elbow = 0.1; pose.arms[0].pitch = 0.6; pose.arms[0].elbow = 1.0;
-      pose.legs[0].out = 0.15; pose.legs[1].out = 0.15;
+      stance3(pose, p, sim, time);
       break;
     case 'stance2':
+      if (stance2(pose, p, sim, time)) break;
       pose.crouch = -0.2; pose.lean = 0.5; pose.head = -0.35;
       pose.legs[0].hip = 0.6; pose.legs[0].knee = 0.9; pose.legs[1].hip = 0.15; pose.legs[1].knee = 0.6;
       pose.arms[0].pitch = 0.5; pose.arms[1].pitch = 0.5; pose.arms[0].elbow = pose.arms[1].elbow = 1.0;

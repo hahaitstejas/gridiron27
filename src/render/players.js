@@ -611,6 +611,7 @@ export class PlayerRenderer {
     if (sim?.ball?.state === 'air') this.airY = sim.ball.y;
     if (p.anim === 'pick') { const pk = (this.pickH ||= []); if (!pk[i] || p.animT < pk[i].t - 0.02) pk[i] = { h: this.airY ?? 1.5, t: p.animT }; else pk[i].t = p.animT; PICKH = Math.max(0, Math.min(1, (pk[i].h - 1.55) / 0.75)); }
     const pose = this.blend(i, holdingKick(p, sim) ? 'hold' : p.anim, computePose(p, time, sim), dt);
+    (this.ballHand ||= [])[i] = pose.ballHand ?? -1; // a QB reaching the ball out (handoff / fake): it rides in that hand
     if (!official) kickWindup(p, sim, pose);
     if (!official) this.limp(i, p, pose, dt);
     if (pileLift) pose.rootY += pileLift; // on top of the pile
@@ -868,8 +869,10 @@ export class PlayerRenderer {
     const p = sim.players[i];
     const hs = this.hands[i], cr = this.cradle[i];
     const twoHands = p.anim === 'stance_qb' || p.anim === 'passset' || p.anim === 'reach' || p.anim === 'catch' || p.anim === 'pick'
-      || (p.task?.type === 'qb_pass' && !sim.passThrown && p.anim !== 'throw');
+      || ((p.task?.type === 'qb_pass' || p.task?.type === 'qb_handoff') && !sim.passThrown && p.anim !== 'throw');
     if (hs && p.anim === 'throw') { if (quat) quat.copy(this.foreQ[i][1]).multiply(Q_ALONG); return out.copy(hs[1]); }
+    const bh = this.ballHand?.[i] ?? -1;
+    if (hs && bh >= 0) { if (quat) quat.setFromAxisAngle(Y_AXIS, -p.facing); return out.copy(hs[bh]); }
     if (hs && twoHands) {
       // Between the hands, the ball crosswise to the body (as a passer holds it at the chest, or a catcher secures it).
       out.copy(hs[0]).add(hs[1]).multiplyScalar(0.5);
@@ -1201,16 +1204,31 @@ function computePose(p, time, sim) {
       pose.arms[0].elbow = pose.arms[1].elbow = 1.05;
       pose.arms[0].out = pose.arms[1].out = -0.22;
       break;
-    case 'block':
+    case 'block': {
+      // Engaged (UPDATE 5.0): chest to chest, hands inside on the other man's pads, hips low, feet choppy. Who is winning
+      // (engagement balance) shows: the winner sinks and drives with straight arms, the loser stands up, leans back on his
+      // heels and his arms bend as he gets walked back.
+      const e = p.engagement;
+      const bal = e ? Math.max(-1, Math.min(1, (e.bal || 0) / 12)) : 0; // > 0: the defender is winning
+      const win = e ? (e.d === p ? bal : -bal) : 0;
       runLegs(Math.min(0.5, run * 0.6));
-      pose.crouch = -0.22; pose.lean = 0.55;
-      pose.legs[0].out = pose.legs[1].out = 0.25;
-      pose.legs[0].knee += 0.5; pose.legs[1].knee += 0.5;
-      pose.legs[0].hip += 0.35; pose.legs[1].hip += 0.35;
-      pose.arms[0].pitch = pose.arms[1].pitch = 1.35 + Math.sin(time * 9 + p.id) * 0.1;
-      pose.arms[0].elbow = pose.arms[1].elbow = 0.6;
-      pose.arms[0].out = pose.arms[1].out = -0.05;
+      pose.legs[0].hip *= 0.6; pose.legs[1].hip *= 0.6;
+      const chop = Math.sin(time * 11 + p.id) * 0.06; // short choppy steps in place
+      pose.crouch = -0.24 - 0.06 * Math.max(0, win) + 0.08 * Math.max(0, -win);
+      pose.lean = 0.62 + 0.25 * win;
+      pose.head = -0.35 - 0.15 * win; // eyes up through the man in front
+      pose.legs[0].out = pose.legs[1].out = 0.27;
+      pose.legs[0].knee += 0.55 + chop; pose.legs[1].knee += 0.55 - chop;
+      pose.legs[0].hip += 0.4 + chop * 0.5; pose.legs[1].hip += 0.4 - chop * 0.5;
+      const punch = Math.sin(time * 8 + p.id * 1.7) * 0.08;
+      for (const [s, a] of pose.arms.entries()) {
+        a.pitch = pose.lean + 0.62 + (s ? punch : -punch); // forearms up to his chest height
+        a.elbow = 0.35 + 0.65 * Math.max(0, -win) + (s ? -punch : punch);
+        a.out = -0.16; // hands inside
+      }
+      pose.twist = Math.sin(time * 3 + p.id) * 0.06 + (e && e.d === p ? 0.12 * bal * (p.id % 2 ? 1 : -1) : 0); // rusher works an edge
       break;
+    }
     case 'backpedal':
       // A defensive back's pedal: low (hips sunk, knees bent), chest over his toes, eyes up on the quarterback, arms
       // bent and pumping short.
@@ -1620,6 +1638,11 @@ function computePose(p, time, sim) {
     default: // run
       runLegs(Math.min(1.05, 0.25 + run * 0.85));
   }
+  // Quarterback before the throw / handoff (UPDATE 5.0): the ball rides high at the chest in both hands; on a drop his
+  // shoulders turn side-on (throwing shoulder back); a play-action fake reaches the ball out toward the back and pulls it
+  // back; on a handoff the arm on the back's side extends the ball into his belly. The back forms a pocket at the mesh.
+  const qbDone = qbCarriage(pose, p, sim, time);
+  rushMoveOverlay(pose, p, sim);
   // Sacked: a passer who goes down with the ball clutches it in both hands at his chest (ball security), arms off the springs.
   const sb = sim?.ball;
   if (sb && sb.carrier === p.id && sb.state === 'held' && p.task?.type === 'qb_pass' && !sim.passThrown && (p.anim === 'falling' || p.anim === 'down' || p.anim === 'getup')) {
@@ -1628,7 +1651,7 @@ function computePose(p, time, sim) {
   }
   // A ball carrier cradles it in the right arm (both arms when protecting it) instead of pumping that arm.
   const b = sim?.ball;
-  if (b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
+  if (!qbDone && b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
     const left = p.ballArm === -1;
     const a = pose.arms[left ? 0 : 1];
     a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;
@@ -1637,6 +1660,91 @@ function computePose(p, time, sim) {
   }
   return pose;
 }
+/**
+ * Pass-rush moves on top of the block / run pose for a short beat (sim marks `p.moveVis` when a rusher tries a move or
+ * sheds a block): swim = the arm on the far side whips over the blocker's shoulder; rip = an uppercut from under his
+ * arm; spin = the whole body turns through; bull = straight arms, low drive.
+ */
+function rushMoveOverlay(pose, p, sim) {
+  const mv = p.moveVis;
+  if (!mv || !sim) return;
+  const dt = sim.t - mv.t;
+  if (dt < 0 || dt > 0.5) return;
+  const k = Math.sin(Math.PI * Math.min(1, dt / 0.5)); // in and out
+  const s = mv.side > 0 ? 1 : 0, a = pose.arms[s], o = pose.arms[1 - s];
+  switch (mv.kind) {
+    case 'swim': // over the top
+      a.pitch = a.pitch + (2.35 - a.pitch) * k; a.elbow = a.elbow + (1.45 - a.elbow) * k; a.out = a.out + (-0.25 - a.out) * k; // over his head, across
+      o.pitch = o.pitch + (0.75 - o.pitch) * k; o.elbow = o.elbow + (0.25 - o.elbow) * k; o.out = 0.1; // the other hand clubs the blocker's arm down
+      pose.twist += (s ? -0.4 : 0.4) * k; pose.lean += 0.15 * k;
+      break;
+    case 'rip': // under and up
+      a.pitch = a.pitch + (0.4 + 1.25 * Math.min(1, dt / 0.3) - a.pitch) * k; a.elbow = a.elbow + (1.75 - a.elbow) * k; a.out = -0.1;
+      pose.twist += (s ? -0.45 : 0.45) * k; pose.lean += 0.25 * k; pose.crouch -= 0.06 * k;
+      break;
+    case 'spin': // a full turn through the blocker
+      pose.rootYaw += (s ? -1 : 1) * Math.PI * 2 * Math.min(1, dt / 0.42) * (dt < 0.42 ? 1 : 0);
+      a.pitch = 1.2; a.elbow = 1.5; o.pitch = 0.6; o.elbow = 1.6;
+      break;
+    case 'bull': // straight arms, drive
+      for (const q of pose.arms) { q.pitch = q.pitch + (pose.lean + 0.55 - q.pitch) * k; q.elbow = q.elbow * (1 - k) + 0.08 * k; q.out = -0.14; }
+      pose.lean += 0.2 * k; pose.crouch -= 0.06 * k;
+      break;
+  }
+}
+
+const QB_CARRY = new Set(['run', 'backpedal', 'shuffle', 'idle', 'passset']);
+const sideOf = (p, x, z) => { // which arm is nearer a point: 0 = left, 1 = right (facing +x, +z is his right)
+  const dx = x - p.x, dz = z - p.z;
+  return Math.cos(p.facing) * dz - Math.sin(p.facing) * dx > 0 ? 1 : 0;
+};
+/** Returns true when it set the arms for a quarterback holding the ball (or a back taking a handoff). */
+function qbCarriage(pose, p, sim, time) {
+  if (!sim || sim.state !== 'live') return false;
+  const b = sim.ball, tk = p.task;
+  // The back at the mesh: inside arm up across the chest, outside arm under it.
+  if (tk?.type === 'run_path' && !sim.handedOff && b.state === 'held') {
+    const qb = sim.players[b.carrier];
+    if (qb && qb.slot === 'QB' && Math.hypot(qb.x - p.x, qb.z - p.z) < 2.6) {
+      const inside = sideOf(p, qb.x, qb.z);
+      const up = pose.arms[inside], low = pose.arms[1 - inside];
+      up.pitch = 1.45; up.elbow = 1.75; up.out = -0.3; up.twist = 0;
+      low.pitch = 0.45; low.elbow = 1.7; low.out = -0.35; low.twist = 0;
+      pose.carryArm = 2;
+      return true;
+    }
+    return false;
+  }
+  if (b.carrier !== p.id || b.state !== 'held' || sim.passThrown || !QB_CARRY.has(p.anim)) return false;
+  if (tk?.type !== 'qb_pass' && tk?.type !== 'qb_handoff') return false;
+  for (const a of pose.arms) { a.pitch = 0.62; a.elbow = 1.95; a.out = -0.3; a.twist = 0; }
+  pose.carryArm = 2;
+  if (tk.type === 'qb_pass') {
+    const sp = Math.hypot(p.vx, p.vz);
+    const along = sp > 0.3 ? (p.vx * Math.cos(p.facing) + p.vz * Math.sin(p.facing)) / sp : 0;
+    // Dropping back: side-on, throwing shoulder away from the line (more on a straight drop than on a rollout).
+    if (tk.phase === 'drop' && along < -0.2) pose.twist += -0.55 * Math.min(1, sp / 3);
+    else if (tk.phase === 'set') pose.rootY += Math.abs(Math.sin(time * 6.5 + p.id)) * 0.012; // light feet in the pocket
+    if (tk.fake && sim.t < tk.fake.until + 0.15) {
+      const k = Math.sin(Math.PI * Math.min(1, sim.t / (tk.fake.until + 0.15)));
+      const s = sideOf(p, tk.fake.x, tk.fake.z), a = pose.arms[s];
+      a.pitch = 0.62 + 0.75 * k; a.elbow = 1.95 - 1.6 * k; a.out = -0.3 + 0.35 * k;
+      if (k > 0.35) pose.ballHand = s;
+      pose.lean += 0.12 * k;
+    }
+  } else {
+    // Handoff: extend the ball into the back's belly as he arrives.
+    const rb = sim.players.find((q) => q.team === p.team && q.task?.type === 'run_path');
+    if (rb) {
+      const d = Math.hypot(rb.x - p.x, rb.z - p.z), k = Math.max(0, Math.min(1, (2.6 - d) / 1.4));
+      const s = sideOf(p, rb.x, rb.z), a = pose.arms[s];
+      a.pitch = 0.62 + 0.55 * k; a.elbow = 1.95 - 1.4 * k; a.out = -0.3 + 0.25 * k;
+      if (k > 0.35) pose.ballHand = s;
+    }
+  }
+  return true;
+}
+
 // Includes going down and getting up: a tackled runner keeps the ball cradled (drawn in his hand), so it never looks loose.
 const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stiffarm', 'stumble', 'hurdle', 'backpedal', 'falling', 'down', 'getup', 'dive', 'slide']);
 

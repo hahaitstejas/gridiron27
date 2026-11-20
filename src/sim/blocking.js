@@ -152,8 +152,10 @@ function updateEngagement(sim, e, dt) {
   if (e.t > 0.5 && rng.next() < rate * dt) shed(sim, e, gx, gz);
 }
 
-export function shed(sim, e, gx, gz) {
+export function shed(sim, e, gx, gz, kind = null) {
   const { b, d } = e;
+  // Render-only marker: the move the rusher beat him with (the arm swim / rip shows for a beat after the shed).
+  d.moveVis = { kind: kind || (d.id % 2 ? 'swim' : 'rip'), t: sim.t, side: Math.sign((gz - d.z) * Math.cos(d.facing) - (gx - d.x) * Math.sin(d.facing)) || 1 };
   sim.breakEngagement(e);
   d.noEngageT = 1.0;
   b.state = 'stumble';
@@ -186,6 +188,7 @@ export function passRushMove(sim, d, type) {
   // Quick get-off (a move early in the rep) helps; each extra blocker hurts.
   const p = Math.max(0.12, Math.min(0.85, 0.2 + edge * 0.013 + (e.t < 1 ? 0.06 : 0) - e.helpers.length * 0.18));
   sim.emit('rushMove', { player: d.id, kind: type });
+  d.moveVis = { kind: type, t: sim.t, side: d.id % 2 ? 1 : -1, tried: true }; // render-only: the attempt shows even if it fails
   const qb = sim.bySlot(sim.offIdx, 'QB');
   const roll = sim.rng.next();
   if (roll < p) {
@@ -194,9 +197,9 @@ export function passRushMove(sim, d, type) {
     if (type === 'bull') {
       // Walk the blocker back into the pocket; often that's enough to shed him too.
       e.bal += 18;
-      if (sim.rng.next() < 0.3) shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z);
+      if (sim.rng.next() < 0.3) shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z, 'bull');
     } else {
-      shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z);
+      shed(sim, e, qb ? qb.x : d.x, qb ? qb.z : d.z, type);
       if (type === 'spin') { d.speedCap = 1; d.recoverAt = 0; }
     }
     sim.emit('rushWin', { player: d.id, kind: type });

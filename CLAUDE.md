@@ -610,6 +610,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   the session's line-up window (`LINEUP_T` in session.js: a human can't snap before it ends). Seven officials (`CREW`)
   follow the ball, signal touchdowns / incompletions / first downs / flags, and the referee faces the camera to announce
   an enforced penalty (`SIGNAL` per foul type). The sim never sees any of this.
+- Help-ups (presentation.js `helpers` / `helpUp`, pose `helpup`): at the start of a huddle about half the downed players get the nearest
+  standing teammate within 4 yds; he walks over, reaches down and pulls, the player gets up on the pull (he stays down until then,
+  at most HUDDLE_DELAY + 2.2 s). CPU-only games barely show it (their huddles are short).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

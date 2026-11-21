@@ -217,11 +217,55 @@ export class Presentation {
     return true;
   }
 
+  /** The helper's part of a help-up: walk to the downed teammate, reach down, pull, then go on (true while busy). */
+  helpUp(sim, i, d, dt) {
+    if (this.modeT < HUDDLE_DELAY * 0.5 || !this.helpers?.size) return false;
+    for (const [di, h] of this.helpers) {
+      if (h.by !== i) continue;
+      const v = this.disp[di];
+      if (!v || h.t > 1.1) return false;
+      const ang = Math.atan2(d.z - v.z, d.x - v.x), tx = v.x + Math.cos(ang) * 0.85, tz = v.z + Math.sin(ang) * 0.85;
+      const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz);
+      if (!h.arrived && dist > 0.12) {
+        const sp = Math.min(2.2, dist / dt);
+        d.vx = (dx / dist) * sp; d.vz = (dz / dist) * sp; d.x += d.vx * dt; d.z += d.vz * dt;
+        d.facing = turn(d.facing, Math.atan2(dz, dx), dt * 8);
+        if (d.anim !== 'run') { d.anim = 'run'; d.animT = 0; }
+        d.cycle += dt * (2.2 + sp * 1.05);
+        if (this.modeT > HUDDLE_DELAY + 2) h.t = 9; // couldn't get there: give up
+        return true;
+      }
+      h.arrived = true; h.t += dt;
+      d.vx = d.vz = 0;
+      d.facing = turn(d.facing, Math.atan2(v.z - d.z, v.x - d.x), dt * 10);
+      if (d.anim !== 'helpup') { d.anim = 'helpup'; d.animT = 0; }
+      // The downed player takes the hand: he starts getting up as the pull begins.
+      if (h.t > 0.3 && v.anim === 'down') { v.anim = 'getup'; v.animT = 0; v.facing = turn(v.facing, Math.atan2(d.z - v.z, d.x - v.x), 1); }
+      return true;
+    }
+    return false;
+  }
+
   startHuddle(sim) {
     sim.players.forEach((p, i) => {
       const d = (this.disp[i] = proxyOf(p));
       if (p.kneeling) { d.anim = 'kneel'; d.down = false; } // victory formation: he just stands back up
       else if (p.state === 'down' || p.state === 'tackled') { d.anim = 'down'; d.down = true; }
+    });
+    // A teammate helps a downed player up (about half the time, only someone standing within 4 yds, one helper each).
+    this.helpers = new Map(); // down player index -> { by, t, arrived }
+    const used = new Set();
+    sim.players.forEach((p, i) => {
+      const d = this.disp[i];
+      if (!d?.down || ((p.id * 7 + p.number) % 2) || this.moment?.idx === i) return;
+      let best = -1, bd = 4;
+      sim.players.forEach((q, k) => {
+        const e = this.disp[k];
+        if (k === i || q.team !== p.team || e?.down || used.has(k) || this.helpers.has(k)) return;
+        const dd = Math.hypot(e.x - d.x, e.z - d.z);
+        if (dd < bd) { bd = dd; best = k; }
+      });
+      if (best >= 0) { used.add(best); this.helpers.set(i, { by: best, t: 0, arrived: false }); }
     });
   }
 
@@ -279,6 +323,10 @@ export class Presentation {
         d.vx = d.vz = 0; d.down = false;
         if (this.moment.dir) d.facing = turn(d.facing, this.moment.dir > 0 ? 0 : Math.PI, dt * 6);
         if (d.anim !== this.moment.style) { d.anim = this.moment.style; d.animT = 0; }
+      } else if (this.helpUp(sim, i, d, dt)) {
+        // walking over to / pulling up a teammate who went down
+      } else if (d.down && d.anim === 'down' && this.helpers.has(i) && this.modeT < HUDDLE_DELAY + 2.2) {
+        // stays down until the teammate coming to help him has his hand out
       } else if (this.modeT < HUDDLE_DELAY || (!d.down && (p.energy ?? 1) < 0.66 && this.modeT < HUDDLE_DELAY + 1.1)) {
         // A beat after the whistle: whoever is down stays down for a moment, the rest stand; a gassed player
         // bends over with his hands on his knees before he jogs back.

@@ -1640,6 +1640,15 @@ function computePose(p, time, sim) {
       pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6;
       pose.arms[1].pitch = (t % 2) < 1 ? 2.9 : 0.4 + Math.sin(t * 7) * 0.9; pose.arms[1].elbow = (t % 2) < 1 ? 1.4 : 0.1; pose.arms[1].out = 0.25;
       break;
+    case 'helpup': {
+      // Helping a teammate up (presentation.js): bend and reach the right hand down to him, then sit back and pull.
+      const pull = Math.min(1, Math.max(0, (t - 0.3) / 0.55));
+      pose.crouch = 0.16 * (1 - pull); pose.lean = 0.55 - pull * 0.5; pose.head = -0.35 + pull * 0.3;
+      pose.arms[1].pitch = 1.35 - pull * 0.45; pose.arms[1].elbow = 0.08 + pull * 0.7; pose.arms[1].out = 0.06;
+      pose.arms[0].pitch = 0.15; pose.arms[0].elbow = 0.5;
+      pose.legs[0].hip = pose.legs[1].hip = 0.25 * (1 - pull); pose.legs[0].knee = pose.legs[1].knee = 0.3 * (1 - pull) + 0.05;
+      break;
+    }
     case 'tired':
       // Hands on knees, breathing hard.
       pose.crouch = 0.22; pose.lean = 0.75 + Math.sin(t * 5) * 0.04; pose.head = -0.3;

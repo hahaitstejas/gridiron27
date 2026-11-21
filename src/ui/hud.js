@@ -12,6 +12,16 @@ const ICON_COLORS = { A: '#3fbf3f', B: '#e0403a', X: '#3a7be0', Y: '#e8c32c', RB
 const Q = ['', '1st', '2nd', '3rd', '4th', 'OT'];
 
 /** In-game overlays: score bug, banners, penalty flags, ticker, receiver icons, kick meter, help, FPS. */
+/** A stat both teams have, picked by how many plays have been run (the scorebug's between-play comparison). */
+function bugStat(m) {
+  const S = m.stats?.team; if (!S) return null;
+  const opts = [['TOTAL YARDS', (x) => Math.round(x.yards)], ['FIRST DOWNS', (x) => x.firstDowns], ['3RD DOWN', (x) => `${x.thirdConv}/${x.thirdAtt}`],
+    ['PASSING YARDS', (x) => Math.round(x.passYds)], ['RUSHING YARDS', (x) => Math.round(x.rushYds)], ['TURNOVERS', (x) => x.turnovers],
+    ['SACKS ALLOWED', (x) => x.sacks], ['PENALTIES', (x) => `${x.penalties}-${x.penYds}`]];
+  const o = opts[Math.floor(m.playLog.length / 3) % opts.length];
+  return { label: o[0], v: [o[1](S[0]), o[1](S[1])] };
+}
+
 export class Hud {
   constructor(root) {
     this.root = root;
@@ -679,7 +689,11 @@ export class Hud {
     const recs = session.records || ['0-0', '0-0'];
     const blink = this.toBlink && performance.now() < this.toBlink.until ? this.toBlink.team : -1;
     const take = this.bugTake && performance.now() < this.bugTake.until ? this.bugTake : null;
-    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, this.pkg?.id].join('|');
+    // Between plays the middle of the bar sometimes swaps to a stat comparison (every third play call, 6 s).
+    if (session.state !== this._bugState) { this._bugState = session.state; this._bugSince = performance.now(); }
+    const stat = !m.over && !take && (session.state === 'playcall' || session.state === 'post') && performance.now() - this._bugSince < 6000 && (m.playLog?.length || 0) >= 6
+      && m.playLog.length % 3 === 0 ? bugStat(m) : null;
+    const key = [stat?.label, m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, this.pkg?.id].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
     // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
@@ -704,7 +718,7 @@ export class Hud {
       const q = m.over ? 'FINAL' : ord(m.quarter), clk = m.over ? '' : clockText(m.clock);
       const pcs = m.over || m.phase !== 'scrimmage' ? '' : `:${String(Math.ceil(m.playClock)).padStart(2, '0')}`;
       const spot = m.phase === 'scrimmage' && !m.over ? yardLineText(m) : '';
-      const ddh = flag ? '<b class="pb-flag">FLAG</b>' : dd;
+      const ddh = flag ? '<b class="pb-flag">FLAG</b>' : stat ? `<span class="pb-stat">${stat.label} <b>${stat.v[1]}</b> · <b>${stat.v[0]}</b></span>` : dd;
       const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
       const img = (i) => `<img src="${this.logoFor(m.teams[i])}" alt=""/>`;
       const tc = (i) => `--tc:${m.teams[i].colors.primary};--tc2:${m.teams[i].colors.secondary}`;
@@ -737,7 +751,8 @@ export class Hud {
     bug.innerHTML = `<div class="sb3${pk ? ` pkg pkg-${pk.id}` : ''}"${pk ? ` style="--pk:${pk.color}"` : ''}>
       <div class="sb3-brand">GRIDIRON<img class="sb3-lg" src="${this.leagueLogo()}" alt=""/>27</div>
       ${take ? `<div class="sb3-take" style="--tc:${m.teams[take.team].colors.primary}"><img src="${this.logoFor(m.teams[take.team])}" alt=""/><b>${take.text}</b></div>` : `${logo(1)}
-      <div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>
+      ${stat ? `<div class="sb3-mid sb3-stat"><b>${m.teams[1].abbr}</b><b class="sb3-sv">${stat.v[1]}</b><span>${stat.label}</span><b class="sb3-sv">${stat.v[0]}</b><b>${m.teams[0].abbr}</b></div>`
+        : `<div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>`}
       ${logo(0)}`}
       <div class="sb3-clock">${m.over ? '' : `<span class="sb3-q">${ord(m.quarter)}</span><b>${clockText(m.clock)}</b>`}${pc}</div>
       <div class="sb3-dd${flag ? ' flag' : ''}">${flag ? 'FLAG' : dd}</div>

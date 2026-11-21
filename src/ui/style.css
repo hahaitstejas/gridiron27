@@ -1856,3 +1856,8 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .ph2-dd { color: #fff; font-size: 18px; }
 @media (max-width: 1000px) { .pb-shield { min-width: 0; width: 96vw; } .ph2-logo { width: 80px; } .pb-team { height: 56px; } .pb-logo { width: 60px; } .pb-sc { min-width: 54px; height: 44px; font-size: 30px; } .pb-mid { min-width: 200px; height: 56px; } .ps-logo, .ps-mark small { display: none; } }
 .ps-dd sup, .pb-dd sup, .ph2-dd sup { margin-right: 6px; }
+
+.sb3-stat { gap: 18px; animation: fbIn 0.35s ease-out; }
+.sb3-stat span { font: 600 15px var(--fo); letter-spacing: 2px; color: #555; }
+.sb3-stat .sb3-sv { font-size: 30px; min-width: 50px; text-align: center; }
+.pb-stat { font-size: 0.8em; letter-spacing: 1px; color: #cfd3da; } .pb-stat b { color: #fff; }

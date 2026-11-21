@@ -71,9 +71,20 @@ export class CameraRig {
         if (phase === 'fg') {
           // Kick shot: about 4 yds behind the holder (7 behind the line), just above knee height and a step to the side, looking
           // through the line at the uprights.
-          const hx = focus.x - dir * 7;
-          p.set(hx - dir * 4.2, 1.35, fz + 1.5);
-          l.set(focus.x + dir * 14, 1.7, fz * 0.6);
+          // (UPDATE 5.x, the user's reference video) Behind the kicker and a little to his side, high enough to see the whole line,
+          // the holder and the posts; once the ball is away, ride behind it to the uprights.
+          if (focus.ball) {
+            const b = focus.ball;
+            // Stops ~10 yds short of the goal line so the posts stay in front of the lens even on a long miss.
+            const cx = dir > 0 ? Math.min(b.x - 7, 40) : Math.max(b.x + 7, -40);
+            p.set(cx, Math.max(2.2, Math.min(6, b.y + 1.4)), b.z * 0.85 + fz * 0.15);
+            l.set(60 * dir, 4.2, b.z * 0.5);
+            fov = 50;
+            break;
+          }
+          p.set(focus.x - dir * 14.5, 3.9, fz - 2.2);
+          l.set(focus.x + dir * 9, 0.2, fz + 0.6);
+          fov = 50;
           break;
         }
         // Broadcast: high behind the offense, pulling back when the ball is in the air.

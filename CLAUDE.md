@@ -98,9 +98,17 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   ball's path while it's still under his reach; a human's A jump / X lay-out `blockJump` raises it). A human kicker who is slow
   on the meter is judged from where the CPU rush was when the kick was due (`markDue`/`dueAt`, `LATE_GRACE`).
   `node tools/fgblock.js`: CPU ~1.5-2%, human kicker ~2% even with a slow meter, a human interior rusher ~3.5-6%, the human edge (B1/B8, chipped by the wing on ~55% of snaps: `kick.edgeChip`) ~2.5% with the X dive.
-- Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`; drawn by hud.js as a curved ")" SVG arc beside the
-  kicker / punter when he's on screen, `ARC` / `arcPt`, else on the right), kick physics/flight, field-goal
+- Special teams live in the sim (`sim/kicking.js`): kick meter (`METER`), kick physics/flight, field-goal
   plane, returns, fair catches, touchbacks, onside kicks.
+  Human kicks (UPDATE 5.x, from the user's reference video / picture): the meter runs AT THE LINE (session.js presnap: A starts
+  the needle up, A sets power, A sets accuracy on the way back down; that press, or the needle running out, snaps the ball and
+  the kick follows). hud.js draws it as a "J" bar on the turf beside the holder's spot / tee / punter (`J` / `jPt`: a flat run
+  bending up into a short vertical end with a red cap, blue to cyan, white needle, the A button where the next press belongs).
+  `render/kickAim.js` `KickAim` (via `renderer.setAim`) replaces the old arrow: field goals get a tall thin neon-green beam at the
+  uprights where the kick is aimed (LS); kickoffs a neon landing-zone rectangle (receiving goal line to the 20, a glowing curtain on
+  its front edge so it reads from the tee) plus a target ring at the predicted landing spot; punts the ring. FG camera (camera.js
+  `fg`): behind the kicker / a step to his side (14.5 back, 3.9 up, 50 deg), then rides behind the ball toward the posts (stops
+  ~10 yds short of the goal line). The FG panel adds an AIM KICK (LS) cell.
   Kickoffs use the NFL's dynamic kickoff (`dynamicKickoff(sim)`: every kickoff except a declared onside): formation
   `kickoff` puts the kicker's ten teammates at the receiving 40 (25 yds from a kick at the 35), `kick_return` has nine in the
   setup zone (their 30-35) and two returners deep; nobody but the kicker and returners moves until the ball hits the ground

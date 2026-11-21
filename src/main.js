@@ -958,7 +958,9 @@ function frameBody(now) {
     // a TV game's kick shot. A block or a fumble (the ball comes loose) goes back to the broadcast view for the rest of the play.
     if (sim && sim.offPlay?.type === 'fg' && sim.ball.state === 'loose') fgBroke = sim;
     if (sim && (sim.offPlay?.type === 'fg' || (sim.fakeLook && sim.offPlay.fake === 'fg')) && fgBroke !== sim && session.state !== 'playcall' && sim.state !== 'finished' && !session.watching) {
-      focus = { x: losX, z: sim.ballZ }; camPhase = 'fg';
+      // Once the kick is away the camera rides behind the ball to the posts (the reference video's follow shot).
+      const kb = sim.kick?.launched && (sim.ball.state === 'kick' || sim.ball.state === 'air') ? sim.ball : null;
+      focus = { x: losX, z: sim.ballZ, ball: kb ? { x: kb.x, y: kb.y, z: kb.z } : null }; camPhase = 'fg';
     }
     // The home crowd gets on its feet when the visitors are at the line on a big down (penalties.js crowdNoise).
     const noise = !live && !session.practice ? crowdNoise(m) : 0;

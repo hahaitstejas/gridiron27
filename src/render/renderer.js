@@ -14,6 +14,7 @@ import { CameraRig } from './camera.js';
 import { FieldLines } from './lines.js';
 import { Precipitation } from './weather.js';
 import { Presentation } from './presentation.js';
+import { KickAim } from './kickAim.js';
 
 // Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
 const TIME_LOOKS = {
@@ -113,6 +114,7 @@ export class GameRenderer {
     this.flag.visible = false;
     scene.add(this.flag);
     this.playArt = new PlayArtOverlay(scene);
+    this.kickAim = new KickAim(scene); // field goal beam, kickoff landing zone + target (render/kickAim.js)
 
     this.rig = new CameraRig(container.clientWidth / container.clientHeight);
     this.container = container;
@@ -334,12 +336,15 @@ export class GameRenderer {
     this.ball.visible = false;
     this.ballShadow.visible = false;
     this.aim.visible = false;
+    this.kickAim.group.visible = false;
   }
 
   /** Aim arrow while the human sets up a kick. */
   setAim(sim) {
-    const show = sim && ((sim.meter && sim.isKick && !(sim.kick && sim.kick.launched)) || sim.fakeLook); // 2P: a fake shows the arrow too
-    this.aim.visible = !!show;
+    // The old flat arrow stays off: the beam / landing zone / target (render/kickAim.js) show the aim now. 2P: a fake shows it too.
+    this.kickAim.update(sim, performance.now() / 1000);
+    this.aim.visible = false;
+    const show = false;
     if (!show) return;
     const b = sim.ball;
     let yaw;

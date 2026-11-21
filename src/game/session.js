@@ -1,3 +1,4 @@
+import { meterPress, updateMeter } from '../sim/kicking.js';
 import { RNG } from '../core/rng.js';
 
 /** Seconds after a play is set for the players to break the huddle and line up (the renderer animates it). */
@@ -660,7 +661,14 @@ export class GameSession {
       if (offIn?.pressed.B && this.calls(off) && this.spike()) { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       const lineup = this.fast || sim.isKick ? 0 : LINEUP_T; // players still running to the line: wait for them
       if (offIn?.pressed.LT && this.presnapT >= lineup && this.calls(off) && !this.audible) { this.hardCount(); if (this.state !== 'presnap') { if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; } }
-      if (offIn?.pressed.A && this.presnapT >= lineup && this.calls(off)) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      // A human kick (the user's reference video): the meter runs at the line: A starts the needle up, A sets the power, A sets
+      // the accuracy on the way back down, and that last press (or the needle running out) snaps the ball; the kick follows.
+      if (sim.isKick && sim.meter && this.calls(off) && this.isHuman(off)) {
+        const m = sim.meter;
+        if (offIn?.pressed.A) { if (m.phase === 'idle') { m.phase = 'power'; m.t = 0; m.value = 0; } else meterPress(m); }
+        if (m.phase === 'power' || m.phase === 'accuracy') updateMeter(m, dt);
+        if (m.phase === 'done') { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
+      } else if (offIn?.pressed.A && this.presnapT >= lineup && this.calls(off)) { this.snap(); if (this.sim && this.state === 'live') this.sim.tick(dt, null); return; }
       if (defIn?.pressed.B && sim.isKick === false && this.lock === null) sim.withHuman(def, () => cyclePresnapDefender(sim));
       const humanOff = this.calls(off); // career: a non-QB doesn't snap the ball, the CPU keeps the tempo
       if (this.cpuMotionAt && this.presnapT >= this.cpuMotionAt && !sim.isKick) {

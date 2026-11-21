@@ -13,12 +13,22 @@ const Q = ['', '1st', '2nd', '3rd', '4th', 'OT'];
 
 /** In-game overlays: score bug, banners, penalty flags, ticker, receiver icons, kick meter, help, FPS. */
 /** A stat both teams have, picked by how many plays have been run (the scorebug's between-play comparison). */
-// Curved kick meter: a ")" arc of radius KR from -60deg (bottom) to +60deg (top); u = 0..1 along it.
-const KR = 100, KA = Math.PI / 3;
-const arcPt = (u, r = KR) => { const a = -KA + u * 2 * KA; return [r * Math.cos(a), -r * Math.sin(a)]; };
-const ARC = `M ${arcPt(0).join(' ')} A ${KR} ${KR} 0 0 0 ${arcPt(1).join(' ')}`;
+// Kick meter (the user's reference video): a "J" bar beside the ball: a flat run along the turf from the start (where the
+// accuracy press belongs), bending up into a short vertical end (full power, a red cap). Blue to cyan along its length; a white
+// needle rides it up for power and back down for accuracy. u = 0..1 along the bar.
+const JL = 110, JR = 55, JV = 45, JT = JL + (Math.PI / 2) * JR + JV;
+const J = `M 0 0 H ${JL} A ${JR} ${JR} 0 0 0 ${JL + JR} ${-JR} V ${-JR - JV}`;
+/** Point and unit tangent at u along the bar. */
+function jPt(u) {
+  const d = Math.max(0, Math.min(1, u)) * JT;
+  if (d <= JL) return { x: d, y: 0, tx: 1, ty: 0 };
+  if (d <= JL + (Math.PI / 2) * JR) { const a = (d - JL) / JR; return { x: JL + Math.sin(a) * JR, y: -JR + Math.cos(a) * JR, tx: Math.cos(a), ty: -Math.sin(a) }; }
+  return { x: JL + JR, y: -JR - (d - JL - (Math.PI / 2) * JR), tx: 0, ty: -1 };
+}
 const meterU = (v) => (v - METER.floor) / (1 - METER.floor);
-function setTick(el, u, r0, r1) { const [x1, y1] = arcPt(u, r0), [x2, y2] = arcPt(u, r1); el.setAttribute('x1', x1); el.setAttribute('y1', y1); el.setAttribute('x2', x2); el.setAttribute('y2', y2); }
+/** A line across the bar at u (half-length h). */
+function setTick(el, u, h) { const p = jPt(u); const nx = -p.ty, ny = p.tx; el.setAttribute('x1', p.x - nx * h); el.setAttribute('y1', p.y - ny * h); el.setAttribute('x2', p.x + nx * h); el.setAttribute('y2', p.y + ny * h); }
+function setAt(el, u) { const p = jPt(u); el.setAttribute('transform', `translate(${p.x} ${p.y})`); }
 
 function bugStat(m) {
   const S = m.stats?.team; if (!S) return null;
@@ -130,9 +140,10 @@ export class Hud {
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="celwheel" class="hidden"></div>
       <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
-      <div id="kickmeter" class="hidden"><svg class="km-arc" viewBox="-20 -112 150 224"><defs><linearGradient id="kmg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3fbf3f"/><stop offset="0.7" stop-color="#ffd34d"/><stop offset="1" stop-color="#ff5a4f"/></linearGradient></defs>
-        <path class="km-track" d="${ARC}" pathLength="100"/><path class="km-fill" d="${ARC}" pathLength="100" stroke="url(#kmg)"/>
-        <line class="km-zone" x1="0" y1="0" x2="0" y2="0"/><line class="km-zero" x1="0" y1="0" x2="0" y2="0"/><circle class="km-needle" r="7" cx="0" cy="0"/></svg><div class="km-label">KICK</div></div>
+      <div id="kickmeter" class="hidden"><svg class="km-arc" viewBox="-24 -124 214 152"><defs><linearGradient id="kmg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${JL + JR}" y2="${-JR - JV}"><stop offset="0" stop-color="#173a86"/><stop offset="0.45" stop-color="#2468d8"/><stop offset="0.8" stop-color="#22c8e8"/><stop offset="1" stop-color="#3ff2c4"/></linearGradient></defs>
+        <path class="km-track" d="${J}"/><path class="km-fill" d="${J}" stroke="url(#kmg)"/><path class="km-cap" d="${J}" pathLength="100"/>
+        <line class="km-top" x1="0" y1="0" x2="0" y2="0"/><line class="km-zone" x1="0" y1="0" x2="0" y2="0"/><line class="km-set" x1="0" y1="0" x2="0" y2="0"/><line class="km-needle" x1="0" y1="0" x2="0" y2="0"/>
+        <g class="km-btn"><circle r="11"/><text y="4.5" text-anchor="middle">A</text></g></svg><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="quickstart" class="hidden"></div>
       <div id="fps"></div>
@@ -519,7 +530,7 @@ export class Hud {
       const deg = Math.round(Math.atan2(w.z * ks.dir, w.x * ks.dir) * 180 / Math.PI);
       const wind = mph < 3 ? '<b>CALM</b>' : `<svg class="kc-arrow" viewBox="-10 -10 20 20" style="transform:rotate(${deg}deg)"><path d="M0 -8 L6 0 L2 0 L2 8 L-2 8 L-2 0 L-6 0 Z"/></svg><b>${mph}<small> MPH</small></b>`;
       const html = `<div class="kc-panel"><div class="kc-top">${m.phase === 'try' ? 'EXTRA POINT' : 'FIELD GOAL'}</div>
-        <div class="kc-rows"><div><small>KICKER</small><b>${k ? `${k.name}` : '—'}</b></div><div class="kc-wind"><small>WIND</small><span>${wind}</span></div></div></div>
+        <div class="kc-rows"><div><small>KICKER</small><b>${k ? `${k.name}` : '—'}</b></div><div class="kc-wind"><small>WIND</small><span>${wind}</span></div><div class="kc-aim"><small>AIM KICK</small><b class="btn LS">LS</b></div></div></div>
         <div class="kc-chip"><span class="kc-abbr" style="--tc:${t?.colors?.primary || '#333'}">${t?.abbr || ''}</span>${fgDistance(m.phase === 'try' ? 85 : m.yardLine)} YARD ${m.phase === 'try' ? 'PAT' : 'FG'}</div>`;
       if (kc._h !== html) { kc._h = html; kc.innerHTML = html; }
     }
@@ -573,7 +584,9 @@ export class Hud {
     } else if (pre && session.humanSide === 'offense') {
       const two = session.twoPlayer; // 2 players on one screen: nothing here may tell the defense run / pass / fake
       const kickLook = sim.isKick || (two && sim.offPlay.fake);
-      h = kickLook ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' || sim.offPlay.fake === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
+      const mp = sim.meter?.phase;
+      if (kickLook && (mp === 'power' || mp === 'accuracy')) h = mp === 'power' ? '<b class="btn A">A</b> Set power at the top' : '<b class="btn A">A</b> Set accuracy at the mark &nbsp; (the snap follows)';
+      else h = kickLook ? `${fgTag(session, sim)}<b class="btn A">A</b> Start kick meter &nbsp; Left stick ◀▶: aim${sim.offPlay.type === 'punt' || sim.offPlay.fake === 'punt' ? ` &nbsp; ▲▼ punt: <b>${{ normal: 'Normal', coffin: 'Coffin corner', pooch: 'Pooch' }[sim.kickStyle || 'normal']}</b>` : ''} &nbsp; <b class="btn view">View</b> Timeout${windTag(sim)}`
         : `<b class="btn A">A</b> Snap &nbsp; <b class="btn B">B</b> Spike &nbsp; <b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; ${sim.motion ? '' : '<b class="btn RB">RB</b> Motion &nbsp; '}${(sim.offPlay.type === 'pass' || two) && session.match.phase === 'scrimmage' ? `<b class="btn LB">LB</b> Protection${two ? '' : protTag(sim.offPlay)} &nbsp; ` : ''}${session.hardCounted || session.match.phase !== 'scrimmage' ? '' : '<b class="btn LT">LT</b> Hard count &nbsp; '}${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art + read &nbsp; '}<b class="btn view">View</b> Timeout`;
     } else if (pre && session.humanSide === 'defense') h = `${fgTag(session, sim)}<b class="btn B">B</b> Switch player &nbsp; ${sim.isKick ? '' : `<b class="btn X">X</b> Audible &nbsp; <b class="btn Y">Y</b> Hot route &nbsp; <b class="btn LB">LB</b> Coverage &nbsp; <b class="btn RB">RB</b> Front &nbsp; ${session.twoPlayer ? '' : '<b class="btn RT">RT</b> Play art &nbsp; '}`}${retTag(sim)}${sim.isKick && sim.offPlay.type !== 'kickoff' ? (sim.offPlay.type === 'fg' ? 'Edge rush: come off the end, <b class="btn X">X</b> dive across the kick as it\'s struck (<b class="btn A">A</b> jump) &nbsp; ' : 'Block: beat the wall, <b class="btn A">A</b> jump / <b class="btn X">X</b> lay out at the kick &nbsp; ') : ''}<b class="btn view">View</b> Timeout${session.twoPlayer ? '' : coverageTag(session.defAdj)}`;
     else if (sim && sim.state === 'live' && sim.kick && session.humanSide === 'defense' && sim.ball.state === 'kick') h = sim.kick.type === 'punt' ? `<b class="btn Y">Y</b> Fair catch &nbsp; <b class="btn X">X</b> Kneel in end zone` : `<b class="btn X">X</b> Kneel in end zone (touchback)`;
@@ -746,20 +759,27 @@ export class Hud {
     const showMeter = (meter && sim.isKick && (sim.state === 'presnap' || !sim.kick?.launched) && !playcallOpen) || fakeMeter;
     km.classList.toggle('hidden', !showMeter);
     if (showMeter) {
-      // Beside the kicker (punter) when he's on screen, else the old spot on the right.
-      const kp = sim.players.find((p) => p.team === sim.offIdx && (p.slot === 'K' || p.slot === 'P'));
-      const sp = kp && renderer.project(kp.x, 1, kp.z);
-      const near = sp && sp.visible && sp.x > 80 && sp.x < innerWidth - 260 && sp.y > 140 && sp.y < innerHeight - 60;
+      // On the turf just right of the ball (the holder's spot / the tee / the punter), like the reference; else the right side.
+      const kp = sim.offPlay.type === 'punt' ? sim.players.find((p) => p.team === sim.offIdx && p.slot === 'P') : null;
+      const fgSpot = sim.offPlay.type === 'fg' || sim.offPlay.fake === 'fg' ? { x: sim.losX - sim.dir * 7, z: sim.ballZ } : null; // the holder's spot (before the snap the ball is at the center)
+      const at = kp || fgSpot || sim.ball;
+      const sp = at && renderer.project(at.x, 0, at.z);
+      const near = sp && sp.visible && sp.x > 40 && sp.x < innerWidth - 240 && sp.y > 150 && sp.y < innerHeight - 40;
       km.classList.toggle('near', !!near);
-      if (near) { km.style.left = `${Math.round(sp.x + 50)}px`; km.style.top = `${Math.round(sp.y - 112)}px`; } else { km.style.left = ''; km.style.top = ''; }
-      setTick(km.querySelector('.km-zone'), meterU(METER.accLine), KR - 14, KR + 14);
-      setTick(km.querySelector('.km-zero'), meterU(0), KR - 8, KR + 8);
-      const fill = fakeMeter ? 0 : meter.phase === 'power' ? meter.value : meter.power;
-      km.querySelector('.km-fill').style.strokeDasharray = `${Math.max(0, meterU(Math.max(METER.floor, fill))) * 100} 100`;
-      const needle = fakeMeter ? -1 : meter.phase === 'accuracy' ? meter.needle : meter.phase === 'done' ? meter.accuracy + METER.accLine : -1;
-      const nd = km.querySelector('.km-needle');
-      nd.style.display = needle > -0.5 ? '' : 'none';
-      if (needle > -0.5) { const [x, y] = arcPt(meterU(needle)); nd.setAttribute('cx', x); nd.setAttribute('cy', y); }
+      if (near) { km.style.left = `${Math.round(sp.x + 32 - 24)}px`; km.style.top = `${Math.round(sp.y + 4 - 124)}px`; } else { km.style.left = ''; km.style.top = ''; }
+      setTick(km.querySelector('.km-zone'), meterU(METER.accLine), 15);
+      setTick(km.querySelector('.km-top'), 0.955, 15);
+      const ph = fakeMeter ? 'idle' : meter.phase;
+      const needle = fakeMeter ? -9 : ph === 'power' ? meter.value : ph === 'accuracy' ? meter.needle : ph === 'done' ? meter.accuracy + METER.accLine : -9;
+      const nd = km.querySelector('.km-needle'), st = km.querySelector('.km-set');
+      nd.style.display = needle > -1 ? '' : 'none';
+      if (needle > -1) setTick(nd, meterU(needle), 17);
+      st.style.display = ph === 'accuracy' || ph === 'done' ? '' : 'none';
+      if (st.style.display === '') setTick(st, meterU(meter.power), 15);
+      // The button sits where the next press belongs: the start to begin, the top while power rises, the start for accuracy.
+      const btn = km.querySelector('.km-btn');
+      btn.style.display = ph === 'done' ? 'none' : '';
+      setAt(btn, ph === 'power' ? 1 : ph === 'accuracy' ? meterU(METER.accLine) : 0);
       const fgYds = `FG ${Math.ceil(Math.abs(60 * sim.dir - sim.losX) + 7 - 1e-6)} yd`;
       km.querySelector('.km-label').textContent = fakeMeter ? (sim.offPlay.fake === 'fg' ? fgYds : 'PUNT') : sim.offPlay.type === 'fg' ? fgYds : sim.offPlay.name.toUpperCase();
     }

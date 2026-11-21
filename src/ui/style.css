@@ -128,13 +128,18 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 /* Kick meter */
 #kickmeter { position: absolute; right: 6%; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .km-label { font: 600 16px var(--fo, var(--fd)); letter-spacing: 1px; text-shadow: 0 2px 6px #000; }
-/* Curved meter (an arc beside the kicker: hud.js ARC). */
-.km-arc { width: 110px; height: 164px; overflow: visible; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6)); }
-.km-arc path { fill: none; stroke-width: 16; stroke-linecap: butt; }
-.km-arc .km-track { stroke: rgba(0,0,0,0.6); stroke-width: 20; }
-.km-arc .km-fill { stroke-dasharray: 0 100; }
-.km-arc .km-zone { stroke: #fff; stroke-width: 4; } .km-arc .km-zero { stroke: rgba(255,255,255,0.5); stroke-width: 2; }
-.km-arc .km-needle { fill: #ff2d2d; stroke: #fff; stroke-width: 2; }
+/* Kick meter: the "J" bar beside the ball (hud.js J / jPt). */
+.km-arc { width: 214px; height: 152px; overflow: visible; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.55)); }
+.km-arc path { fill: none; stroke-linecap: butt; }
+.km-arc .km-track { stroke: rgba(4,10,30,0.75); stroke-width: 30; }
+.km-arc .km-fill { stroke-width: 24; }
+.km-arc .km-cap { stroke: #e2384a; stroke-width: 24; stroke-dasharray: 0 95.5 4.5 0; }
+.km-arc .km-top { stroke: #fff; stroke-width: 3; }
+.km-arc .km-zone { stroke: rgba(255,255,255,0.85); stroke-width: 3; }
+.km-arc .km-set { stroke: #9ff; stroke-width: 3; }
+.km-arc .km-needle { stroke: #fff; stroke-width: 4.5; filter: drop-shadow(0 0 3px #fff); }
+.km-arc .km-btn circle { fill: #0b1530; stroke: #fff; stroke-width: 2.5; } .km-arc .km-btn text { fill: #fff; font: 700 13px var(--fo, sans-serif); }
+#kickmeter.near .km-label { display: none; }
 #kickmeter.near { right: auto; transform: none; }
 
 /* Play call */
@@ -1959,3 +1964,4 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 .dr-tk { display: flex; gap: 28px; white-space: nowrap; }
 .dr-tk .fr-score { background: none !important; padding: 0 !important; font: 500 14px var(--fb, var(--fd)); }
 .screen.dr-screen .dr-hstats b, .screen.dr-screen .dr-ticker > b { white-space: nowrap !important; } .screen.dr-screen .dr-hstats { gap: 18px; } .screen.dr-screen .dr-hstats b { font-size: 22px; }
+#kickchip .kc-aim { display: flex; flex-direction: column; align-items: center; } #kickchip .kc-aim .btn { font-size: 12px; margin-top: 2px; }

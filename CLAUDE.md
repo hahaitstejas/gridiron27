@@ -701,7 +701,7 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Timeouts: `Match.callTimeout` says a `timeout` message `{ team, left }` → team-colored HUD banner, referee `sig_timeout`,
   video board flash, the used scorebug bar blinks (`hud.toBlink`). main.js handles session events raised between ticks
   before the next tick (they used to be wiped by `tick()`'s `events.length = 0`).
-- Post-game: menu Finish / Highlights / Player Stats / Restart; the side panel (Quarters, Team, Scoring, Injuries) switches
+- Post-game: a final-score banner (team-color halves, dark slanted score box, the loser's number dimmed: `.pg-banner`); menu Finish / Highlights / Player Stats / Restart; the side panel (Quarters, Team, Scoring, Injuries) switches
   with LB/RB; the scorebug hides behind it (`body:has(.pg-screen)`).
 - Pause → Coaching = `coachingScreen` (depthEditor.js): Depth Chart (hurt players marked OUT / QUES via `gameStatus`) and
   Injury Center. Sim injury entries keep the player's `name`; the injury is `type`.

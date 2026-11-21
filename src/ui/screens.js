@@ -1021,8 +1021,10 @@ export class Screens {
       el('div.pg-main', {},
         el('div.pz-list', {}, items),
         el('div.pg-center', {},
-          el('div.pg-score', {}, teamHead(a, false),
-            el('div.pg-num', {}, el('small', { text: halftime ? 'HALFTIME' : m.ot ? 'FINAL / OT' : 'FINAL' }), el('b', { text: `${m.score[1]} - ${m.score[0]}` })),
+          // Final-score banner: the two teams' color halves meeting at a dark score box (the leader's number bright).
+          el('div.pg-score.pg-banner', { style: { '--ta': a.colors.primary, '--th': h.colors.primary } }, teamHead(a, false),
+            el('div.pg-num', {}, el('small', { text: halftime ? 'HALFTIME' : m.ot ? 'FINAL / OT' : 'FINAL' }),
+              el('b', { html: `<span class="${m.score[1] < m.score[0] ? 'lose' : ''}">${m.score[1]}</span><i>-</i><span class="${m.score[0] < m.score[1] ? 'lose' : ''}">${m.score[0]}</span>` })),
             teamHead(h, true)),
           el('div.pg-qbs', {}, qbCard(1, false), qbCard(0, true)),
           el('div.pg-leadrow', {}, leaders(1), leaders(0))),

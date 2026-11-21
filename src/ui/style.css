@@ -1910,3 +1910,17 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 #celwheel .cl-row.on { background: #fff; color: #000; } #celwheel .cl-row.on i { color: #000; }
 #celwheel .cl-row.off { opacity: 0.35; }
 #celwheel .cl-time { height: 4px; background: rgba(255,255,255,0.12); } #celwheel .cl-time i { display: block; height: 100%; background: #3fd6cf; }
+
+/* Post-game / halftime final-score banner: team-color halves, a dark slanted score box in the middle. */
+.screen.pg-screen .pg-banner { position: relative; gap: 0; justify-content: space-between; align-items: stretch; height: 118px; padding: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--ta) 85%, #000) 0 50%, color-mix(in srgb, var(--th) 85%, #000) 50% 100%); }
+.screen.pg-screen .pg-banner .pg-team { padding: 0 14px; flex: 1 1 0; min-width: 0; gap: 10px; }
+.screen.pg-screen .pg-banner .pg-team b { font-size: 24px; white-space: nowrap; }
+.screen.pg-screen .pg-banner .pg-team.right { justify-content: flex-start; }
+.screen.pg-screen .pg-banner .pg-team small { color: rgba(255,255,255,0.75); }
+.screen.pg-screen .pg-banner .pg-num { flex: 0 0 auto; justify-content: center; padding: 0 26px; background: #07090d; clip-path: polygon(16px 0, 100% 0, calc(100% - 16px) 100%, 0 100%); }
+.screen.pg-screen .pg-banner .pg-num b { display: flex; align-items: center; gap: 12px; font-size: 58px; }
+.screen.pg-screen .pg-banner .pg-num b i { font-style: normal; font-size: 40px; opacity: 0.5; }
+.screen.pg-screen .pg-banner .pg-num b .lose { opacity: 0.45; }
+.screen.pg-screen .pg-banner .pg-logo canvas { width: 66px; height: 66px; }
+.screen.pg-screen .pg-banner .pg-tname { min-width: 0; overflow: hidden; } .screen.pg-screen .pg-banner .pg-tname b { overflow: hidden; text-overflow: ellipsis; }

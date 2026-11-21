@@ -272,8 +272,8 @@ export function bodyMaterial(envMap, fabric, rowOff = { value: 0 }, opts = {}) {
   // The plain body under the jersey shell gets uShell = -1: its jersey / sleeve zones sit a little inside (buildPos), so the
   // shell never has the body poking through it (it showed as dark sawtooth patches on the shoulders and back).
   const uShell = { value: opts.under ? -1 : opts.shell || 0 }, uUnder = { value: opts.under ? 1 : 0 };
-  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.22,
-    sheen: 0.55, sheenRoughness: 0.55, sheenColor: new THREE.Color(0.45, 0.45, 0.45), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
+  const m = new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.72, metalness: 0, envMap, envMapIntensity: 0.36,
+    sheen: 0.85, sheenRoughness: 0.45, sheenColor: new THREE.Color(0.58, 0.58, 0.6), normalMap: fabric, normalScale: new THREE.Vector2(0.6, 0.6) });
   m.onBeforeCompile = (sh) => {
     patchVertex(sh, true, rowOff, uShell);
     sh.uniforms.uUnder = uUnder;

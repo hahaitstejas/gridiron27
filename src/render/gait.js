@@ -8,7 +8,7 @@ import { BIND } from './body.js';
 // Leg lengths and ankle height come from the body's skeleton (BIND), read live so the MakeHuman body's apply.
 const LEG = { get thigh() { return BIND.thigh; }, get shin() { return BIND.shin; }, get ankleY() { return BIND.hipH - BIND.thigh - BIND.shin - 0.01; } };
 // Gaits that plant their feet. Everything else (falls, dives, jumps, celebrations) keeps its authored legs.
-export const GAIT_ANIMS = new Set(['run', 'idle', 'backpedal', 'shuffle', 'passset', 'block', 'juke', 'stiffarm', 'truck', 'strip', 'catch', 'reach', 'swat', 'stumble', 'fair_catch', 'sig_flag', 'tired']);
+export const GAIT_ANIMS = new Set(['run', 'idle', 'backpedal', 'shuffle', 'passset', 'block', 'juke', 'stiffarm', 'truck', 'strip', 'catch', 'reach', 'swat', 'stumble', 'fair_catch', 'sig_flag', 'tired', 'walk_hips']);
 
 // ---------- motion capture (CMU, tools/mocap.mjs → src/assets/clips.json) ----------
 let LOCO = null; // forward locomotion clips sorted by speed: { speed, samples[N][18] }

@@ -613,6 +613,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
 - Help-ups (presentation.js `helpers` / `helpUp`, pose `helpup`): at the start of a huddle about half the downed players get the nearest
   standing teammate within 4 yds; he walks over, reaches down and pulls, the player gets up on the pull (he stays down until then,
   at most HUDDLE_DELAY + 2.2 s). CPU-only games barely show it (their huddles are short).
+- After-play reactions (presentation.js `reacts` / `react`, poses `frustrated` / `hi5` / `walk_hips`): the target of an incompletion
+  grabs his helmet (1.3 s); on a stop (a yard or less) the two standing defenders nearest the tackle meet for a high five; about a
+  third of the players walk back to a close huddle with hands on hips (never in a hurry-up: `this.hurry`, no-huddle or under 2:00).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

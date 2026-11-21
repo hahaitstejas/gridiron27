@@ -1640,6 +1640,24 @@ function computePose(p, time, sim) {
       pose.lean = 0; pose.arms[0].pitch = 0.9; pose.arms[0].elbow = 1.6;
       pose.arms[1].pitch = (t % 2) < 1 ? 2.9 : 0.4 + Math.sin(t * 7) * 0.9; pose.arms[1].elbow = (t % 2) < 1 ? 1.4 : 0.1; pose.arms[1].out = 0.25;
       break;
+    case 'walk_hips':
+      // Walking back after the play, hands on the hips (presentation.js).
+      runLegs(0.35);
+      pose.lean = 0.02; pose.head = 0.05;
+      for (const a of pose.arms) { a.pitch = -0.15; a.out = 0.62; a.elbow = 1.75; }
+      break;
+    case 'frustrated':
+      // Hands on the helmet after a pass he couldn't get.
+      pose.lean = -0.04; pose.head = 0.12 + Math.sin(t * 3) * 0.04;
+      for (const a of pose.arms) { a.pitch = 2.55; a.out = 0.55; a.elbow = 2.15; }
+      break;
+    case 'hi5': {
+      // A high five: the right hand goes up and slaps (t 0.25), then comes down.
+      const up = Math.min(1, t / 0.22) * (t > 0.55 ? Math.max(0, 1 - (t - 0.55) / 0.25) : 1);
+      pose.arms[1].pitch = 0.2 + up * 2.65; pose.arms[1].elbow = 0.5 - up * 0.3; pose.arms[1].out = 0.2;
+      pose.lean = -0.05 * up;
+      break;
+    }
     case 'helpup': {
       // Helping a teammate up (presentation.js): bend and reach the right hand down to him, then sit back and pull.
       const pull = Math.min(1, Math.max(0, (t - 0.3) / 0.55));

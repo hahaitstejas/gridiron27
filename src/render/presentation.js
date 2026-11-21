@@ -152,6 +152,7 @@ export class Presentation {
     if (this.cel && mode === 'huddle') this.cel.t += dt;
     if (this.moment && mode !== 'huddle') this.moment = null;
     if (this.cel && (this.cel.t > CEL_T || (mode !== 'huddle' && sim.state === 'presnap'))) this.cel = null;
+    this.hurry = !!session.hurry || (m.clock < 120 && (m.quarter === 2 || m.quarter >= 4)); // no strolling in a hurry-up
     if (this.introT !== null && this.introT !== undefined) display = this.runout(sim, this.introT);
     else if (mode === 'huddle') display = this.huddle(sim, m, dir, losX, ballZ, dt);
     else if (mode === 'lineup') display = this.lineup(sim, session.presnapT, dt);
@@ -217,6 +218,39 @@ export class Presentation {
     return true;
   }
 
+  /** After-play reactions (startHuddle): true while player i is busy with one. */
+  react(i, d, dt) {
+    const r = this.reacts?.get(i);
+    if (!r || d.down) return false;
+    r.t += dt;
+    if (r.kind === 'frustrated') {
+      if (r.t > r.dur) return false;
+      d.vx = d.vz = 0;
+      if (d.anim !== 'frustrated') { d.anim = 'frustrated'; d.animT = 0; }
+      return true;
+    }
+    // High five: walk to just short of the meeting point (each from his side), turn to his mate, slap.
+    if (r.done || r.t > 2.2) return false;
+    const o = this.disp[r.other];
+    const ang = Math.atan2(o.z - d.z, o.x - d.x);
+    const tx = r.meet.x - Math.cos(ang) * 0.42, tz = r.meet.z - Math.sin(ang) * 0.42;
+    const dx = tx - d.x, dz = tz - d.z, dist = Math.hypot(dx, dz);
+    if (!r.slap && dist > 0.1) {
+      const sp = Math.min(3, dist / dt);
+      d.vx = (dx / dist) * sp; d.vz = (dz / dist) * sp; d.x += d.vx * dt; d.z += d.vz * dt;
+      d.facing = turn(d.facing, Math.atan2(dz, dx), dt * 8);
+      if (d.anim !== 'run') { d.anim = 'run'; d.animT = 0; }
+      d.cycle += dt * (2.2 + sp * 1.05);
+      return true;
+    }
+    if (!r.slap) { r.slap = 0; d.anim = 'hi5'; d.animT = 0; }
+    d.vx = d.vz = 0;
+    d.facing = turn(d.facing, ang, dt * 10);
+    r.slap += dt;
+    if (r.slap > 0.85) r.done = true;
+    return true;
+  }
+
   /** The helper's part of a help-up: walk to the downed teammate, reach down, pull, then go on (true while busy). */
   helpUp(sim, i, d, dt) {
     if (this.modeT < HUDDLE_DELAY * 0.5 || !this.helpers?.size) return false;
@@ -267,6 +301,25 @@ export class Presentation {
       });
       if (best >= 0) { used.add(best); this.helpers.set(i, { by: best, t: 0, arrived: false }); }
     });
+    // Reactions: the target of an incompletion grabs his helmet; on a stop (a tackle for a yard or less) the tackler and the
+    // nearest standing teammate meet for a high five.
+    this.reacts = new Map(); // player index -> { kind, dur?, meet?, t }
+    const res = sim.result, st = sim.stats || {};
+    if (res?.incomplete && st.target !== null && st.target !== undefined && this.disp[st.target] && !this.disp[st.target].down) this.reacts.set(st.target, { kind: 'frustrated', t: 0, dur: 1.3 });
+    // A stop (a tackle for a yard or less): the two defenders standing nearest the tackle meet for a high five (the tackler
+    // himself is usually on the ground; the sacker has his own celebration).
+    const tk = st.tackler;
+    if (res && !res.incomplete && !res.touchdown && !res.turnover && (res.yards ?? 9) <= 1 && tk !== null && tk !== undefined && sim.players[tk]) {
+      const dteam = sim.players[tk].team, bx = sim.ball.x, bz = sim.ball.z;
+      const near = sim.players.map((q, k) => ({ k, e: this.disp[k], q }))
+        .filter(({ k, e, q }) => q.team === dteam && e && !e.down && !used.has(k) && this.moment?.idx !== k && Math.hypot(e.x - bx, e.z - bz) < 7)
+        .sort((a, b) => Math.hypot(a.e.x - bx, a.e.z - bz) - Math.hypot(b.e.x - bx, b.e.z - bz));
+      if (near.length >= 2) {
+        const [{ k: k1, e: a }, { k: k2, e: b }] = near;
+        const meet = { x: (a.x + b.x) / 2, z: (a.z + b.z) / 2 };
+        this.reacts.set(k1, { kind: 'hi5', t: 0, meet, other: k2 }); this.reacts.set(k2, { kind: 'hi5', t: 0, meet, other: k1 });
+      }
+    }
   }
 
   /**
@@ -323,6 +376,8 @@ export class Presentation {
         d.vx = d.vz = 0; d.down = false;
         if (this.moment.dir) d.facing = turn(d.facing, this.moment.dir > 0 ? 0 : Math.PI, dt * 6);
         if (d.anim !== this.moment.style) { d.anim = this.moment.style; d.animT = 0; }
+      } else if (this.react(i, d, dt)) {
+        // an after-play reaction (helmet grab, high five)
       } else if (this.helpUp(sim, i, d, dt)) {
         // walking over to / pulling up a teammate who went down
       } else if (d.down && d.anim === 'down' && this.helpers.has(i) && this.modeT < HUDDLE_DELAY + 2.2) {
@@ -336,11 +391,14 @@ export class Presentation {
       else {
         const dx = s.x - d.x, dz = s.z - d.z, dist = Math.hypot(dx, dz);
         if (dist > 0.25) {
-          const v = Math.min(JOG * (dist > 12 ? 1.3 : 1), dist / dt);
+          // About a third walk back with their hands on their hips when the huddle is close and there's time (not hurrying).
+          const walk = dist < 12 && ((p.id * 13 + p.number) % 3 === 0) && !this.hurry;
+          const v = Math.min(walk ? 1.6 : JOG * (dist > 12 ? 1.3 : 1), dist / dt);
           d.vx = (dx / dist) * v; d.vz = (dz / dist) * v;
           d.x += d.vx * dt; d.z += d.vz * dt;
           d.facing = turn(d.facing, Math.atan2(dz, dx), dt * 8);
-          if (d.anim !== 'run') { d.anim = 'run'; d.animT = 0; }
+          const ja = walk ? 'walk_hips' : 'run';
+          if (d.anim !== ja) { d.anim = ja; d.animT = 0; }
           d.cycle += dt * (2.2 + v * 1.05);
         } else {
           d.vx = d.vz = 0;

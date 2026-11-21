@@ -526,9 +526,11 @@ is a full-width team-color lower third (`hud.tdBand`); catch type / going for th
 (`playArt` zone `label` → `hud.zoneLabels`); the franchise gameday lights the better OVR/OFF/DEF badge green with the team's
 letters huge behind its logo; your draft picks get a grade (`d.lastGrade` in offseason.js `makePick`, `.dr-grade`).
 Broadcast packages (main.js `broadcastPackage`, `hud.pkg`): franchise time slots (Thursday / Sunday / Monday night, holidays, opener,
-international), other night / prime games and the championship get their own scorebug layout (hud.js `renderBug`: `box` = framed
-team panels + framed center, `slim` = full-width bar with slanted score panels and the slot mark, `shield` = centered box with a
-shield badge; CSS `.pb-*` / `.ps-*` / `.ph2-*`, accent `--pk`) and a shield badge over the intro lower third (`.in-shield`).
+international), other night / prime games and the championship get their own scorebug layout (hud.js `primeBug`, from the user's
+reference pictures: `box` = framed team panels + framed center in Barlow Condensed 800, `slim` = full-width bar with a neon slot mark,
+slanted hatched score panels and a possession wedge in Barlow Semi Condensed, `shield` = wide band with logos at the ends, Oswald
+scores either side of a metal shield, Montserrat 800 abbreviations / situation strip; our own marks TNG / SNG / MNG (`pk.mark`);
+CSS `.bx-*` / `.sl-*` / `.sh-*`, accent `--pk`) and a shield badge over the intro lower third (`.in-shield`).
 Footwork accents (render only, players.js `footwork` / `footworkPost`, slice 6): DB hip flip and break-on-ball drive out of a
 backpedal, plant on hard cuts, crossover out of a shuffle; `renderer.players.fwCount` counts them. Render twist turns the
 opposite way to sim angles (headYaw follows sim angles). Pause →

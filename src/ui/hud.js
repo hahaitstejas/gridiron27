@@ -22,6 +22,58 @@ function bugStat(m) {
   return { label: o[0], v: [o[1](S[0]), o[1](S[1])] };
 }
 
+/**
+ * The prime-time scorebugs (the user's reference pictures; our own slot marks, no real broadcasters' names or logos).
+ *   box    - Sunday night and the big games: two framed team panels (logo, timeout dots, abbreviation over the record, score
+ *            in a team-color box) around a framed center (down & distance over quarter / clock / play clock / spot).
+ *   slim   - Monday night: one full-width black bar, the slot mark in neon outline, team-color bands, slanted hatched score
+ *            panels around the possession wedge, then quarter / clock / play clock / down & distance / spot.
+ *   shield - Thursday night (also openers, international): a wide band with the logos at the ends, huge scores either side of
+ *            a metal shield, the situation on a black strip underneath.
+ */
+function primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo }) {
+  const T = m.teams, tc = (i) => `--tc:${T[i].colors.primary};--tc2:${T[i].colors.secondary}`;
+  const ORD = ['', 'ST', 'ND', 'RD', 'TH'];
+  const q = m.over ? 'FINAL' : m.quarter > 4 ? 'OT' : `${m.quarter}<i>${ORD[m.quarter]}</i>`;
+  const clk = m.over ? '' : clockText(m.clock);
+  const pc = m.over || m.phase !== 'scrimmage' ? '' : `:${String(Math.ceil(m.playClock)).padStart(2, '0')}`;
+  const low = m.playClock <= 10 ? ' low' : '';
+  // Down & distance: "3RD & 9" (ordinal small), "& GOAL", or KICKOFF / PAT; the spot: the yard line, pointing into the half it's in.
+  const yl = m.yardLine, own = yl < 50;
+  const spot = m.phase === 'scrimmage' && !m.over ? `${own ? '▴' : '▾'}${Math.round(own ? yl : 100 - yl)}` : '';
+  const goal = m.phase === 'scrimmage' && m.toGo >= 100 - m.yardLine - 0.01;
+  const dd = m.over ? 'FINAL' : flag ? '<b class="pk-flag">FLAG</b>' : stat ? `<span class="pk-stat">${stat.label} <b>${stat.v[1]}</b> · <b>${stat.v[0]}</b></span>`
+    : m.phase === 'scrimmage' ? `${m.down}<i>${ORD[m.down]}</i> &amp; ${goal ? 'GOAL' : Math.max(1, Math.round(m.toGo))}` : m.phase === 'try' ? 'PAT' : 'KICKOFF';
+  const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
+  const img = (i) => `<img src="${logo(i)}" alt=""/>`;
+  const words = pk.label.split(' ');
+  const mark = pk.mark || words.length > 1 ? words.map((w) => w[0]).join('').slice(0, 3) + (words.length === 2 ? 'G' : '') : words[0].slice(0, 3);
+  if (lay === 'box') {
+    const side = (i, right) => `<div class="bx-team${right ? ' right' : ''}" style="${tc(i)}"><div class="bx-logo">${img(i)}</div>
+      ${tos(i, 'bx-to')}<div class="bx-ab"><b>${T[i].abbr}</b><small>(${recs[i].replace('-', ' - ')})</small></div><div class="bx-sc">${m.score[i]}</div></div>`;
+    return `<div class="pk pk-box" style="--pk:${pk.color}">${side(1, false)}
+      <div class="bx-mid"><div class="bx-dd">${dd}${hasBall(0) || hasBall(1) ? `<span class="bx-arrow">${hasBall(1) ? '◀' : '▶'}</span>` : ''}</div>
+      <div class="bx-row"><span class="bx-q">${q}</span><b>${clk}</b><span class="bx-pc${low}">${pc}</span><span>${spot}</span></div></div>${side(0, true)}</div>`;
+  }
+  if (lay === 'slim') {
+    const team = (i, right) => `<div class="sl-team${right ? ' right' : ''}" style="${tc(i)}"><div class="sl-logo">${img(i)}</div><div class="sl-band">
+      <span class="sl-rec"><small>(${recs[i].replace('-', ' - ')})</small>${tos(i, 'sl-to')}</span><b class="sl-ab">${T[i].abbr}</b></div></div>`;
+    const sc = (i, right) => `<div class="sl-sc${right ? ' right' : ''}" style="${tc(i)}"><b>${m.score[i]}</b></div>`;
+    const ball = hasBall(1) ? 1 : hasBall(0) ? 0 : -1;
+    return `<div class="pk pk-slim" style="--pk:${pk.color}"><div class="sl-mark">${mark}</div>${team(1, false)}${sc(1, false)}
+      <div class="sl-pos"${ball >= 0 ? ` style="${tc(ball)}"` : ''}>${ball === 1 ? '◀' : ball === 0 ? '▶' : ''}</div>${sc(0, true)}${team(0, true)}
+      <div class="sl-clock"><span>${q}</span><b>${clk}</b>${pc ? `<span class="sl-pc${low}">${pc}</span>` : ''}</div><div class="sl-cut"></div><div class="sl-dd">${dd}</div><div class="sl-cut"></div><div class="sl-spot">${spot}</div></div>`;
+  }
+  const team = (i, right) => `<div class="sh-end${right ? ' right' : ''}" style="${tc(i)}"><div class="sh-logo">${img(i)}</div>${tos(i, 'sh-to')}</div>`;
+  const half = (i, right) => `<div class="sh-half${right ? ' right' : ''}" style="${tc(i)}"><b class="sh-ab">${hasBall(i) && !right ? '<i>➤</i>' : ''}${T[i].abbr}${hasBall(i) && right ? '<i class="r">➤</i>' : ''}</b><b class="sh-sc">${m.score[i]}</b></div>`;
+  const shield = `<div class="sh-shield"><svg viewBox="0 0 80 96"><defs><linearGradient id="shm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f5f7"/><stop offset="0.45" stop-color="#b9bdc4"/><stop offset="0.55" stop-color="#e3e5e9"/><stop offset="1" stop-color="#8d929b"/></linearGradient></defs>
+    <path d="M40 2 L76 12 L76 58 Q72 80 40 94 Q8 80 4 58 L4 12 Z" fill="url(#shm)" stroke="#5d626b" stroke-width="2"/><path d="M40 8 L70 16 L70 57 Q66 75 40 87 Q14 75 10 57 L10 16 Z" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
+    <text x="40" y="20" text-anchor="middle" font-family="Montserrat, sans-serif" font-weight="800" font-size="6" fill="#2a2d33" letter-spacing="0.6">GRIDIRON 27</text>
+    <text x="40" y="66" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="${mark.length > 2 ? 34 : 40}" fill="#17191d" textLength="${mark.length > 2 ? 58 : 44}" lengthAdjust="spacingAndGlyphs">${mark}</text></svg></div>`;
+  return `<div class="pk pk-shield" style="--pk:${pk.color}">${team(1, false)}<div class="sh-mid"><div class="sh-top">${half(1, false)}${shield}${half(0, true)}</div>
+    <div class="sh-row"><span class="sh-dd">${dd}</span><span class="sh-q">${q}</span><b>${clk}</b><span class="sh-pc${low}">${pc}</span><span class="sh-spot">${spot}</span></div></div>${team(0, true)}</div>`;
+}
+
 export class Hud {
   constructor(root) {
     this.root = root;
@@ -715,36 +767,8 @@ export class Hud {
     // big games), a slim slanted bar (Monday night), a centered box with a shield (Thursday night, openers, international).
     const lay = pk && !take ? ({ sun: 'box', night: 'box', title: 'box', holiday: 'box', mon: 'slim', thu: 'shield', open: 'shield', intl: 'shield' })[pk.id] : null;
     if (lay) {
-      const q = m.over ? 'FINAL' : ord(m.quarter), clk = m.over ? '' : clockText(m.clock);
-      const pcs = m.over || m.phase !== 'scrimmage' ? '' : `:${String(Math.ceil(m.playClock)).padStart(2, '0')}`;
-      const spot = m.phase === 'scrimmage' && !m.over ? yardLineText(m) : '';
-      const ddh = flag ? '<b class="pb-flag">FLAG</b>' : stat ? `<span class="pb-stat">${stat.label} <b>${stat.v[1]}</b> · <b>${stat.v[0]}</b></span>` : dd;
-      const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
-      const img = (i) => `<img src="${this.logoFor(m.teams[i])}" alt=""/>`;
-      const tc = (i) => `--tc:${m.teams[i].colors.primary};--tc2:${m.teams[i].colors.secondary}`;
-      const ball = (i) => (hasBall(i) ? ' ball' : '');
-      const words = pk.label.split(' ');
-      let html;
-      if (lay === 'box') {
-        const side = (i, right) => `<div class="pb-team${right ? ' right' : ''}${ball(i)}" style="${tc(i)}"><div class="pb-logo">${img(i)}</div>${tos(i, 'pb-to')}
-          <div class="pb-ab"><b>${m.teams[i].abbr}</b><small>${recs[i]}</small></div><div class="pb-sc">${m.score[i]}</div></div>`;
-        html = `<div class="pbug pb-box" style="--pk:${pk.color}">${side(1, false)}
-          <div class="pb-mid"><div class="pb-dd">${ddh}</div><div class="pb-row"><span>${q}</span><b>${clk}</b><span class="pb-pc${m.playClock <= 10 ? ' low' : ''}">${pcs}</span><span>${spot}</span></div></div>
-          ${side(0, true)}</div>`;
-      } else if (lay === 'slim') {
-        const team = (i, right) => `<div class="ps-team${right ? ' right' : ''}${ball(i)}" style="${tc(i)}">${right ? '' : `<div class="ps-logo">${img(i)}</div>`}<div class="ps-rec"><small>(${recs[i]})</small>${tos(i, 'ps-to')}</div><b class="ps-ab">${m.teams[i].abbr}</b>${right ? `<div class="ps-logo">${img(i)}</div>` : ''}</div>`;
-        html = `<div class="pbug pb-slim" style="--pk:${pk.color}"><div class="ps-mark"><b>${words[0].slice(0, 3)}</b><small>${words.slice(1).join(' ') || words[0]}</small></div>
-          ${team(1, false)}<div class="ps-sc" style="${tc(1)}">${m.score[1]}</div><div class="ps-pos">${hasBall(1) ? '◀' : hasBall(0) ? '▶' : ''}</div><div class="ps-sc right" style="${tc(0)}">${m.score[0]}</div>${team(0, true)}
-          <div class="ps-clock"><span>${q}</span><b>${clk}</b>${pcs ? `<span class="ps-pc${m.playClock <= 10 ? ' low' : ''}">${pcs}</span>` : ''}</div><div class="ps-dd">${ddh}</div><div class="ps-spot">${spot}</div></div>`;
-      } else {
-        const team = (i, right) => `<div class="ph2-team${right ? ' right' : ''}${ball(i)}" style="${tc(i)}"><div class="ph2-logo">${img(i)}${tos(i, 'ph2-to')}</div>
-          <div class="ph2-ab"><b>${hasBall(i) && !right ? '▸ ' : ''}${m.teams[i].abbr}${hasBall(i) && right ? ' ◂' : ''}</b><small>(${recs[i]})</small></div><div class="ph2-sc">${m.score[i]}</div></div>`;
-        const shield = `<svg class="ph2-shield" viewBox="0 0 60 70"><path d="M30 2 L57 10 L54 44 Q50 60 30 68 Q10 60 6 44 L3 10 Z" fill="#e9e9ee" stroke="${pk.color}" stroke-width="3"/><text x="30" y="42" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="19" fill="#111">${words[0].slice(0, 3)}</text></svg>`;
-        html = `<div class="pbug pb-shield" style="--pk:${pk.color}"><div class="ph2-top">${team(1, false)}${shield}${team(0, true)}</div>
-          <div class="ph2-row"><span class="ph2-dd">${ddh}</span><span>${q}</span><b>${clk}</b><span class="ph2-pc${m.playClock <= 10 ? ' low' : ''}">${pcs}</span><span>${spot}</span></div></div>`;
-      }
-      bug.innerHTML = html;
-      bug.classList.toggle('pkg-bug', true);
+      bug.innerHTML = primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo: (i) => this.logoFor(m.teams[i]) });
+      bug.classList.add('pkg-bug');
       return;
     }
     bug.classList.remove('pkg-bug');

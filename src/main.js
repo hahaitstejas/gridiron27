@@ -13,6 +13,10 @@ import '@fontsource/oswald/400.css';
 import '@fontsource/oswald/500.css';
 import '@fontsource/oswald/600.css';
 import '@fontsource/oswald/700.css';
+// Prime-time scorebugs (hud.js primeBug): OFL fonts, bundled for offline play.
+import '@fontsource/montserrat/latin-800.css';
+import '@fontsource/barlow-semi-condensed/latin-700.css';
+import '@fontsource/barlow-condensed/latin-800.css';
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';
@@ -581,7 +585,9 @@ function broadcastPackage(gameDay, cond, practice, championship) {
     Thanksgiving: ['holiday', 'THANKSGIVING', '#e0782a'], Christmas: ['holiday', 'HOLIDAY GAME', '#e2393b'], Opener: ['open', 'SEASON OPENER', '#3ddc84'],
     International: ['intl', 'INTERNATIONAL SERIES', '#2fc4c4'], London: ['intl', 'INTERNATIONAL SERIES', '#2fc4c4'] };
   const p = PK[gameDay?.slot];
-  if (p) return { id: p[0], label: p[1], color: p[2] };
+  // The slot's three-letter mark on the scorebug (our own: <day> Night Gridiron).
+  const MARK = { TNF: 'TNG', SNF: 'SNG', MNF: 'MNG', Opener: 'KO', International: 'INT', London: 'INT' };
+  if (p) return { id: p[0], label: p[1], color: p[2], mark: MARK[gameDay.slot] };
   if (gameDay?.prime || cond?.time === 'night') return { id: 'night', label: 'PRIME TIME', color: '#ffd34d' };
   return null;
 }

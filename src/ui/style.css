@@ -1756,3 +1756,17 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .ts-break { display: flex; flex-direction: column; gap: 4px; min-width: 240px; }
 .ts-line { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; font-size: 15px; }
 .ts-line i { width: 9px; height: 9px; border-radius: 50%; }
+
+/* Play history (pause menu) */
+.ph-screen .ph-list { width: min(980px, 92vw); max-width: none; margin: 10px auto 0; max-height: 70vh; overflow-y: auto; }
+.ph-row { display: grid; grid-template-columns: 74px 58px 1fr; gap: 12px; align-items: center; padding: 8px 14px; background: rgba(255,255,255,0.04); margin-bottom: 3px; }
+.ph-row.focused { background: #fff; color: #000; }
+.ph-row.focused .ph-text small, .ph-row.focused .ph-when { color: #444; }
+.ph-when { font: 500 14px var(--fo); color: #9a9a9a; letter-spacing: 1px; }
+.ph-team { font: 600 14px var(--fo); color: #fff; text-align: center; padding: 3px 0; letter-spacing: 1px; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.ph-text small { display: block; font-size: 12px; color: #8a8a8a; text-transform: uppercase; letter-spacing: 1px; }
+.ph-text span { font-size: 16px; }
+.ph-row.score { box-shadow: inset 4px 0 0 #3ddc84; }
+.ph-row.turnover { box-shadow: inset 4px 0 0 #ff5a4e; }
+.ph-row.flag { box-shadow: inset 4px 0 0 #ffd23f; }
+.ph-empty { text-align: center; color: #888; padding: 40px; }

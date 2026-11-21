@@ -868,7 +868,7 @@ export class Screens {
    * Pause (the user's layout): the menu down the left, the two starting quarterbacks' game so far on the right, and
    * the scorebug left visible along the bottom. Items that don't apply right now are dimmed.
    */
-  pause({ onResume, onTimeout, timeoutsLeft = 0, onChallenge, onReplay, onStats, onDepth, onSettings, onControls, onController, onRestart, onQuit, game = null }) {
+  pause({ onResume, onTimeout, timeoutsLeft = 0, onChallenge, onReplay, onStats, onHistory, onDepth, onSettings, onControls, onController, onRestart, onQuit, game = null }) {
     const items = [];
     const add = (label, action, note = '') => {
       const it = el(`div.pz-item${action ? '' : '.disabled'}`, {}, el('span', { text: label }), note ? el('small', { text: note }) : null);
@@ -879,6 +879,7 @@ export class Screens {
     add('Timeout', onTimeout, `${timeoutsLeft} left`);
     add('Challenge Play', onChallenge, onChallenge ? '' : 'nothing to challenge');
     add('Stats', onStats);
+    add('Play History', onHistory, onHistory ? '' : 'no plays yet');
     add('Coaching', onDepth, 'depth chart · injuries');
     add('Instant Replay', onReplay);
     add('Settings', onSettings);
@@ -900,6 +901,25 @@ export class Screens {
       el('div.pz-situation', { text: game ? `${game.practice ? 'Practice' : `${game.quarter} · ${game.clock}`} · ${game.down || ''}` : '' }),
       el('div.setup-help.pz-help', { html: '<b class="btn A">A</b> Select &nbsp; ▲▼ Move &nbsp; <b class="btn B">B</b> Resume' }));
     this.nav.set(items, { columns: 1, onBack: onResume });
+  }
+
+  /**
+   * Play history (pause menu): every play so far, newest first, with the quarter / clock, the team with the ball (in its
+   * color) and the down & distance; scores, turnovers and accepted flags stand out. Up / down scrolls, B goes back.
+   */
+  playHistory(m, onBack) {
+    const log = [...(m.playLog || [])].reverse();
+    const rows = log.map((p) => {
+      const t = m.teams[p.team];
+      return el(`div.ph-row${p.mark ? `.${p.mark}` : ''}`, {},
+        el('small.ph-when', { text: `${p.q <= 4 ? `Q${p.q}` : 'OT'} ${clockShort(p.clock)}` }),
+        el('b.ph-team', { text: t.abbr, style: { background: t.colors.primary } }),
+        el('div.ph-text', {}, p.sit ? el('small', { text: p.sit }) : null, el('span', { text: p.text })));
+    });
+    this.frame('mono-screen ph-screen', el('h1', { text: 'Play History' }),
+      el('div.ph-list', {}, ...(rows.length ? rows : [el('div.ph-empty', { text: 'No plays yet.' })])),
+      el('div.setup-help', { html: '▲▼ Scroll &nbsp; <b class="btn B">B</b> Back' }));
+    this.nav.set(rows.length ? rows : [], { columns: 1, onBack });
   }
 
   /** Final box score; `halftime: true` makes it the halftime report (no player of the game, Start 2nd Half). */

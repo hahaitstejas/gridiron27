@@ -210,10 +210,14 @@ export class Match {
     else if (b.phase === 'scrimmage' && this.phase === 'scrimmage' && this.possession === off && this.down === 1 && !r.kickType && (r.yards || 0) > 0 && r.touchdown === null) line += ' · FIRST DOWN';
     this.lastPlayText = b.sit ? `${b.sit}: ${line}` : line;
     this.logWinProb(this.lastPlayText);
+    // Play history (pause menu): every play with when it started and who had the ball; scores and turnovers flagged.
+    const log = (this.playLog ||= []);
+    const pts = this.score[off] - b.score[off], other = this.score[1 - off] - b.score[1 - off];
+    log.push({ q: b.quarter, clock: b.clock, team: off, text: line, sit: b.sit, mark: pts > 0 || other > 0 ? 'score' : r.turnover || r.interception || r.fumbleLost ? 'turnover' : penalty?.accepted ? 'flag' : '' });
+    if (log.length > 400) log.shift();
     // Drives end on the first play that changes possession, scores, or runs out the half.
     const d = b.drive; // a punt or turnover has already started the other team's drive
     if (!d || d.done || b.phase !== 'scrimmage' || d.team !== off) return;
-    const pts = this.score[off] - b.score[off];
     const halfOver = this.over || (b.quarter === 2 && this.quarter === 3) || (b.quarter <= 4 && this.quarter > 4);
     const end = pts >= 6 ? 'Touchdown' : pts === 3 ? 'Field goal' : r.kickType === 'fg' ? 'Missed field goal' : r.interception ? 'Interception'
       : r.fumbleLost || (r.turnover && !r.interception) ? 'Fumble' : r.kickType === 'punt' ? 'Punt' : r.safety ? 'Safety'

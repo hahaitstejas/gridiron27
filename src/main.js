@@ -518,6 +518,7 @@ function pause() {
       && (session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))
       ? () => { session.callTimeout(session.humanTeam); for (const e of session.events.splice(0)) onSessionEvent(e); screens.clear(); app = 'game'; } : null,
     timeoutsLeft: session?.match.timeouts[session?.humanTeam] ?? 0,
+    onHistory: session?.match.playLog?.length ? () => screens.playHistory(session.match, pause) : null,
     onStats: session ? () => statsScreen(screens, session.match, { onBack: () => { screens.extraButtons = null; pause(); } }) : null,
     onDepth: session && session.humanTeam !== null ? () => coachingScreen(screens, { session, team: session.humanTeam,
       energy: (id) => energyOf(session.energy, session.humanTeam, id), onDone: pause }) : null,

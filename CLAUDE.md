@@ -776,6 +776,8 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   (hemi) is lower and the rim stronger in `TIME_LOOKS`; the turf has floodlight pools from the eight tower banks (`uPool`, stadium
   `setPool`, `pool` per time: day 0.15, dusk 0.6, night 1) and a stronger mowing sheen; night fog is a lighter haze over the bowl.
 - Camera: broadcast presnap 10.5 back / 4.6 up (was 15 / 7.2), live 12 / 5.6. Dev: `window.__g27.renderer.rig.debug = { p, l }`.
+- Stands (stadium.js `standMat` shader): seat treads in the seat color, darker risers so rows read, concrete stair aisles every `AISLE` 12
+  yds (`AISLE_W` 1.5, painted step edges) and dark tunnel mouths in the lower `TUNNEL_ROWS`; `gap()` keeps fans out of both.
 - Crowd: people-shaped fans (open cylinder torso, icosahedron head, two arms raised by excitement in the vertex shader), ~10%
   empty seats; LED ribbon boards at `RIBBON_ROW` (`paintRibbon`, scroll; flash with the video board on scores).
 

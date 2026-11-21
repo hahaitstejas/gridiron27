@@ -13,6 +13,8 @@ const ROW_DEPTH = 0.95;
 const ROW_RISE = 0.55;
 const WALL_H = 2.6;
 const RIBBON_ROW = 13; // the LED ribbon board runs along the front of this row
+const AISLE = 12, AISLE_W = 1.5; // stair aisles: spacing and width (yds, along the row)
+const TUNNEL_ROWS = 6, TUNNEL_W = 3.2; // tunnel mouths: rows up from the wall, width; every other gap between aisles
 
 /** Builds the static stadium. Returns { group, update(dt, excitement), setTeams(home, away) }. */
 /** 256 px tile of grass blades for the field's detail layer (grey: multiplies the painted turf). */
@@ -171,7 +173,11 @@ export function buildStadium(renderer, home, away) {
   group.add(walls);
   const paintWalls = (h) => wallMat.color.set(h.colors.primary).multiplyScalar(0.8);
 
-  // Stands: stepped rows on all four sides plus corner fills.
+  // Stands: stepped rows on all four sides plus corner fills. Stair aisles every AISLE yds and tunnel mouths in the lower bowl
+  // (the stand shader paints them; no seats there).
+  const mod = (v, m) => ((v % m) + m) % m;
+  const gap = (along, r) => Math.abs(mod(along + AISLE / 2, AISLE) - AISLE / 2) < AISLE_W / 2 + 0.3
+    || (r < TUNNEL_ROWS && Math.abs(mod(along - AISLE / 2 + AISLE, AISLE * 2) - AISLE) < TUNNEL_W / 2 + 0.3);
   const standGeos = [];
   const seatPositions = [];
   for (let r = 0; r < ROWS; r++) {
@@ -186,12 +192,12 @@ export function buildStadium(renderer, home, away) {
     // Spectator spots along each row (1 per ~0.95 yards), skipping aisles and the ribbon-board row.
     if (r === RIBBON_ROW) continue;
     for (let x = -WALL_X - off + 1; x < WALL_X + off - 1; x += 0.95) {
-      if (Math.abs((x % 18 + 18) % 18) < 1.2) continue;
+      if (gap(x, r)) continue;
       seatPositions.push([x, y, WALL_Z + off + 0.45, 0]);
       seatPositions.push([x, y, -(WALL_Z + off + 0.45), Math.PI]);
     }
     for (let z = -WALL_Z - off + 1; z < WALL_Z + off - 1; z += 0.95) {
-      if (Math.abs((z % 18 + 18) % 18) < 1.2) continue;
+      if (gap(z, r)) continue;
       seatPositions.push([WALL_X + off + 0.45, y, z, Math.PI / 2]);
       seatPositions.push([-(WALL_X + off + 0.45), y, z, -Math.PI / 2]);
     }
@@ -205,6 +211,27 @@ export function buildStadium(renderer, home, away) {
   standGeos.push(box(1, 6, (WALL_Z + backOff) * 2 + 2, -(WALL_X + backOff + 0.5), topY + 3 - 1, 0));
   // Seats take a dark tint of the home team's color (set in setTeams), so every stadium looks like home.
   const standMat = new THREE.MeshLambertMaterial({ color: 0x3a3f4a });
+  // Seat treads in the seat color, darker risers (so the rows read), concrete stair aisles with light step edges, dark tunnels.
+  const uStandDim = { value: 1 };
+  standMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uDim = uStandDim;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vSW; varying vec3 vSN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSW = position; vSN = normal;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vSW; varying vec3 vSN; uniform float uDim;')
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        float side = step(abs(vSW.x) - ${WALL_X.toFixed(1)}, abs(vSW.z) - ${WALL_Z.toFixed(1)}); // 1 on the long sides
+        float along = mix(vSW.z, vSW.x, side);
+        float row = (vSW.y - ${WALL_H.toFixed(2)}) / ${ROW_RISE.toFixed(2)};
+        float aisle = step(abs(mod(along + ${(AISLE / 2).toFixed(1)}, ${AISLE.toFixed(1)}) - ${(AISLE / 2).toFixed(1)}), ${(AISLE_W / 2).toFixed(2)});
+        float tunnel = step(row, ${TUNNEL_ROWS.toFixed(1)}) * step(abs(mod(along - ${(AISLE / 2).toFixed(1)} + ${AISLE.toFixed(1)}, ${(AISLE * 2).toFixed(1)}) - ${AISLE.toFixed(1)}), ${(TUNNEL_W / 2).toFixed(2)});
+        float tread = step(0.5, vSN.y);
+        vec3 concrete = vec3(0.46, 0.46, 0.47) * uDim;
+        vec3 seat = diffuseColor.rgb * mix(0.55, 1.0, tread);
+        vec3 stair = concrete * mix(0.7, 1.0, tread);
+        stair = mix(stair, vec3(0.85, 0.82, 0.62) * uDim, (1.0 - tread) * step(0.82, fract(row))); // painted step edge
+        diffuseColor.rgb = mix(seat, stair, aisle);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.02), tunnel * (1.0 - aisle));`);
+  };
   const stands = new THREE.Mesh(mergeGeometries(standGeos), standMat);
   group.add(stands);
 
@@ -474,7 +501,7 @@ export function buildStadium(renderer, home, away) {
 
   let dim = 1;
   const seatBase = standMat.color.clone();
-  const applyDim = () => { standMat.color.copy(seatBase).multiplyScalar(dim); crowdMat.color.setScalar(dim); };
+  const applyDim = () => { standMat.color.copy(seatBase).multiplyScalar(dim); crowdMat.color.setScalar(dim); uStandDim.value = dim; };
   return {
     group,
     sky: skyUniforms,

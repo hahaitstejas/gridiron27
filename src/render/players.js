@@ -232,7 +232,7 @@ export class PlayerRenderer {
    */
   faceMaterial(m) {
     this.faceCanvas = document.createElement('canvas');
-    this.faceCanvas.width = this.faceCanvas.height = 512; // 64 px cells: a 1 MB re-upload when faces change, not 4 MB
+    this.faceCanvas.width = this.faceCanvas.height = 1024; // 128 px cells (close-ups show the fitted photo face); a 4 MB re-upload, only when faces change
     this.faceTex = new THREE.CanvasTexture(this.faceCanvas);
     this.faceTex.colorSpace = THREE.SRGBColorSpace;
     BODY_UNIFORMS.faceTex.value = this.faceTex; // the body shader paints photos on the MakeHuman face from the same atlas
@@ -257,11 +257,16 @@ export class PlayerRenderer {
     return m;
   }
 
-  /** Paint player i's photo into his atlas cell (square crop from the top-middle, like the menus). */
+  /**
+   * Paint player i's photo into his atlas cell. A photo the face fitter has warped onto our head's layout (ui/faces.js,
+   * render/faceFit.js) is drawn straight in; otherwise a square crop from the top-middle, like the menus.
+   */
   paintFace(i, img) {
     const g = this.faceCanvas.getContext('2d');
-    const x = (i % 8) * 64, y = Math.floor(i / 8) * 64, s = Math.min(img.width, img.height);
-    g.drawImage(img, (img.width - s) / 2, Math.max(0, (img.height - s) * 0.2), s, s, x, y, 64, 64);
+    const C = 128, x = (i % 8) * C, y = Math.floor(i / 8) * C;
+    if (img.warped) { g.drawImage(img, x, y, C, C); return; }
+    const s = Math.min(img.width, img.height);
+    g.drawImage(img, (img.width - s) / 2, Math.max(0, (img.height - s) * 0.2), s, s, x, y, C, C);
   }
 
   /**
@@ -385,14 +390,15 @@ export class PlayerRenderer {
       const helmet = uni.helmet || pick(team, u.helmet);
       const pants = uni.pants;
       // A face photo: on the 3D face, and (once) the source of his skin tone (kept on the roster player too).
-      const img = p.photo ? faceImage({ face: p.photo }, () => { this.faceRev++; }) : null;
+      const img = p.photo ? faceImage({ face: p.photo }, () => { this.faceRev++; }, { fit: true }) : null;
       if (img && !p.skinColor) {
         const tone = skinToneFromImage(img);
         const rp = tone && teams[p.team]?.roster?.find((q) => q.id === p.rid);
         if (tone) { p.skinColor = tone; if (rp && !rp.skinManual && !rp.skinColor) { rp.skinColor = tone; rp.skin = nearestSkin(tone); } }
       }
       this.faceAttr.setX(i, img ? 1 : 0);
-      if (img && this._faceCell?.[i] !== p.photo) { this.paintFace(i, img); (this._faceCell ||= [])[i] = p.photo; this._facesDirty = true; }
+      const fk = img ? p.photo + (img.warped ? '#w' : '') : null; // repaint when the warped face replaces the crop
+      if (img && this._faceCell?.[i] !== fk) { this.paintFace(i, img); (this._faceCell ||= [])[i] = fk; this._facesDirty = true; }
       const skin = p.skinColor || SKIN[p.skin % SKIN.length];
       // Mud / grass stains build up over the game (this.dirt 0..1, set from the weather and the clock).
       const dirt = (this.dirt || 0) * (p.id % 3 === 0 ? 0.42 : 0.28);

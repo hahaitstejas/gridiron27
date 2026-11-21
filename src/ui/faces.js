@@ -53,12 +53,15 @@ const cache = new Map();
  * time it finishes (the renderer repaints its face atlas then). Web links need CORS for the 3D face and the skin
  * tone; without it the photo still shows in the menus (as an <img>), just not on the 3D player.
  */
-export function faceImage(p, onLoad) {
+export function faceImage(p, onLoad, opts = {}) {
   const src = faceSrc(p);
   if (!src) return null;
   const c = cache.get(src);
-  if (c) return c.ok ? c.img : null;
-  const entry = { img: new Image(), ok: false };
+  if (c) {
+    if (opts.fit && !c.fitting) { c.fitting = true; c.onFit = onLoad; if (c.ok) fitEntry(c, src); }
+    return c.ok ? c.img : null;
+  }
+  const entry = { img: new Image(), ok: false, fitting: !!opts.fit, onFit: opts.fit ? onLoad : null };
   cache.set(src, entry);
   if (/^https?:/i.test(src)) entry.img.crossOrigin = 'anonymous';
   const img = entry.img;
@@ -67,17 +70,51 @@ export function faceImage(p, onLoad) {
     // the full image into the face atlas / skin sampler every time a player comes on the field decoded and scaled it
     // on the main thread (a visible hitch per substitution with a league full of photos).
     try { await img.decode?.(); } catch { /* already decoded or not decodable: drawImage still works */ }
+    entry.full = img; // kept until the face fitter has used it (only the 3D renderer asks for a fit)
     entry.img = thumb(img);
     entry.ok = true;
     onLoad?.(entry.img);
+    if (entry.fitting) fitEntry(entry, src);
   };
   img.onerror = () => { entry.ok = false; };
   img.src = src;
   return null;
 }
 
+/**
+ * Find the face (MediaPipe, render/faceFit.js) on a <= 512 px copy and replace the crop with the photo warped onto our 3D head's
+ * face layout (render/faceWarp.js): eyes, nose, mouth and jaw where the mesh has them. Not in the offline single file.
+ */
+async function fitEntry(entry, src) {
+  if (import.meta.env.MODE === 'offline' || !entry.full) return;
+  try {
+    const src512 = shrink(entry.full, 512);
+    entry.full = null;
+    const [F, W] = await Promise.all([import('../render/faceFit.js'), import('../render/faceWarp.js')]);
+    const pts = await F.fitFace(src512, src);
+    if (!pts) return;
+    const c = document.createElement('canvas');
+    c.width = c.height = FACE_PX;
+    const g = c.getContext('2d');
+    g.drawImage(entry.img, 0, 0, FACE_PX, FACE_PX);
+    W.warpFace(g, src512, pts, F.KEYS, F.TRIS, 0, 0, FACE_PX);
+    c.warped = true; // the renderer draws it straight into the cell (players.js paintFace)
+    entry.img = c;
+    entry.onFit?.(c);
+  } catch (e) { console.warn('[Gridiron 27] face fit skipped', e); }
+}
+
+/** A copy of an image no bigger than `max` px on its long side (canvas), for the face fitter. */
+function shrink(img, max) {
+  const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height, k = Math.min(1, max / Math.max(w, h));
+  const c = document.createElement('canvas');
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+
 /** A FACE_PX square copy of a photo (crop from the top-middle, where a headshot's face is). Falls back to the image. */
-const FACE_PX = 96;
+const FACE_PX = 128; // = the 3D face atlas cells (players.js); the menus use the photo itself
 function thumb(img) {
   try {
     const c = document.createElement('canvas');

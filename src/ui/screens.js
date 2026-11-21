@@ -811,6 +811,7 @@ export class Screens {
       ['Sky lighting', '"Hochsal Field" by Greg Zaal (Poly Haven), CC0 1.0.'],
       ['Fabric', '"Fabric030" from ambientCG, CC0 1.0.'],
       ['Fonts', 'Oswald, Saira Condensed and the uniform fonts via Fontsource, SIL Open Font License 1.1.'],
+      ['Face fitting', 'Google MediaPipe Face Landmarker (model and @mediapipe/tasks-vision), Apache License 2.0.'],
       ['Engine', 'three.js (MIT), Vite (MIT).'],
     ];
     const back = el('div.start-btn', { text: 'Back' });

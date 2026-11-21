@@ -46,6 +46,7 @@
     "@fontsource/squada-one": "^5.3.0",
     "@fontsource/staatliches": "^5.3.0",
     "@fontsource/teko": "^5.3.0",
+    "@mediapipe/tasks-vision": "^0.10.21",
     "three": "^0.186.1"
   },
   "devDependencies": {

@@ -473,6 +473,18 @@ used to show through a smooth jersey; arms hang at `out` 0.24 (clear of the pads
 procedural drape / underarm / sleeve folds and the baked `jersey_fold.png` term jumped between arm and torso triangles and
 left streaks on the shoulders (the pants' pad creases and hip / knee bunching stay).
 
+### Photo faces fitted to the head (MediaPipe)
+A player photo used to be a square crop painted on the face (eyes lined up by luck). Now, when the 3D renderer asks for a photo
+(`faceImage(p, onLoad, { fit: true })` in ui/faces.js; menus never trigger it), the full photo is shrunk to <= 512 px and
+`render/faceFit.js` runs Google MediaPipe's Face Landmarker (`@mediapipe/tasks-vision`, Apache-2.0; model
+`src/assets/face_landmarker.task`, wasm from node_modules via `?url`; loaded lazily, CPU) to get 17 key points (`KEYS`: forehead,
+brows, eye corners, face edges, nose tip, mouth corners, jaw, chin), cached per photo (hashed source, memory + localStorage
+`g27.faceFit`). `render/faceWarp.js` `warpFace` draws the photo piece by piece (`TRIS`, a fixed triangulation; per-triangle affine
+maps) so each point lands on our head's face layout (the painted face's spots: eyes 0.31 / 0.69 across at 0.585 up, nose 0.375,
+mouth 0.215, chin 0), over a whole-photo eyes + chin fit for the border. The result (`canvas.warped`) replaces the crop and the
+renderer draws it straight into the face atlas (players.js `paintFace`, 128 px cells in a 1024 canvas). No face found = the crop
+stays. The offline single file skips it (`import.meta.env.MODE === 'offline'`: the ~13 MB model + wasm aren't inlined).
+
 ### Faces and officials' caps
 The face frame for photos / the painted face is measured on the mesh (buildhuman `FACE`: chin at v = 0, the nose tip at
 ~0.37, ~0.25 yd tall); it used to sit 0.1 yd too high, which put the painted eyes on the forehead. Officials and coaches

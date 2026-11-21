@@ -15,7 +15,7 @@ import { DRILLS, DRILL_IDS, MEDALS, medalFor } from '../game/drills.js';
 import { SCENARIOS } from '../game/scenarios.js';
 
 const SETTINGS_KEY = 'g27.settings';
-export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random',
+export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random', gameDay: 'auto',
   nameTags: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false,
   volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8 };
@@ -24,6 +24,20 @@ const VOL_STEPS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 const volLabel = (v) => (v ? `${Math.round(v * 100)}%` : 'Off');
 
 // What each setting does (the description panel on settings-style screens), keyed by the row's label, lower case.
+/** Play Now game day (UPDATE 5.3): the broadcast package and, with Time of day on Random, the usual kickoff time. */
+export const GAME_DAYS = {
+  auto: { label: 'Any', slot: null },
+  sun: { label: 'Sunday', slot: null, time: 'day' },
+  sun_night: { label: 'Sunday Night', slot: 'SNF', time: 'night' },
+  mon: { label: 'Monday Night', slot: 'MNF', time: 'night' },
+  thu: { label: 'Thursday Night', slot: 'TNF', time: 'night' },
+  sat: { label: 'Saturday', slot: 'Saturday', time: 'dusk' },
+  opener: { label: 'Season Opener', slot: 'Opener', time: 'night' },
+  thanksgiving: { label: 'Thanksgiving', slot: 'Thanksgiving', time: 'day', holiday: 'thanksgiving' },
+  christmas: { label: 'Christmas', slot: 'Christmas', time: 'night', holiday: 'christmas' },
+  intl: { label: 'International', slot: 'International', time: 'day' },
+};
+export const GAME_DAY_KEYS = Object.keys(GAME_DAYS);
 export const OPTION_HELP = {
   'button mapping…': 'Swap the controller buttons used in games (menus keep A select / B back) and rebind any keyboard key. Reset puts the defaults back.',
   'credits…': 'Who made the art, motion capture and fonts this game is built on, and the licenses they come under.',
@@ -57,6 +71,7 @@ export const OPTION_HELP = {
   'stadium': 'Home stadium, or a neutral site with no home crowd.',
   'weather': 'Rain makes the ball slick, snow slows footing and kicks, wind moves kicks and deep passes.',
   'time of day': 'Day, dusk or a night game under the lights.',
+  'game day': 'The day of the game: Sunday, a prime-time night (its own broadcast scorebug), Thanksgiving leaves, Christmas flurries, an international game. With Time of day on Random, the usual kickoff time for that day.',
   'gameplay sliders': 'Fine-tune passing, blocking, catching, tackling and more, separately for you and the CPU.',
   'season length': 'Games in each regular season.',
   'teams': 'How many teams enter the bracket.',
@@ -547,6 +562,7 @@ export class Screens {
       option('Difficulty', DIFFICULTY_KEYS, 'difficulty', (k) => DIFFICULTY[k].label),
       option('Stadium', ['home', 'neutral'], 'stadium', (v) => (v === 'home' ? `${teams[p.home].city} (home crowd)` : 'Neutral site')),
       option('Weather', ['random', 'clear', 'rain', 'snow', 'windy'], 'weather', cap),
+      option('Game day', GAME_DAY_KEYS, 'gameDay', (k) => (GAME_DAYS[k] || GAME_DAYS.auto).label),
       option('Time of day', ['random', 'day', 'dusk', 'night'], 'time', cap),
       option('Penalties', [true, false], 'penalties', (v) => (v ? 'On' : 'Off')),
     ];

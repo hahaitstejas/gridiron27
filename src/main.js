@@ -44,7 +44,7 @@ import { GameSession } from './game/session.js';
 import { Hud } from './ui/hud.js';
 import { Nav, el } from './ui/nav.js';
 import { logoCanvas } from './render/logo.js';
-import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS } from './ui/screens.js';
+import { Screens, loadPrefs, savePrefs, ICONS, CAMERAS, GAME_DAYS } from './ui/screens.js';
 import { setKeymap } from './input/keyboard.js';
 
 import { PlayCallScreen } from './ui/playcall.js';
@@ -273,7 +273,11 @@ function startGame(p, opts = {}) {
   const humanTeam = cfg.side === 'cpu' || cfg.side === '2p' ? null : coop ? (cfg.coopSide === 'away' ? 1 : 0) : cfg.side === 'home' ? 0 : 1;
   lastStart = [p, opts]; // pause → Restart
   const seed = opts.seed ?? (Date.now() % 1e9);
-  let conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', cfg.time || 'random');
+  // Play Now game day (Game Settings): the broadcast slot and, with Time of day on Random, that day's kickoff time.
+  const gd = !opts.franchise && !opts.practice && !opts.tournament && !opts.scenario ? GAME_DAYS[cfg.gameDay] : null;
+  if (gd?.slot && !opts.gameDay) opts = { ...opts, gameDay: { short: [], prime: gd.time === 'night', slot: gd.slot } };
+  let conditions = opts.conditions || makeConditions(new RNG(seed + 77), cfg.weather || 'random', (cfg.time || 'random') === 'random' && gd?.time ? gd.time : cfg.time || 'random');
+  if (gd?.holiday && !opts.conditions) conditions = { ...conditions, holiday: gd.holiday };
   // A dome (or a closed retractable roof in bad weather) keeps the weather out: no rain, snow or wind.
   const roof = !opts.neutral && cfg.stadium !== 'neutral' ? home.stadium?.roof : null;
   if (roof === 'dome' || (roof === 'retractable' && conditions.type !== 'clear')) conditions = { ...conditions, type: 'clear', wind: { x: 0, z: 0 } };
@@ -602,7 +606,7 @@ function broadcastPackage(gameDay, cond, practice, championship) {
   if (practice) return null;
   if (championship) return { id: 'title', label: 'CHAMPIONSHIP', color: '#e8c15a' };
   const PK = { TNF: ['thu', 'THURSDAY NIGHT', '#8f6bff'], SNF: ['sun', 'SUNDAY NIGHT', '#3d8bff'], MNF: ['mon', 'MONDAY NIGHT', '#ff8a2f'],
-    Thanksgiving: ['holiday', 'THANKSGIVING', '#e0782a'], Christmas: ['holiday', 'HOLIDAY GAME', '#e2393b'], Opener: ['open', 'SEASON OPENER', '#3ddc84'],
+    Thanksgiving: ['holiday', 'THANKSGIVING', '#e0782a'], Christmas: ['holiday', 'HOLIDAY GAME', '#e2393b'], Opener: ['open', 'SEASON OPENER', '#3ddc84'], Saturday: ['sun', 'SATURDAY SHOWDOWN', '#2fb36a'],
     International: ['intl', 'INTERNATIONAL SERIES', '#2fc4c4'], London: ['intl', 'INTERNATIONAL SERIES', '#2fc4c4'] };
   const p = PK[gameDay?.slot];
   // The slot's three-letter mark on the scorebug (our own: <day> Night Gridiron).

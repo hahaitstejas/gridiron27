@@ -591,7 +591,9 @@ fatigue scales energy costs.
 
 ### Weather and time of day (`game/weather.js`, `render/weather.js`)
 Conditions `{ type: 'clear'|'rain'|'snow', wind: {x, z} yd/s (world frame), time: 'day'|'dusk'|'night' }` from
-`makeConditions(rng, weather, time, late)` (Play Now: Weather / Time of day options; franchise: `gameConditions(f, g)`,
+`makeConditions(rng, weather, time, late)` (Play Now: Weather / Time of day / Game day options; Game day (UPDATE 5.3, `GAME_DAYS` in
+screens.js: Sunday, Sunday / Monday / Thursday Night, Saturday, Season Opener, Thanksgiving, Christmas, International) sets the
+broadcast package via `opts.gameDay.slot`, the holiday effects and, with Time of day on Random, that day's usual kickoff time; franchise: `gameConditions(f, g)`,
 snow only late in the season). The session passes them to each `PlaySim` (`cfg.weather`): `WEATHER_MODS` take points off
 ratings in `R()` (rain: catching, carrying, accuracy; snow: footing, kick power), wind accelerates kicked balls in
 flight (`WIND_PUSH`, landing prediction included) and adds drift + scatter to deep passes. `GameRenderer.setConditions()`

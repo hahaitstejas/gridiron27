@@ -82,7 +82,7 @@ export class Presentation {
       const look = Math.atan2(b.z - p.z, b.x - p.x);
       p.facing = turn(p.facing, Math.abs(v) > 0.4 ? Math.atan2(0, v) : look, dt * 3);
       const party = this.cel && this.cel.team === p.team && !p.coach;
-      const anim = party ? 'celebrate' : Math.abs(v) > 0.4 ? 'run' : p.coach ? 'idle' : sim.state === 'live' && (p.id % 3 === 0) ? 'clap' : 'idle';
+      const anim = party ? 'celebrate' : Math.abs(v) > 0.4 ? 'run' : p.coach ? (sim.state === 'live' ? 'idle' : 'playsheet') : sim.state === 'live' && (p.id % 3 === 0) ? 'clap' : 'idle';
       if (anim === 'run') p.cycle += dt * 3;
       if (anim !== p.anim) { p.anim = anim; p.animT = 0; }
     }

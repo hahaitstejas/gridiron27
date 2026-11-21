@@ -220,7 +220,7 @@ export class Hud {
   /** Pregame lower-third: matchup, records, league, conditions (null hides it). */
   intro(info) {
     const el = this.$('intro');
-    if (!info) { el.classList.add('hidden'); return; }
+    if (!info) { el.classList.add('hidden'); this._lc?.classList.add('hidden'); return; }
     const team = (t, rec) => `<div class="in-team" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}"><div><small>${t.city}</small><b>${t.name}</b>${rec ? `<i>${rec}</i>` : ''}</div></div>`;
     el.style.setProperty('--gold', this.pkg?.color || '#ffd34d');
     // Time-slot package (main.js broadcastPackage): a shield badge over the lower third, our own design.
@@ -293,7 +293,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'spotlight', 'drivecard', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'spotlight', 'drivecard', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; for (const e of [this._tdt, this._lc]) e?.classList.add('hidden'); }
 
   leagueLogo() {
     const l = LEAGUE.logo;
@@ -538,6 +538,18 @@ export class Hud {
     clearTimeout(this._ttA); clearTimeout(this._ttB);
     this._ttA = setTimeout(() => el.classList.add('card'), 2200);
     this._ttB = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('show', 'card'); }, 4900);
+  }
+
+  /** Pregame team card (Game Play 9 reference, our own design): a team-color wipe with the logo and the name, ~1.9 s, as the
+   *  home team runs out. */
+  logoCard(team) {
+    const el = (this._lc ||= (() => { const d = document.createElement('div'); d.id = 'logocard'; d.className = 'hidden'; this.root.append(d); return d; })());
+    el.style.setProperty('--tc', team.colors?.primary || '#1f3a8a'); el.style.setProperty('--tc2', team.colors?.secondary || '#111');
+    el.innerHTML = `<div class="lc-bg"></div><img src="${this.logoFor(team)}" alt=""/><div class="lc-name"><small></small><b></b></div>`;
+    el.querySelector('small').textContent = (team.city || '').toUpperCase();
+    el.querySelector('b').textContent = (team.name || '').toUpperCase();
+    el.classList.remove('hidden'); void el.offsetWidth;
+    clearTimeout(this._lcT); this._lcT = setTimeout(() => el.classList.add('hidden'), 1900);
   }
 
   tdBand(team, word = 'TOUCHDOWN') {

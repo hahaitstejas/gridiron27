@@ -929,6 +929,7 @@ function frameBody(now) {
       const h = session.teams[0];
       const cap = SHOTS[shot]?.caption;
       hud.introCaption(cap === 'runout' ? `Here come the ${h.name}` : cap === 'crowd' ? `${h.stadium?.name || `${h.city} Stadium`} is rocking` : null);
+      if (cap === 'runout') hud.logoCard(h);
       hud.introCard(cap === 'coach' ? 'coach' : cap === 'kickoff' ? 'qb' : null, h, cap === 'coach' ? coachInfo(h) : qbInfo(h));
     }
     renderer.renderShot(dt, sh.pos, sh.look, 0.6);

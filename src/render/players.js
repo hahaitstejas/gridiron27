@@ -474,7 +474,7 @@ export class PlayerRenderer {
       this.region(i, REGION.shoe, '#151515');
       P.face.setColorAt(i, c.set(skin));
       P.helmet.setColorAt(i, c.set(b.coach ? skin : helmet)); P.stripe.setColorAt(i, c.set(b.coach ? team.colors.primary : u.helmetStripe ? team.colors.secondary : helmet));
-      P.towel.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.capC.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.capB.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
+      P.towel.setColorAt(i, c.set(b.coach ? '#f1efe6' : '#f4f4f4')); P.capC.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.capB.setColorAt(i, c.set(b.coach ? team.colors.primary : '#f4f4f4')); P.visor.setColorAt(i, c.set('#1a1f2a'));
       P.mask.setColorAt(i, c.set(isDark(helmet) ? '#cfcfcf' : '#333333')); P.chin.setColorAt(i, c.set('#f2f2f2'));
       for (let s2 = 0; s2 < 2; s2++) { this.decalAttr.setXY(i * 2 + s2, b.team, s2); (s2 ? P.shoe : P.shoeL).setColorAt(i, c.set('#151515')); }
     });
@@ -719,6 +719,12 @@ export class PlayerRenderer {
       cr[s].setFromMatrixPosition(cm);
       fq[s].setFromRotationMatrix(cm);
       if (s === 1) (this.handPos[i] ||= new THREE.Vector3()).copy(hd[1]);
+      // A head coach holds his laminated play sheet in his right hand (the towel part, which coaches don't otherwise use).
+      if (s === 1 && p.coach) {
+        // Up over his mouth (in front of the face, toward the hand) while calling the play; down at his side in the hand otherwise.
+        P.towel.setMatrixAt(i, p.anim === 'playsheet' ? cl(hg).multiply(trans(0.06, -0.05, 0.17)).multiply(rotX(0.15)).multiply(rotY(-0.25)).multiply(scaleM(2.4, 1.35, 1))
+          : cl(el).multiply(trans(0, -B.fore - 0.1, 0.05)).multiply(rotX(-1.4)).multiply(scaleM(2.4, 1.35, 1)));
+      }
     }
     // Legs.
     for (let s = 0; s < 2; s++) {
@@ -1595,6 +1601,12 @@ function computePose(p, time, sim) {
       pose.crouch = -0.12; pose.lean = 0.55; pose.head = -0.1;
       pose.legs[0].hip = pose.legs[1].hip = 0.45; pose.legs[0].knee = pose.legs[1].knee = 0.55; pose.legs[0].out = pose.legs[1].out = 0.12;
       pose.arms[0].pitch = pose.arms[1].pitch = 0.75; pose.arms[0].elbow = pose.arms[1].elbow = 0.25; pose.arms[0].out = pose.arms[1].out = 0.18;
+      break;
+    case 'playsheet':
+      // Head coach calling the play: the sheet up over his mouth in the right hand, the left arm folded under it.
+      pose.lean = 0.06; pose.head = 0.12;
+      pose.arms[1].pitch = 1.2; pose.arms[1].elbow = 2.3; pose.arms[1].out = -0.75;
+      pose.arms[0].pitch = 0.75; pose.arms[0].elbow = 1.7; pose.arms[0].out = -0.35;
       break;
     case 'clap':
       // Breaking the huddle.

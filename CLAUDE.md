@@ -651,7 +651,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   (both teams in their colors with the score, each side's passing / rushing / receiving leader with photos, yards / first downs /
   3rd down / turnovers; A → the halftime report); the pregame intro's coach shot and crane shot show `hud.introCard('coach' | 'qb')`
   (head coach: name, Nth season from `coachInfo`, franchise record; starting QB: photo, bio, OVR / ARM / ACC / SPD) in place of the
-  matchup lower third.
+  matchup lower third; the run-out shot opens with `hud.logoCard(team)` (`#logocard`, a 1.9 s team-color wipe with the logo and
+  name). Head coaches hold a laminated play sheet (the towel part on coaches, players.js) and between plays put it up over their
+  mouth (pose `playsheet`, presentation.js `sidelines`).
 - Drops (UPDATE 5.3): a dropped pass sets the receiver's anim to `drop` (passing.js, held 0.75 s in anim.js): arms jolt up and
   apart, a lunge after the ball, then the hands come down (players.js pose; in `GAIT_ANIMS`).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.

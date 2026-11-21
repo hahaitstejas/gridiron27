@@ -268,11 +268,11 @@ selection (GOOD PICK + letter, true-value rank vs pick), draft class table; play
 Seen, roughly in order. [have] = already in Gridiron 27, [new] = added Nov 21, [todo] = not yet.
 - Pregame: publisher / league logo stings (skip: their IP); stadium drone / firework show forming the home logo [todo]; tunnel
   close-ups of players walking out (helmet on, smoke, team lights) [have: run-out, could be closer]; team run-out through a giant
-  inflatable / smoke [todo]; team logo card in team color [todo]; head-coach lower thirds on the sideline (name, "Nth season
+  inflatable / smoke [todo]; team logo card in team color [new: `hud.logoCard`]; head-coach lower thirds on the sideline (name, "Nth season
   as head coach", record) [new: `hud.introCard('coach')`]; "MONDAY NIGHT PRIMETIME" title card [have: package badge]; starting QB card ("LAST SEASON" stats,
   photo) over a sideline shot [new: `introCard('qb')`, ratings instead of last season].
 - Between plays: play-call screen over the huddle [have]; close-ups of players walking back / talking after the whistle [have:
-  spotlight on big plays, help-ups, reactions]; coach with the play sheet [todo]; the huddle from low [have].
+  spotlight on big plays, help-ups, reactions]; coach with the play sheet [new: pose `playsheet`]; the huddle from low [have].
 - Touchdown: full-screen stylized TOUCHDOWN title (scorer under a spotlight, team logos either side) [new: `hud.tdTitle`], then a scorer card
   (team-color pattern, FIRST name thin / LAST bold, POS #, headshot) [new]; linemen walking off with a SCORING DRIVE banner (plays /
   yards / time) [new: `#drivecard`, `hud.pendingDrive`, shown at the next kickoff call].

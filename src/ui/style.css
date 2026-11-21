@@ -2004,7 +2004,7 @@ body:has(.pz-screen:not(.hidden)) #scorebug, body:has(.pz-screen:not(.hidden)) #
 #drivecard .dv-stats div { display: flex; flex-direction: column; align-items: center; }
 #drivecard .dv-stats small { font: 600 10px var(--fb, var(--fd)); letter-spacing: 2px; opacity: 0.7; } #drivecard .dv-stats b { font: 600 22px/1 var(--fo, var(--fd)); }
 /* Touchdown cutscene overlay (hud.tdTitle; Game Play 9 reference, our own design). */
-#tdtitle { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+#tdtitle { position: fixed; inset: 0; z-index: 61; pointer-events: none; }
 #tdtitle .tt-title { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; gap: 2vw; padding-bottom: 14vh;
   background: radial-gradient(ellipse at 50% 30%, transparent 25%, rgba(0,0,0,0.65) 75%), linear-gradient(0deg, rgba(0,0,0,0.75), transparent 45%); }
 #tdtitle .tt-title b { font: 700 13vw/0.9 var(--fo, 'Oswald', sans-serif); letter-spacing: -0.02em; transform: perspective(700px) rotateX(14deg) scaleY(1.15);
@@ -2058,3 +2058,12 @@ body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #
 #intro .ic-nums { display: flex; gap: 22px; margin-top: 6px; } #intro .ic-nums b { font: 700 24px/1 var(--fo, var(--fd)); display: inline; margin-right: 5px; } #intro .ic-nums small { display: inline; font-size: 11px; }
 #intro .ic-photo { width: 128px; flex: none; background: color-mix(in srgb, var(--tc) 70%, #000); overflow: hidden; }
 #intro .ic-photo img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; border-radius: 0; }
+/* Pregame team card (hud.logoCard). */
+#logocard { position: fixed; inset: 0; z-index: 61; pointer-events: none; display: flex; align-items: center; justify-content: center; gap: 3vw; }
+#logocard .lc-bg { position: absolute; inset: 0; background: repeating-linear-gradient(115deg, var(--tc) 0 5vw, color-mix(in srgb, var(--tc) 82%, #000) 5vw 5.5vw); animation: lcWipe 1.9s cubic-bezier(.6,0,.2,1) both; }
+#logocard img { position: relative; width: 22vw; height: 22vw; object-fit: contain; filter: drop-shadow(0 10px 24px rgba(0,0,0,0.5)); animation: lcPop 1.9s both; }
+#logocard .lc-name { position: relative; color: #fff; animation: lcPop 1.9s 0.05s both; }
+#logocard .lc-name small { display: block; font: 600 2.4vw var(--fo, var(--fd)); letter-spacing: 0.3em; opacity: 0.85; }
+#logocard .lc-name b { display: block; font: 700 9vw/0.9 var(--fo, var(--fd)); text-shadow: 0 6px 0 rgba(0,0,0,0.25); }
+@keyframes lcWipe { 0% { clip-path: polygon(0 0, 0 0, -20% 100%, -20% 100%); } 22%, 80% { clip-path: polygon(0 0, 120% 0, 100% 100%, -20% 100%); } 100% { clip-path: polygon(120% 0, 120% 0, 100% 100%, 100% 100%); } }
+@keyframes lcPop { 0%, 12% { opacity: 0; transform: scale(1.25); } 26%, 78% { opacity: 1; transform: none; } 92%, 100% { opacity: 0; transform: translateX(-4vw); } }

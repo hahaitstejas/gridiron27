@@ -708,7 +708,8 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   human who scrambles (`defAdj.spy`); pressure / fading / getting hit ruin throws. FG block: the human is the edge rusher
   (B8, free outside the wing), X dives across the kick; long kicks get blocked more. Juke = plant + lateral cut
   (`jukeDefenders` can make the man in front stumble). Hit stick: more whiffs, more fumbles. Tush Push play with a timing
-  bar (`sim.push`). Catch: A secure / X run after / Y aggressive.
+  bar (`sim.push`; UPDATE 5.2, the user's reference video: for a human the red-yellow-green-yellow-red bar floats over the line BEFORE
+  the snap, the needle sweeps (`sim.pushPre`, session.js) and the A press that snaps the ball is the timing, `pushAtSnap()`). Catch: A secure / X run after / Y aggressive.
 - In-game injuries are "questionable to return" or "out"; the human decides on a return (session state `injury`, risk from
   `franchise/health.js`), the diagnosis shows after the game (post-game Injuries panel).
 - Menus: no outlines anywhere; Team Select is driven by `screens.custom` with both controllers (each pad moves its own

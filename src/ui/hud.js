@@ -139,7 +139,7 @@ export class Hud {
       <div id="noise" class="hidden"></div><div id="milestone" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="celwheel" class="hidden"></div>
-      <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
+      <div id="pushmeter" class="hidden"><div class="pm-bar"><div class="pm-needle"></div></div><div class="pm-label"><b class="btn A">A</b> Snap in the green</div></div>
       <div id="kickmeter" class="hidden"><svg class="km-arc" viewBox="-24 -124 214 152"><defs><linearGradient id="kmg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${JL + JR}" y2="${-JR - JV}"><stop offset="0" stop-color="#173a86"/><stop offset="0.45" stop-color="#2468d8"/><stop offset="0.8" stop-color="#22c8e8"/><stop offset="1" stop-color="#3ff2c4"/></linearGradient></defs>
         <path class="km-track" d="${J}"/><path class="km-fill" d="${J}" stroke="url(#kmg)"/><path class="km-cap" d="${J}" pathLength="100"/>
         <line class="km-top" x1="0" y1="0" x2="0" y2="0"/><line class="km-zone" x1="0" y1="0" x2="0" y2="0"/><line class="km-set" x1="0" y1="0" x2="0" y2="0"/><line class="km-needle" x1="0" y1="0" x2="0" y2="0"/>
@@ -749,9 +749,15 @@ export class Hud {
     }
     // Tush push timing bar.
     const pm = this.$('pushmeter');
-    const pushOn = sim?.offPlay?.push && sim.state === 'live' && sim.push && sim.push.quality === null && session.isHuman?.(sim.offIdx);
+    // At the line before the snap (the reference video): over the middle of the line, the needle sweeping; the old in-play window too.
+    const pushPre = sim?.offPlay?.push && sim.state === 'presnap' && session.state === 'presnap' && !playcallOpen && session.isHuman?.(sim.offIdx) && session.calls?.(sim.offIdx) !== false;
+    const pushOn = pushPre || (sim?.offPlay?.push && sim.state === 'live' && sim.push && sim.push.quality === null && session.isHuman?.(sim.offIdx));
     pm.classList.toggle('hidden', !pushOn);
-    if (pushOn) pm.querySelector('.pm-needle').style.left = `${sim.pushNeedle() * 100}%`;
+    if (pushOn) {
+      pm.querySelector('.pm-needle').style.left = `${sim.pushNeedle() * 100}%`;
+      const sp = renderer.project(sim.losX + sim.dir * 2, 1.9, sim.ballZ);
+      if (sp.visible) { pm.style.left = `${Math.round(sp.x)}px`; pm.style.top = `${Math.round(sp.y)}px`; pm.style.bottom = 'auto'; }
+    }
     // Kick meter.
     const km = this.$('kickmeter');
     const meter = sim?.meter;

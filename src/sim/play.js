@@ -759,7 +759,15 @@ export class PlaySim {
 
   /** QB-only plays: kneel downs, spikes and designed QB runs. */
   /** Tush push timing: a needle sweeps across a bar; the push is as good as how close to the middle A lands. */
-  pushNeedle() { const t = this.push ? (this.t - this.push.t0) * 1.7 : 0; const k = t % 2; return k < 1 ? k : 2 - k; }
+  // (UPDATE 5.2, the user's reference video) A human's needle sweeps at the line before the snap (session.js advances pushPre); the
+  // A press that snaps the ball is the timing. The CPU (and old flows) still time it in the first beat of the play.
+  pushNeedle() { const t = (this.state === 'presnap' ? this.pushPre || 0 : this.push ? this.t - this.push.t0 : 0) * 1.7; const k = t % 2; return k < 1 ? k : 2 - k; }
+  /** The timing press at the line: quality from how close the needle is to the middle. */
+  pushAtSnap() {
+    const d = Math.abs(this.pushNeedle() - 0.5);
+    this.push = { t0: 0, quality: d < 0.08 ? 1 : d < 0.18 ? 0.65 : d < 0.3 ? 0.35 : 0 };
+    this.emit('push', { quality: this.push.quality });
+  }
 
   updatePush(input) {
     if (!this.offPlay.push || this.isKick) return;

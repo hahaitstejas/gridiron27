@@ -1945,3 +1945,17 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 #milestone .ms-name { font: 600 17px var(--fo, var(--fd)); }
 #milestone .ms-what { opacity: 0.85; } #milestone .ms-what b { font: 600 18px var(--fo, var(--fd)); }
 #milestone .ms-bar { width: 140px; height: 8px; background: rgba(255,255,255,0.14); } #milestone .ms-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--tc), #3fd6cf); }
+/* Draft polish: next teams on the clock panel, letter grades, need fit, scouting report, pick ticker. */
+.dr-next { display: flex; align-items: center; gap: 6px; margin-top: 6px; } .dr-next small { margin-right: 2px; }
+.dr-next span { display: flex; align-items: center; gap: 3px; padding: 1px 6px 1px 2px; background: rgba(0,0,0,0.35); font: 600 12px var(--fo); }
+.dr-next span.me { background: #fff; color: #000; } .dr-next canvas { width: 20px; height: 20px; }
+.dr-lg { font-weight: 700; } .g-A { color: #4be07f; } .g-B { color: #9fdc5a; } .g-C { color: #ffd34d; } .g-D, .g-F { color: #ff7a5a; }
+.st-row.focused .g-A, .st-row.focused .g-B, .st-row.focused .g-C, .st-row.focused .g-D, .st-row.focused .g-F { color: inherit; }
+.dr-fit.on { color: #3fd6cf; font: 600 12px var(--fo); letter-spacing: 1px; }
+.dr-report { display: flex; gap: 14px; padding-left: 18px; border-left: 1px solid rgba(255,255,255,0.15); text-align: center; }
+.dr-report b { display: block; font: 700 22px var(--fo); } .dr-report small { font: 500 11px var(--fo); letter-spacing: 1px; color: var(--dim); }
+.dr-ticker { display: flex; align-items: center; gap: 12px; margin-top: 8px; background: rgba(255,255,255,0.06); overflow: hidden; height: 30px; }
+.dr-ticker > b { align-self: stretch; display: grid; place-items: center; padding: 0 12px; background: #fff; color: #000; font: 600 12px var(--fo); letter-spacing: 2px; }
+.dr-tk { display: flex; gap: 28px; white-space: nowrap; }
+.dr-tk .fr-score { background: none !important; padding: 0 !important; font: 500 14px var(--fb, var(--fd)); }
+.screen.dr-screen .dr-hstats b, .screen.dr-screen .dr-ticker > b { white-space: nowrap !important; } .screen.dr-screen .dr-hstats { gap: 18px; } .screen.dr-screen .dr-hstats b { font-size: 22px; }

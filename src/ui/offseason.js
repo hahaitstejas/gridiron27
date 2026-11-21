@@ -9,12 +9,12 @@ import { RNG } from '../core/rng.js';
 import { needsPanel } from './franchiseMore.js';
 import { applyTag, tagSalary } from '../franchise/honors.js';
 import { LEAGUE } from '../data/leagueInfo.js';
-import { POSITIONS } from '../data/positions.js';
+import { POSITIONS, OVERALL_WEIGHTS, RATINGS } from '../data/positions.js';
 import { POS_TABS } from './sortable.js';
 import { startNextSeason } from '../franchise/franchise.js';
 import {
   progressPlayers, expiring, resign, contractYears, finishResigning, signFreeAgent, cpuFreeAgency, makeDraft,
-  makePick, simToUserPick, finishDraft, cutDown, cutDownCharged, cpuCutDowns, ROSTER_LIMIT, askingSalary, projectedPayroll, fillRoster,
+  makePick, simToUserPick, finishDraft, cutDown, cutDownCharged, cpuCutDowns, ROSTER_LIMIT, askingSalary, projectedPayroll, fillRoster, needs,
 } from '../franchise/offseason.js';
 import { payroll, money } from '../franchise/contracts.js';
 import { logTransaction } from '../franchise/franchise.js';
@@ -167,6 +167,11 @@ function freeagency(ctx, ui, f, filter = 0) {
   ctx.screens.nav.set([...rows, done], { columns: 1, onBack: ctx.onExit, onTab: (d) => freeagency(ctx, ui, f, (filter + d + tabs.length) % tabs.length) });
 }
 
+/** Letter grade for a rating / overall (scouting report, draft board). */
+const GRADES = [[90, 'A+'], [85, 'A'], [81, 'A-'], [78, 'B+'], [74, 'B'], [71, 'B-'], [68, 'C+'], [64, 'C'], [60, 'C-'], [55, 'D']];
+const letterOf = (v) => (GRADES.find(([min]) => v >= min) || [0, 'F'])[1];
+const SHORT = Object.fromEntries(RATINGS);
+
 function draft(ctx, ui, f, focus = 0, filter = 0) {
   const d = f.offseason.draft;
   const teams = ctx.teams;
@@ -181,9 +186,12 @@ function draft(ctx, ui, f, focus = 0, filter = 0) {
     // You see scouting estimates: a range for overall and no potential until you spend a scouting point (X).
     const want = POS_TABS[filter][1];
     const board = d.cls.filter((p) => !want || want.includes(p.pos)).map((p) => ({ p, v: scoutView(p) })).sort((a, b) => b.v.sort - a.v.sort).slice(0, 40);
-    rows = board.map(({ p, v }) => {
-      const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
-        el(`span.st-num${v.scouted ? '.up' : ''}`, { text: v.ovr }), el('span.st-num', { text: v.pot })]);
+    const need = needs(teams[f.userTeam]);
+    rows = board.map(({ p, v }, i) => {
+      const grade = letterOf(v.sort);
+      const r = row([el('span.st-team', { text: String(i + 1) }), el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
+        el(`span.st-num${v.scouted ? '.up' : ''}`, { text: v.ovr }), el('span.st-num', { text: v.pot }),
+        el(`span.st-num.dr-lg.g-${grade[0]}`, { text: v.scouted ? grade : `${grade}?` }), el(`span.st-num.dr-fit${need[p.pos] > 0 ? '.on' : ''}`, { text: need[p.pos] > 0 ? 'NEED' : '' })]);
       r._pv = { p, v };
       r.activate = () => { makePick(f, teams, p.id); save(ctx); draft(ctx, ui, f); };
       r.scout = () => { if (scoutProspect(f, p.id)) { save(ctx); draft(ctx, ui, f, rows.indexOf(r), filter); } };
@@ -203,24 +211,32 @@ function draft(ctx, ui, f, focus = 0, filter = 0) {
     el('div.dr-gl', {}, el('span.dr-letter', { text: lg.letter }), el('span', { text: `#${lg.trueRank} on the board by true value when you took him (pick ${lg.pick})` }))) : null;
   // Slide 8: the clock panel, the focused prospect's header, the board, and the wall of picks so far.
   const ot = teams[pick.team];
+  const next = d.picks.slice(d.at + 1, d.at + 5);
   const clock = el('div.dr-clock', { style: { '--tc': ot.colors.primary } }, logoCanvas(ot.logo, 54),
-    el('div', {}, el('small', { text: `RD ${pick.round} · PK ${pick.pick}` }), el('b', { text: mine ? 'YOU ARE ON THE CLOCK' : `${ot.abbr} ON THE CLOCK` })));
+    el('div', {}, el('small', { text: `RD ${pick.round} · PK ${pick.pick}` }), el('b', { text: mine ? 'YOU ARE ON THE CLOCK' : `${ot.abbr} ON THE CLOCK` }),
+      next.length ? el('div.dr-next', {}, el('small', { text: 'NEXT' }), next.map((pk) => el(`span${pk.team === f.userTeam ? '.me' : ''}`, { style: { '--tc': teams[pk.team].colors.primary } }, logoCanvas(teams[pk.team].logo, 20), teams[pk.team].abbr))) : null));
   const head = el('div.dr-head');
   const showProspect = (p, v) => {
     head.innerHTML = '';
     if (!p) { head.append(el('div.dr-hname', { text: mine ? 'Pick a prospect' : `${ot.city} ${ot.name}` })); return; }
     head.append(el('div.dr-hpos', { text: p.pos }), el('div', {}, el('small', { text: `${p.age} yrs${p.college ? ` · ${p.college}` : ''}${p.height ? ` · ${Math.floor(p.height / 12)}'${p.height % 12}"` : ''}${p.weight ? ` · ${p.weight} lbs` : ''}`.toUpperCase() }),
       el('div.dr-hname', { text: `${p.first} ${p.last}`.toUpperCase() })),
-      el('div.dr-hstats', {}, [['OVR', v.ovr], ['POTENTIAL', v.pot], ['SCOUTED', v.scouted ? '100%' : `${d.scoutLeft ?? 0} pts left`]].map(([l, x]) => el('div', {}, el('b', { text: x }), el('small', { text: l })))));
+      el('div.dr-hstats', {}, [['OVR', v.ovr], ['POTENTIAL', v.pot], ['SCOUTED', v.scouted ? '100%' : `${d.scoutLeft ?? 0} pts left`]].map(([l, x]) => el('div', {}, el('b', { text: x }), el('small', { text: l })))),
+      // Scouting report: the position's key ratings as letter grades (unscouted: shifted by the same scouting error, marked ?).
+      el('div.dr-report', {}, Object.entries(OVERALL_WEIGHTS[p.pos] || {}).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([k]) => {
+        const g = letterOf((p.ratings?.[k] ?? 50) + (v.scouted ? 0 : p.scoutErr || 0));
+        return el('div', {}, el(`b.g-${g[0]}`, { text: v.scouted ? g : `${g}?` }), el('small', { text: SHORT[k] }));
+      })));
   };
   if (mine) rows.forEach((r, i) => { const { p, v } = r._pv; r.onfocusitem = () => showProspect(p, v); if (i === 0) showProspect(p, v); });
   else showProspect(null);
   const wall = el('div.dr-wall', {}, d.picks.slice(Math.max(0, d.at - 24), d.at).map((pk) => el('div.dr-tile', { style: { '--tc': teams[pk.team].colors.primary } },
     logoCanvas(teams[pk.team].logo, 30), el('div', {}, el('small', { text: `R${pk.round} P${pk.pick} · ${pk.player.pos}` }), el('b', { text: (pk.player.first ? `${pk.player.first[0]}. ${pk.player.last}` : pk.player.name.replace(/^(\S)\S*\s/, '$1. ')).toUpperCase() })))));
   ctx.screens.frame('stats-screen dr-screen', el('div.dr-top', {}, clock, head, gradeCard),
-    el('div.dr-body', {}, mine ? el('div.dr-board', {}, el('div.pc-tabs', {}, POS_TABS.map(([n], i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: n }))), el('div.st-row.st-head', {}, ['POS', 'PROSPECT', 'AGE', 'OVR', 'POT'].map((h, i) => el(`span.${i === 1 ? 'st-name' : i === 0 ? 'dc-pos' : 'st-num'}`, { text: h }))), el('div.st-table', {}, rows))
+    el('div.dr-body', {}, mine ? el('div.dr-board', {}, el('div.pc-tabs', {}, POS_TABS.map(([n], i) => el(`div.pc-tab${i === filter ? '.on' : ''}`, { text: n }))), el('div.st-row.st-head', {}, ['#', 'POS', 'PROSPECT', 'AGE', 'OVR', 'POT', 'GRADE', 'FIT'].map((h, i) => el(`span.${i === 0 ? 'st-team' : i === 2 ? 'st-name' : i === 1 ? 'dc-pos' : 'st-num'}`, { text: h }))), el('div.st-table', {}, rows))
       : el('div.dr-board', {}, el('div.dc-head', { text: 'Your picks' }), el('div.st-table', {}, myPicks.length ? myPicks : el('div.st-empty', { text: 'Your picks will show here.' }))),
       el('div.dr-side', {}, el('div.dc-head', { text: 'Draft board' }), wall, el('div.dc-head', { text: 'Your roster' }), needsPanel(teams[f.userTeam]))),
+    recent.length ? el('div.dr-ticker', {}, el('b', { text: 'THE PICKS' }), el('div.dr-tk', {}, recent)) : null,
     el('div.over-buttons', {}, buttons),
     el('div.setup-help', { html: mine ? '<b class="btn A">A</b> draft &nbsp; <b class="btn X">X</b> scout &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> position &nbsp; ▲▼ scroll' : '<b class="btn A">A</b> select' }));
   ctx.screens.nav.set([...rows, ...buttons], { columns: 1, onBack: ctx.onExit, index: focus,

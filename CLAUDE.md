@@ -412,7 +412,9 @@ navy gradients, filled panels with no outlines, the focused item white; team col
   Front Office, League; `this._tab`, `boxMenu(label)` maps the old boxes to tabs) + News Center ticker; Gameday (`gamedayPanel`):
   week strip, both teams big with OVR/OFF/DEF, kickoff time / venue / weather, Play / Sim / Preview / Advance / Sim to Playoffs.
   Standings = team-colored division columns with seeds; League Leaders opens on an overview (six categories, top three with photos).
-  Draft: clock panel, the focused prospect's header, the board, the wall of picks so far, your roster needs.
+  Draft: clock panel (with the next four teams), the focused prospect's header with a scouting report (the position's top four
+  `OVERALL_WEIGHTS` ratings as letter grades, `letterOf` in ui/offseason.js; unscouted = shifted by the scouting error and marked ?),
+  the board (# / GRADE / NEED fit from `needs()`), the wall of picks so far, a pick strip (THE PICKS), your roster needs.
 - UPDATE 3.2 (the user's reference screenshots, black / white): Edit League and Rosters are tile hubs (`rx-tile`: title top-left,
   big line icon bottom-right; `rosterHub` in rosterEditor.js: Manage Players, Create Player, Order Depth Chart, Trade Players,
   Spreadsheets). Manage Players (`rosterScreen`, ti -1 = all teams) is one sortable table (LB/RB team, LT/RT position, ◀▶ column,

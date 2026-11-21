@@ -5,6 +5,7 @@ import { makeFieldCanvas, FX, FZ } from './fieldTexture.js';
 import { ensureFonts } from './fonts.js';
 import { fontOf } from '../data/design.js';
 import { drawLogo } from './logo.js';
+import { buildSideline } from './sideline.js';
 
 const WALL_Z = 36; // stands start this far from the center line (sidelines)
 const WALL_X = 72; // and this far behind each end line
@@ -499,6 +500,8 @@ export function buildStadium(renderer, home, away) {
   snow.visible = false;
   group.add(snow);
 
+  const sideline = buildSideline(group);
+
   let dim = 1;
   const seatBase = standMat.color.clone();
   const applyDim = () => { standMat.color.copy(seatBase).multiplyScalar(dim); crowdMat.color.setScalar(dim); uStandDim.value = dim; };
@@ -509,7 +512,7 @@ export function buildStadium(renderer, home, away) {
     glow,
     snow,
     setTeams: (h, a, opts) => {
-      setTeams(h, a, opts); fillCrowdColors(h, a); paintRibbon(h, a);
+      setTeams(h, a, opts); fillCrowdColors(h, a); paintRibbon(h, a); sideline.setTeams(h, a);
       // Seats: the stadium creator's color, else a dark tint of the home color.
       if (h.stadium?.seats && !opts?.neutral) standMat.color.set(h.stadium.seats).multiplyScalar(0.85);
       else standMat.color.set(0x3a3f4a).lerp(new THREE.Color(h.colors.primary), 0.35).multiplyScalar(0.85);

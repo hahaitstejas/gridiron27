@@ -1936,3 +1936,12 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 .st-card .st-line { flex: 1; display: flex; align-items: center; justify-content: space-around; border-left: 4px solid var(--tc); }
 .st-card .st-line div { display: flex; flex-direction: column; align-items: center; }
 .st-card .st-line b { font: 500 34px/1 var(--fo, var(--fd)); } .st-card .st-line small { font: 600 11px var(--fb, var(--fd)); letter-spacing: 2px; opacity: 0.65; margin-top: 4px; }
+/* Milestone watch bar over the scorebug (players closing in on a big game). */
+#milestone { position: fixed; left: 0; right: 0; margin: 0 auto; width: fit-content; z-index: 9; display: flex; align-items: center; gap: 12px; height: 34px; padding-right: 14px;
+  background: rgba(8,12,20,0.92); color: #fff; font: 600 16px var(--fb, var(--fd)); white-space: nowrap; animation: msIn 0.3s ease-out; }
+@keyframes msIn { from { opacity: 0; } to { opacity: 1; } }
+#milestone .ms-tag { align-self: stretch; display: grid; place-items: center; padding: 0 12px; background: #fff; color: #000; font: 600 13px var(--fo, var(--fd)); letter-spacing: 2px; }
+#milestone .ms-team { padding: 2px 8px; background: var(--tc); font: 700 14px var(--fo, var(--fd)); }
+#milestone .ms-name { font: 600 17px var(--fo, var(--fd)); }
+#milestone .ms-what { opacity: 0.85; } #milestone .ms-what b { font: 600 18px var(--fo, var(--fd)); }
+#milestone .ms-bar { width: 140px; height: 8px; background: rgba(255,255,255,0.14); } #milestone .ms-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--tc), #3fd6cf); }

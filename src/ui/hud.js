@@ -29,6 +29,24 @@ function bugStat(m) {
   return { label: o[0], v: [o[1](S[0]), o[1](S[1])] };
 }
 
+/** Milestone watch: players closing in on a big game (300 passing, 100 rushing / receiving, 3 TDs, 2 sacks). */
+const MILESTONES = [['PASSING YARDS', (s) => s.passYds, 300, 0.5], ['RUSHING YARDS', (s) => s.rushYds, 100, 0.5], ['RECEIVING YARDS', (s) => s.recYds, 100, 0.5],
+  ['TOUCHDOWNS', (s) => (s.passTD || 0) + (s.rushTD || 0) + (s.recTD || 0), 3, 0.6], ['SACKS', (s) => s.sacks, 2, 0.5]];
+function milestone(m) {
+  const list = [];
+  for (const s of Object.values(m.stats?.players || {})) {
+    for (const [label, f, goal, from] of MILESTONES) {
+      const v = Math.round(f(s) || 0);
+      if (v >= goal * from && v < goal) {
+        const p = m.teams[s.team]?.roster.find((x) => x.id === s.rid);
+        if (p) list.push({ label, v, goal, team: s.team, name: `${p.first[0]}. ${p.last}`, pos: p.pos, k: v / goal });
+      }
+    }
+  }
+  list.sort((a, b) => b.k - a.k);
+  return list.length ? list[Math.floor(m.playLog.length / 4) % list.length] : null;
+}
+
 /**
  * The prime-time scorebugs (the user's reference pictures; our own slot marks, no real broadcasters' names or logos). Type is
  * Oswald (big numbers, team letters) and Saira Condensed (everything else); sizes are in vw, authored for a 1280-wide screen.
@@ -108,7 +126,7 @@ export class Hud {
       <div id="reviewbox" class="hidden"></div>
       <div id="injurybox" class="hidden"></div>
       <div id="drillbar" class="hidden"></div>
-      <div id="noise" class="hidden"></div>
+      <div id="noise" class="hidden"></div><div id="milestone" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="celwheel" class="hidden"></div>
       <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
@@ -230,7 +248,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   leagueLogo() {
     const l = LEAGUE.logo;
@@ -509,6 +527,23 @@ export class Hud {
     const m = session.match;
     const sim = session.sim;
     this.renderBug(session);
+    // Milestone watch over the scorebug: at the line on every fourth play (6 s), never with a kick or in practice.
+    const ms = this.$('milestone');
+    const msOn = session.state === 'presnap' && sim?.state === 'presnap' && !sim.isKick && !session.practice && !playcallOpen
+      && (m.playLog?.length || 0) >= 8 && m.playLog.length % 4 === 2 && performance.now() - (this._bugSince || 0) < 6000;
+    const mi = msOn ? milestone(m) : null;
+    ms.classList.toggle('hidden', !mi);
+    if (mi) {
+      ms.style.bottom = `${Math.round(innerHeight - (this._bugTop || innerHeight) + 8)}px`;
+      const key = `${mi.name}|${mi.label}|${mi.v}`;
+      if (ms.dataset.key !== key) {
+        ms.dataset.key = key;
+        const t = m.teams[mi.team];
+        ms.innerHTML = `<span class="ms-tag">MILESTONE WATCH</span><span class="ms-team" style="--tc:${t.colors.primary}">${t.abbr}</span>
+          <span class="ms-name">${mi.pos} ${mi.name}</span><span class="ms-what"><b>${mi.v}</b> / ${mi.goal} ${mi.label}</span>
+          <span class="ms-bar"><i style="width:${Math.round(mi.k * 100)}%;--tc:${t.colors.primary}"></i></span>`;
+      }
+    }
     this.renderTicker(session);
     if ((this.bannerT -= dt) <= 0) this.$('banner').classList.add('hidden');
     if ((this.flagT -= dt) <= 0) this.$('flagbox').classList.add('hidden');

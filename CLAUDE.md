@@ -771,6 +771,10 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   turf palette; PCF soft shadows.
 - Post (`GameRenderer.setupPost` / `draw(cam)`): HDR MSAA target → UnrealBloom (threshold 1.6) → OutputPass → grade
   (saturation, contrast, vignette). Settings → Graphics: high (bloom) / medium / low (no post: what headless checks use).
+- Lighting for depth (UPDATE 5.x): the key light comes from the side of the camera (`renderer.lightRig = { ang: 1.25, el: 0.72 }`,
+  was 0.6 / ~57 deg: front light looked flat / 2D), so shadows run across the turf and bodies get a lit and a shaded side; fill
+  (hemi) is lower and the rim stronger in `TIME_LOOKS`; the turf has floodlight pools from the eight tower banks (`uPool`, stadium
+  `setPool`, `pool` per time: day 0.15, dusk 0.6, night 1) and a stronger mowing sheen; night fog is a lighter haze over the bowl.
 - Camera: broadcast presnap 10.5 back / 4.6 up (was 15 / 7.2), live 12 / 5.6. Dev: `window.__g27.renderer.rig.debug = { p, l }`.
 - Crowd: people-shaped fans (open cylinder torso, icosahedron head, two arms raised by excitement in the vertex shader), ~10%
   empty seats; LED ribbon boards at `RIBBON_ROW` (`paintRibbon`, scroll; flash with the video board on scores).

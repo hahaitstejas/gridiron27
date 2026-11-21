@@ -93,27 +93,41 @@ export function buildStadium(renderer, home, away) {
   nrm.wrapS = nrm.wrapT = THREE.RepeatWrapping;
   nrm.repeat.set(FX * 2 * 0.45, FZ * 2 * 0.45);
   nrm.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const fieldMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.92, metalness: 0, normalMap: nrm, normalScale: new THREE.Vector2(0.55, 0.55) });
+  const fieldMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.84, metalness: 0, normalMap: nrm, normalScale: new THREE.Vector2(0.7, 0.7) });
   const detail = new THREE.CanvasTexture(detailCanvas);
   detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
   detail.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  // Floodlight pools (0 = flat daylight .. 1 = night): the field is brighter where the tower banks aim and falls off toward
+  // the corners and end lines, so the turf has light and depth instead of one flat green.
+  const uPool = { value: 0.5 };
   fieldMat.onBeforeCompile = (sh) => {
     sh.uniforms.tDetail = { value: detail };
+    sh.uniforms.uPool = uPool;
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvGW = (modelMatrix * vec4(transformed, 1.0)).xyz;');
-    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;\nuniform sampler2D tDetail;')
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vGW;\nuniform sampler2D tDetail;\nuniform float uPool;')
       .replace('#include <map_fragment>', `#include <map_fragment>
         float dGrain = texture2D(tDetail, vGW.xz * 0.45).r * 0.6 + texture2D(tDetail, vGW.xz * 0.11 + 0.37).r * 0.4;
         float onGrass = step(abs(vGW.z), 26.6) * step(abs(vGW.x), 49.9);
         // Mowing sheen: 5-yard bands, brighter when you look along the cut, darker against it.
         float band = mod(floor((vGW.x + 50.0) / 5.0), 2.0) * 2.0 - 1.0;
         float look = clamp((cameraPosition.x - vGW.x) / 25.0, -1.0, 1.0);
-        float sheen = 1.0 + band * look * 0.16 * onGrass;
+        float sheen = 1.0 + band * look * 0.24 * onGrass;
+        // Light pools from the eight tower banks (sidelines at x = +-12, +-36), aimed a little inside the near hash.
+        float pool = 0.0;
+        for (int i = 0; i < 8; i++) {
+          float px = (i < 4 ? 1.0 : -1.0) * (mod(float(i), 2.0) < 1.0 ? 12.0 : 36.0);
+          float pz = (mod(float(i / 2), 2.0) < 1.0 ? 1.0 : -1.0) * 9.0;
+          vec2 d = (vGW.xz - vec2(px, pz)) / vec2(22.0, 17.0);
+          pool += exp(-dot(d, d));
+        }
+        float edge = smoothstep(62.0, 40.0, abs(vGW.x)) * smoothstep(36.0, 22.0, abs(vGW.z));
+        float light = mix(1.0, clamp(0.74 + pool * 0.2, 0.74, 1.12) * mix(0.82, 1.0, edge), uPool);
         float grainK = mix(0.35, 1.0, step(0.32, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.8)); // less on paint
         // Patchy color over a few yards (real grass is never one flat green): darker clumps, lighter dry spots.
         float macro = texture2D(tDetail, vGW.xz * 0.018 + 0.11).r * 0.6 + texture2D(tDetail, vGW.xz * 0.043 + 0.53).r * 0.4;
         float gPatch = mix(1.0, 0.86 + macro * 0.3, grainK * onGrass);
-        diffuseColor.rgb *= sheen * gPatch * mix(1.0, 0.76 + dGrain * 0.44, grainK);
+        diffuseColor.rgb *= sheen * light * gPatch * mix(1.0, 0.76 + dGrain * 0.44, grainK);
         // Broadcast turf is a deeper, warmer, sun-yellowed olive green than the paint chart: pull the grass (not the paint) down a touch.
         float gl = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
         diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(gl), diffuseColor.rgb, 0.78) * vec3(1.02, 0.92, 0.72), grainK * onGrass);`);
@@ -476,6 +490,7 @@ export function buildStadium(renderer, home, away) {
     },
     /** Under the lights the field is lit and the bowl around it falls off (1 = day, ~0.6 = night). */
     setDim(k) { dim = k; applyDim(); },
+    setPool(k) { uPool.value = k; },
     setBoardText,
     setBoardGame,
     update(dt, excitement) {

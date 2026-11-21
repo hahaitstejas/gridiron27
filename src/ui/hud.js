@@ -113,6 +113,7 @@ export class Hud {
     const el = this.$('intro');
     if (!info) { el.classList.add('hidden'); return; }
     const team = (t, rec) => `<div class="in-team" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}"><div><small>${t.city}</small><b>${t.name}</b>${rec ? `<i>${rec}</i>` : ''}</div></div>`;
+    el.style.setProperty('--gold', this.pkg?.color || '#ffd34d');
     el.innerHTML = `<div class="in-top">${info.title}</div><div class="in-row">${team(info.away, info.recs?.[1])}<div class="in-at">AT</div>${team(info.home, info.recs?.[0])}</div>
       <div class="in-sub">${info.sub}</div><div class="in-skip"><b class="btn A">A</b> Skip</div>`;
     el.classList.remove('hidden');
@@ -671,7 +672,7 @@ export class Hud {
     const recs = session.records || ['0-0', '0-0'];
     const blink = this.toBlink && performance.now() < this.toBlink.until ? this.toBlink.team : -1;
     const take = this.bugTake && performance.now() < this.bugTake.until ? this.bugTake : null;
-    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text].join('|');
+    const key = [m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, this.pkg?.id].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
     // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
@@ -688,7 +689,8 @@ export class Hud {
     const ord = (q) => (q > 4 ? 'OT' : `${q}<sup>${['', 'st', 'nd', 'rd', 'th'][q]}</sup>`);
     const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? downText(m).toUpperCase().replace(/(\d)(ST|ND|RD|TH)/, '$1<sup>$2</sup>') : downText(m).toUpperCase();
     const pc = m.over || m.phase !== 'scrimmage' ? '' : `<span class="sb3-pc${m.playClock <= 10 ? ' low' : ''}">:${String(Math.ceil(m.playClock)).padStart(2, '0')}</span>`;
-    bug.innerHTML = `<div class="sb3">
+    const pk = this.pkg;
+    bug.innerHTML = `<div class="sb3${pk ? ` pkg pkg-${pk.id}` : ''}"${pk ? ` style="--pk:${pk.color}"` : ''}>
       <div class="sb3-brand">GRIDIRON<img class="sb3-lg" src="${this.leagueLogo()}" alt=""/>27</div>
       ${take ? `<div class="sb3-take" style="--tc:${m.teams[take.team].colors.primary}"><img src="${this.logoFor(m.teams[take.team])}" alt=""/><b>${take.text}</b></div>` : `${logo(1)}
       <div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>

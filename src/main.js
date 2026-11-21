@@ -172,7 +172,7 @@ const franchiseUI = new FranchiseUI({
     const tick = others.map((x, i) => ({ away: teams[x.away].abbr, home: teams[x.home].abbr, final: x.score, q: x.score.map((pts, k) => splitQuarters(pts, f.seed + i * 7 + k)).reverse() }));
     startGame({ home: g.home, away: g.away, side: g.home === f.userTeam ? 'home' : 'away', difficulty: f.settings.difficulty,
       quarterMinutes: f.settings.quarterMinutes }, { franchise: g, noTies: f.phase === 'playoffs', unavailable: unavailableFor(teams, g), conditions: gameConditions(f, g), lockPlayer: f.career?.rid ?? null,
-      gameDay: { short: (g.short || []).map((ti) => (ti === g.home ? 0 : 1)), prime: /Opener|TNF|SNF|MNF|Thanksgiving|Christmas|8:\d\d PM/.test(`${g.slot || ''} ${g.time || ''}`) } });
+      gameDay: { short: (g.short || []).map((ti) => (ti === g.home ? 0 : 1)), prime: /Opener|TNF|SNF|MNF|Thanksgiving|Christmas|8:\d\d PM/.test(`${g.slot || ''} ${g.time || ''}`), slot: g.slot || null } });
     if (session) session.ticker = tick;
   },
   rosterScreen: (ti, back) => rosterScreen({ ...rosterCtx, onBack: back, onRelease: (p) => league.franchise && releasedPlayer(league.franchise, teams, teams[ti], p), deadMoney: (p) => (league.franchise ? deadMoney(league.franchise, p) : 0),
@@ -311,13 +311,15 @@ function startGame(p, opts = {}) {
   lastSim = null;
   speed = opts.speed || 1;
   for (const e of session.events.splice(0)) onSessionEvent(e);
+  // Broadcast package (scorebug accent + intro badge) by time slot: franchise prime-time windows, holidays, night games.
+  hud.pkg = broadcastPackage(opts.gameDay, conditions, !!opts.practice, championship);
   // Pregame intro (not in practice, fast CPU games or when turned off in Settings).
   if (prefs.intro !== false && !opts.practice && speed <= 1 && !opts.noIntro) {
     app = 'intro';
     intro = { t: 0, sim: introLineup(session) };
     hud.hideAll();
     const lg = championship ? `${LEAGUE.championship}` : opts.franchise && league.franchise ? `${LEAGUE.name} · ${league.franchise.year} season` : LEAGUE.name;
-    hud.intro({ title: lg.toUpperCase(), home, away, recs: session.records, sub: conditionsText(conditions) });
+    hud.intro({ title: hud.pkg && hud.pkg.id !== 'title' ? `${hud.pkg.label} · ${lg.toUpperCase()}` : lg.toUpperCase(), home, away, recs: session.records, sub: conditionsText(conditions) });
   }
 }
 
@@ -569,6 +571,19 @@ function controllerSelect() {
       el('div.ts-team', {}, el('div.ts-side', { text: 'HOME' }), el('div.ts-logo', {}, logoCanvas(h.logo, 140)), el('div.ts-card', {}, el('div.ts-name', {}, el('small', { text: h.city.toUpperCase() }), el('b', { text: h.name.toUpperCase() }))))),
     row, el('div.setup-help', { html: '◀▶ Move your controller &nbsp; <b class="btn A">A</b> Confirm &nbsp; <b class="btn B">B</b> Back' }));
   screens.nav.set([row], { onBack: pause });
+}
+
+/** The broadcast look for this game's time slot (null = the regular afternoon look). Our own names and colors. */
+function broadcastPackage(gameDay, cond, practice, championship) {
+  if (practice) return null;
+  if (championship) return { id: 'title', label: 'CHAMPIONSHIP', color: '#e8c15a' };
+  const PK = { TNF: ['thu', 'THURSDAY NIGHT', '#8f6bff'], SNF: ['sun', 'SUNDAY NIGHT', '#3d8bff'], MNF: ['mon', 'MONDAY NIGHT', '#ff8a2f'],
+    Thanksgiving: ['holiday', 'THANKSGIVING', '#e0782a'], Christmas: ['holiday', 'HOLIDAY GAME', '#e2393b'], Opener: ['open', 'SEASON OPENER', '#3ddc84'],
+    International: ['intl', 'INTERNATIONAL SERIES', '#2fc4c4'], London: ['intl', 'INTERNATIONAL SERIES', '#2fc4c4'] };
+  const p = PK[gameDay?.slot];
+  if (p) return { id: p[0], label: p[1], color: p[2] };
+  if (gameDay?.prime || cond?.time === 'night') return { id: 'night', label: 'PRIME TIME', color: '#ffd34d' };
+  return null;
 }
 
 function pauseInfo(s) {

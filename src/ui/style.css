@@ -1770,3 +1770,9 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .ph-row.turnover { box-shadow: inset 4px 0 0 #ff5a4e; }
 .ph-row.flag { box-shadow: inset 4px 0 0 #ffd23f; }
 .ph-empty { text-align: center; color: #888; padding: 40px; }
+
+/* Broadcast packages by time slot (main.js broadcastPackage): an accent strip on the scorebug and the slot's color in the brand / down panels */
+.sb3.pkg { box-shadow: 0 -3px 0 var(--pk), 0 -6px 24px rgba(0,0,0,0.45); }
+.sb3.pkg .sb3-brand { background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--pk) 22%, #f4f4f2)); }
+.sb3.pkg .sb3-dd { background: linear-gradient(180deg, color-mix(in srgb, var(--pk) 35%, #000), #000); }
+.sb3.pkg .sb3-clock { box-shadow: inset 0 3px 0 color-mix(in srgb, var(--pk) 70%, transparent); }

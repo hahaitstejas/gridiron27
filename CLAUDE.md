@@ -525,6 +525,9 @@ is a full-width team-color lower third (`hud.tdBand`); catch type / going for th
 (`hud.pill`); lining up a field goal shows an "ABR 42 YARD FG" chip (`#kickchip`); defensive play art labels each zone
 (`playArt` zone `label` → `hud.zoneLabels`); the franchise gameday lights the better OVR/OFF/DEF badge green with the team's
 letters huge behind its logo; your draft picks get a grade (`d.lastGrade` in offseason.js `makePick`, `.dr-grade`).
+Broadcast packages (main.js `broadcastPackage`, `hud.pkg`): franchise time slots (Thursday / Sunday / Monday night, holidays, opener,
+international), other night / prime games and the championship tint the scorebug (`.sb3.pkg`, `--pk`) and badge the intro. Pause →
+Play History (`match.playLog`, `Screens.playHistory`): every play newest first, scores / turnovers / flags marked.
 
 ### Scorebug
 `Hud.renderBug()`: a full-width bar along the bottom (layout from the user's design): GRIDIRON 27 | away logo panel |

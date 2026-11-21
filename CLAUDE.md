@@ -105,8 +105,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   the kick follows). hud.js draws it as a "J" bar on the turf beside the holder's spot / tee / punter (`J` / `jPt`: a flat run
   bending up into a short vertical end with a red cap, blue to cyan, white needle, the A button where the next press belongs).
   `render/kickAim.js` `KickAim` (via `renderer.setAim`) replaces the old arrow: field goals get a tall thin neon-green beam at the
-  uprights where the kick is aimed (LS); kickoffs a neon landing-zone rectangle (receiving goal line to the 20, a glowing curtain on
-  its front edge so it reads from the tee) plus a target ring at the predicted landing spot; punts the ring. FG camera (camera.js
+  uprights where the kick is aimed (LS); kickoffs the landing zone (the user's landingzone.jpeg: a neon band with black "LANDING ZONE" block
+  letters inside each end of the zone, at the goal line and the 20, thin neon sideline lines, no fill; shown on every kickoff in a
+  game with a human, kicking or returning, until the ball comes down) plus, for the kicker, a target ring at the predicted landing
+  spot; punts the ring. FG camera (camera.js
   `fg`): behind the kicker / a step to his side (14.5 back, 3.9 up, 50 deg), then rides behind the ball toward the posts (stops
   ~10 yds short of the goal line). The FG panel adds an AIM KICK (LS) cell.
   Kickoffs use the NFL's dynamic kickoff (`dynamicKickoff(sim)`: every kickoff except a declared onside): formation

@@ -14,6 +14,11 @@ const ROW_DEPTH = 0.95;
 const ROW_RISE = 0.55;
 const WALL_H = 2.6;
 const RIBBON_ROW = 13; // the LED ribbon board runs along the front of this row
+// Two decks: the rows above the ribbon row sit DECK_LIFT higher and DECK_SET further back; a fascia (with the ribbon board on it)
+// closes the gap and the ribbon row becomes a concourse walkway, so the bowl reads as a lower and an upper deck.
+const DECK_LIFT = 6 * 0.55, DECK_SET = 3;
+const rowY = (r) => WALL_H + r * ROW_RISE + (r > RIBBON_ROW ? DECK_LIFT : 0);
+const rowOff = (r) => r * ROW_DEPTH + (r > RIBBON_ROW ? DECK_SET : 0);
 const AISLE = 12, AISLE_W = 1.5; // stair aisles: spacing and width (yds, along the row)
 const TUNNEL_ROWS = 6, TUNNEL_W = 3.2; // tunnel mouths: rows up from the wall, width; every other gap between aisles
 
@@ -182,14 +187,21 @@ export function buildStadium(renderer, home, away) {
   const standGeos = [];
   const seatPositions = [];
   for (let r = 0; r < ROWS; r++) {
-    const y = WALL_H + r * ROW_RISE;
-    const off = r * ROW_DEPTH;
+    const y = rowY(r);
+    const off = rowOff(r);
+    const dep = r === RIBBON_ROW ? ROW_DEPTH + DECK_SET : ROW_DEPTH; // the concourse walkway under the upper deck's front
     const lenX = (WALL_X + off) * 2;
     const lenZ = (WALL_Z + off) * 2;
-    standGeos.push(box(lenX, ROW_RISE, ROW_DEPTH, 0, y - ROW_RISE / 2 + 0.01, WALL_Z + off + ROW_DEPTH / 2));
-    standGeos.push(box(lenX, ROW_RISE, ROW_DEPTH, 0, y - ROW_RISE / 2 + 0.01, -(WALL_Z + off + ROW_DEPTH / 2)));
-    standGeos.push(box(ROW_DEPTH, ROW_RISE, lenZ, WALL_X + off + ROW_DEPTH / 2, y - ROW_RISE / 2 + 0.01, 0));
-    standGeos.push(box(ROW_DEPTH, ROW_RISE, lenZ, -(WALL_X + off + ROW_DEPTH / 2), y - ROW_RISE / 2 + 0.01, 0));
+    standGeos.push(box(lenX, ROW_RISE, dep, 0, y - ROW_RISE / 2 + 0.01, WALL_Z + off + dep / 2));
+    standGeos.push(box(lenX, ROW_RISE, dep, 0, y - ROW_RISE / 2 + 0.01, -(WALL_Z + off + dep / 2)));
+    standGeos.push(box(dep, ROW_RISE, lenZ, WALL_X + off + dep / 2, y - ROW_RISE / 2 + 0.01, 0));
+    standGeos.push(box(dep, ROW_RISE, lenZ, -(WALL_X + off + dep / 2), y - ROW_RISE / 2 + 0.01, 0));
+    if (r === RIBBON_ROW) {
+      // Upper deck fascia: from the walkway up to the first upper row, at the upper deck's front edge.
+      const fo = rowOff(r + 1), fy = WALL_H + r * ROW_RISE + DECK_LIFT / 2, fl = (WALL_X + fo) * 2, fw = (WALL_Z + fo) * 2;
+      standGeos.push(box(fl, DECK_LIFT, 0.4, 0, fy, WALL_Z + fo + 0.2), box(fl, DECK_LIFT, 0.4, 0, fy, -(WALL_Z + fo + 0.2)));
+      standGeos.push(box(0.4, DECK_LIFT, fw, WALL_X + fo + 0.2, fy, 0), box(0.4, DECK_LIFT, fw, -(WALL_X + fo + 0.2), fy, 0));
+    }
     // Spectator spots along each row (1 per ~0.95 yards), skipping aisles and the ribbon-board row.
     if (r === RIBBON_ROW) continue;
     for (let x = -WALL_X - off + 1; x < WALL_X + off - 1; x += 0.95) {
@@ -204,8 +216,8 @@ export function buildStadium(renderer, home, away) {
     }
   }
   // Back wall / rim of the bowl.
-  const topY = WALL_H + ROWS * ROW_RISE;
-  const backOff = ROWS * ROW_DEPTH;
+  const topY = WALL_H + ROWS * ROW_RISE + DECK_LIFT;
+  const backOff = ROWS * ROW_DEPTH + DECK_SET;
   standGeos.push(box((WALL_X + backOff) * 2 + 2, 6, 1, 0, topY + 3 - 1, WALL_Z + backOff + 0.5));
   standGeos.push(box((WALL_X + backOff) * 2 + 2, 6, 1, 0, topY + 3 - 1, -(WALL_Z + backOff + 0.5)));
   standGeos.push(box(1, 6, (WALL_Z + backOff) * 2 + 2, WALL_X + backOff + 0.5, topY + 3 - 1, 0));
@@ -243,7 +255,7 @@ export function buildStadium(renderer, home, away) {
   ribbonTex.wrapS = THREE.RepeatWrapping; ribbonTex.colorSpace = THREE.SRGBColorSpace; ribbonTex.anisotropy = 4;
   const ribbonMat = new THREE.MeshBasicMaterial({ map: ribbonTex, toneMapped: false, fog: false });
   {
-    const ry = WALL_H + RIBBON_ROW * ROW_RISE + 0.8, ro = RIBBON_ROW * ROW_DEPTH;
+    const ry = WALL_H + RIBBON_ROW * ROW_RISE + DECK_LIFT / 2, ro = rowOff(RIBBON_ROW + 1); // on the upper deck's fascia
     const geos = [];
     const strip = (len, x, z, rotY) => { const g = new THREE.PlaneGeometry(len, 1.1); const uv = g.attributes.uv; for (let k = 0; k < uv.count; k++) uv.setX(k, uv.getX(k) * len / 30); g.rotateY(rotY); g.translate(x, ry, z); geos.push(g); };
     strip((WALL_X + ro) * 2, 0, WALL_Z + ro - 0.02, Math.PI);

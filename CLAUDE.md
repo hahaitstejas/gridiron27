@@ -781,6 +781,8 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Camera: broadcast presnap 10.5 back / 4.6 up (was 15 / 7.2), live 12 / 5.6. Dev: `window.__g27.renderer.rig.debug = { p, l }`.
 - Stands (stadium.js `standMat` shader): seat treads in the seat color, darker risers so rows read, concrete stair aisles every `AISLE` 12
   yds (`AISLE_W` 1.5, painted step edges) and dark tunnel mouths in the lower `TUNNEL_ROWS`; `gap()` keeps fans out of both.
+- Two decks (stadium.js `rowY` / `rowOff`): rows above `RIBBON_ROW` sit `DECK_LIFT` 3.3 higher and `DECK_SET` 3 further back; a fascia
+  closes the gap (the LED ribbon rides on it) and the ribbon row is a concourse walkway.
 - Sideline life (`render/sideline.js` `buildSideline`, render only): 32 standing staff per team behind the reserves (team-color shirts),
   photographers past the 30s and on the end lines, benches against the wall, team-color coolers; three instanced figure parts.
 - Crowd: people-shaped fans (open cylinder torso, icosahedron head, two arms raised by excitement in the vertex shader), ~10%

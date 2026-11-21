@@ -359,6 +359,7 @@ export class GameRenderer {
     this.precip.update(dt, this.rig.camera.position);
     this.stadium.update(dt, 0.4);
     const cam = this.rig.camera;
+    this.rig.setFov();
     const f = this._replayFocus || (this._replayFocus = { x: focus.x, y: focus.y, z: focus.z });
     const k = snap ? 1 : 1 - Math.exp(-dt * 6);
     f.x += (focus.x - f.x) * k; f.y += (focus.y - f.y) * k; f.z += (focus.z - f.z) * k;
@@ -372,6 +373,7 @@ export class GameRenderer {
     this.precip.update(dt, this.rig.camera.position);
     this.stadium.update(dt, excitement);
     const cam = this.rig.camera;
+    this.rig.setFov();
     cam.position.set(...pos);
     cam.lookAt(...look);
     this.rig.pos.copy(cam.position);
@@ -384,6 +386,7 @@ export class GameRenderer {
     this.precip.update(dt, this.rig.camera.position);
     this.stadium.update(dt, 0.2);
     const cam = this.rig.camera;
+    this.rig.setFov();
     cam.position.set(Math.cos(t) * 70, 28, Math.sin(t) * 45);
     cam.lookAt(0, 0, 0);
     this.draw(cam);

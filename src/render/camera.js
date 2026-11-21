@@ -22,6 +22,7 @@ export class CameraRig {
   update(dt, focus, dir, phase, snap = false, extra = {}) {
     const p = this._p, l = this._l;
     const fz = focus.z;
+    let fov = 54; // lens per shot, eased below
     // A presentation shot (touchdown celebration) overrides the mode: low, in front of the subject.
     const shot = extra.shot;
     if (this.debug) { p.set(...this.debug.p); l.set(...this.debug.l); } // dev screenshots (window.__g27.renderer.rig.debug)
@@ -81,9 +82,15 @@ export class CameraRig {
         let back = phase === 'presnap' ? 10.5 : phase === 'kick' ? 34 : phase === 'return' ? 20 : phase === 'air' ? 15 : 12;
         let height = phase === 'presnap' ? 4.6 : phase === 'kick' ? 24 : phase === 'return' ? 11 : phase === 'air' ? 7.2 : 5.6;
         // A human on offense or defense needs the whole formation (backfield included) in frame: further back and higher.
-        if (this.wideView && (phase === 'presnap' || phase === 'live')) { back = phase === 'presnap' ? 20 : 17; height = phase === 'presnap' ? 9.5 : 8.5; }
+        // Console-style framing (the user's reference picture): further back on a longer lens (44-46 deg instead of 54), aimed well
+        // downfield, so the players are big, overlap in depth and the stands fill the top third (the old 20 / 9.5 at 54 deg read
+        // like a top-down map).
+        let ahead = phase === 'presnap' ? 7 : 6;
+        if (this.wideView && (phase === 'presnap' || phase === 'live')) {
+          back = phase === 'presnap' ? 23 : 20; height = phase === 'presnap' ? 10.2 : 9.4; ahead = phase === 'presnap' ? 8 : 7; fov = phase === 'presnap' ? 46 : 48;
+        }
         p.set(focus.x - dir * back * this.zoom, height * this.zoom, fz * 0.85);
-        l.set(focus.x + dir * (phase === 'presnap' ? 7 : 6), phase === 'presnap' ? 1.1 : 0.8, fz * 0.95);
+        l.set(focus.x + dir * ahead, phase === 'presnap' ? 1.1 : 0.8, fz * 0.95);
       }
     }
     if (snap) {
@@ -95,6 +102,10 @@ export class CameraRig {
       this.pos.lerp(p, k);
       this.look.lerp(l, kl);
     }
+    if (!this.debug && Math.abs(this.camera.fov - fov) > 0.01) {
+      this.camera.fov = snap ? fov : this.camera.fov + (fov - this.camera.fov) * (1 - Math.exp(-dt * 3));
+      this.camera.updateProjectionMatrix();
+    }
     this.camera.position.copy(this.pos);
     if (this.shake > 0) {
       this.shake = Math.max(0, this.shake - dt * 2.5);
@@ -104,6 +115,9 @@ export class CameraRig {
     }
     this.camera.lookAt(this.look);
   }
+
+  /** Scripted shots (replay orbit, intro, menu) use the standard lens. */
+  setFov(f = 54) { if (this.camera.fov !== f) { this.camera.fov = f; this.camera.updateProjectionMatrix(); } }
 
   resize(aspect) {
     this.camera.aspect = aspect;

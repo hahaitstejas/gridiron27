@@ -808,7 +808,9 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
   Main menu: the old dark orbit, over the featured player's home field (`screens.featured` → main.js `menuFieldTeam` →
   `renderer.setTeams(team, team)`); the card is the SVG jersey + face photo. Team Select: `starCards(t)` (QB + playmakers, no K/P, one per
   position; face photo or number, trait). Offense / defense camera: `CameraRig.wideView` (human on offense or defense, kicks too; a human returner gets the camera turned to face the coverage) pulls the
-  broadcast view back to 20 / 9.5 presnap so the backfield is in frame. Atlases (logos, names, faces) only re-upload
+  broadcast view back so the backfield is in frame: 23 back / 10.2 up on a 46 deg lens presnap, 20 / 9.4 / 48 deg live (UPDATE 5.x, the
+  user's console reference: a longer lens than the old 20 / 9.5 at 54 deg, aimed 8 yds downfield, stands in the top third, about the
+  same width at the line; the rig eases `camera.fov`, scripted shots reset it with `rig.setFov()`). Atlases (logos, names, faces) only re-upload
   when their content changes (texture uploads were hitching every play); crowd fans ~30 tris; helmet shell 44×24.
 - Realism pass (render-only): the helmet assembly (shell, mask, chin, decals, visor) is scaled `HELM_K` 0.9 and sits a touch
   lower / forward; shoulder pads at 1.3 (`COL_FLAGS.z`); the body shader darkens down-facing surfaces and lower legs (cheap

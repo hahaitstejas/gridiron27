@@ -158,7 +158,7 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   nothing autosaves from the in-game editor. League → Depth Charts (and the franchise hub) edit the real, saved chart.
 - `boxscore.js`: full player stats by category (`STAT_TABS`: passing incl. passer rating, rushing, receiving,
   defense, kicking) from `match.stats.players`; `statRows(m, tab, team)`. Shown by `ui/statsScreen.js` from the
-  final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter.
+  final screen (Full Stats) and the pause menu (Game Stats, also in practice): LB/RB category, X team filter; a header card (`.st-card`) shows the focused player's photo on his team color and this tab's line.
 - Play-call screen (`ui/playcall.js`): a formation strip (LB/RB; Suggested, My Plays, every formation by family, Special
   Teams; ▲▼ jumps a family), three big dark diagrams per page (◀▶ pages) picked with X / A / Y, PASS/RUN (ZONE/MAN)
   badges and per-game `session.callStats` ("N CALLS | avg yds"); RT flips, View = timeout.

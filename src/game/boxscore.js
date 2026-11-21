@@ -54,6 +54,6 @@ export function statRows(m, tabId, team = null, sortCol = null, asc = false) {
     .sort((a, b) => (asc ? key(a) - key(b) : key(b) - key(a)))
     .map((s) => {
       const p = m.teams[s.team].roster.find((x) => x.id === s.rid);
-      return { team: s.team, name: p ? `${p.first[0]}. ${p.last}` : '?', number: p?.number ?? '', pos: p?.pos ?? '', cells: tab.cols.map(([, f]) => f(s)) };
+      return { team: s.team, rid: s.rid, name: p ? `${p.first[0]}. ${p.last}` : '?', number: p?.number ?? '', pos: p?.pos ?? '', cells: tab.cols.map(([, f]) => f(s)) };
     });
 }

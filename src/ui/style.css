@@ -1924,3 +1924,15 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 .screen.pg-screen .pg-banner .pg-num b .lose { opacity: 0.45; }
 .screen.pg-screen .pg-banner .pg-logo canvas { width: 66px; height: 66px; }
 .screen.pg-screen .pg-banner .pg-tname { min-width: 0; overflow: hidden; } .screen.pg-screen .pg-banner .pg-tname b { overflow: hidden; text-overflow: ellipsis; }
+/* Game stats: header card for the focused player (photo on a team-color panel, name, this tab's line). */
+.st-card { display: flex; align-items: stretch; width: 100%; box-sizing: border-box; flex: 0 0 auto; height: 104px; margin-bottom: 8px; background: rgba(255,255,255,0.06); }
+.st-card .st-photo { position: relative; width: 150px; overflow: hidden; background: linear-gradient(135deg, var(--tc), color-mix(in srgb, var(--tc2) 60%, #000)); }
+.st-card .st-logo { position: absolute; right: -24px; top: -10px; opacity: 0.25; } .st-card .st-logo canvas { width: 120px; height: 120px; }
+.st-card .st-face { position: absolute; left: 22px; bottom: 0; height: 100px; width: auto; }
+.st-card .st-jn { position: absolute; inset: 0; display: grid; place-items: center; font: 700 54px var(--fo, var(--fd)); color: #fff; }
+.st-card .st-id { display: flex; flex-direction: column; justify-content: center; padding: 0 18px; min-width: 210px; }
+.st-card .st-id small { font: 600 12px var(--fb, var(--fd)); letter-spacing: 2px; opacity: 0.7; }
+.st-card .st-first { font: 300 20px/1.1 var(--fo, var(--fd)); letter-spacing: 1px; } .st-card .st-last { font: 700 32px/1 var(--fo, var(--fd)); }
+.st-card .st-line { flex: 1; display: flex; align-items: center; justify-content: space-around; border-left: 4px solid var(--tc); }
+.st-card .st-line div { display: flex; flex-direction: column; align-items: center; }
+.st-card .st-line b { font: 500 34px/1 var(--fo, var(--fd)); } .st-card .st-line small { font: 600 11px var(--fb, var(--fd)); letter-spacing: 2px; opacity: 0.65; margin-top: 4px; }

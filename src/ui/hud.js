@@ -103,7 +103,7 @@ export class Hud {
       <div id="drillbar" class="hidden"></div>
       <div id="noise" class="hidden"></div>
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
-      <div id="celwheel" class="hidden"><div class="cw-opt cw-up">Dance</div><div class="cw-opt cw-left">Flex</div><div class="cw-mid"><b class="btn RS">RS</b></div><div class="cw-opt cw-right">Spike</div><div class="cw-opt cw-down">Team</div></div>
+      <div id="celwheel" class="hidden"></div>
       <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
       <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
@@ -723,7 +723,21 @@ export class Hud {
    * goes on (session.ticker = [{ away, home, q: [[a1..a4], [h1..h4]], final }]).
    */
   /** The touchdown celebration wheel (see main.js). */
-  celWheel(on) { this.$('celwheel').classList.toggle('hidden', !on); }
+  /** Touchdown celebration picker: a list bottom-left (RS direction per row), a draining time bar, the pick lit. */
+  celWheel(on, left = 1, picked = null) {
+    const el = this.$('celwheel');
+    el.classList.toggle('hidden', !on);
+    if (!on) { el.dataset.key = ''; return; }
+    const key = String(picked);
+    if (el.dataset.key !== key) {
+      el.dataset.key = key;
+      const rows = [['dance', '▲', 'Dance'], ['flex', '◀', 'Flex'], ['spike', '▶', 'Spike'], ['team', '▼', 'Team celebration']];
+      el.innerHTML = `<div class="cl-head"><span>CELEBRATE</span><b class="btn RS">RS</b></div>
+        ${rows.map(([k, a, n]) => `<div class="cl-row${picked === k ? ' on' : picked ? ' off' : ''}"><i>${a}</i><span>${n}</span></div>`).join('')}
+        <div class="cl-time"><i></i></div>`;
+    }
+    el.querySelector('.cl-time i').style.width = `${Math.max(0, left) * 100}%`;
+  }
 
   renderTicker(session) {
     const tk = this.$('scoreticker');

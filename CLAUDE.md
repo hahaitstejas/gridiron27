@@ -692,7 +692,7 @@ Players carry a `task` (`route`, `pass_block`, `run_block`, `stalk`, `escort`, `
 - Presentation: end zones (team name / city + conference and league logos; championship: each team's), glossy logos
   (`logoCanvas` gloss pass), intro with run-out / coach / crowd shots (`render/intro.js`, `Presentation.runout`), fixed TD
   camera, wide kick camera (phases `kick` / `return`), RT play art pulls the camera back (`art` mode), celebrations
-  (first down, sack, pick; RS wheel after your TD), light show on touchdowns, dusk games darken, holiday leaves / flurries.
+  (first down, sack, pick; after your TD an RS celebration picker: a list bottom-left with a time bar, `hud.celWheel(on, left, picked)`), light show on touchdowns, dusk games darken, holiday leaves / flurries.
 
 ### Update 1.1 (UPDATE_PLAN.md)
 - No fullback on the roster: `fbFallback(team, unavailable)` in depthChart.js (3rd/4th TE, then backup HBs), used by

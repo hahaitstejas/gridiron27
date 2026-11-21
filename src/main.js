@@ -853,9 +853,10 @@ function frameBody(now) {
     if (celWheel) {
       const cf = two ? (celWheel.team === p1 ? f : input2.frame) : f;
       celWheel.t += dt;
-      const pick = cf.ry < -0.6 ? 'dance' : cf.rx < -0.6 ? 'flex' : cf.rx > 0.6 ? 'spike' : cf.ry > 0.6 ? 'team' : null;
-      if (pick) renderer.presentation.pickCelebration(pick);
-      if (pick || celWheel.t > 2.4 || !renderer.presentation.cel) { celWheel = null; hud.celWheel(false); }
+      const pick = celWheel.picked ? null : cf.ry < -0.6 ? 'dance' : cf.rx < -0.6 ? 'flex' : cf.rx > 0.6 ? 'spike' : cf.ry > 0.6 ? 'team' : null;
+      if (pick) { renderer.presentation.pickCelebration(pick); celWheel.picked = pick; celWheel.t = Math.max(celWheel.t, 2.4 - 0.6); } // lit for 0.6 s
+      hud.celWheel(true, 1 - celWheel.t / 2.4, celWheel.picked);
+      if (celWheel.t > 2.4 || !renderer.presentation.cel) { celWheel = null; hud.celWheel(false); }
     }
     consumed = pcOpen;
   }

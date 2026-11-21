@@ -26,7 +26,9 @@ export function makeConditions(rng, weather = 'random', time = 'random', late = 
     const r = rng.next();
     type = r < 0.12 ? 'rain' : r < 0.12 + 0.1 * Math.max(0, late - 0.4) / 0.6 ? 'snow' : 'clear';
   }
-  const mph = weather === 'windy' ? rng.range(14, 24) : rng.next() < 0.25 ? rng.range(8, 18) : rng.range(0, 7);
+  // Real outdoor games: a median of ~7 mph, about 1 in 10 over 15, 20+ rare. 'Windy' = a blustery day (14-21).
+  const r = rng.next();
+  const mph = weather === 'windy' ? rng.range(14, 21) : r < 0.6 ? rng.range(2, 9) : r < 0.9 ? rng.range(9, 15) : rng.range(15, 21);
   const ang = rng.range(0, Math.PI * 2);
   const v = mph / 2.045;
   const t = time === 'random' ? rng.pick(['day', 'day', 'dusk', 'night', 'night']) : time;

@@ -1965,3 +1965,11 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 .dr-tk .fr-score { background: none !important; padding: 0 !important; font: 500 14px var(--fb, var(--fd)); }
 .screen.dr-screen .dr-hstats b, .screen.dr-screen .dr-ticker > b { white-space: nowrap !important; } .screen.dr-screen .dr-hstats { gap: 18px; } .screen.dr-screen .dr-hstats b { font-size: 22px; }
 #kickchip .kc-aim { display: flex; flex-direction: column; align-items: center; } #kickchip .kc-aim .btn { font-size: 12px; margin-top: 2px; }
+/* Pause (UPDATE 5.2): covers the whole screen (it used to stop 58 px short for the old scorebug, and the prime-time bugs / the
+   franchise ticker left a strip of field showing); the scorebug and ticker hide behind it like on the post-game screen. */
+.screen.pz-screen { bottom: 0 !important; background: #000 !important; overflow-y: auto; padding-bottom: 60px !important; }
+.screen.pz-screen .pz-help { bottom: 16px !important; }
+body:has(.pz-screen:not(.hidden)) #scorebug, body:has(.pz-screen:not(.hidden)) #scoreticker, body:has(.pz-screen:not(.hidden)) #milestone { display: none !important; }
+.screen.pz-screen .pz-main { max-width: calc(100vw - 6vw); }
+.screen.pz-screen .pz-matchup { min-width: 0; }
+.screen.pz-screen .pz-main { gap: 2.5vw; padding-right: 2vw; box-sizing: border-box; } .screen.pz-screen .pz-qb { min-width: 0; } .screen.pz-screen .pz-name b { font-size: 26px; }

@@ -545,7 +545,7 @@ applied by `deserializeLeague` → `setLeagueInfo`). Edited in League → Teams 
 championship game (`renderer.setTeams(..., { championship })` from startGame), at midfield.
 
 ### Broadcast touches (UPDATE 5.0)
-The line of scrimmage turns red on 4th down (lines.js); the slanted down & distance / play clock tag sits on the turf beside the
+The line to gain turns red on 4th down, the line of scrimmage stays blue (lines.js); the slanted down & distance / play clock tag sits on the turf beside the
 ball before every scrimmage snap (hud `artOverlay(..., names)`: RT still adds the names; never on kicks or fakes); a touchdown
 is a full-width team-color lower third (`hud.tdBand`); catch type / going for the pick confirm with a top-right pill
 (`hud.pill`); lining up a field goal shows an "ABR 42 YARD FG" chip (`#kickchip`) under a FIELD GOAL panel (kicker, wind mph with an arrow as the kicker sees it: up = toward the posts); defensive play art labels each zone
@@ -637,7 +637,7 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   grabs his helmet (1.3 s); on a stop (a yard or less) the two standing defenders nearest the tackle meet for a high five; about a
   third of the players walk back to a close huddle with hands on hips (never in a hurry-up: `this.hurry`, no-huddle or under 2:00).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
-- Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js).
+- Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js); it covers the whole screen (solid black) and hides the scorebug / ticker / milestone bar (UPDATE 5.2: it used to stop 58 px short and the field showed through around the prime-time bugs).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc
   behind him and `CameraRig.update(..., { shot })` cuts to a close-up (`Presentation.celebration()`); the session holds
   `post` 3 s after a TD (not fast/practice) so it plays before the PAT call.

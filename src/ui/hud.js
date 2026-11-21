@@ -13,6 +13,13 @@ const Q = ['', '1st', '2nd', '3rd', '4th', 'OT'];
 
 /** In-game overlays: score bug, banners, penalty flags, ticker, receiver icons, kick meter, help, FPS. */
 /** A stat both teams have, picked by how many plays have been run (the scorebug's between-play comparison). */
+// Curved kick meter: a ")" arc of radius KR from -60deg (bottom) to +60deg (top); u = 0..1 along it.
+const KR = 100, KA = Math.PI / 3;
+const arcPt = (u, r = KR) => { const a = -KA + u * 2 * KA; return [r * Math.cos(a), -r * Math.sin(a)]; };
+const ARC = `M ${arcPt(0).join(' ')} A ${KR} ${KR} 0 0 0 ${arcPt(1).join(' ')}`;
+const meterU = (v) => (v - METER.floor) / (1 - METER.floor);
+function setTick(el, u, r0, r1) { const [x1, y1] = arcPt(u, r0), [x2, y2] = arcPt(u, r1); el.setAttribute('x1', x1); el.setAttribute('y1', y1); el.setAttribute('x2', x2); el.setAttribute('y2', y2); }
+
 function bugStat(m) {
   const S = m.stats?.team; if (!S) return null;
   const opts = [['TOTAL YARDS', (x) => Math.round(x.yards)], ['FIRST DOWNS', (x) => x.firstDowns], ['3RD DOWN', (x) => `${x.thirdConv}/${x.thirdAtt}`],
@@ -105,7 +112,9 @@ export class Hud {
       <div id="replay" class="hidden"><div class="rp-badge">REPLAY</div><div class="rp-bar"><div class="rp-fill"></div></div><div class="rp-help"></div></div>
       <div id="celwheel" class="hidden"></div>
       <div id="pushmeter" class="hidden"><div class="pm-label">PUSH: <b class="btn A">A</b> in the green</div><div class="pm-bar"><div class="pm-zone"></div><div class="pm-needle"></div></div></div>
-      <div id="kickmeter" class="hidden"><div class="km-bar"><div class="km-fill"></div><div class="km-zone"></div><div class="km-needle"></div></div><div class="km-label">KICK</div></div>
+      <div id="kickmeter" class="hidden"><svg class="km-arc" viewBox="-20 -112 150 224"><defs><linearGradient id="kmg" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#3fbf3f"/><stop offset="0.7" stop-color="#ffd34d"/><stop offset="1" stop-color="#ff5a4f"/></linearGradient></defs>
+        <path class="km-track" d="${ARC}" pathLength="100"/><path class="km-fill" d="${ARC}" pathLength="100" stroke="url(#kmg)"/>
+        <line class="km-zone" x1="0" y1="0" x2="0" y2="0"/><line class="km-zero" x1="0" y1="0" x2="0" y2="0"/><circle class="km-needle" r="7" cx="0" cy="0"/></svg><div class="km-label">KICK</div></div>
       <div id="help" class="hidden"></div>
       <div id="quickstart" class="hidden"></div>
       <div id="fps"></div>
@@ -701,21 +710,23 @@ export class Hud {
     const fakeMeter = !meter && sim?.fakeLook && !playcallOpen; // 2P: a fake shows the meter at rest, like the kick
     const showMeter = (meter && sim.isKick && (sim.state === 'presnap' || !sim.kick?.launched) && !playcallOpen) || fakeMeter;
     km.classList.toggle('hidden', !showMeter);
-    if (fakeMeter) {
-      km.querySelector('.km-fill').style.height = '0%';
-      km.querySelector('.km-needle').style.display = 'none';
-      km.querySelector('.km-zone').style.bottom = `${((METER.accLine - METER.floor) / (1 - METER.floor)) * 100}%`;
-      km.querySelector('.km-label').textContent = sim.offPlay.fake === 'fg' ? `FG ${Math.ceil(Math.abs(60 * sim.dir - sim.losX) + 7 - 1e-6)} yd` : 'PUNT';
-    } else if (showMeter) {
-      const fill = meter.phase === 'power' ? meter.value : meter.power;
-      km.querySelector('.km-fill').style.height = `${fill * 100}%`;
-      const needle = meter.phase === 'accuracy' ? meter.needle : meter.phase === 'done' ? meter.accuracy + METER.accLine : -1;
+    if (showMeter) {
+      // Beside the kicker (punter) when he's on screen, else the old spot on the right.
+      const kp = sim.players.find((p) => p.team === sim.offIdx && (p.slot === 'K' || p.slot === 'P'));
+      const sp = kp && renderer.project(kp.x, 1, kp.z);
+      const near = sp && sp.visible && sp.x > 80 && sp.x < innerWidth - 260 && sp.y > 140 && sp.y < innerHeight - 60;
+      km.classList.toggle('near', !!near);
+      if (near) { km.style.left = `${Math.round(sp.x + 50)}px`; km.style.top = `${Math.round(sp.y - 112)}px`; } else { km.style.left = ''; km.style.top = ''; }
+      setTick(km.querySelector('.km-zone'), meterU(METER.accLine), KR - 14, KR + 14);
+      setTick(km.querySelector('.km-zero'), meterU(0), KR - 8, KR + 8);
+      const fill = fakeMeter ? 0 : meter.phase === 'power' ? meter.value : meter.power;
+      km.querySelector('.km-fill').style.strokeDasharray = `${Math.max(0, meterU(Math.max(METER.floor, fill))) * 100} 100`;
+      const needle = fakeMeter ? -1 : meter.phase === 'accuracy' ? meter.needle : meter.phase === 'done' ? meter.accuracy + METER.accLine : -1;
       const nd = km.querySelector('.km-needle');
-      nd.style.display = needle > -0.5 ? 'block' : 'none';
-      nd.style.bottom = `${((needle - METER.floor) / (1 - METER.floor)) * 100}%`;
-      km.querySelector('.km-zone').style.bottom = `${((METER.accLine - METER.floor) / (1 - METER.floor)) * 100}%`;
-      km.querySelector('.km-bar').style.setProperty('--zero', `${((0 - METER.floor) / (1 - METER.floor)) * 100}%`);
-      km.querySelector('.km-label').textContent = sim.offPlay.type === 'fg' ? `FG ${Math.ceil(Math.abs(60 * sim.dir - sim.losX) + 7 - 1e-6)} yd` : sim.offPlay.name.toUpperCase();
+      nd.style.display = needle > -0.5 ? '' : 'none';
+      if (needle > -0.5) { const [x, y] = arcPt(meterU(needle)); nd.setAttribute('cx', x); nd.setAttribute('cy', y); }
+      const fgYds = `FG ${Math.ceil(Math.abs(60 * sim.dir - sim.losX) + 7 - 1e-6)} yd`;
+      km.querySelector('.km-label').textContent = fakeMeter ? (sim.offPlay.fake === 'fg' ? fgYds : 'PUNT') : sim.offPlay.type === 'fg' ? fgYds : sim.offPlay.name.toUpperCase();
     }
     // FPS
     this.fpsAcc += frameMs; this.fpsN++;

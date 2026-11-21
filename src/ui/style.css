@@ -127,11 +127,15 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 
 /* Kick meter */
 #kickmeter { position: absolute; right: 6%; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.km-bar { position: relative; width: 34px; height: 300px; background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.8); border-radius: 6px; overflow: hidden; }
-.km-fill { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(0deg, #3fbf3f, #ffd34d 70%, #ff5a4f); }
-.km-zone { position: absolute; left: -2px; right: -2px; height: 6px; margin-bottom: -3px; background: rgba(255,255,255,0.95); box-shadow: 0 0 8px #fff; }
-.km-needle { position: absolute; left: -6px; right: -6px; height: 4px; margin-bottom: -2px; background: #ff2d2d; display: none; }
-.km-label { font-weight: 900; font-size: 14px; text-shadow: 0 2px 6px #000; }
+.km-label { font: 600 16px var(--fo, var(--fd)); letter-spacing: 1px; text-shadow: 0 2px 6px #000; }
+/* Curved meter (an arc beside the kicker: hud.js ARC). */
+.km-arc { width: 110px; height: 164px; overflow: visible; filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6)); }
+.km-arc path { fill: none; stroke-width: 16; stroke-linecap: butt; }
+.km-arc .km-track { stroke: rgba(0,0,0,0.6); stroke-width: 20; }
+.km-arc .km-fill { stroke-dasharray: 0 100; }
+.km-arc .km-zone { stroke: #fff; stroke-width: 4; } .km-arc .km-zero { stroke: rgba(255,255,255,0.5); stroke-width: 2; }
+.km-arc .km-needle { fill: #ff2d2d; stroke: #fff; stroke-width: 2; }
+#kickmeter.near { right: auto; transform: none; }
 
 /* Play call */
 #playcall { position: absolute; left: 0; right: 0; bottom: 0; height: 50vh; background: linear-gradient(180deg, rgba(5,8,18,0.82), rgba(5,8,18,0.97)); border-top: 2px solid var(--gold); pointer-events: auto; display: flex; flex-direction: column; padding: 10px 20px 8px; z-index: 10; }

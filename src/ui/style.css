@@ -1993,3 +1993,13 @@ body:has(.pz-screen:not(.hidden)) #scorebug, body:has(.pz-screen:not(.hidden)) #
 #spotlight .sp-text span { font: 500 15px var(--fb, var(--fd)); opacity: 0.9; }
 #spotlight .sp-logo { width: 74px; background: var(--tc); display: grid; place-items: center; clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%); }
 #spotlight .sp-logo img { width: 52px; height: 52px; object-fit: contain; }
+/* Scoring drive card (Game Play 9 reference): logo panel + team-color title bar over PLAYS / YARDS / TIME. */
+#drivecard { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); display: flex; height: 84px; z-index: 16; pointer-events: none;
+  background: rgba(8,12,20,0.94); color: #fff; animation: spIn 0.35s ease-out; box-shadow: 0 6px 18px rgba(0,0,0,0.5); }
+#drivecard .dv-logo { width: 96px; display: grid; place-items: center; background: linear-gradient(135deg, var(--tc), #0a0f18); }
+#drivecard .dv-logo img { width: 66px; height: 66px; object-fit: contain; }
+#drivecard .dv-body { display: flex; flex-direction: column; min-width: 300px; }
+#drivecard .dv-title { background: var(--tc); font: 600 22px/34px var(--fo, var(--fd)); letter-spacing: 2px; text-align: center; }
+#drivecard .dv-stats { flex: 1; display: flex; justify-content: space-around; align-items: center; }
+#drivecard .dv-stats div { display: flex; flex-direction: column; align-items: center; }
+#drivecard .dv-stats small { font: 600 10px var(--fb, var(--fd)); letter-spacing: 2px; opacity: 0.7; } #drivecard .dv-stats b { font: 600 22px/1 var(--fo, var(--fd)); }

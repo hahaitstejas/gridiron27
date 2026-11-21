@@ -263,3 +263,20 @@ morale + contract columns and a player card side panel; draft: board of picks in
 teams, pick ticker, prospect table (rank, projection, talent, scout % bar, archetype, letter grades), scouting report
 (notes, top fits, key ratings as letter grades, team needs with grade / active / required), a pick grade after your
 selection (GOOD PICK + letter, true-value rank vs pick), draft class table; playoff bracket board; QB sneak timing meter.
+
+### Game Play 9 reference (the user's 50-min Monday-night game, 1,503 frames at 1 per 2 s; reference only: our own designs, no copied marks)
+Seen, roughly in order. [have] = already in Gridiron 27, [new] = added Nov 21, [todo] = not yet.
+- Pregame: publisher / league logo stings (skip: their IP); stadium drone / firework show forming the home logo [todo]; tunnel
+  close-ups of players walking out (helmet on, smoke, team lights) [have: run-out, could be closer]; team run-out through a giant
+  inflatable / smoke [todo]; team logo card in team color [todo]; head-coach lower thirds on the sideline (name, "Nth season
+  as head coach", record) [todo]; "MONDAY NIGHT PRIMETIME" title card [have: package badge]; starting QB card ("LAST SEASON" stats,
+  photo) over a sideline shot [todo].
+- Between plays: play-call screen over the huddle [have]; close-ups of players walking back / talking after the whistle [have:
+  spotlight on big plays, help-ups, reactions]; coach with the play sheet [todo]; the huddle from low [have].
+- Touchdown: full-screen stylized TOUCHDOWN title (scorer under a spotlight, team logos either side) [todo], then a scorer card
+  (team-color pattern, FIRST name thin / LAST bold, POS #, headshot) [todo]; linemen walking off with a SCORING DRIVE banner (plays /
+  yards / time) [new: `#drivecard`, `hud.pendingDrive`, shown at the next kickoff call].
+- Kicks: behind-the-kicker shot with the landing zone / meter [have]; "IT'S GOOD" on the ribbon boards [have: board flash].
+- Halftime: a studio-like stat board (each team's QB / HB / top receiver lines with headshots, score, records) then a
+  "HALFTIME REPORT" card [have: halftime screen; the stat-board look is a todo].
+- End: scorebug over an aerial stadium shot, MONDAY NIGHT PRIMETIME outro, final stats screen [have: post-game].

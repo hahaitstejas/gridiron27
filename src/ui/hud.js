@@ -130,7 +130,7 @@ export class Hud {
       <div id="intro" class="hidden"></div><div id="halfcard" class="hidden"></div><div id="pbp" class="hidden"><span class="pb-tag"></span><span class="pb-text"></span></div><div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
       <div id="ticker"></div><div id="pill" class="hidden"></div><div id="tdband" class="hidden"></div><div id="kickchip" class="hidden"></div>
       <div id="callout"></div>
-      <div id="statcard" class="hidden"></div><div id="spotlight" class="hidden"></div>
+      <div id="statcard" class="hidden"></div><div id="spotlight" class="hidden"></div><div id="drivecard" class="hidden"></div>
       <div id="audible" class="hidden"></div>
       <div id="penaltybox" class="hidden"></div>
       <div id="reviewbox" class="hidden"></div>
@@ -259,7 +259,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'spotlight', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'spotlight', 'drivecard', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   leagueLogo() {
     const l = LEAGUE.logo;
@@ -552,6 +552,17 @@ export class Hud {
     const m = session.match;
     const sim = session.sim;
     this.renderBug(session);
+    // Scoring drive card (Game Play 9 reference): after a TD / FG, while the teams set up for the kickoff: team logo,
+    // SCORING DRIVE, plays / yards / time, ~5 s.
+    const dc = this.$('drivecard');
+    if (this.pendingDrive && m.phase === 'kickoff' && (session.state === 'playcall' || session.state === 'presnap')) {
+      const d = this.pendingDrive, t = m.teams[d.team];
+      this.pendingDrive = null;
+      dc.innerHTML = `<div class="dv-logo" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}" alt=""/></div><div class="dv-body"><div class="dv-title" style="--tc:${t.colors.primary}">SCORING DRIVE</div>
+        <div class="dv-stats"><div><small>PLAYS</small><b>${d.plays}</b></div><div><small>YARDS</small><b>${d.yards}</b></div><div><small>TIME</small><b>${clockText(d.secs)}</b></div></div></div>`;
+      dc.classList.remove('hidden'); this.driveT = 5;
+    }
+    if (this.driveT > 0 && (this.driveT -= dt) <= 0) dc.classList.add('hidden');
     // Milestone watch over the scorebug: at the line on every fourth play (6 s), never with a kick or in practice.
     const ms = this.$('milestone');
     const msOn = session.state === 'presnap' && sim?.state === 'presnap' && !sim.isKick && !session.practice && !playcallOpen

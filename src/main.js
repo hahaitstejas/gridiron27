@@ -715,6 +715,7 @@ function onSessionEvent(e) {
     hud.message(e, session);
     if (e.kind === 'half' && /half/i.test(e.text) && session.humanTeam !== null && !session.practice && speed <= 1) showHalftime();
     if (e.kind === 'score') { const w = session.match.lastScore?.what || ''; flashBoard(/touchdown|pick six/i.test(w) ? 'TOUCHDOWN!' : /field goal/i.test(w) ? 'FIELD GOAL' : /safety/i.test(w) ? 'SAFETY' : '', session.match.lastScore?.team ?? 0); if (!boardFlash.text) boardFlash = null; }
+    else if (e.kind === 'drive' && e.drive && /Touchdown|Field goal/.test(e.drive.result) && !session?.fast && !session?.practice) hud.pendingDrive = e.drive; // shown at the next kickoff call
     else if (e.kind === 'timeout') {
       flashBoard('TIMEOUT', e.team ?? 0);
       // Cut to the video board (not in sped-up / headless-like games), the board at the end the offense is going toward.

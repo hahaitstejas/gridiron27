@@ -229,7 +229,7 @@ export class Match {
     const secs = Math.max(0, (Math.min(this.quarter, 5) - d.quarter) * qs + d.clock - this.clock);
     const drive = { team: off, plays: d.plays, yards: Math.round(endYL - d.yl), secs: Math.round(secs), result: end, start: d.yl };
     (this.drives ||= []).push(drive);
-    this.say(`${this.teams[off].abbr} drive: ${drive.plays} play${drive.plays === 1 ? '' : 's'}, ${drive.yards} yds, ${clockText(drive.secs)} · ${end}`, 'drive');
+    this.say(`${this.teams[off].abbr} drive: ${drive.plays} play${drive.plays === 1 ? '' : 's'}, ${drive.yards} yds, ${clockText(drive.secs)} · ${end}`, 'drive', { drive });
   }
 
   /**

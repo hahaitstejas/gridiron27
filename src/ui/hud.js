@@ -252,7 +252,6 @@ export class Hud {
     } else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
     else if (k === 'penalty') this.flag(msg.text);
     else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
-    else if (k === 'drive') this.pbp('DRIVE', msg.text.replace(/^\w+ drive: /, `${msg.text.split(' ')[0]} · `), 5, true);
     else if (k === 'timeout') {
       // Timeouts are loud: a team-colored banner and that team's timeout bars blink on the scorebug.
       const t = session.teams[msg.team];
@@ -267,7 +266,7 @@ export class Hud {
       // Halftime: a human game gets the full halftime report screen (main.js); CPU-only games get the quick card.
       if (k === 'half' && /half/i.test(msg.text) && !session.practice) { if (session.humanTeam === null) this.halfCard(session); return; }
       this.banner(k === 'half' ? msg.text.split('!')[0].toUpperCase() : 'TWO-MINUTE WARNING', k === 'half' ? msg.text : '', 2.4, 'info');
-    } else this.ticker(msg.text);
+    } else if (k !== 'drive') this.ticker(msg.text); // drive summaries live in Pause → Play History
   }
 
   /** Pre-snap read (offense, while RT play art is up): the QB's guess at the coverage and how sure he is. */

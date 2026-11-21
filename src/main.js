@@ -699,7 +699,7 @@ function onSessionEvent(e) {
     else if (e.kind === 'timeout') flashBoard('TIMEOUT', e.team ?? 0);
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
-  else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); if (session.match.lastPlayText && !session.practice) hud.pbp('PLAY', session.match.lastPlayText); }
+  else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); } // (the play-by-play strip is gone: Pause → Play History lists every play)
   else if (e.type === 'audible' && session?.twoPlayer) hud.ticker(`${e.side === 'defense' ? 'Defense' : 'Offense'}: adjustment at the line`); // no names: the other player is watching
   else if (e.type === 'audible') hud.ticker(['Coverage', 'Protection', 'Front'].includes(e.play) ? `${e.play}: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);
   else if (e.type === 'review' && e.phase === 'review') hud.ticker(e.booth ? 'The booth is reviewing the play' : `${session.teams[e.by].abbr} challenges the ruling`);

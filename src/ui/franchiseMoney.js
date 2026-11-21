@@ -3,6 +3,8 @@ import { payroll, money, marketValue } from '../franchise/contracts.js';
 import { ensurePicks, picksOf, pickLabel, pickValue, expectedSlot, evaluateDeal, executeDeal, dealText, pickKey, tradeAssets, cheapestPackage } from '../franchise/trades.js';
 import { sortHead, sortKeys, sortRows, POS_TABS } from './sortable.js';
 import { logTransaction, tradeDeadlinePassed } from '../franchise/franchise.js';
+import { canExtend, extStore, talksWith, offerExtension, PATIENCE } from '../franchise/negotiation.js';
+import { actionsPanel } from './rosterEditor.js';
 
 // Franchise money screens: contracts & cap, trades with CPU teams, the transaction log.
 // `ui` is the FranchiseUI (ui.f, ui.teams, ui.ctx, ui.hub(), ui.save()).
@@ -17,26 +19,50 @@ export function capLine(f, team) {
   return `Payroll ${money(pay)}${dead} of ${money(f.cap)} · ${pay > f.cap ? 'over the cap by ' + money(pay - f.cap) : money(f.cap - pay) + ' cap space'}`;
 }
 
-export function contractsScreen(ui, sortBy = 0) {
+export function contractsScreen(ui, sortBy = 0, focus = 0, note = null) {
   const { screens } = ui.ctx;
   const f = ui.f, team = ui.teams[f.userTeam];
   const sorts = [['Salary', (a, b) => b.salary - a.salary], ['Overall', (a, b) => b.ovr - a.ovr], ['Expiring', (a, b) => a.years - b.years || b.salary - a.salary]];
   const list = [...team.roster].sort(sorts[sortBy][1]);
   const head = el('div.st-row.st-head', {}, el('span.dc-pos', { text: 'POS' }), el('span.st-name', { text: 'Player' }),
     ...['AGE', 'OVR', 'SALARY', 'YRS', 'VALUE'].map((c) => el('span.st-num', { text: c })));
-  const rows = list.map((p) => {
+  const rows = list.map((p, i) => {
     const mv = marketValue(p);
-    return el('div.st-row', {}, el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: who(p) })),
+    const r = el('div.st-row', {}, el('span.dc-pos', { text: p.pos }), el('span.st-name', {}, el('b', { text: who(p) }), canExtend(f, p) ? el('small', { text: '  EXTEND (A)' }) : null),
       el('span.st-num', { text: String(p.age) }), el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: money(p.salary || 0) }),
-      el('span.st-num', { text: String(Math.max(0, p.years ?? 0)) }),
+      el(`span.st-num${p.ext ? '.up' : ''}`, { text: p.ext ? `${Math.max(0, p.years ?? 0)}+${p.ext.years}` : String(Math.max(0, p.years ?? 0)) }),
       el(`span.st-num${mv > (p.salary || 0) * 1.15 ? '.up' : mv < (p.salary || 0) * 0.85 ? '.down' : ''}`, { text: money(mv) }));
+    if (canExtend(f, p)) r.activate = () => extensionPanel(ui, p, () => contractsScreen(ui, sortBy, i));
+    return r;
   });
   screens.frame('stats-screen', el('h1', { text: 'Contracts & Salary Cap' }),
-    el('div.league-status', { text: capLine(f, team) }),
+    el('div.league-status', { text: note || capLine(f, team) }),
     el('div.pc-tabs', {}, sorts.map(([l], i) => el(`div.pc-tab${i === sortBy ? '.on' : ''}`, { text: `By ${l.toLowerCase()}` }))),
     el('div.st-table', {}, head, rows),
-    el('div.setup-help', { html: 'VALUE = what he\'d get on the open market (green: a bargain, red: overpaid). Expiring deals come up in the offseason. &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> sort &nbsp; <b class="btn B">B</b> back' }));
-  screens.nav.set(rows, { columns: 1, onBack: () => ui.hub(), onTab: (d) => contractsScreen(ui, (sortBy + d + sorts.length) % sorts.length) });
+    el('div.setup-help', { html: 'VALUE = what he\'d get on the open market (green: a bargain, red: overpaid). Expiring deals come up in the offseason; <b class="btn A">A</b> on a player in his last year opens extension talks (YRS 1+N = extended). &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> sort &nbsp; <b class="btn B">B</b> back' }));
+  screens.nav.set(rows, { columns: 1, index: focus, onBack: () => ui.hub(), onTab: (d) => contractsScreen(ui, (sortBy + d + sorts.length) % sorts.length) });
+}
+
+/** In-season extension talks (negotiation.js): the same offers as re-signing; the new deal starts next season. */
+function extensionPanel(ui, p, back, msg = null) {
+  const f = ui.f, team = ui.teams[f.userTeam];
+  const t = talksWith(f, p, extStore(f));
+  const done = (text) => { ui.save(); back(); ui.ctx.screens.root.querySelector('.league-status').textContent = text; };
+  if (t.walked) { done(`${who(p)} won't talk extension again this season: he'll test free agency.`); return; }
+  const offer = (salary, years) => () => {
+    const r = offerExtension(f, ui.teams, team, p, { salary, years });
+    if (r.result === 'accept') logTransaction(f, `${team.abbr} extend ${p.pos} ${who(p)}: ${years} yr, ${money(r.talks.done.salary)} a year from next season`);
+    if (r.result === 'counter') { ui.save(); extensionPanel(ui, p, back, r.text); } else done(r.text);
+  };
+  const r05 = (v) => Math.round(v * 20) / 20;
+  const dots = '●'.repeat(Math.max(0, t.patience)) + '○'.repeat(Math.max(0, PATIENCE - t.patience));
+  actionsPanel(ui.ctx.screens, `Extension · ${who(p)} · ${p.pos} ${p.ovr} · asks ${t.years} yr at ${money(t.salary)} · patience ${dots}${msg ? ` · ${msg}` : ''}`, [
+    [`Meet his ask: ${t.years} yr, ${money(t.salary)}`, offer(t.salary, t.years), 'he signs; starts next season'],
+    [`Offer 5% less (${money(r05(t.salary * 0.95))})`, offer(r05(t.salary * 0.95), t.years), 'a small ask'],
+    [`Offer 12% less (${money(r05(t.salary * 0.88))})`, offer(r05(t.salary * 0.88), t.years), 'he may counter'],
+    t.years > 1 ? [`One year shorter (${t.years - 1} yr) at his ask`, offer(t.salary, t.years - 1), (p.age ?? 27) <= 29 ? 'young players want security' : 'older players mind less'] : null,
+    [`One year longer (${t.years + 1} yr), 4% less`, offer(r05(t.salary * 0.96), t.years + 1), (p.age ?? 27) >= 30 ? 'a vet likes the security' : ''],
+  ], back);
 }
 
 /** Trades: pick a team, then players and draft picks from both sides. The CPU accepts a fair-or-better deal that fits the cap. */

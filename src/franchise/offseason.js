@@ -1,3 +1,4 @@
+import { applyExtension } from './negotiation.js';
 import { tagSalary } from './honors.js';
 import { generateClass } from './draftClass.js';
 import { compPicks, noteFreeAgentMove } from './trades.js';
@@ -55,6 +56,7 @@ export function progressPlayers(f, teams) {
       if (p.pos !== 'K' && p.pos !== 'P' && age >= 30) p.ratings.awareness = clampR(p.ratings.awareness + 1); // veterans still learn
       p.ovr = overall(p);
       p.years--;
+      applyExtension(p); // an in-season extension starts now (negotiation.js)
       if (mine && p.years <= 0) p.years = contractYears(p); // the career player always re-ups
       // Retirement: likely past 33, sooner for fading veterans (the career player retires when you say so).
       const retire = !mine && age >= 32 && rng.chance(Math.min(0.9, 0.12 + (age - 32) * 0.18 + (p.ovr < 65 ? 0.2 : 0)));

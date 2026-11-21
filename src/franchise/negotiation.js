@@ -26,18 +26,46 @@ export function openingDemand(p) {
   return { salary: Math.max(MIN_SALARY, round05(mv * (p.ovr >= 85 ? 1.06 : 1))), years: wantedYears(p) };
 }
 
-/** The talks with a player (created on first look). */
-export function talksWith(f, p) {
-  const T = (f.offseason ||= {}).talks ||= {};
+/** The talks with a player (created on first look). `store` defaults to the offseason re-signing talks. */
+export function talksWith(f, p, store = null) {
+  const T = store || ((f.offseason ||= {}).talks ||= {});
   return (T[p.id] ||= { ...openingDemand(p), patience: PATIENCE });
+}
+
+// ---------- In-season extensions ----------
+// A player in the last year of his deal can be extended during the season with the same talks (their own store per
+// season: f.extTalks[year]). The new deal starts next season: p.ext = { salary, years } is applied when his current
+// contract runs out in progressPlayers (offseason.js), so he never reaches the re-signing step.
+
+/** Can the user open extension talks with him now? */
+export function canExtend(f, p) {
+  return f.phase !== 'offseason' && f.phase !== 'done' && (p.years ?? 0) === 1 && !p.ext && !p.career;
+}
+
+/** This season's extension talks store. */
+export function extStore(f) { return ((f.extTalks ||= {})[f.year] ||= {}); }
+
+/** Extension offer: same judging as re-signing; on 'accept' the deal is booked on the player (p.ext). */
+export function offerExtension(f, teams, team, p, offer) {
+  const r = makeOffer(f, teams, team, p, offer, extStore(f));
+  if (r.result === 'accept') p.ext = { ...r.talks.done };
+  return r;
+}
+
+/** His current contract ran out: an extension takes over (true), else he's expiring. */
+export function applyExtension(p) {
+  if (!p.ext || (p.years ?? 0) > 0) return false;
+  p.salary = p.ext.salary; p.years = p.ext.years;
+  delete p.ext;
+  return true;
 }
 
 /**
  * Make an offer { salary, years }. Returns { result: 'accept' | 'counter' | 'walk', text, talks }.
  * On 'accept' the deal is stored (talks.done) and the caller re-signs him at those terms.
  */
-export function makeOffer(f, teams, team, p, offer) {
-  const t = talksWith(f, p);
+export function makeOffer(f, teams, team, p, offer, store = null) {
+  const t = talksWith(f, p, store);
   if (t.walked) return { result: 'walk', text: `${p.last} has moved on: he's testing free agency.`, talks: t };
   const ti = teams.indexOf(team);
   const mode = ti >= 0 ? teamMode(f, teams, ti) : 'middle';

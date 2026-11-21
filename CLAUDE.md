@@ -324,6 +324,9 @@ rounds}, history[], seed, offseason{step, …} }`.
   `makeOffer` judges money vs his ask, years away from what he wants, morale and whether the team wins (`teamMode`) →
   accept (`talks.done`, re-signed at those terms) / counter (he comes 30% of the way, years meet halfway) / walk after
   `PATIENCE` 3 (a lowball under 86% costs 2). Kept players without a deal sign at their current demand.
+- In-season extensions (negotiation.js `canExtend` / `offerExtension` / `applyExtension`): hub → Contracts & Cap, A on a player in
+  the last year of his deal opens the same talks (own store per season, `f.extTalks[year]`); an accepted deal is booked as
+  `p.ext = { salary, years }` (YRS shows 1+N) and takes over in `progressPlayers` when his contract runs out, so he skips re-signing.
 - Trade AI (UPDATE 5.0): `teamMode(f, teams, ti)` = contend / middle / rebuild from the record (more weight as the season
   goes) and roster strength; `evaluateDeal` values incoming players by fit (need ×1.12, surplus ×0.82; rebuilders discount
   29+ year-olds ×0.7 and like youth, contenders like vets), picks ×1.15 for rebuilders / ×0.88 for contenders, guards a

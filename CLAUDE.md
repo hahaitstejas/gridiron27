@@ -638,6 +638,11 @@ bring a league over with League → Saves & Files → export / import `.g27.json
 - After-play reactions (presentation.js `reacts` / `react`, poses `frustrated` / `hi5` / `walk_hips`): the target of an incompletion
   grabs his helmet (1.3 s); on a stop (a yard or less) the two standing defenders nearest the tackle meet for a high five; about a
   third of the players walk back to a close huddle with hands on hips (never in a hurry-up: `this.hurry`, no-huddle or under 2:00).
+- Gameplay 8 reference (UPDATE 5.2): big plays (a 20+ yd gain, a sack, an interception; not TDs, kicks or flagged plays) get a
+  spotlight: `Presentation.spotlight(idx)` holds the camera close in front of the player for 2.6 s of the huddle walk (through the
+  `celebration()` shot) and `hud.spotlight(line)` shows a lower third (photo on the team color, TEAM · POS #, name, the play's line,
+  team logo end) in place of the stat card. Timeouts cut to the video board (`renderer.boardShot(side)`, 2.4 s, the board flashing
+  TIMEOUT). Under half a yard to go reads "& Inches" (`downText`, scorebugs).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js); it covers the whole screen (solid black) and hides the scorebug / ticker / milestone bar (UPDATE 5.2: it used to stop 58 px short and the field showed through around the prime-time bugs).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

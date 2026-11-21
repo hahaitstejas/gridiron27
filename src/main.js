@@ -722,7 +722,17 @@ function onSessionEvent(e) {
     }
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
-  else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); } // (the play-by-play strip is gone: Pause → Play History lists every play)
+  else if (e.type === 'result') {
+    hud.statCard(e.statLines, session.teams);
+    // Big plays get a spotlight (gameplay 8 reference): camera close on the player, a lower third with his photo and line.
+    const r = e.result, sim = session.sim;
+    if (r && sim && !session.fast && !session.practice && !session.watching && speed <= 1.5 && !r.touchdown && !r.kickType && !r.penalty) {
+      const idx = r.interception ? r.intBy : r.sack ? r.tackler : (r.yards || 0) >= 20 && !r.turnover ? r.carrierId : null;
+      const p = idx != null ? sim.players[idx] : null;
+      const line = p && (e.statLines || []).find((l) => l.rid === p.rid);
+      if (p && line) { renderer.presentation.spotlight(idx, 2.6, renderer.rig.camera.position.clone()); hud.spotlight(line, session.teams); }
+    }
+  } // (the play-by-play strip is gone: Pause → Play History lists every play)
   if (['audible', 'motion', 'hotRoute', 'hardCount', 'iced'].includes(e.type)) bugNote(e);
   if (e.type === 'audible' && session?.twoPlayer) hud.ticker(`${e.side === 'defense' ? 'Defense' : 'Offense'}: adjustment at the line`); // no names: the other player is watching
   else if (e.type === 'audible') hud.ticker(['Coverage', 'Protection', 'Front'].includes(e.play) ? `${e.play}: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);

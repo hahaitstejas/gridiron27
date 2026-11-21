@@ -150,6 +150,7 @@ export class Presentation {
     if (mode !== this.mode) { this.mode = mode; this.modeT = 0; if (mode === 'huddle') this.startHuddle(sim); }
     this.modeT += dt;
     if (this.cel && mode === 'huddle') this.cel.t += dt;
+    if (this.spot) { if (mode === 'huddle') this.spot.t += dt; else if (this.spot.t > 0) this.spot = null; }
     if (this.moment && mode !== 'huddle') this.moment = null;
     if (this.cel && (this.cel.t > CEL_T || (mode !== 'huddle' && sim.state === 'presnap'))) this.cel = null;
     this.hurry = !!session.hurry || (m.clock < 120 && (m.quarter === 2 || m.quarter >= 4)); // no strolling in a hurry-up
@@ -176,7 +177,22 @@ export class Presentation {
     return true;
   }
 
+  /** Player spotlight (the user's gameplay 8 reference): after a big play the camera holds close on the player for a beat. */
+  spotlight(idx, secs = 2.6, from = null) { this.spot = { idx, t: 0, dur: secs, from }; }
+
   celebration() {
+    const sp = this.spot;
+    if (!this.cel && sp && sp.t < sp.dur && this.mode === 'huddle') {
+      const d = this.disp[sp.idx];
+      if (d) {
+        // From the game camera's side of him (in front of him and toward the viewer), whichever way he's walking.
+        // In front of him (the way he's facing / walking), easing as he turns, so it's his face and number, not his back.
+        sp.camAt ||= { x: d.x, z: d.z, facing: d.facing };
+        sp.camAt.x += (d.x - sp.camAt.x) * 0.08; sp.camAt.z += (d.z - sp.camAt.z) * 0.08; // drift with him as he walks
+        sp.camAt.facing = turn(sp.camAt.facing, d.facing, 0.04);
+        return { x: sp.camAt.x, z: sp.camAt.z, facing: sp.camAt.facing, t: sp.t, close: 0.75 };
+      }
+    }
     const c = this.cel;
     if (!c || c.t > CEL_T - 0.3) return null;
     const d = this.disp[c.idx];

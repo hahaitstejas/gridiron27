@@ -130,7 +130,7 @@ export class Hud {
       <div id="intro" class="hidden"></div><div id="halfcard" class="hidden"></div><div id="pbp" class="hidden"><span class="pb-tag"></span><span class="pb-text"></span></div><div id="flagbox" class="hidden"><div class="fb-head"><span class="fb-chip">FLAG</span><span class="fb-ref">REFEREE ANNOUNCEMENT</span></div><div class="fb-foul"></div><div class="flagtext"></div></div>
       <div id="ticker"></div><div id="pill" class="hidden"></div><div id="tdband" class="hidden"></div><div id="kickchip" class="hidden"></div>
       <div id="callout"></div>
-      <div id="statcard" class="hidden"></div>
+      <div id="statcard" class="hidden"></div><div id="spotlight" class="hidden"></div>
       <div id="audible" class="hidden"></div>
       <div id="penaltybox" class="hidden"></div>
       <div id="reviewbox" class="hidden"></div>
@@ -259,7 +259,7 @@ export class Hud {
   }
 
   toggleHelp(force) { this.$('help').classList.toggle('hidden', force === undefined ? undefined : !force); }
-  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
+  hideAll() { for (const id of ['scorebug', 'playname', 'hint', 'banner', 'flagbox', 'intro', 'pbp', 'halfcard', 'kickmeter', 'pushmeter', 'celwheel', 'statcard', 'audible', 'penaltybox', 'reviewbox', 'injurybox', 'drillbar', 'noise', 'milestone', 'spotlight', 'scoreticker']) this.$(id).classList.add('hidden'); for (const i of Object.values(this.icons)) i.style.display = 'none'; for (const t of this.root.querySelectorAll('.tag')) t.style.display = 'none'; this.$('ticker').innerHTML = ''; }
 
   leagueLogo() {
     const l = LEAGUE.logo;
@@ -427,6 +427,20 @@ export class Hud {
   }
 
   /** Post-play card: the players who made the play and their totals this game. */
+  /** Player spotlight lower third (big plays): photo on the team color, POS #, name, this play's line. ~2.8 s. */
+  spotlight(l, teams) {
+    const el = this.$('spotlight'), t = teams[l.team];
+    const face = faceImg(t.roster?.find((q) => q.id === l.rid));
+    el.innerHTML = `<div class="sp-photo" style="--tc:${t.colors.primary}"></div><div class="sp-text"><small>${t.abbr} · ${l.pos} #${l.number}</small><b></b><span></span></div><div class="sp-logo" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}" alt=""/></div>`;
+    el.querySelector('b').textContent = l.name.toUpperCase();
+    el.querySelector('span').textContent = l.line;
+    if (face) el.querySelector('.sp-photo').appendChild(face);
+    el.classList.remove('hidden');
+    el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+    clearTimeout(this._spT); this._spT = setTimeout(() => el.classList.add('hidden'), 2800);
+    this.$('statcard').classList.add('hidden'); // the spotlight carries the line this time
+  }
+
   statCard(lines, teams) {
     const el = this.$('statcard');
     if (!lines?.length || this.prefs?.statCard === false) { el.classList.add('hidden'); return; }

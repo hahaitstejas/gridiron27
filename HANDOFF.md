@@ -98,23 +98,26 @@ All of the following is pushed:
 - **Updates doc:** "Gridiron 27 Updates (Prompt)" (id `18TqfctQHvZvmepzDUorN4qUkOHma3AQ4J8-d3vxGU90`) lists bugs and next steps. Check it for new items.
 - **Notes:** my notes on all the pictures are in `UPDATE_PLAN.md` under "5.0 visual notes" and "Animation reference notes".
 
+## Done in the Nov 21 session (branch `claude/caveman-todo-list-0fkyjw`, not yet on main)
+
+- Crowd noise meter: teal box top-left, big thin dB number, 20-segment bar.
+- Scorebug notes for line adjustments (AUDIBLE, OFFENSE FLIPPED, HOT ROUTE, SLIDE LEFT, NO HUDDLE...; 2P: generic).
+- Celebration picker: list bottom-left with a time bar.
+- Field goal panel (kicker, wind arrow) + curved kick meter beside the kicker.
+- Post-game final-score banner (team-color halves); game-stats header card.
+- Milestone watch bar over the scorebug.
+- Draft: next teams on the clock, grades, NEED fit, scouting report, pick strip.
+- In-season contract extensions (Contracts & Cap → A).
+- Checked: the between-play stat swap shows on the regular afternoon bar too.
+
 ## To do next (in rough order)
 
-1. **Scorebug follow-ups:** get the owner's feedback on the prime-time bugs. The between-play stat swap works on the Monday-night bar; on the regular afternoon bar it was never confirmed in a screenshot.
-2. **Crowd noise meter restyle**, from the owner's picture: a dark teal box at the top left with a big thin "88 dB" and a segmented bar under it. The current one is the HUD `#noise` meter, driven by `crowdNoise(m)`.
-3. **Other picture ideas still open:**
-   - celebration picker as a list at the bottom left
-   - curved kick meter by the kicker, plus a field goal panel with wind mph and an arrow
-   - bottom milestone ticker with a progress bar
-   - short scorebug banners like "DEFENSE FLIPPED"
-   - draft polish: on-the-clock panel with the next teams, a pick ticker, a prospect table with letter grades, and a scouting report
-   - post-game player-stats header card
-   - "FINAL" two-team banner (the scorebug already shows FINAL)
-4. **More animation (optional):**
+1. Owner feedback on all of the above (screenshots were taken in the container; ask them to watch a game on the Mac).
+2. Holdouts (players who want a new deal mid-season) if the owner wants them.
+3. More animation (optional):
    - more mocap clips (CMU, `tools/mocap.mjs`)
    - paired tackles: both players land together and slide about 1 yd
    - cuts and DB footwork tuning after the owner watches them
-5. **Possible later:** in-season contract extensions and holdouts.
-6. **Owner's decisions:**
+4. Owner's decisions:
    - Analytics: not yet.
    - Phones and commentary: Phase 5, later.

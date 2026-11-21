@@ -1776,3 +1776,83 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
 .sb3.pkg .sb3-brand { background: linear-gradient(180deg, #fff, color-mix(in srgb, var(--pk) 22%, #f4f4f2)); }
 .sb3.pkg .sb3-dd { background: linear-gradient(180deg, color-mix(in srgb, var(--pk) 35%, #000), #000); }
 .sb3.pkg .sb3-clock { box-shadow: inset 0 3px 0 color-mix(in srgb, var(--pk) 70%, transparent); }
+
+#intro .in-shield { position: absolute; left: 50%; bottom: calc(100% + 6px); width: 110px; height: 128px; transform: translateX(-50%); filter: drop-shadow(0 10px 18px rgba(0,0,0,0.6)); animation: shIn 0.7s cubic-bezier(.2,1.4,.4,1); }
+@keyframes shIn { from { transform: translateX(-50%) scale(0.4); opacity: 0; } to { transform: translateX(-50%) scale(1); opacity: 1; } }
+
+/* ---- Prime-time scorebugs (hud.js renderBug, layouts box / slim / shield; the user's reference pictures, our own marks) ---- */
+#scorebug.pkg-bug { display: flex; justify-content: center; pointer-events: none; }
+.pbug { font-family: var(--fo); color: #fff; font-variant-numeric: tabular-nums; }
+.pbug img { object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
+.pbug sup { font-size: 0.55em; vertical-align: 0.6em; text-transform: lowercase; }
+.pb-flag { background: #ffd400; color: #111; padding: 0 10px; letter-spacing: 3px; animation: flagpulse 0.8s ease-in-out infinite; }
+.pbug .used { animation: flagpulse 0.5s infinite; background: #ffd400 !important; }
+/* box: two framed team panels + a framed center (down & distance over quarter / clock / play clock / spot) */
+.pb-box { display: flex; align-items: stretch; gap: 10px; margin-bottom: 14px; }
+.pb-team { display: flex; align-items: center; gap: 10px; height: 72px; padding: 0 6px 0 4px; background: linear-gradient(180deg, #1a1d22, #07080a);
+  border: 2px solid #2b2f36; border-radius: 6px; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05), 0 8px 22px rgba(0,0,0,0.55); }
+.pb-team.right { flex-direction: row-reverse; padding: 0 4px 0 6px; }
+.pb-logo { width: 92px; height: 64px; display: flex; align-items: center; justify-content: center; border-radius: 4px;
+  background: radial-gradient(ellipse at center, color-mix(in srgb, var(--tc) 55%, transparent), transparent 72%); }
+.pb-logo img { max-width: 88px; max-height: 60px; }
+.pb-to, .ph2-to, .ps-to { display: flex; gap: 4px; }
+.pb-to { flex-direction: column; }
+.pb-to i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+.pb-to i.on { background: var(--pk); }
+.pb-ab { display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.pb-ab b { font-size: 34px; font-weight: 600; letter-spacing: 1px; }
+.pb-ab small { font: 600 12px var(--fc); color: var(--pk); margin-top: 3px; }
+.pb-sc { min-width: 78px; height: 58px; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: 600; border-radius: 3px;
+  background: linear-gradient(180deg, #23272e, #121418); }
+.pb-team.ball .pb-sc { background: linear-gradient(180deg, color-mix(in srgb, var(--pk) 85%, #fff), color-mix(in srgb, var(--pk) 70%, #000)); color: #111; }
+.pb-mid { display: flex; flex-direction: column; justify-content: center; min-width: 300px; height: 72px; padding: 0 12px;
+  background: linear-gradient(180deg, #14161a, #050607); border: 2px solid #c9ccd2; border-radius: 6px; box-shadow: 0 8px 22px rgba(0,0,0,0.55); }
+.pb-dd { text-align: center; font-size: 22px; font-weight: 600; padding-bottom: 4px; border-bottom: 2px solid #c9ccd2; }
+.pb-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding-top: 4px; font-size: 16px; color: #bfc3ca; }
+.pb-row b { font-size: 24px; color: #fff; }
+.pb-pc.low, .ps-pc.low, .ph2-pc.low { color: #ff4a3d; }
+/* slim: one full-width bar, slanted score panels, the slot's mark at the left */
+.pb-slim { display: flex; align-items: stretch; width: 100%; height: 48px; background: #0a0c10; box-shadow: 0 -6px 24px rgba(0,0,0,0.45); }
+.pb-slim > div { display: flex; align-items: center; }
+.ps-mark { flex-direction: column; justify-content: center; padding: 0 20px; line-height: 0.9; }
+.ps-mark b { font-size: 26px; font-weight: 700; color: transparent; -webkit-text-stroke: 1.5px var(--pk); letter-spacing: 2px; }
+.ps-mark small { font: 600 9px var(--fc); letter-spacing: 2px; color: var(--pk); }
+.ps-team { flex: 1 1 0; gap: 12px; padding: 0 14px; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 30%, #0a0c10), color-mix(in srgb, var(--tc) 75%, #000)); }
+.ps-team.right { justify-content: flex-end; background: linear-gradient(270deg, color-mix(in srgb, var(--tc) 30%, #0a0c10), color-mix(in srgb, var(--tc) 75%, #000)); }
+.ps-logo img { height: 40px; max-width: 120px; }
+.ps-rec { flex-direction: column; display: flex; align-items: center; gap: 3px; }
+.ps-rec small { font: 600 11px var(--fc); color: rgba(255,255,255,0.75); }
+.ps-to i { width: 9px; height: 3px; background: rgba(255,255,255,0.25); }
+.ps-to i.on { background: #fff; }
+.ps-ab { font-size: 26px; font-weight: 600; letter-spacing: 1px; }
+.ps-sc { width: 86px; justify-content: center; font-size: 30px; font-weight: 600; clip-path: polygon(14% 0, 100% 0, 86% 100%, 0 100%);
+  background: repeating-linear-gradient(135deg, rgba(255,255,255,0.08) 0 2px, transparent 2px 6px), linear-gradient(180deg, #2a2e36, #0d0f13); }
+.ps-pos { width: 36px; justify-content: center; font-size: 16px; color: var(--pk); background: color-mix(in srgb, var(--pk) 18%, #0a0c10); }
+.ps-clock { gap: 14px; padding: 0 18px; font-size: 15px; color: #c8ccd3; }
+.ps-clock b { font-size: 24px; color: #fff; }
+.ps-pc { background: color-mix(in srgb, var(--pk) 30%, #2a1416); padding: 2px 8px; font-size: 18px; color: #fff; }
+.ps-dd { min-width: 150px; justify-content: center; font-size: 22px; padding: 0 18px; clip-path: polygon(10% 0, 100% 0, 100% 100%, 0 100%); background: #14171d; }
+.ps-spot { min-width: 70px; justify-content: center; font: 600 15px var(--fc); color: #c8ccd3; padding: 0 12px; }
+/* shield: a centered box, logos at the edges, scores either side of the slot's shield, the situation underneath */
+.pb-shield { display: flex; flex-direction: column; align-items: stretch; margin-bottom: 12px; min-width: 760px; }
+.ph2-top { display: flex; align-items: center; height: 70px; background: linear-gradient(180deg, #0d1324, #040710); border-radius: 4px 4px 0 0; box-shadow: 0 8px 22px rgba(0,0,0,0.55); }
+.ph2-team { flex: 1 1 0; display: flex; align-items: center; gap: 12px; height: 100%; padding-right: 10px; }
+.ph2-team.right { flex-direction: row-reverse; padding: 0 0 0 10px; }
+.ph2-logo { position: relative; width: 128px; height: 100%; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 70%, #000), transparent); }
+.ph2-team.right .ph2-logo { background: linear-gradient(270deg, color-mix(in srgb, var(--tc) 70%, #000), transparent); }
+.ph2-logo img { max-height: 62px; max-width: 110px; }
+.ph2-to { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); }
+.ph2-to i { width: 12px; height: 3px; background: rgba(255,255,255,0.2); }
+.ph2-to i.on { background: #fff; }
+.ph2-ab { flex: 1; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.ph2-ab b { font-size: 26px; font-weight: 600; letter-spacing: 1px; }
+.ph2-ab small { font: 600 12px var(--fc); color: rgba(255,255,255,0.65); margin-top: 3px; }
+.ph2-sc { font-size: 46px; font-weight: 600; min-width: 64px; text-align: center; }
+.ph2-shield { width: 52px; height: 62px; margin: 0 6px; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.6)); }
+.ph2-row { display: flex; justify-content: center; align-items: baseline; gap: 26px; margin: 0 120px; padding: 5px 0; font-size: 16px; color: #c4c9d4;
+  background: linear-gradient(180deg, #0a0f1d, #02040a); border-radius: 0 0 6px 6px; border-top: 2px solid var(--pk); }
+.ph2-row b { font-size: 26px; color: #fff; }
+.ph2-dd { color: #fff; font-size: 18px; }
+@media (max-width: 1000px) { .pb-shield { min-width: 0; width: 96vw; } .ph2-logo { width: 80px; } .pb-team { height: 56px; } .pb-logo { width: 60px; } .pb-sc { min-width: 54px; height: 44px; font-size: 30px; } .pb-mid { min-width: 200px; height: 56px; } .ps-logo, .ps-mark small { display: none; } }
+.ps-dd sup, .pb-dd sup, .ph2-dd sup { margin-right: 6px; }

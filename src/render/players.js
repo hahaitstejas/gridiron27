@@ -618,7 +618,9 @@ export class PlayerRenderer {
     // Planted feet, lean into cuts and a head that follows the ball (render/gait.js).
     const b = sim?.ball;
     const look = b && b.state !== 'presnap' && !(b.state === 'held' && b.carrier === p.id) ? b : null;
+    const fw = official ? null : this.footwork(i, p, dt, pose);
     this.gait.apply(p, i, pose, x, z, f, sc, official ? 1 : wide, dt, look);
+    if (fw) footworkPost(pose, fw);
     if (b && REACH_ANIMS.has(p.anim) && (b.state === 'air' || b.state === 'kick')) { reachForBall(pose, p, b, x, z, f, sc, wide, alpha); this.ballHand[i] = pose.ballHand ?? -1; }
     else if (b && b.state === 'air' && b.target && !b.resolved && b.kind !== 'throwaway' && b.T - b.t < 0.55 && p.state === 'active' && !p.engagement
       && Math.hypot(p.x - b.target.x, p.z - b.target.z) < 2.2 && sim.players[b.intended]) {
@@ -1683,6 +1685,77 @@ function computePose(p, time, sim) {
  * sheds a block): swim = the arm on the far side whips over the blocker's shoulder; rip = an uppercut from under his
  * arm; spin = the whole body turns through; bull = straight arms, low drive.
  */
+/**
+ * Footwork (render only, UPDATE 5.0 slice 6). Reads each player's animation and velocity history and plays short accents
+ * on top of the pose:
+ *   flip  - a pedaling defensive back opens his hips to run with a receiver: hips turn first, the chest and eyes lag a beat.
+ *   drive - a pedaling back breaks downhill on the ball: a T-step plant, hips sink, both arms rip back, chest drives forward.
+ *   plant - a hard cut at speed: hips drop on the plant, the head and chest lead into the new direction, the outside arm
+ *           swings out for balance.
+ *   cross - a linebacker shuffling sideways turns and runs: a crossover step, shoulders turn with it.
+ * The lower body (crouch / lean) is set before the planted-feet IK runs; twist, arms and head after it.
+ */
+export const FW_COUNT = { flip: 0, drive: 0, plant: 0, cross: 0 }; // dev: how often each accent fires (renderer.players.fwCount)
+PlayerRenderer.prototype.footwork = function (i, p, dt, pose) {
+  const st = ((this.fw ||= [])[i] ||= { anim: '', h: 0, hPed: 0, fPed: 0, sp: 0, kind: null, t: 0, dir: 0, cool: 0 });
+  const sp = Math.hypot(p.vx || 0, p.vz || 0), h = Math.atan2(p.vz || 0, p.vx || 0);
+  let dh = h - st.h; while (dh > Math.PI) dh -= 2 * Math.PI; while (dh < -Math.PI) dh += 2 * Math.PI;
+  const yawRate = dt > 0 && sp > 2 && st.sp > 2 ? dh / dt : 0;
+  st.cool -= dt;
+  const prev = st.anim;
+  if (prev !== p.anim) {
+    if (p.anim === 'run' && (prev === 'backpedal' || prev === 'shuffle') && sp > 1.2 && st.cool <= 0) {
+      // Against the way he was pedaling: coming back downhill = drive; anything else = opening the hips (flip), turned the
+      // short way from where he faced.
+      const wrap = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
+      const fromPedal = prev === 'backpedal';
+      st.kind = fromPedal ? (Math.abs(wrap(h - st.hPed)) > 2.3 ? 'drive' : 'flip') : 'cross';
+      st.dir = Math.sign(wrap(h - st.fPed)) || (p.id % 2 ? 1 : -1); st.t = 0; st.cool = 0.5; FW_COUNT[st.kind]++;
+    }
+    st.anim = p.anim;
+  }
+  // A hard cut: lateral acceleration (speed x turn rate) well past a jog's.
+  if (!st.kind && p.anim === 'run' && Math.abs(yawRate) * sp > 16 && st.cool <= 0) { st.kind = 'plant'; st.dir = Math.sign(yawRate); st.t = 0; st.cool = 0.45; FW_COUNT.plant++; }
+  if ((p.anim === 'backpedal' || p.anim === 'shuffle') && sp > 0.8) { st.hPed = h; st.fPed = p.facing; }
+  st.h = sp > 0.5 ? h : st.h; st.sp = sp;
+  if (!st.kind) return null;
+  const DUR = { flip: 0.38, drive: 0.32, plant: 0.28, cross: 0.3 };
+  st.t += dt;
+  const u = st.t / DUR[st.kind];
+  if (u >= 1 || p.anim !== 'run' || p.state !== 'active') { st.kind = null; return null; }
+  const k = Math.sin(Math.PI * Math.min(1, u)); // in and out
+  // Lower body now (the IK plants the feet under it).
+  if (st.kind === 'drive') { pose.crouch -= 0.13 * k; pose.lean += 0.3 * k; }
+  else if (st.kind === 'flip') { pose.crouch -= 0.09 * k; pose.lean += 0.08 * k; }
+  else if (st.kind === 'plant') { pose.crouch -= 0.1 * k; pose.rootRoll += st.dir * -0.12 * k; }
+  else pose.crouch -= 0.06 * k;
+  return { kind: st.kind, k, u, dir: st.dir };
+};
+
+function footworkPost(pose, fw) {
+  const { kind, k, u, dir } = fw;
+  const out = dir > 0 ? 0 : 1; // the arm on the outside of the turn (a turn to his right swings the left arm out)
+  const blend = (a, key, v, w) => { a[key] += (v - a[key]) * w; };
+  if (kind === 'flip') {
+    // Hips are already through (the sim's facing); the chest lags, then catches up. The lead arm drives across.
+    pose.twist += dir * 0.5 * k * (1 - u * 0.5); // (render twist turns the opposite way to sim angles)
+    pose.headYaw = (pose.headYaw || 0) - dir * 0.25 * k;
+    blend(pose.arms[1 - out], 'pitch', 1.1, k); blend(pose.arms[1 - out], 'elbow', 1.5, k);
+    blend(pose.arms[out], 'pitch', -0.45, k); blend(pose.arms[out], 'elbow', 1.2, k);
+  } else if (kind === 'drive') {
+    // Both arms rip back on the plant, then the first big pump.
+    const rip = u < 0.45 ? k : k * 0.4;
+    for (const a of pose.arms) { blend(a, 'pitch', -0.7, rip); blend(a, 'elbow', 1.45, rip); blend(a, 'out', 0.12, rip); }
+  } else if (kind === 'plant') {
+    pose.twist -= dir * 0.22 * k;
+    pose.headYaw = (pose.headYaw || 0) + dir * 0.3 * k;
+    if (pose.carryArm !== out && pose.carryArm !== 2) { blend(pose.arms[out], 'out', 0.55, k); blend(pose.arms[out], 'pitch', 0.6, k * 0.6); blend(pose.arms[out], 'elbow', 0.7, k); }
+  } else {
+    pose.twist -= dir * 0.3 * k;
+    blend(pose.arms[1 - out], 'pitch', 0.9, k * 0.7);
+  }
+}
+
 function rushMoveOverlay(pose, p, sim) {
   const mv = p.moveVis;
   if (!mv || !sim) return;

@@ -114,7 +114,14 @@ export class Hud {
     if (!info) { el.classList.add('hidden'); return; }
     const team = (t, rec) => `<div class="in-team" style="--tc:${t.colors.primary}"><img src="${this.logoFor(t)}"><div><small>${t.city}</small><b>${t.name}</b>${rec ? `<i>${rec}</i>` : ''}</div></div>`;
     el.style.setProperty('--gold', this.pkg?.color || '#ffd34d');
-    el.innerHTML = `<div class="in-top">${info.title}</div><div class="in-row">${team(info.away, info.recs?.[1])}<div class="in-at">AT</div>${team(info.home, info.recs?.[0])}</div>
+    // Time-slot package (main.js broadcastPackage): a shield badge over the lower third, our own design.
+    const pk = this.pkg, words = pk ? pk.label.split(' ') : [];
+    const shield = pk ? `<svg class="in-shield" viewBox="0 0 120 140"><defs><linearGradient id="shg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${pk.color}"/><stop offset="1" stop-color="#0b0f1c"/></linearGradient></defs>
+      <path d="M60 4 L112 20 L106 84 Q98 116 60 136 Q22 116 14 84 L8 20 Z" fill="url(#shg)" stroke="#fff" stroke-width="4"/>
+      <path d="M60 16 L100 28 L95 82 Q88 106 60 122 Q32 106 25 82 L20 28 Z" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="2"/>
+      <text x="60" y="${words.length > 1 ? 66 : 78}" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="${words[0]?.length > 8 ? 15 : 19}" fill="#fff" letter-spacing="1">${words[0] || ''}</text>
+      ${words.length > 1 ? `<text x="60" y="92" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="${words.slice(1).join(' ').length > 8 ? 15 : 19}" fill="#fff" letter-spacing="1">${words.slice(1).join(' ')}</text>` : ''}</svg>` : '';
+    el.innerHTML = `${shield}<div class="in-top">${info.title}</div><div class="in-row">${team(info.away, info.recs?.[1])}<div class="in-at">AT</div>${team(info.home, info.recs?.[0])}</div>
       <div class="in-sub">${info.sub}</div><div class="in-skip"><b class="btn A">A</b> Skip</div>`;
     el.classList.remove('hidden');
   }
@@ -690,6 +697,43 @@ export class Hud {
     const dd = m.over ? 'FINAL' : m.phase === 'scrimmage' ? downText(m).toUpperCase().replace(/(\d)(ST|ND|RD|TH)/, '$1<sup>$2</sup>') : downText(m).toUpperCase();
     const pc = m.over || m.phase !== 'scrimmage' ? '' : `<span class="sb3-pc${m.playClock <= 10 ? ' low' : ''}">:${String(Math.ceil(m.playClock)).padStart(2, '0')}</span>`;
     const pk = this.pkg;
+    // Prime-time slots get their own layout (the user's reference pictures; our own badges): boxed (Sunday night and the
+    // big games), a slim slanted bar (Monday night), a centered box with a shield (Thursday night, openers, international).
+    const lay = pk && !take ? ({ sun: 'box', night: 'box', title: 'box', holiday: 'box', mon: 'slim', thu: 'shield', open: 'shield', intl: 'shield' })[pk.id] : null;
+    if (lay) {
+      const q = m.over ? 'FINAL' : ord(m.quarter), clk = m.over ? '' : clockText(m.clock);
+      const pcs = m.over || m.phase !== 'scrimmage' ? '' : `:${String(Math.ceil(m.playClock)).padStart(2, '0')}`;
+      const spot = m.phase === 'scrimmage' && !m.over ? yardLineText(m) : '';
+      const ddh = flag ? '<b class="pb-flag">FLAG</b>' : dd;
+      const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
+      const img = (i) => `<img src="${this.logoFor(m.teams[i])}" alt=""/>`;
+      const tc = (i) => `--tc:${m.teams[i].colors.primary};--tc2:${m.teams[i].colors.secondary}`;
+      const ball = (i) => (hasBall(i) ? ' ball' : '');
+      const words = pk.label.split(' ');
+      let html;
+      if (lay === 'box') {
+        const side = (i, right) => `<div class="pb-team${right ? ' right' : ''}${ball(i)}" style="${tc(i)}"><div class="pb-logo">${img(i)}</div>${tos(i, 'pb-to')}
+          <div class="pb-ab"><b>${m.teams[i].abbr}</b><small>${recs[i]}</small></div><div class="pb-sc">${m.score[i]}</div></div>`;
+        html = `<div class="pbug pb-box" style="--pk:${pk.color}">${side(1, false)}
+          <div class="pb-mid"><div class="pb-dd">${ddh}</div><div class="pb-row"><span>${q}</span><b>${clk}</b><span class="pb-pc${m.playClock <= 10 ? ' low' : ''}">${pcs}</span><span>${spot}</span></div></div>
+          ${side(0, true)}</div>`;
+      } else if (lay === 'slim') {
+        const team = (i, right) => `<div class="ps-team${right ? ' right' : ''}${ball(i)}" style="${tc(i)}">${right ? '' : `<div class="ps-logo">${img(i)}</div>`}<div class="ps-rec"><small>(${recs[i]})</small>${tos(i, 'ps-to')}</div><b class="ps-ab">${m.teams[i].abbr}</b>${right ? `<div class="ps-logo">${img(i)}</div>` : ''}</div>`;
+        html = `<div class="pbug pb-slim" style="--pk:${pk.color}"><div class="ps-mark"><b>${words[0].slice(0, 3)}</b><small>${words.slice(1).join(' ') || words[0]}</small></div>
+          ${team(1, false)}<div class="ps-sc" style="${tc(1)}">${m.score[1]}</div><div class="ps-pos">${hasBall(1) ? '◀' : hasBall(0) ? '▶' : ''}</div><div class="ps-sc right" style="${tc(0)}">${m.score[0]}</div>${team(0, true)}
+          <div class="ps-clock"><span>${q}</span><b>${clk}</b>${pcs ? `<span class="ps-pc${m.playClock <= 10 ? ' low' : ''}">${pcs}</span>` : ''}</div><div class="ps-dd">${ddh}</div><div class="ps-spot">${spot}</div></div>`;
+      } else {
+        const team = (i, right) => `<div class="ph2-team${right ? ' right' : ''}${ball(i)}" style="${tc(i)}"><div class="ph2-logo">${img(i)}${tos(i, 'ph2-to')}</div>
+          <div class="ph2-ab"><b>${hasBall(i) && !right ? '▸ ' : ''}${m.teams[i].abbr}${hasBall(i) && right ? ' ◂' : ''}</b><small>(${recs[i]})</small></div><div class="ph2-sc">${m.score[i]}</div></div>`;
+        const shield = `<svg class="ph2-shield" viewBox="0 0 60 70"><path d="M30 2 L57 10 L54 44 Q50 60 30 68 Q10 60 6 44 L3 10 Z" fill="#e9e9ee" stroke="${pk.color}" stroke-width="3"/><text x="30" y="42" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="19" fill="#111">${words[0].slice(0, 3)}</text></svg>`;
+        html = `<div class="pbug pb-shield" style="--pk:${pk.color}"><div class="ph2-top">${team(1, false)}${shield}${team(0, true)}</div>
+          <div class="ph2-row"><span class="ph2-dd">${ddh}</span><span>${q}</span><b>${clk}</b><span class="ph2-pc${m.playClock <= 10 ? ' low' : ''}">${pcs}</span><span>${spot}</span></div></div>`;
+      }
+      bug.innerHTML = html;
+      bug.classList.toggle('pkg-bug', true);
+      return;
+    }
+    bug.classList.remove('pkg-bug');
     bug.innerHTML = `<div class="sb3${pk ? ` pkg pkg-${pk.id}` : ''}"${pk ? ` style="--pk:${pk.color}"` : ''}>
       <div class="sb3-brand">GRIDIRON<img class="sb3-lg" src="${this.leagueLogo()}" alt=""/>27</div>
       ${take ? `<div class="sb3-take" style="--tc:${m.teams[take.team].colors.primary}"><img src="${this.logoFor(m.teams[take.team])}" alt=""/><b>${take.text}</b></div>` : `${logo(1)}

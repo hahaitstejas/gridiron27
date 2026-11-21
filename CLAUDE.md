@@ -526,7 +526,12 @@ is a full-width team-color lower third (`hud.tdBand`); catch type / going for th
 (`playArt` zone `label` → `hud.zoneLabels`); the franchise gameday lights the better OVR/OFF/DEF badge green with the team's
 letters huge behind its logo; your draft picks get a grade (`d.lastGrade` in offseason.js `makePick`, `.dr-grade`).
 Broadcast packages (main.js `broadcastPackage`, `hud.pkg`): franchise time slots (Thursday / Sunday / Monday night, holidays, opener,
-international), other night / prime games and the championship tint the scorebug (`.sb3.pkg`, `--pk`) and badge the intro. Pause →
+international), other night / prime games and the championship get their own scorebug layout (hud.js `renderBug`: `box` = framed
+team panels + framed center, `slim` = full-width bar with slanted score panels and the slot mark, `shield` = centered box with a
+shield badge; CSS `.pb-*` / `.ps-*` / `.ph2-*`, accent `--pk`) and a shield badge over the intro lower third (`.in-shield`).
+Footwork accents (render only, players.js `footwork` / `footworkPost`, slice 6): DB hip flip and break-on-ball drive out of a
+backpedal, plant on hard cuts, crossover out of a shuffle; `renderer.players.fwCount` counts them. Render twist turns the
+opposite way to sim angles (headYaw follows sim angles). Pause →
 Play History (`match.playLog`, `Screens.playHistory`): every play newest first, scores / turnovers / flags marked.
 
 ### Scorebug

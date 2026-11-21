@@ -9,7 +9,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 import envUrl from '../assets/env/hochsal_field_1k.hdr?url'; // CC0, Poly Haven (see src/assets/CREDITS.md)
 import { buildStadium } from './stadium.js';
-import { PlayerRenderer } from './players.js';
+import { PlayerRenderer, FW_COUNT } from './players.js';
 import { CameraRig } from './camera.js';
 import { FieldLines } from './lines.js';
 import { Precipitation } from './weather.js';
@@ -70,6 +70,7 @@ export class GameRenderer {
     this.stadium = buildStadium(r, home, away);
     scene.add(this.stadium.group);
     this.players = new PlayerRenderer(scene, envMap);
+    this.players.fwCount = FW_COUNT;
     // Image-based light for the players: a real outdoor sky / grass / sun environment (CC0 HDRI) replaces the studio room once
     // it loads, so uniforms, skin and helmets pick up believable sky fill, green bounce from the turf and sun reflections.
     new HDRLoader().load(envUrl, (tex) => {

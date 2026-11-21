@@ -607,12 +607,6 @@ ul.leaders { background: var(--panel); border-radius: 10px; padding: 14px 18px 1
 .fr-save-logo canvas { width: 72px; height: 72px; display: block; }
 .fr-saves .hub-tile.feature .fr-save-logo canvas { width: 120px; height: 120px; }
 
-#noise { position: absolute; top: 14px; right: 18px; display: flex; align-items: flex-end; gap: 3px; padding: 8px 12px; background: rgba(10,12,16,0.8); border-left: 4px solid #ff5a3c; }
-#noise small { font: 800 12px var(--fd); letter-spacing: 2px; margin-right: 6px; align-self: center; }
-#noise i { width: 6px; background: rgba(255,255,255,0.15); animation: shake 0.18s infinite alternate; }
-#noise i:nth-of-type(n) { height: 8px; } #noise i:nth-of-type(2) { height: 10px; } #noise i:nth-of-type(3) { height: 12px; } #noise i:nth-of-type(4) { height: 14px; }
-#noise i:nth-of-type(5) { height: 16px; } #noise i:nth-of-type(6) { height: 18px; } #noise i:nth-of-type(7) { height: 20px; } #noise i:nth-of-type(8) { height: 22px; }
-#noise i.on { background: linear-gradient(0deg, #ffd34d, #ff5a3c); }
 @keyframes shake { to { transform: translateY(-2px); } }
 
 .so-banner { display: flex; align-items: center; gap: 28px; max-width: 1280px; width: 100%; margin: 0 auto 20px; padding: 18px 28px; transform: skewX(var(--skew));
@@ -1885,3 +1879,15 @@ body:has(#scorebug.pkg-bug .pk-box) #pbp, body:has(#scorebug.pkg-bug .pk-shield)
 body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 .with-ticker:has(#scorebug.pkg-bug .pk-box) #pbp, .with-ticker:has(#scorebug.pkg-bug .pk-shield) #pbp { bottom: calc(5.938vw + 34px); }
 .with-ticker:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 34px); }
+
+/* Crowd noise meter (UPDATE 5.x): dark teal box top-left, big thin dB read-out, segmented bar. */
+#noise { position: absolute; top: 16px; left: 20px; z-index: 11; padding: 10px 16px 12px; min-width: 210px;
+  background: linear-gradient(160deg, rgba(10,58,64,0.92), rgba(4,30,36,0.92)); color: #fff; animation: slidein 0.25s ease-out; }
+#noise small { display: block; font: 600 12px var(--fo, var(--fd)); letter-spacing: 3px; color: #8fe3e0; }
+#noise .nz-db { display: flex; align-items: baseline; gap: 6px; margin: 2px 0 6px; }
+#noise .nz-db b { font: 300 52px/1 var(--fo, var(--fd)); letter-spacing: 1px; }
+#noise .nz-db span { font: 500 20px var(--fo, var(--fd)); color: #bfeeee; }
+#noise .nz-bar { display: flex; gap: 3px; }
+#noise .nz-bar i { flex: 1; height: 9px; background: rgba(255,255,255,0.12); transform: skewX(-12deg); }
+#noise .nz-bar i.on { background: #3fd6cf; }
+#noise .nz-bar i.hot { background: #ffd34d; }

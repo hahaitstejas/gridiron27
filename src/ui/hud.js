@@ -599,14 +599,25 @@ export class Hud {
         <div class="pb-opt"><b class="btn X">X</b><div><div class="pb-label">Keep him out</div><div class="pb-sub">His backup plays the rest of the game</div></div></div>`;
     } else if (!pi) ib.dataset.key = '';
 
-    // Crowd noise meter (the visitors at the line on a big down).
+    // Crowd noise meter (the visitors at the line on a big down): a teal box top-left, big "dB" read-out over a
+    // segmented bar. The dB number is display only (level 0.5..1 -> ~96..115 dB) with a small flicker.
     const nz = this.$('noise');
     const level = pre && !session.practice ? crowdNoise(session.match) : 0;
-    nz.classList.toggle('hidden', level < 0.5 || playcallOpen);
+    const cardUp = !this.$('statcard').classList.contains('hidden');
+    nz.classList.toggle('hidden', level < 0.5 || playcallOpen || cardUp);
     if (level >= 0.5) {
-      const bars = Math.round(level * 8);
-      const key = String(bars);
-      if (nz.dataset.key !== key) { nz.dataset.key = key; nz.innerHTML = `<small>CROWD</small>${Array.from({ length: 8 }, (_, i) => `<i class="${i < bars ? 'on' : ''}"></i>`).join('')}`; }
+      this.nzT = (this.nzT || 0) + dt;
+      if (this.nzT > 0.18 || !nz.firstChild) {
+        this.nzT = 0;
+        const db = Math.round(77 + level * 38 + (Math.sin(performance.now() * 0.011) + Math.sin(performance.now() * 0.0047)) * 1.2);
+        const segs = 20, lit = Math.round(Math.min(1, (db - 70) / 45) * segs);
+        const key = `${db}`;
+        if (nz.dataset.key !== key) {
+          nz.dataset.key = key;
+          nz.innerHTML = `<small>CROWD NOISE</small><div class="nz-db"><b>${db}</b><span>dB</span></div>
+            <div class="nz-bar">${Array.from({ length: segs }, (_, i) => `<i class="${i < lit ? (i >= segs - 4 ? 'on hot' : 'on') : ''}"></i>`).join('')}</div>`;
+        }
+      }
     }
 
     // Skills drill: name, rep and score.

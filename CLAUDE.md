@@ -86,7 +86,7 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   offsides ~0.7, DPI ~0.5, roughing / grounding ~0.4, the rest 0.05-0.25; ~3.6-4 accepted penalties.
   Home crowd (`crowdNoise(m)` in penalties.js, 0..1 when the visitors — team 1 — have the ball: 3rd/4th down, close 4th
   quarter, red zone; 0 at neutral sites `settings.neutral`): road false starts ×(1 + 1.6·noise), hard-count flinches on
-  the road, a livelier crowd (main.js `excite`) and the HUD `#noise` meter at the line (and the crowd audio swells with `excite`).
+  the road, a livelier crowd (main.js `excite`) and the HUD `#noise` meter at the line (teal box top-left: a display-only dB read-out over a 20-segment bar) (and the crowd audio swells with `excite`).
   Defensive offsides is a live foul (`offsides_live`): `rollPresnapFoul` → the session snaps anyway, puts the jumper across
   the line and flags it (`jumpOffsides`) = a free play for the offense. The scorebug shows FLAG while any foul is on the
   field (`sim.fouls`) and during the accept/decline choice. False start / delay of game still kill the play.

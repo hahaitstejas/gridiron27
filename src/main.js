@@ -9,6 +9,7 @@ import '@fontsource/saira-condensed/500.css';
 import '@fontsource/saira-condensed/600.css';
 import '@fontsource/saira-condensed/700.css';
 import '@fontsource/saira-condensed/800.css';
+import '@fontsource/oswald/300.css';
 import '@fontsource/oswald/400.css';
 import '@fontsource/oswald/500.css';
 import '@fontsource/oswald/600.css';

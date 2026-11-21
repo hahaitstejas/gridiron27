@@ -125,7 +125,7 @@ export function buildStadium(renderer, home, away) {
           pool += exp(-dot(d, d));
         }
         float edge = smoothstep(62.0, 40.0, abs(vGW.x)) * smoothstep(36.0, 22.0, abs(vGW.z));
-        float light = mix(1.0, clamp(0.74 + pool * 0.2, 0.74, 1.12) * mix(0.82, 1.0, edge), uPool);
+        float light = mix(1.0, clamp(0.7 + pool * 0.22, 0.7, 1.0) * mix(0.8, 1.0, edge), uPool);
         float grainK = mix(0.35, 1.0, step(0.32, diffuseColor.g - max(diffuseColor.r, diffuseColor.b) * 0.8)); // less on paint
         // Patchy color over a few yards (real grass is never one flat green): darker clumps, lighter dry spots.
         float macro = texture2D(tDetail, vGW.xz * 0.018 + 0.11).r * 0.6 + texture2D(tDetail, vGW.xz * 0.043 + 0.53).r * 0.4;

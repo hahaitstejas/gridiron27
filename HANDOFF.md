@@ -110,9 +110,20 @@ All of the following is pushed:
 - In-season contract extensions (Contracts & Cap → A).
 - Checked: the between-play stat swap shows on the regular afternoon bar too.
 
+## 3D / animation pass (same branch, after the owner's console reference picture)
+
+- Side key light per time of day (soft high sun by day, crisp dusk, short soft night shadows), lower fill, stronger rim.
+- Turf light pools + stronger mow sheen; night haze.
+- Console camera for human games: 23 back / 10.2 up / 46 deg presnap (owner chose this "console type").
+- Stands: seat rows, stair aisles, tunnels, two decks with a fascia; sideline staff, photographers, benches, coolers.
+- Jersey sheen; help-ups after the whistle.
+- Skipped: GTAO / SSAO (the override-material pass would draw our GPU-skinned players in the bind pose); CMU backward /
+  sideways clips (upright walking, worse than our low backpedal / shuffle poses).
+
 ## To do next (in rough order)
 
 1. Owner feedback on all of the above (screenshots were taken in the container; ask them to watch a game on the Mac).
+   3D next: brighter / more detailed stands (railings, seat colors), depth of field on close shots, player skin / face detail.
 2. Holdouts (players who want a new deal mid-season) if the owner wants them.
 3. More animation (optional):
    - more mocap clips (CMU, `tools/mocap.mjs`)

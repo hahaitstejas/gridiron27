@@ -304,12 +304,26 @@ export function gamePreview(ui, g) {
     el('p.pv-key', { text: sackD && sackD.s.sacks >= 4 ? `Account for ${sackD.p.last} on every pass: slide protection his way.` : intD ? `${intD.p.last} has a nose for the ball: don't stare down your first read.` : 'Take what the coverage gives you.' }));
   const starsCard = el('div.pv-card', {}, el('div.pg-ptitle', { text: 'PLAYERS TO WATCH' }),
     ...stars.map((p) => el('div.pg-lead', {}, el('small', { text: p.pos }), el('b', { text: `${p.first} ${p.last}` }), el('span', { text: `${p.ovr} OVR${traitsOf(p).length ? ' · ' + traitsOf(p).map((id) => TRAITS[id].name).join(', ') : ''}` }))));
+  // Team matchup (the user's reference): a banner in both teams' colors, then each stat side by side with its league rank
+  // (top ten green, bottom ten red).
+  const A = g.away, H = g.home;
+  const rk = (k, ti) => R.r[k][ti];
+  const rkCls = (r) => (r <= 10 ? '.good' : r > teams.length - 10 ? '.bad' : '');
+  const ordN = (r) => `${r}${r % 10 === 1 && r !== 11 ? 'ST' : r % 10 === 2 && r !== 12 ? 'ND' : r % 10 === 3 && r !== 13 ? 'RD' : 'TH'}`;
+  const statRow = (label, k, dec = 1) => el('div.mu-row', {},
+    el(`span.mu-rk${rkCls(rk(k, A))}`, { text: ordN(rk(k, A)) }), el('b.mu-v', { text: R[k][A].toFixed(dec) }),
+    el('span.mu-l', { text: label }), el('b.mu-v', { text: R[k][H].toFixed(dec) }), el(`span.mu-rk${rkCls(rk(k, H))}`, { text: ordN(rk(k, H)) }));
+  const matchup = el('div.mu', {},
+    el('div.mu-band', {}, el('div.mu-side', { style: { '--tc': teams[A].colors.primary } }, logoCanvas(teams[A].logo, 64), el('b', { text: teams[A].abbr })),
+      el('div.mu-side.r', { style: { '--tc': teams[H].colors.primary } }, el('b', { text: teams[H].abbr }), logoCanvas(teams[H].logo, 64))),
+    el('div.mu-head', { text: 'TEAM MATCHUP' }),
+    statRow('POINTS / G', 'pf'), statRow('PASS YDS / G', 'passY'), statRow('RUSH YDS / G', 'rushY'), statRow('POINTS ALLOWED / G', 'pa'), statRow('SACKS / G', 'sacks'));
   const start = el('div.start-btn', { text: 'Play Game' });
   start.activate = () => ui.ctx.playGame(g);
   screens.frame('mono-screen pv-screen', el('h1', { text: 'Game Preview' }),
     el('div.pv-top', {}, logoCanvas(teams[g.away].logo, 90), el('div.pv-vs', {}, el('b', { text: `${teams[g.away].abbr} @ ${teams[g.home].abbr}` }), el('small', { text: `${gameWhen(g)}${g.venue ? ` · ${g.venue.stadium}, ${g.venue.city}` : ''}` }),
         (g.short || []).length ? el('small', { text: `Short week: ${g.short.map((t) => teams[t].abbr).join(', ')} (tired legs)` }) : null), logoCanvas(teams[g.home].logo, 90)),
-    el('div.pv-grid', {}, dc, oc, starsCard), start,
+    R.pf.some((v) => v > 0) ? matchup : null, el('div.pv-grid', {}, dc, oc, starsCard), start,
     el('div.setup-help', { html: '<b class="btn A">A</b> Play &nbsp; <b class="btn B">B</b> back' }));
   screens.nav.set([start], { onBack: () => ui.hub() });
 }

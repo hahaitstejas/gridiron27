@@ -35,7 +35,8 @@ import { scheduleFromRows, exportSchedule } from '../data/extraCSV.js';
 import { setSchedule } from '../franchise/franchise.js';
 import { pickFile, downloadFile } from '../data/storage.js';
 import { cutDownScreen, injuryReport, practiceSquadScreen, waiversScreen, playerSearch, gamePreview, scoutingScreen } from './franchiseMore.js';
-import { teamMorale } from '../franchise/development.js';
+import { teamMorale, moraleOf } from '../franchise/development.js';
+import { money } from '../franchise/contracts.js';
 import { localBook } from '../data/localLeague.js';
 
 async function loadLocalFreeAgents(f) {
@@ -298,6 +299,7 @@ export class FranchiseUI {
       items = TABS.find(([n]) => n === tabName)[1]();
       for (const t of items) t.classList.add('fh-card');
       body = el('div.fh-cards', {}, items);
+      if (tabName === 'Manage Roster') body = el('div.fh-roster', {}, this.teamStatus(me), body);
     }
     // News Center: the latest headlines scrolling, and your next game on the right.
     const heads = (f.news || []).slice(0, 6).map((n) => n.text);
@@ -312,6 +314,27 @@ export class FranchiseUI {
     const at = typeof focus === 'string' ? items.findIndex((t) => t.key === focus) : focus ?? 0;
     const go = (d) => { const i = TABS.findIndex(([n]) => n === this._tab); this._tab = TABS[(i + d + TABS.length) % TABS.length][0]; this.hub(); };
     screens.nav.set(items, { spatial: true, onBack: this.ctx.onExit, onTab: go, index: Math.max(0, Math.min(at, items.length - 1)) });
+  }
+
+  /** Team status (the user's reference): morale, health and cap-space rings, with the cap broken down (dead money too). */
+  teamStatus(me) {
+    const f = this.f;
+    const ring = (pct, big, small, color) => {
+      const r = 38, c = 2 * Math.PI * r, k = Math.max(0, Math.min(1, pct));
+      const svg = `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="${r}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="7"/>`
+        + `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="7" stroke-linecap="round" stroke-dasharray="${(c * k).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 50 50)"/></svg>`;
+      return el('div.ts-ring', {}, el('div.ts-svg', { html: svg }), el('div.ts-in', {}, el('small', { text: small }), el('b', { text: big })));
+    };
+    const ros = me.roster;
+    const morale = ros.reduce((sum, p) => sum + moraleOf(p), 0) / Math.max(1, ros.length);
+    const healthy = ros.filter((p) => !p.injury).length / Math.max(1, ros.length);
+    const salaries = ros.reduce((sum, p) => sum + (p.salary || 0), 0), dead = me.deadCap || 0, space = f.cap - salaries - dead;
+    const col = (v) => (v >= 0.7 ? '#4be07f' : v >= 0.5 ? '#ffd23d' : '#ff6b5e');
+    const line = (dot, label, v) => el('div.ts-line', {}, el('i', { style: { background: dot } }), el('span', { text: label }), el('b', { text: money(v) }));
+    return el('div.ts-status', {}, el('div.ts-title', { text: 'TEAM STATUS' }),
+      el('div.ts-rings', {}, ring(morale / 100, `${Math.round(morale)}%`, 'MORALE', col(morale / 100)), ring(healthy, `${Math.round(healthy * 100)}%`, 'HEALTH', col(healthy)),
+        ring(Math.max(0, space) / f.cap * 4, money(space), 'CAP SPACE', space >= 0 ? '#4be07f' : '#ff6b5e'),
+        el('div.ts-break', {}, line('#4be07f', 'Cap space', space), line('#7cc8ff', 'Player salaries', salaries), line('#ff9b6b', 'Dead money', dead), line('#aab3c0', 'Salary cap', f.cap))));
   }
 
   /** Gameday tab (slide 10): the week strip, both teams big, kickoff details, Play / Sim / Preview / Advance. */

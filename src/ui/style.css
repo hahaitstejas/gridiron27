@@ -1728,3 +1728,31 @@ img.face { object-fit: cover; object-position: 50% 20%; border-radius: 50%; back
   color: #fff; text-align: center; max-width: 90px; text-shadow: 0 2px 4px rgba(0,0,0,0.9), 0 0 2px #000; letter-spacing: 0.03em; }
 
 .bm-head { font-family: var(--fo, sans-serif); letter-spacing: 0.08em; font-size: 15px; opacity: 0.75; margin: 14px 0 4px; text-transform: uppercase; }
+
+/* Game preview: team matchup */
+.mu { margin: 6px auto 14px; max-width: 900px; width: 100%; }
+.mu-band { display: flex; height: 64px; overflow: hidden; border-radius: 4px; }
+.mu-side { flex: 1; display: flex; align-items: center; gap: 14px; padding: 0 16px; background: linear-gradient(90deg, var(--tc), color-mix(in srgb, var(--tc) 70%, #000)); }
+.mu-side.r { justify-content: flex-end; background: linear-gradient(270deg, var(--tc), color-mix(in srgb, var(--tc) 70%, #000)); }
+.mu-side b { font-family: var(--fo, sans-serif); font-size: 34px; color: #fff; letter-spacing: 0.04em; }
+.mu-side canvas { width: 54px; height: 54px; }
+.mu-head { text-align: center; font-family: var(--fo, sans-serif); letter-spacing: 0.14em; opacity: 0.7; margin: 10px 0 4px; font-size: 14px; }
+.mu-row { display: grid; grid-template-columns: 60px 90px 1fr 90px 60px; align-items: center; padding: 3px 0; }
+.mu-row .mu-v { font-family: var(--fo, sans-serif); font-size: 26px; text-align: center; }
+.mu-row .mu-l { text-align: center; font-family: var(--fo, sans-serif); letter-spacing: 0.06em; opacity: 0.85; }
+.mu-rk { font-size: 13px; text-align: center; opacity: 0.75; }
+.mu-rk.good { color: #4be07f; opacity: 1; } .mu-rk.bad { color: #ff6b5e; opacity: 1; }
+
+/* Manage Roster: team status rings */
+.fh-roster { display: flex; flex-direction: column; gap: 14px; }
+.ts-status { background: rgba(12,16,26,0.75); padding: 12px 20px 16px; }
+.ts-title { font-family: var(--fo, sans-serif); letter-spacing: 0.14em; opacity: 0.75; font-size: 14px; margin-bottom: 8px; }
+.ts-rings { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.ts-ring { position: relative; width: 116px; height: 116px; }
+.ts-svg, .ts-svg svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.ts-in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ts-in small { font-family: var(--fo, sans-serif); letter-spacing: 0.08em; font-size: 12px; opacity: 0.8; }
+.ts-in b { font-family: var(--fo, sans-serif); font-size: 22px; }
+.ts-break { display: flex; flex-direction: column; gap: 4px; min-width: 240px; }
+.ts-line { display: grid; grid-template-columns: 12px 1fr auto; gap: 8px; align-items: center; font-size: 15px; }
+.ts-line i { width: 9px; height: 9px; border-radius: 50%; }

@@ -1891,3 +1891,7 @@ body:has(#scorebug.pkg-bug .pk-slim) #pbp { bottom: calc(3.203vw + 6px); }
 #noise .nz-bar i { flex: 1; height: 9px; background: rgba(255,255,255,0.12); transform: skewX(-12deg); }
 #noise .nz-bar i.on { background: #3fd6cf; }
 #noise .nz-bar i.hot { background: #ffd34d; }
+/* Short scorebug notes in the down & distance cell ("PLAY FLIPPED", "HOT ROUTE"...): the team's color, a quick wipe in. */
+.sb3 .sb3-dd.note { font-size: 21px; background: var(--tc, #2a6df4); color: #fff; letter-spacing: 1.5px; animation: noteIn 0.25s ease-out; white-space: nowrap; }
+.pk-note { display: inline-block; max-width: 100%; box-sizing: border-box; overflow: hidden; font-size: 0.78em; padding: 0 6px; background: var(--tc, #2a6df4); color: #fff; letter-spacing: 0.5px; animation: noteIn 0.25s ease-out; white-space: nowrap; }
+@keyframes noteIn { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }

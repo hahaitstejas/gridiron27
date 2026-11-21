@@ -125,6 +125,7 @@ await renderer.players.loadHuman(); // the CC0 MakeHuman body (src/assets/human.
 const nav = new Nav();
 const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
+playcall.hud = hud; // for the NO HUDDLE scorebug note
 hud.prefs = prefs;
 const league = new LeagueUI({
   teams, prefs, screens,
@@ -636,6 +637,23 @@ else if (params.has('play')) startGame({ ...prefs, side: params.get('side') || '
 else screens.title(padName, LEAGUE.logo);
 
 /** Make it obvious who ended up with a pass: a call-out with the player and a ring flash in his team's color. */
+/** Short scorebug notes for adjustments at the line (2-player: no specifics, the other player is watching). */
+function bugNote(e) {
+  const m = session.match, off = m.possession, def = 1 - off;
+  if (e.type === 'iced') return hud.note('ICING THE KICKER', e.team);
+  if (e.type === 'hardCount') return e.result === 'none' ? hud.note('HARD COUNT', off, 1.8) : null;
+  if (e.type === 'motion') return hud.note('MOTION', off, 2);
+  const team = e.type === 'hotRoute' || e.side === 'offense' ? off : def;
+  if (session.twoPlayer) return hud.note(team === off ? 'OFFENSE ADJUSTS' : 'DEFENSE ADJUSTS', team);
+  if (e.type === 'hotRoute' || e.play === 'Hot route') return hud.note('HOT ROUTE', team);
+  if (/^Reset/.test(e.label)) return null;
+  if (e.play === 'Protection') return hud.note(({ 'Slide left': 'SLIDE LEFT', 'Slide right': 'SLIDE RIGHT', 'Max protect': 'MAX PROTECT', 'Everyone out': 'EVERYONE OUT' })[e.label] || 'PROTECTION', team);
+  if (e.play === 'Front') return hud.note(/^Pinch/.test(e.label) ? 'LINE PINCHED' : /^Spread/.test(e.label) ? 'LINE SPREAD' : /^Show blitz/.test(e.label) ? 'SHOWING BLITZ' : /^Crowd/.test(e.label) ? 'CROWDING THE LINE' : /^Simulated/.test(e.label) ? 'SIM PRESSURE' : 'FRONT CHANGE', team);
+  if (e.play === 'Coverage' || e.play === 'Return') return hud.note(e.side === 'defense' ? 'DEFENSE ADJUSTS' : 'ADJUSTMENT', team);
+  if (e.label === 'Flip play') return hud.note(team === off ? 'OFFENSE FLIPPED' : 'DEFENSE FLIPPED', team);
+  return hud.note(team === off ? 'AUDIBLE' : 'DEFENSE AUDIBLE', team);
+}
+
 function passCallout(e) {
   const sim = session?.sim;
   if (!sim || sim.isKick) return;
@@ -701,7 +719,8 @@ function onSessionEvent(e) {
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
   else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); } // (the play-by-play strip is gone: Pause → Play History lists every play)
-  else if (e.type === 'audible' && session?.twoPlayer) hud.ticker(`${e.side === 'defense' ? 'Defense' : 'Offense'}: adjustment at the line`); // no names: the other player is watching
+  if (['audible', 'motion', 'hotRoute', 'hardCount', 'iced'].includes(e.type)) bugNote(e);
+  if (e.type === 'audible' && session?.twoPlayer) hud.ticker(`${e.side === 'defense' ? 'Defense' : 'Offense'}: adjustment at the line`); // no names: the other player is watching
   else if (e.type === 'audible') hud.ticker(['Coverage', 'Protection', 'Front'].includes(e.play) ? `${e.play}: ${e.label}` : e.play === 'Hot route' ? `Hot route: ${e.label}` : `Audible: ${e.play}`);
   else if (e.type === 'review' && e.phase === 'review') hud.ticker(e.booth ? 'The booth is reviewing the play' : `${session.teams[e.by].abbr} challenges the ruling`);
   else if (e.type === 'reviewDone') hud.banner(e.reversed ? 'REVERSED' : 'CALL STANDS', e.text.replace(/^After review, /, ''), 2.6, e.reversed ? 'score' : 'miss');

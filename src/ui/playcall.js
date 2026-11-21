@@ -209,7 +209,7 @@ export class PlayCallScreen {
     const rt = f.rt > 0.6;
     if (rt && !this.rtHeld && this.side === 'offense' && !f.down?.LT) { this.flipped = !this.flipped; this.render(); } // LT held: that's the timeout combo
     this.rtHeld = rt;
-    if (f.pressed.LS && this.side === 'offense' && this.session.noHuddle()) { this.hide(); return; }
+    if (f.pressed.LS && this.side === 'offense' && this.session.noHuddle()) { this.hud?.note?.('NO HUDDLE', this.session.match.possession); this.hide(); return; }
     const c = this.root.querySelector('#pc-clock');
     if (c) {
       const pc = Math.ceil(this.session.match.playClock);

@@ -539,6 +539,9 @@ opposite way to sim angles (headYaw follows sim angles). Pause →
 Play History (`match.playLog`, `Screens.playHistory`): every play newest first, scores / turnovers / flags marked.
 
 ### Scorebug
+Short notes (`hud.note(text, team)`, main.js `bugNote(e)`): adjustments at the line (AUDIBLE, OFFENSE FLIPPED, HOT ROUTE,
+SLIDE LEFT, SHOWING BLITZ, MOTION, HARD COUNT, NO HUDDLE, ICING THE KICKER; 2-player: only OFFENSE / DEFENSE ADJUSTS) take the
+down & distance cell for ~2.6 s in the team's color (prime layouts too, `.pk-note`).
 `Hud.renderBug()`: a full-width bar along the bottom (layout from the user's design): GRIDIRON 27 | away logo panel |
 `(rec) AWY [timeout bars] • score × score • HOM (rec)` (dot = possession) | home logo panel | quarter, clock and a boxed
 play clock | down & distance, which turns into a yellow FLAG while a foul is on the field. Records come from

@@ -32,7 +32,7 @@ function bugStat(m) {
  *   shield - Thursday night (also openers, international): solid team-color logo panels at the ends, letters / record and big
  *            scores either side of a metal shield, the situation on a black strip underneath, and the passer's line on a tab.
  */
-function primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo }) {
+function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo }) {
   const T = m.teams, tc = (i) => `--tc:${T[i].colors.primary};--tc2:${T[i].colors.secondary}`;
   const ORD = ['', 'ST', 'ND', 'RD', 'TH'];
   const q = m.over ? 'FINAL' : m.quarter > 4 ? 'OT' : `${m.quarter}<i>${ORD[m.quarter]}</i>`;
@@ -43,7 +43,7 @@ function primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo }) {
   const yl = m.yardLine, own = yl < 50;
   const spot = m.phase === 'scrimmage' && !m.over ? `<span class="pk-tri">${own ? '▲' : '▼'}</span>${Math.round(own ? yl : 100 - yl)}` : '';
   const goal = m.phase === 'scrimmage' && m.toGo >= 100 - m.yardLine - 0.01;
-  const dd = m.over ? 'FINAL' : flag ? '<b class="pk-flag">FLAG</b>' : stat ? `<span class="pk-stat">${stat.label} <b>${stat.v[1]}</b>-<b>${stat.v[0]}</b></span>`
+  const dd = m.over ? 'FINAL' : flag ? '<b class="pk-flag">FLAG</b>' : note ? `<b class="pk-note" style="--tc:${m.teams[note.team].colors.primary}">${note.text}</b>` : stat ? `<span class="pk-stat">${stat.label} <b>${stat.v[1]}</b>-<b>${stat.v[0]}</b></span>`
     : m.phase === 'scrimmage' ? `${m.down}<i>${ORD[m.down]}</i> &amp; ${goal ? 'GOAL' : Math.max(1, Math.round(m.toGo))}` : m.phase === 'try' ? 'PAT' : 'KICKOFF';
   const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
   const img = (i) => `<img src="${logo(i)}" alt=""/>`;
@@ -748,6 +748,9 @@ export class Hud {
     tk.querySelector('.stk-run').style.animationDuration = `${Math.max(20, list.length * 5)}s`;
   }
 
+  /** Short scorebug note in the down & distance cell ("PLAY FLIPPED", "HOT ROUTE"...), in the team's color. */
+  note(text, team, secs = 2.6) { this.bugNote = { text, team, until: performance.now() + secs * 1000 }; this._bugKey = null; }
+
   renderBug(session) {
     const m = session.match;
     const bug = this.$('scorebug');
@@ -758,11 +761,12 @@ export class Hud {
     const recs = session.records || ['0-0', '0-0'];
     const blink = this.toBlink && performance.now() < this.toBlink.until ? this.toBlink.team : -1;
     const take = this.bugTake && performance.now() < this.bugTake.until ? this.bugTake : null;
+    const note = this.bugNote && performance.now() < this.bugNote.until && !m.over ? this.bugNote : null;
     // Between plays the middle of the bar sometimes swaps to a stat comparison (every third play call, 6 s).
     if (session.state !== this._bugState) { this._bugState = session.state; this._bugSince = performance.now(); }
     const stat = !m.over && !take && (session.state === 'playcall' || session.state === 'post') && performance.now() - this._bugSince < 6000 && (m.playLog?.length || 0) >= 6
       && m.playLog.length % 3 === 0 ? bugStat(m) : null;
-    const key = [stat?.label, m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, this.pkg?.id].join('|');
+    const key = [stat?.label, m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, note?.text, this.pkg?.id].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
     // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
@@ -784,7 +788,7 @@ export class Hud {
     // big games), a slim slanted bar (Monday night), a centered box with a shield (Thursday night, openers, international).
     const lay = pk && !take ? ({ sun: 'box', night: 'box', title: 'box', holiday: 'box', mon: 'slim', thu: 'shield', open: 'shield', intl: 'shield' })[pk.id] : null;
     if (lay) {
-      bug.innerHTML = primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo: (i) => this.logoFor(m.teams[i]) });
+      bug.innerHTML = primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo: (i) => this.logoFor(m.teams[i]) });
       bug.classList.add('pkg-bug');
       return;
     }
@@ -796,7 +800,7 @@ export class Hud {
         : `<div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>`}
       ${logo(0)}`}
       <div class="sb3-clock">${m.over ? '' : `<span class="sb3-q">${ord(m.quarter)}</span><b>${clockText(m.clock)}</b>`}${pc}</div>
-      <div class="sb3-dd${flag ? ' flag' : ''}">${flag ? 'FLAG' : dd}</div>
+      <div class="sb3-dd${flag ? ' flag' : note ? ' note' : ''}"${note && !flag ? ` style="--tc:${m.teams[note.team].colors.primary}"` : ''}>${flag ? 'FLAG' : note ? note.text : dd}</div>
     </div>`;
   }
 }

@@ -17,11 +17,11 @@ import { Presentation } from './presentation.js';
 
 // Lighting and sky by time of day (sky colors are linear RGB top / middle / horizon).
 const TIME_LOOKS = {
-  day: { hemi: [0xdfeaff, 0x3a4a2a, 0.5], key: [0xfff2dc, 3.9], rim: [0xffffff, 1.2], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1, pool: 0.15 },
-  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.48], key: [0xffb070, 3.0], rim: [0x8899ff, 1.2], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5, dim: 0.85, pool: 0.6 },
+  day: { hemi: [0xdfeaff, 0x3a4a2a, 0.5], key: [0xfff2dc, 3.9], rim: [0xffffff, 1.2], fog: [0xa9c4e0, 220, 640], sky: [[0.18, 0.38, 0.78], [0.42, 0.62, 0.9], [0.78, 0.84, 0.9]], lamps: 0x9a9a9a, exposure: 0.95, grey: 1, pool: 0.15, shadow: [1.0, 3.5, 0.8] },
+  dusk: { hemi: [0xffc9a8, 0x2a2a20, 0.48], key: [0xffb070, 3.0], rim: [0x8899ff, 1.2], fog: [0x4a3a50, 170, 460], sky: [[0.08, 0.1, 0.28], [0.45, 0.28, 0.4], [0.98, 0.55, 0.3]], lamps: 0xfff6dd, exposure: 1.05, grey: 0.5, dim: 0.85, pool: 0.6, shadow: [0.62, 2.0, 0.9] },
   // Night: a near-black sky with haze over the bowl (the far stands fall back into it), little ambient fill, the floodlit field carries the picture
   // (the crowd and stands dim: `dim`).
-  night: { hemi: [0xb8c8ff, 0x18220f, 0.3], key: [0xf6f8ff, 3.3], rim: [0xaabbff, 1.5], fog: [0x141a2a, 90, 330], sky: [[0.004, 0.008, 0.022], [0.02, 0.03, 0.07], [0.12, 0.11, 0.16]], lamps: 0xfffaf0, exposure: 1.08, grey: 0.15, dim: 0.62, pool: 1 },
+  night: { hemi: [0xb8c8ff, 0x18220f, 0.3], key: [0xf6f8ff, 3.3], rim: [0xaabbff, 1.5], fog: [0x141a2a, 90, 330], sky: [[0.004, 0.008, 0.022], [0.02, 0.03, 0.07], [0.12, 0.11, 0.16]], lamps: 0xfffaf0, exposure: 1.08, grey: 0.15, dim: 0.62, pool: 1, shadow: [0.95, 4.0, 0.75] },
 };
 
 /** Owns the WebGL renderer, scene, lights and all visual sub-systems. */
@@ -144,6 +144,10 @@ export class GameRenderer {
     this.stadium.snow.visible = c.type === 'snow';
     this.stadium.setDim?.(look.dim ?? 1);
     this.stadium.setPool?.(look.pool ?? 0.5);
+    // Shadow look per time: [key elevation (rad), PCF blur radius, darkness]. A midday sun is high (short shadows) and soft-edged
+    // through the haze; dusk is low and crisper; night floodlights from many banks give short, soft, lighter shadows.
+    const [el, rad, sInt] = look.shadow || [0.72, 2, 1];
+    this.lightRig.el = el; this.key.shadow.radius = rad; this.key.shadow.intensity = sInt * (wet ? 0.7 : 1);
     this.renderer.toneMappingExposure = look.exposure;
     this.precip.set(c.type, c.wind, c.holiday || null);
     this.baseExposure = look.exposure;

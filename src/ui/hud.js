@@ -485,7 +485,15 @@ export class Hud {
     kc.classList.toggle('hidden', !fgOn);
     if (fgOn) {
       const m = session.match, t = session.teams[m.possession];
-      const html = `<span class="kc-abbr" style="--tc:${t?.colors?.primary || '#333'}">${t?.abbr || ''}</span>${fgDistance(m.phase === 'try' ? 85 : m.yardLine)} YARD ${m.phase === 'try' ? 'PAT' : 'FG'}`;
+      // Panel over the chip: kicker and the wind as the kicker sees it (arrow: up = toward the posts).
+      const k = ks.players.find((p) => p.team === ks.offIdx && p.slot === 'K');
+      const w = ks.wind || { x: 0, z: 0 };
+      const mph = Math.round(Math.hypot(w.x, w.z) * 2.045);
+      const deg = Math.round(Math.atan2(w.z * ks.dir, w.x * ks.dir) * 180 / Math.PI);
+      const wind = mph < 3 ? '<b>CALM</b>' : `<svg class="kc-arrow" viewBox="-10 -10 20 20" style="transform:rotate(${deg}deg)"><path d="M0 -8 L6 0 L2 0 L2 8 L-2 8 L-2 0 L-6 0 Z"/></svg><b>${mph}<small> MPH</small></b>`;
+      const html = `<div class="kc-panel"><div class="kc-top">${m.phase === 'try' ? 'EXTRA POINT' : 'FIELD GOAL'}</div>
+        <div class="kc-rows"><div><small>KICKER</small><b>${k ? `${k.name}` : '—'}</b></div><div class="kc-wind"><small>WIND</small><span>${wind}</span></div></div></div>
+        <div class="kc-chip"><span class="kc-abbr" style="--tc:${t?.colors?.primary || '#333'}">${t?.abbr || ''}</span>${fgDistance(m.phase === 'try' ? 85 : m.yardLine)} YARD ${m.phase === 'try' ? 'PAT' : 'FG'}</div>`;
       if (kc._h !== html) { kc._h = html; kc.innerHTML = html; }
     }
     this._bugTop = this.$('scorebug').getBoundingClientRect().top; // read layout before this frame's writes

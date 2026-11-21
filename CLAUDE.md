@@ -522,7 +522,7 @@ championship game (`renderer.setTeams(..., { championship })` from startGame), a
 The line of scrimmage turns red on 4th down (lines.js); the slanted down & distance / play clock tag sits on the turf beside the
 ball before every scrimmage snap (hud `artOverlay(..., names)`: RT still adds the names; never on kicks or fakes); a touchdown
 is a full-width team-color lower third (`hud.tdBand`); catch type / going for the pick confirm with a top-right pill
-(`hud.pill`); lining up a field goal shows an "ABR 42 YARD FG" chip (`#kickchip`); defensive play art labels each zone
+(`hud.pill`); lining up a field goal shows an "ABR 42 YARD FG" chip (`#kickchip`) under a FIELD GOAL panel (kicker, wind mph with an arrow as the kicker sees it: up = toward the posts); defensive play art labels each zone
 (`playArt` zone `label` → `hud.zoneLabels`); the franchise gameday lights the better OVR/OFF/DEF badge green with the team's
 letters huge behind its logo; your draft picks get a grade (`d.lastGrade` in offseason.js `makePick`, `.dr-grade`).
 Broadcast packages (main.js `broadcastPackage`, `hud.pkg`): franchise time slots (Thursday / Sunday / Monday night, holidays, opener,

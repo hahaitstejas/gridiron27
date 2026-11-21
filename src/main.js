@@ -349,6 +349,7 @@ function endIntro() {
   intro = null;
   renderer.presentation.introT = null;
   hud.introCaption(null);
+  hud.introCard(null);
   hud.intro(null);
   app = 'game';
   snapCam = false; // the game camera eases in from the last intro shot
@@ -430,6 +431,27 @@ function updateReplay(f, dt) {
 }
 
 /** Halftime: the game stops on a full-screen report until the player starts the second half. */
+// Pregame card data: the home head coach (seasons from his age and name, stable per coach; record from the franchise when
+// there is one) and the starting quarterback (depth chart QB1).
+function coachInfo(t) {
+  const hc = t.coaches?.hc || {};
+  const name = hc.name || [hc.first, hc.last].filter(Boolean).join(' ');
+  let k = 0; for (const ch of name) k = (k * 31 + ch.charCodeAt(0)) >>> 0;
+  const seasons = 1 + (k % Math.max(1, Math.min(14, (hc.age || 50) - 36)));
+  const rec = session?.records?.[0];
+  return { name, seasons, record: rec && rec !== '0-0' ? rec : '' };
+}
+function qbInfo(t) {
+  const p = t.roster.find((q) => q.id === t.depth?.QB?.[0]) || t.roster.find((q) => q.pos === 'QB');
+  const r = p?.ratings || {};
+  return { p, nums: p ? [['OVR', p.ovr ?? '—'], ['ARM', r.throwPower ?? '—'], ['ACC', r.throwAccuracy ?? '—'], ['SPD', r.speed ?? '—']] : [] };
+}
+function showHalftimeBoard() {
+  app = 'halftime';
+  hud.hideAll();
+  playcall.hide();
+  screens.halftimeBoard(session, showHalftime);
+}
 function showHalftime() {
   app = 'halftime';
   hud.hideAll();
@@ -713,7 +735,7 @@ function onSessionEvent(e) {
   if (prefs.autoReplay && !session?.practice && session?.humanTeam !== null && ['touchdown', 'interception', 'bigHit', 'onsideRecovered'].includes(e.type)) autoReplayPending = true;
   if (e.type === 'message') {
     hud.message(e, session);
-    if (e.kind === 'half' && /half/i.test(e.text) && session.humanTeam !== null && !session.practice && speed <= 1) showHalftime();
+    if (e.kind === 'half' && /half/i.test(e.text) && session.humanTeam !== null && !session.practice && speed <= 1) showHalftimeBoard();
     if (e.kind === 'score') { const w = session.match.lastScore?.what || ''; flashBoard(/touchdown|pick six/i.test(w) ? 'TOUCHDOWN!' : /field goal/i.test(w) ? 'FIELD GOAL' : /safety/i.test(w) ? 'SAFETY' : '', session.match.lastScore?.team ?? 0); if (!boardFlash.text) boardFlash = null; }
     else if (e.kind === 'drive' && e.drive && /Touchdown|Field goal/.test(e.drive.result) && !session?.fast && !session?.practice) hud.pendingDrive = e.drive; // shown at the next kickoff call
     else if (e.kind === 'timeout') {
@@ -906,7 +928,8 @@ function frameBody(now) {
       intro.shot = shot;
       const h = session.teams[0];
       const cap = SHOTS[shot]?.caption;
-      hud.introCaption(cap === 'runout' ? `Here come the ${h.name}` : cap === 'coach' ? `Head coach ${h.coaches?.hc?.name || 'of the ' + h.name}` : cap === 'crowd' ? `${h.stadium?.name || `${h.city} Stadium`} is rocking` : null);
+      hud.introCaption(cap === 'runout' ? `Here come the ${h.name}` : cap === 'crowd' ? `${h.stadium?.name || `${h.city} Stadium`} is rocking` : null);
+      hud.introCard(cap === 'coach' ? 'coach' : cap === 'kickoff' ? 'qb' : null, h, cap === 'coach' ? coachInfo(h) : qbInfo(h));
     }
     renderer.renderShot(dt, sh.pos, sh.look, 0.6);
   } else if (app === 'replay' && replay) {

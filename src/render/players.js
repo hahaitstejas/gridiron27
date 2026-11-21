@@ -979,7 +979,7 @@ const HEAD_AT = POSE_KEYS.indexOf('head'); // the springs start at the head, the
 const LIMB_AT = POSE_KEYS.length;
 const LIMP_ANIMS = new Set(['falling', 'tackle', 'tackle_dive', 'down']);
 const TMP = new Float32Array(POSE_N);
-const FAST_FADE = new Set(['tackle', 'falling', 'dive', 'tackle_dive', 'hitstick', 'juke', 'spin', 'catch', 'throw', 'swat', 'kick']);
+const FAST_FADE = new Set(['drop', 'tackle', 'falling', 'dive', 'tackle_dive', 'hitstick', 'juke', 'spin', 'catch', 'throw', 'swat', 'kick']);
 function packPose(p, a) {
   let j = 0;
   for (const k of POSE_KEYS) a[j++] = p[k] || 0;
@@ -1329,6 +1329,19 @@ function computePose(p, time, sim) {
       pose.arms[0].elbow = 0.32 + give * 0.25 + e * 1.0; pose.arms[1].elbow = 0.32 + give * 0.25 + e * 1.6;
       pose.arms[0].out = 0.05 - e * 0.05; pose.arms[1].out = 0.05 - e * 0.2;
       pose.head = -0.3 + e * 0.45; pose.lean = 0.12 + e * 0.25; pose.crouch = -0.05 * give * (1 - e);
+      break;
+    }
+    case 'drop': {
+      // A drop: the ball pops off his hands (arms jolt up and apart, head snaps after it), he lunges once for it, then the
+      // hands come down and slap the thighs.
+      if (sp > 1) runLegs(Math.min(0.7, run));
+      const pop = Math.min(1, t / 0.1), lunge = Math.sin(Math.min(1, Math.max(0, (t - 0.1) / 0.3)) * Math.PI), down = Math.min(1, Math.max(0, (t - 0.42) / 0.25));
+      const de = down * down * (3 - 2 * down);
+      pose.arms[0].pitch = (2.1 + 0.5 * pop + 0.25 * lunge) * (1 - de) + 0.1 * de; pose.arms[1].pitch = (2.1 + 0.6 * pop) * (1 - de) + 0.1 * de;
+      pose.arms[0].out = (0.25 + 0.35 * pop) * (1 - de) + 0.12 * de; pose.arms[1].out = (0.3 + 0.4 * pop) * (1 - de) + 0.12 * de;
+      pose.arms[0].elbow = pose.arms[1].elbow = (0.2 + 0.35 * pop) * (1 - de) + 0.25 * de;
+      pose.head = (-0.55 * pop - 0.2 * lunge) * (1 - de) + 0.35 * de; pose.lean = 0.1 + 0.25 * lunge + 0.15 * de;
+      pose.crouch = -0.06 * lunge;
       break;
     }
     case 'pick': {

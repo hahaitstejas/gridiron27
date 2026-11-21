@@ -2003,3 +2003,58 @@ body:has(.pz-screen:not(.hidden)) #scorebug, body:has(.pz-screen:not(.hidden)) #
 #drivecard .dv-stats { flex: 1; display: flex; justify-content: space-around; align-items: center; }
 #drivecard .dv-stats div { display: flex; flex-direction: column; align-items: center; }
 #drivecard .dv-stats small { font: 600 10px var(--fb, var(--fd)); letter-spacing: 2px; opacity: 0.7; } #drivecard .dv-stats b { font: 600 22px/1 var(--fo, var(--fd)); }
+/* Touchdown cutscene overlay (hud.tdTitle; Game Play 9 reference, our own design). */
+#tdtitle { position: fixed; inset: 0; z-index: 30; pointer-events: none; }
+#tdtitle .tt-title { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; gap: 2vw; padding-bottom: 14vh;
+  background: radial-gradient(ellipse at 50% 30%, transparent 25%, rgba(0,0,0,0.65) 75%), linear-gradient(0deg, rgba(0,0,0,0.75), transparent 45%); }
+#tdtitle .tt-title b { font: 700 13vw/0.9 var(--fo, 'Oswald', sans-serif); letter-spacing: -0.02em; transform: perspective(700px) rotateX(14deg) scaleY(1.15);
+  background: linear-gradient(180deg, #fff 0%, #e9edf2 45%, #8d96a3 55%, #f4f6f8 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 8px 0 rgba(0,0,0,0.55)) drop-shadow(0 0 22px rgba(255,255,255,0.25)); animation: ttIn 0.5s cubic-bezier(.2,1.4,.4,1) both; }
+#tdtitle .tt-title img { width: 9vw; height: 9vw; object-fit: contain; margin-bottom: 3vw; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.6)); animation: ttIn 0.5s 0.12s both; }
+@keyframes ttIn { from { opacity: 0; transform: perspective(700px) rotateX(40deg) scale(1.4); } to { opacity: 1; } }
+#tdtitle .tt-card { position: absolute; inset: 0; display: none; overflow: hidden;
+  background: repeating-linear-gradient(100deg, color-mix(in srgb, var(--tc) 92%, #000) 0 3vw, color-mix(in srgb, var(--tc) 70%, #000) 3vw 3.6vw), var(--tc); }
+#tdtitle.card .tt-title { display: none; }
+#tdtitle.card .tt-card { display: block; animation: ttCard 0.4s ease-out both; }
+@keyframes ttCard { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+#tdtitle .tt-bg { position: absolute; left: 22vw; top: 50%; transform: translateY(-50%); opacity: 0.12; } #tdtitle .tt-bg img { width: 56vw; height: 56vw; object-fit: contain; filter: grayscale(1) brightness(3); }
+#tdtitle .tt-city { position: absolute; left: 3vw; top: 0; bottom: 0; writing-mode: vertical-rl; transform: rotate(180deg); font: 700 3vw var(--fo, sans-serif); letter-spacing: 0.3em; color: rgba(255,255,255,0.22); text-align: center; }
+#tdtitle .tt-id { position: absolute; left: 14vw; top: 30vh; color: #fff; }
+#tdtitle .tt-id small { display: block; font: 400 2.6vw var(--fo, sans-serif); letter-spacing: 0.08em; }
+#tdtitle .tt-id b { display: block; font: 700 8.5vw/0.95 var(--fo, sans-serif); letter-spacing: -0.01em; text-shadow: 0 6px 0 rgba(0,0,0,0.25); }
+#tdtitle .tt-id span { display: block; margin-top: 1.2vw; font: 600 1.8vw var(--fo, sans-serif); letter-spacing: 0.1em; }
+#tdtitle .tt-photo { position: absolute; right: 9vw; bottom: 0; width: 30vw; height: 30vw; display: flex; align-items: flex-end; justify-content: center; }
+#tdtitle .tt-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; border: 0; box-shadow: none; -webkit-mask-image: linear-gradient(0deg, transparent 0%, #000 18%); mask-image: linear-gradient(0deg, transparent 0%, #000 18%); }
+/* Halftime studio board (Screens.halftimeBoard; Game Play 9 reference, our own design). */
+.screen.hb-screen { bottom: 0 !important; background: radial-gradient(ellipse at 50% -10%, #23305c, #070b18 65%) !important; display: flex; flex-direction: column; align-items: center; padding: 3vh 3vw 70px; gap: 2vh; overflow: hidden; }
+.hb-title { text-align: center; color: #fff; } .hb-title b { display: block; font: 700 64px/1 var(--fo, var(--fd)); letter-spacing: 0.06em; }
+.hb-title span { font: 600 16px var(--fb, var(--fd)); letter-spacing: 0.3em; opacity: 0.7; }
+.hb-board { display: flex; align-items: stretch; gap: 1.6vw; width: min(1180px, 94vw); }
+.hb-vs { align-self: center; font: 700 28px var(--fo, var(--fd)); color: rgba(255,255,255,0.35); }
+.hb-team { flex: 1; min-width: 0; background: linear-gradient(180deg, color-mix(in srgb, var(--tc) 35%, #0b1020), #0b1020 70%); display: flex; flex-direction: column; }
+.hb-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--tc); color: #fff; }
+.hb-team.home .hb-head { flex-direction: row-reverse; text-align: right; }
+.hb-logo canvas { width: 64px; height: 64px; display: block; } .hb-name { flex: 1; min-width: 0; }
+.hb-name small { display: block; font: 600 13px var(--fb, var(--fd)); letter-spacing: 0.2em; opacity: 0.85; } .hb-name b { display: block; font: 700 30px/1 var(--fo, var(--fd)); }
+.hb-score { font: 700 58px/1 var(--fo, var(--fd)); text-shadow: 0 3px 0 rgba(0,0,0,0.3); }
+.hb-line { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); color: #fff; }
+.hb-photo { width: 64px; height: 64px; flex: none; background: color-mix(in srgb, var(--tc) 60%, #000); overflow: hidden; }
+.hb-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hb-txt { min-width: 0; } .hb-txt small { display: block; font: 600 11px var(--fb, var(--fd)); letter-spacing: 0.25em; opacity: 0.6; }
+.hb-txt b { display: block; font: 700 22px/1.1 var(--fo, var(--fd)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hb-txt span { font: 500 15px var(--fb, var(--fd)); opacity: 0.85; }
+.hb-nums { display: flex; margin-top: auto; } .hb-nums div { flex: 1; text-align: center; padding: 10px 0; color: #fff; }
+.hb-nums b { display: block; font: 700 24px/1 var(--fo, var(--fd)); } .hb-nums small { font: 600 11px var(--fb, var(--fd)); letter-spacing: 0.2em; opacity: 0.6; }
+.hb-go .pz-item { padding: 10px 34px; }
+body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #scoreticker, body:has(.hb-screen:not(.hidden)) #quickstart { display: none !important; }
+/* Pregame coach / starting QB cards (hud.introCard): take the matchup lower third's place for their shot. */
+#intro.carded .in-top, #intro.carded .in-row, #intro.carded .in-sub { display: none; }
+#intro .in-card { display: none; align-items: stretch; transform: skewX(var(--skew)); background: rgba(6, 10, 22, 0.95); border-bottom: 4px solid var(--gold, #ffd34d); box-shadow: 0 16px 40px rgba(0,0,0,0.6); overflow: hidden; animation: fbIn 0.45s ease-out; }
+#intro .in-card > * { transform: skewX(calc(var(--skew) * -1)); }
+#intro .ic-logo { width: 96px; height: 96px; object-fit: contain; padding: 10px 18px; background: var(--tc); flex: none; transform: none; }
+#intro .ic-txt { flex: 1; min-width: 0; padding: 12px 22px; color: #fff; background: linear-gradient(90deg, color-mix(in srgb, var(--tc) 55%, #000), transparent 80%); }
+#intro .ic-txt small { display: block; font: 600 13px var(--fb, var(--fd)); letter-spacing: 0.22em; opacity: 0.8; }
+#intro .ic-txt b { display: block; font: 700 38px/1.05 var(--fo, var(--fd)); }
+#intro .ic-txt > span { font: 500 17px var(--fb, var(--fd)); opacity: 0.9; }
+#intro .ic-nums { display: flex; gap: 22px; margin-top: 6px; } #intro .ic-nums b { font: 700 24px/1 var(--fo, var(--fd)); display: inline; margin-right: 5px; } #intro .ic-nums small { display: inline; font-size: 11px; }
+#intro .ic-photo { width: 128px; flex: none; background: color-mix(in srgb, var(--tc) 70%, #000); overflow: hidden; }
+#intro .ic-photo img { width: 100%; height: 100%; object-fit: cover; display: block; border: 0; border-radius: 0; }

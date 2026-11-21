@@ -414,6 +414,7 @@ function resolveCatch(sim, reach, late = false) {
     if (hitter) attemptTackle(sim, hitter, r, false);
   } else {
     sim.emit('drop', { player: r.id });
+    r.anim = 'drop'; r.animT = 0; // the ball pops off his hands (pose only)
     deflect(sim, r, 0.6);
   }
 }

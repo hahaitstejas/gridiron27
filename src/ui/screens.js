@@ -923,6 +923,46 @@ export class Screens {
     this.nav.set(rows.length ? rows : [], { columns: 1, onBack });
   }
 
+  /**
+   * Halftime studio board (Game Play 9 reference, our own design): before the halftime report, both teams side by side in
+   * their colors with the score, each side's passer / rusher / receiver line with photos and a few team numbers; A goes on.
+   */
+  halftimeBoard(session, onDone) {
+    const m = session.match;
+    const ps = Object.values(m.stats.players);
+    const pl = (team, rid) => m.teams[team].roster.find((x) => x.id === rid);
+    const best = (team, k) => ps.filter((x) => x.team === team && x[k] > 0).sort((x, y) => y[k] - x[k])[0];
+    const r = Math.round;
+    const lines = (team) => [
+      ['PASSING', best(team, 'passAtt'), (x) => `${x.passCmp}/${x.passAtt} · ${r(x.passYds)} YDS · ${x.passTD} TD · ${x.int} INT`],
+      ['RUSHING', best(team, 'rushYds'), (x) => `${x.rushAtt} CAR · ${r(x.rushYds)} YDS${x.rushTD ? ` · ${x.rushTD} TD` : ''}`],
+      ['RECEIVING', best(team, 'recYds'), (x) => `${x.rec} REC · ${r(x.recYds)} YDS${x.recTD ? ` · ${x.recTD} TD` : ''}`],
+    ].map(([k, st, f]) => {
+      const p = st && pl(team, st.rid);
+      return el('div.hb-line', {}, el('div.hb-photo', {}, ...[p && faceImg(p, 'hb-face')].filter(Boolean)),
+        el('div.hb-txt', {}, el('small', { text: k }), el('b', { text: p ? `${p.first[0]}. ${p.last}`.toUpperCase() : '—' }),
+          el('span', { text: st ? f(st) : 'No numbers yet' })));
+    });
+    const S = m.stats.team;
+    const side = (team) => {
+      const t = m.teams[team], s = S[team];
+      return el(`div.hb-team${team === 0 ? '.home' : ''}`, { style: { '--tc': t.colors.primary } },
+        el('div.hb-head', {}, el('div.hb-logo', {}, logoCanvas(t.logo, 84)),
+          el('div.hb-name', {}, el('small', { text: t.city.toUpperCase() }), el('b', { text: t.name.toUpperCase() })),
+          el('div.hb-score', { text: String(m.score[team]) })),
+        ...lines(team),
+        el('div.hb-nums', {}, ...[['YDS', r(s.yards)], ['1ST', s.firstDowns], ['3RD', `${s.thirdConv}/${s.thirdAtt}`], ['TO', s.turnovers]]
+          .map(([k, v]) => el('div', {}, el('b', { text: String(v) }), el('small', { text: k })))));
+    };
+    const go = el('div.pz-item', {}, el('span', { text: 'Halftime Report' }));
+    go.activate = onDone;
+    this.frame('mono-screen hb-screen', el('div.hb-title', {}, el('b', { text: 'HALFTIME' }), el('span', { text: `${m.teams[1].abbr} ${m.score[1]} · ${m.teams[0].abbr} ${m.score[0]}` })),
+      el('div.hb-board', {}, side(1), el('div.hb-vs', { text: 'VS' }), side(0)),
+      el('div.hb-go', {}, go),
+      el('div.setup-help.pz-help', { html: '<b class="btn A">A</b> Halftime Report' }));
+    this.nav.set([go], { columns: 1, onBack: () => {} });
+  }
+
   /** Final box score; `halftime: true` makes it the halftime report (no player of the game, Start 2nd Half). */
   /**
    * Post-game (and halftime) screen, after the user's mockup: a menu on the left (Finish Game, View Highlights, Player

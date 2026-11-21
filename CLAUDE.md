@@ -645,6 +645,15 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   TIMEOUT). Under half a yard to go reads "& Inches" (`downText`, scorebugs). After a TD / FG drive (`drive` message carries
   `{ drive }`) a SCORING DRIVE card (`#drivecard`: logo panel, team-color title, plays / yards / time) shows at the next kickoff call
   (`hud.pendingDrive`). The Game Play 9 cutscene list is in UPDATE_PLAN.md.
+- Game Play 9 cutscenes (UPDATE 5.3, our own designs): a human-side touchdown plays `hud.tdTitle(team, player)` (`#tdtitle`: chrome
+  TOUCHDOWN / PICK SIX title with both logos over a vignette, then at 2.2 s a team-color scorer card: first name thin, LAST bold,
+  POS #, photo, city running up the side; gone at 4.9 s; else the `tdBand`); halftime in a human game opens `Screens.halftimeBoard`
+  (both teams in their colors with the score, each side's passing / rushing / receiving leader with photos, yards / first downs /
+  3rd down / turnovers; A → the halftime report); the pregame intro's coach shot and crane shot show `hud.introCard('coach' | 'qb')`
+  (head coach: name, Nth season from `coachInfo`, franchise record; starting QB: photo, bio, OVR / ARM / ACC / SPD) in place of the
+  matchup lower third.
+- Drops (UPDATE 5.3): a dropped pass sets the receiver's anim to `drop` (passing.js, held 0.75 s in anim.js): arms jolt up and
+  apart, a lunge after the ball, then the hands come down (players.js pose; in `GAIT_ANIMS`).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js); it covers the whole screen (solid black) and hides the scorebug / ticker / milestone bar (UPDATE 5.2: it used to stop 58 px short and the field showed through around the prime-time bugs).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

@@ -116,6 +116,8 @@ function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo }) 
     <div class="sh-row"><span class="sh-dd">${dd}</span><span class="sh-q">${q}</span><b>${clk}</b><span class="sh-pc${low}">${pc}</span><span class="sh-spot">${spot}</span></div></div>${end(0, true)}</div>`;
 }
 
+const ordinal = (n) => `${n}${[, 'st', 'nd', 'rd'][(n % 100 >> 3 ^ 1) && n % 10] || 'th'}`;
+
 export class Hud {
   constructor(root) {
     this.root = root;
@@ -242,6 +244,38 @@ export class Hud {
     c.style.display = text ? 'block' : 'none';
   }
 
+  /** Pregame lower-third cards over the intro shots (Game Play 9 reference, our own design): the home head coach (name,
+   *  seasons, record) and the starting quarterback (photo, bio, a few ratings). null hides it. */
+  introCard(kind, team, info = {}) {
+    const el = this.$('intro');
+    let c = el.querySelector('.in-card');
+    if (!c) { c = document.createElement('div'); c.className = 'in-card'; el.appendChild(c); }
+    el.classList.toggle('carded', !!kind);
+    if (!kind) { c.style.display = 'none'; return; }
+    c.style.setProperty('--tc', team.colors.primary);
+    c.innerHTML = '';
+    const logo = document.createElement('img'); logo.src = this.logoFor(team); logo.className = 'ic-logo';
+    const txt = document.createElement('div'); txt.className = 'ic-txt';
+    const line = (tag, text) => { const e = document.createElement(tag); e.textContent = text; txt.append(e); };
+    if (kind === 'coach') {
+      line('small', `${team.city} ${team.name} · HEAD COACH`.toUpperCase());
+      line('b', (info.name || 'Head Coach').toUpperCase());
+      line('span', [info.seasons ? `${ordinal(info.seasons)} season as head coach` : '', info.record ? `Record ${info.record}` : ''].filter(Boolean).join(' · '));
+      c.append(logo, txt);
+    } else {
+      const p = info.p, face = p && faceImg(p, 'ic-face');
+      line('small', `${team.name} · STARTING QUARTERBACK`.toUpperCase());
+      line('b', p ? `${p.first} ${p.last}`.toUpperCase() : 'QUARTERBACK');
+      line('span', p ? [`#${p.number}`, p.age ? `Age ${p.age}` : '', p.college || ''].filter(Boolean).join(' · ') : '');
+      const nums = document.createElement('div'); nums.className = 'ic-nums';
+      for (const [k, v] of info.nums || []) { const d = document.createElement('div'); d.innerHTML = `<b>${v}</b><small>${k}</small>`; nums.append(d); }
+      txt.append(nums);
+      const ph = document.createElement('div'); ph.className = 'ic-photo'; if (face) ph.append(face);
+      c.append(ph, txt, logo);
+    }
+    c.style.display = 'flex';
+  }
+
   /** First game in a browser: a small quick-start card (the essentials, controller and keyboard). */
   quickstart(on) {
     const el = this.$('quickstart');
@@ -282,7 +316,13 @@ export class Hud {
       const what = session.match.lastScore?.what || 'Score';
       const big = /touchdown|pick six/i.test(what) ? (/pick six/i.test(what) ? 'PICK SIX!' : 'TOUCHDOWN!') : /field goal/i.test(what) ? 'FIELD GOAL' : /safety/i.test(what) ? 'SAFETY' : /PAT/.test(what) ? 'EXTRA POINT' : /2-point/.test(what) ? 'TWO-POINT CONVERSION' : what.toUpperCase();
       const st0 = session.match.lastScore?.team;
-      if (/TOUCHDOWN|PICK SIX/.test(big) && session.teams[st0]) this.tdBand(session.teams[st0], big.replace(/!$/, ''));
+      if (/TOUCHDOWN|PICK SIX/.test(big) && session.teams[st0]) {
+        // Game Play 9 reference: a full-screen TOUCHDOWN title, then the scorer's card (sped-up / headless games keep the band).
+        const sim = session.sim, c = sim && sim.ball.carrier >= 0 ? sim.players[sim.ball.carrier] : null;
+        const rp = c && session.teams[c.team]?.roster?.find((q) => q.id === c.rid);
+        if (!session.fast && rp && c.team === st0) this.tdTitle(session.teams[st0], rp, big.replace(/!$/, ''));
+        else this.tdBand(session.teams[st0], big.replace(/!$/, ''));
+      }
       else this.banner(big, msg.text.replace(/^[^!]*!\s*/, ''), 2.6, 'score');
       // The scorebug's middle turns into the scoring team's TOUCHDOWN / FIELD GOAL bar for a few seconds (slide 6).
       const st = session.match.lastScore?.team;
@@ -478,6 +518,28 @@ export class Hud {
   }
 
   /** Touchdown lower third: a full-width band in the scoring team's color, its name over a giant TOUCHDOWN. */
+  /**
+   * Touchdown cutscene overlay (Game Play 9 reference, our own design): ~2.2 s of a huge chrome TOUCHDOWN title between the team's
+   * logos over the darkened celebration, then ~2.6 s of the scorer's card (team-color streaks, first name thin, LAST bold, POS #,
+   * photo / drawn portrait). The 3D celebration keeps playing underneath.
+   */
+  tdTitle(team, p, word = 'TOUCHDOWN') {
+    const el = (this._tdt ||= (() => { const d = document.createElement('div'); d.id = 'tdtitle'; d.className = 'hidden'; this.root.append(d); return d; })());
+    const logo = this.logoFor(team), tc = team.colors?.primary || '#1f3a8a', tc2 = team.colors?.secondary || '#111';
+    const face = faceImg(p, 'tt-face');
+    el.style.setProperty('--tc', tc); el.style.setProperty('--tc2', tc2);
+    el.innerHTML = `<div class="tt-title"><img src="${logo}" alt=""/><b data-w="${word}">${word}</b><img src="${logo}" alt=""/></div>
+      <div class="tt-card"><div class="tt-bg"><img src="${logo}" alt=""/></div><div class="tt-city">${(team.city || '').toUpperCase()} ${(team.name || '').toUpperCase()}</div>
+        <div class="tt-id"><small></small><b></b><span>${p.pos} #${p.number}</span></div><div class="tt-photo"></div></div>`;
+    el.querySelector('.tt-id small').textContent = (p.first || '').toUpperCase();
+    el.querySelector('.tt-id b').textContent = (p.last || '').toUpperCase();
+    if (face) el.querySelector('.tt-photo').append(face);
+    el.classList.remove('hidden', 'card'); void el.offsetWidth; el.classList.add('show');
+    clearTimeout(this._ttA); clearTimeout(this._ttB);
+    this._ttA = setTimeout(() => el.classList.add('card'), 2200);
+    this._ttB = setTimeout(() => { el.classList.add('hidden'); el.classList.remove('show', 'card'); }, 4900);
+  }
+
   tdBand(team, word = 'TOUCHDOWN') {
     const b = this.$('tdband');
     b.style.setProperty('--tc', team.colors?.primary || '#1f3a8a');

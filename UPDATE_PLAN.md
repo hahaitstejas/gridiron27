@@ -269,14 +269,14 @@ Seen, roughly in order. [have] = already in Gridiron 27, [new] = added Nov 21, [
 - Pregame: publisher / league logo stings (skip: their IP); stadium drone / firework show forming the home logo [todo]; tunnel
   close-ups of players walking out (helmet on, smoke, team lights) [have: run-out, could be closer]; team run-out through a giant
   inflatable / smoke [todo]; team logo card in team color [todo]; head-coach lower thirds on the sideline (name, "Nth season
-  as head coach", record) [todo]; "MONDAY NIGHT PRIMETIME" title card [have: package badge]; starting QB card ("LAST SEASON" stats,
-  photo) over a sideline shot [todo].
+  as head coach", record) [new: `hud.introCard('coach')`]; "MONDAY NIGHT PRIMETIME" title card [have: package badge]; starting QB card ("LAST SEASON" stats,
+  photo) over a sideline shot [new: `introCard('qb')`, ratings instead of last season].
 - Between plays: play-call screen over the huddle [have]; close-ups of players walking back / talking after the whistle [have:
   spotlight on big plays, help-ups, reactions]; coach with the play sheet [todo]; the huddle from low [have].
-- Touchdown: full-screen stylized TOUCHDOWN title (scorer under a spotlight, team logos either side) [todo], then a scorer card
-  (team-color pattern, FIRST name thin / LAST bold, POS #, headshot) [todo]; linemen walking off with a SCORING DRIVE banner (plays /
+- Touchdown: full-screen stylized TOUCHDOWN title (scorer under a spotlight, team logos either side) [new: `hud.tdTitle`], then a scorer card
+  (team-color pattern, FIRST name thin / LAST bold, POS #, headshot) [new]; linemen walking off with a SCORING DRIVE banner (plays /
   yards / time) [new: `#drivecard`, `hud.pendingDrive`, shown at the next kickoff call].
 - Kicks: behind-the-kicker shot with the landing zone / meter [have]; "IT'S GOOD" on the ribbon boards [have: board flash].
 - Halftime: a studio-like stat board (each team's QB / HB / top receiver lines with headshots, score, records) then a
-  "HALFTIME REPORT" card [have: halftime screen; the stat-board look is a todo].
+  "HALFTIME REPORT" card [new: `Screens.halftimeBoard` → the halftime report].
 - End: scorebug over an aerial stadium shot, MONDAY NIGHT PRIMETIME outro, final stats screen [have: post-game].

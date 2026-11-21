@@ -658,6 +658,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   mouth (pose `playsheet`, presentation.js `sidelines`).
 - Drops (UPDATE 5.3): a dropped pass sets the receiver's anim to `drop` (passing.js, held 0.75 s in anim.js): arms jolt up and
   apart, a lunge after the ball, then the hands come down (players.js pose; in `GAIT_ANIMS`).
+  A failed catch roll is shown by its cause (same odds): in traffic (contest > 0.12) the nearest defender within 1.3 yd knocks it
+  away (`deflection`, swat pose, BROKEN UP); a stretched / diving / placed / late ball goes off the fingertips (`fingertips`,
+  OFF THE FINGERTIPS); only a clean miss is a `drop` (~14% of attempts instead of ~22%).
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js); it covers the whole screen (solid black) and hides the scorebug / ticker / milestone bar (UPDATE 5.2: it used to stop 58 px short and the field showed through around the prime-time bugs).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

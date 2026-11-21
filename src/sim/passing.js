@@ -413,9 +413,28 @@ function resolveCatch(sim, reach, late = false) {
     }
     if (hitter) attemptTackle(sim, hitter, r, false);
   } else {
-    sim.emit('drop', { player: r.id });
-    r.anim = 'drop'; r.animT = 0; // the ball pops off his hands (pose only)
-    deflect(sim, r, 0.6);
+    // In traffic the miss is the defender's doing: he gets a hand in and knocks it away (a breakup, same odds); a clean
+    // miss is a drop (the ball pops off the receiver's hands).
+    let breaker = null, bd = 1.3;
+    if (contest > 0.12) for (const d of sim.players) {
+      if (d.team === sim.possTeam || d.state !== 'active' || d.engagement) continue;
+      const dd = Math.hypot(d.x - r.x, d.z - r.z);
+      if (dd < bd) { bd = dd; breaker = d; }
+    }
+    if (breaker) {
+      breaker.anim = 'swat'; breaker.animT = 0;
+      r.anim = 'drop'; r.animT = 0;
+      deflect(sim, breaker, 0.7);
+    } else if (rc.d > 1.0 || rc.dive || late || b.place) {
+      // Stretched out for it (a ball off target, a dive, a placed ball): it goes off his fingertips, not a drop.
+      sim.emit('fingertips', { player: r.id });
+      r.anim = 'drop'; r.animT = 0;
+      deflect(sim, r, 0.5);
+    } else {
+      sim.emit('drop', { player: r.id });
+      r.anim = 'drop'; r.animT = 0; // the ball pops off his hands (pose only)
+      deflect(sim, r, 0.6);
+    }
   }
 }
 

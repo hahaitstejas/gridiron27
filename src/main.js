@@ -690,6 +690,7 @@ function passCallout(e) {
   if (e.type === 'catch') { hud.callout('CAUGHT', who, '#3ddc84'); renderer.players.flash(e.player, col(p)); }
   else if (e.type === 'interception') { hud.callout('INTERCEPTED', who, '#ff4d4d', 2200); renderer.players.flash(e.player, '#ff4d4d'); }
   else if (e.type === 'drop') hud.callout('DROPPED', who, '#ffb84d');
+  else if (e.type === 'fingertips') hud.callout('OFF THE FINGERTIPS', who, '#ffb84d');
   else if (e.type === 'oobCatch') hud.callout('OUT OF BOUNDS', who, '#ffb84d');
   else if (e.type === 'deflection' && p && p.team !== sim.possTeam && !recent) hud.callout('BROKEN UP', who, '#7fc4ff');
   else if (e.type === 'incomplete' && e.why !== 'spike' && !recent) hud.callout('INCOMPLETE', '', '#d0d6e0');
@@ -768,7 +769,7 @@ function onSessionEvent(e) {
   else if (e.type === 'motion') hud.ticker(`Motion: ${e.player || e.slot}`);
   else if (e.type === 'hotRoute') hud.ticker(`Hot route: ${e.player || e.slot} — ${e.route.replace('_', ' ')}`);
   else if (e.type === 'flag' && e.presnap) hud.flag(e.outcome.text);
-  else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
+  else if (e.type === 'catch' || e.type === 'interception' || e.type === 'drop' || e.type === 'fingertips' || e.type === 'oobCatch' || e.type === 'incomplete' || e.type === 'deflection') passCallout(e);
   else if (e.type === 'scenarioDone') hud.banner(e.success ? 'CHALLENGE COMPLETE' : 'CHALLENGE FAILED', e.text, 2.4, e.success ? 'score' : 'miss');
   else if (e.type === 'push') hud.ticker(e.quality >= 1 ? 'Perfect push!' : e.quality >= 0.6 ? 'Good push' : e.quality > 0 ? 'Late push' : 'Missed the push');
   else if (e.type === 'iced') hud.banner('TIMEOUT', `${session.teams[e.team].name} ice the kicker`, 2, 'miss');

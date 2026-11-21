@@ -660,7 +660,8 @@ const ORD = ['', '1st', '2nd', '3rd', '4th'];
 export function downText(m) {
   if (m.phase === 'kickoff') return 'Kickoff';
   if (m.phase === 'try') return 'PAT';
-  const togo = m.firstYL >= 100 ? 'Goal' : String(Math.max(1, Math.round(m.toGo)));
+  // Under half a yard to go reads like a broadcast: "3rd & Inches".
+  const togo = m.firstYL >= 100 ? 'Goal' : m.toGo < 0.5 ? 'Inches' : String(Math.max(1, Math.round(m.toGo)));
   return `${ORD[Math.min(4, m.down)]} & ${togo}`;
 }
 

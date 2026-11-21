@@ -156,6 +156,9 @@ export class GameRenderer {
     this.cond = c;
   }
 
+  /** Timeout cutaway: frame the video board on the side `side` (±1) for `secs`. */
+  boardShot(side = 1, secs = 2.4) { this.boardSide = side >= 0 ? 1 : -1; this.boardT = this.boardDur = secs; }
+
   /** Touchdown light show: the stadium lights pulse for a couple of seconds. */
   lightShow(secs = 2.4) { this.flashT = secs; }
 
@@ -405,6 +408,19 @@ export class GameRenderer {
     this.precip.update(dt, this.rig.camera.position);
     if (this.flagT > 0 && (this.flagT -= dt) <= 0) this.flag.visible = false;
     this.stadium.update(dt, excitement);
+    if (this.boardT > 0) {
+      // Timeout cutaway (the user's reference video): a high wide shot across the bowl to the big video board flashing TIMEOUT,
+      // with a slow push in; then back to the game camera.
+      this.boardT -= dt;
+      const k = 1 - Math.max(0, this.boardT) / this.boardDur, sx = this.boardSide, st = this.stadium;
+      const cam = this.rig.camera;
+      this.rig.setFov(34);
+      cam.position.set(sx * (st.boardX - 62 + k * 6), st.boardY - 9 + k * 1.5, 14 - k * 5);
+      cam.lookAt(sx * st.boardX, st.boardY - 2, 0);
+      this.rig.pos.copy(cam.position); // the game camera eases back from here
+      this.draw(cam);
+      return;
+    }
     this.rig.update(dt, focus, dir, phase, snap, { shot: this.presentation.celebration() });
     this.draw(this.rig.camera);
   }

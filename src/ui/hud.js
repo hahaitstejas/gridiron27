@@ -79,7 +79,7 @@ function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo }) 
   const spot = m.phase === 'scrimmage' && !m.over ? `<span class="pk-tri">${own ? '▲' : '▼'}</span>${Math.round(own ? yl : 100 - yl)}` : '';
   const goal = m.phase === 'scrimmage' && m.toGo >= 100 - m.yardLine - 0.01;
   const dd = m.over ? 'FINAL' : flag ? '<b class="pk-flag">FLAG</b>' : note ? `<b class="pk-note" style="--tc:${m.teams[note.team].colors.primary}">${note.text}</b>` : stat ? `<span class="pk-stat">${stat.label} <b>${stat.v[1]}</b>-<b>${stat.v[0]}</b></span>`
-    : m.phase === 'scrimmage' ? `${m.down}<i>${ORD[m.down]}</i> &amp; ${goal ? 'GOAL' : Math.max(1, Math.round(m.toGo))}` : m.phase === 'try' ? 'PAT' : 'KICKOFF';
+    : m.phase === 'scrimmage' ? `${m.down}<i>${ORD[m.down]}</i> &amp; ${goal ? 'GOAL' : m.toGo < 0.5 ? 'INCHES' : Math.max(1, Math.round(m.toGo))}` : m.phase === 'try' ? 'PAT' : 'KICKOFF';
   const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
   const img = (i) => `<img src="${logo(i)}" alt=""/>`;
   const rec = (i) => `(${recs[i].replace('-', ' - ')})`;

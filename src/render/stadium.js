@@ -519,6 +519,8 @@ export function buildStadium(renderer, home, away) {
   const applyDim = () => { standMat.color.copy(seatBase).multiplyScalar(dim); crowdMat.color.setScalar(dim); uStandDim.value = dim; };
   return {
     group,
+    // Where the video boards hang (x = ±boardX, y = boardY, z = 0): the timeout cutaway frames one (renderer.boardShot).
+    boardX: WALL_X + backOff + 2, boardY: topY + 14,
     sky: skyUniforms,
     lampMat,
     glow,

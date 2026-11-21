@@ -715,7 +715,11 @@ function onSessionEvent(e) {
     hud.message(e, session);
     if (e.kind === 'half' && /half/i.test(e.text) && session.humanTeam !== null && !session.practice && speed <= 1) showHalftime();
     if (e.kind === 'score') { const w = session.match.lastScore?.what || ''; flashBoard(/touchdown|pick six/i.test(w) ? 'TOUCHDOWN!' : /field goal/i.test(w) ? 'FIELD GOAL' : /safety/i.test(w) ? 'SAFETY' : '', session.match.lastScore?.team ?? 0); if (!boardFlash.text) boardFlash = null; }
-    else if (e.kind === 'timeout') flashBoard('TIMEOUT', e.team ?? 0);
+    else if (e.kind === 'timeout') {
+      flashBoard('TIMEOUT', e.team ?? 0);
+      // Cut to the video board (not in sped-up / headless-like games), the board at the end the offense is going toward.
+      if (session && !session.fast && speed <= 1.5 && !session.practice) renderer.boardShot(session.match.dirOf(session.match.possession) || 1);
+    }
     else if (e.kind === 'turnover') flashBoard(/Intercept/.test(e.text) ? 'INTERCEPTION!' : /downs/.test(e.text) ? 'STOPPED!' : 'TAKEAWAY!', session.match.possession);
   }
   else if (e.type === 'result') { hud.statCard(e.statLines, session.teams); } // (the play-by-play strip is gone: Pause → Play History lists every play)

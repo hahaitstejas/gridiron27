@@ -527,10 +527,12 @@ is a full-width team-color lower third (`hud.tdBand`); catch type / going for th
 letters huge behind its logo; your draft picks get a grade (`d.lastGrade` in offseason.js `makePick`, `.dr-grade`).
 Broadcast packages (main.js `broadcastPackage`, `hud.pkg`): franchise time slots (Thursday / Sunday / Monday night, holidays, opener,
 international), other night / prime games and the championship get their own scorebug layout (hud.js `primeBug`, from the user's
-reference pictures: `box` = framed team panels + framed center in Barlow Condensed 800, `slim` = full-width bar with a neon slot mark,
-slanted hatched score panels and a possession wedge in Barlow Semi Condensed, `shield` = wide band with logos at the ends, Oswald
-scores either side of a metal shield, Montserrat 800 abbreviations / situation strip; our own marks TNG / SNG / MNG (`pk.mark`);
-CSS `.bx-*` / `.sl-*` / `.sh-*`, accent `--pk`) and a shield badge over the intro lower third (`.in-shield`).
+reference pictures, sized in vw for a 1280-wide screen so they match the references' share of the screen: `box` ~590x59 = framed
+team panels + framed center, `slim` = full-width 41 px bar with a neon slot mark, team bands, slanted hatched score panels and a
+possession wedge, `shield` ~500x60 = team-color logo ends, scores either side of a metal shield, situation strip, passer tab at the
+left; type is only Oswald (big numbers / letters) and Saira Condensed; our own marks TNG / SNG / MNG (`pk.mark`); CSS `.bx-*` /
+`.sl-*` / `.sh-*`, accent `--pk`). The franchise league ticker (`#scoreticker`) is always the bottom 28 px; `.with-ticker` lifts
+the scorebug and the play-by-play strip above it and a shield badge over the intro lower third (`.in-shield`).
 Footwork accents (render only, players.js `footwork` / `footworkPost`, slice 6): DB hip flip and break-on-ball drive out of a
 backpedal, plant on hard cuts, crossover out of a shuffle; `renderer.players.fwCount` counts them. Render twist turns the
 opposite way to sim angles (headYaw follows sim angles). Pause →

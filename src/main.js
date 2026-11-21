@@ -13,10 +13,6 @@ import '@fontsource/oswald/400.css';
 import '@fontsource/oswald/500.css';
 import '@fontsource/oswald/600.css';
 import '@fontsource/oswald/700.css';
-// Prime-time scorebugs (hud.js primeBug): OFL fonts, bundled for offline play.
-import '@fontsource/montserrat/latin-800.css';
-import '@fontsource/barlow-semi-condensed/latin-700.css';
-import '@fontsource/barlow-condensed/latin-800.css';
 import { STEP } from './core/constants.js';
 import { defaultTeams } from './data/teams.js';
 import { generateLeagueRosters } from './data/generator.js';

@@ -23,13 +23,14 @@ function bugStat(m) {
 }
 
 /**
- * The prime-time scorebugs (the user's reference pictures; our own slot marks, no real broadcasters' names or logos).
- *   box    - Sunday night and the big games: two framed team panels (logo, timeout dots, abbreviation over the record, score
- *            in a team-color box) around a framed center (down & distance over quarter / clock / play clock / spot).
- *   slim   - Monday night: one full-width black bar, the slot mark in neon outline, team-color bands, slanted hatched score
- *            panels around the possession wedge, then quarter / clock / play clock / down & distance / spot.
- *   shield - Thursday night (also openers, international): a wide band with the logos at the ends, huge scores either side of
- *            a metal shield, the situation on a black strip underneath.
+ * The prime-time scorebugs (the user's reference pictures; our own slot marks, no real broadcasters' names or logos). Type is
+ * Oswald (big numbers, team letters) and Saira Condensed (everything else); sizes are in vw, authored for a 1280-wide screen.
+ *   box    - Sunday night and the big games: two framed team panels (logo, timeout dots, letters, score in a team-color box)
+ *            around a framed center (possession arrow + down & distance over quarter / clock / play clock / spot).
+ *   slim   - Monday night: one full-width bar, the slot mark in neon outline, team-color bands holding logo / record / letters,
+ *            hatched slanted score panels around a possession wedge in the team-with-the-ball's color, then the situation.
+ *   shield - Thursday night (also openers, international): solid team-color logo panels at the ends, letters / record and big
+ *            scores either side of a metal shield, the situation on a black strip underneath, and the passer's line on a tab.
  */
 function primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo }) {
   const T = m.teams, tc = (i) => `--tc:${T[i].colors.primary};--tc2:${T[i].colors.secondary}`;
@@ -38,40 +39,46 @@ function primeBug(lay, pk, { m, recs, flag, stat, blink, hasBall, logo }) {
   const clk = m.over ? '' : clockText(m.clock);
   const pc = m.over || m.phase !== 'scrimmage' ? '' : `:${String(Math.ceil(m.playClock)).padStart(2, '0')}`;
   const low = m.playClock <= 10 ? ' low' : '';
-  // Down & distance: "3RD & 9" (ordinal small), "& GOAL", or KICKOFF / PAT; the spot: the yard line, pointing into the half it's in.
+  // The spot: the yard line, the arrow pointing up in your own half and down in the other team's.
   const yl = m.yardLine, own = yl < 50;
-  const spot = m.phase === 'scrimmage' && !m.over ? `${own ? '▴' : '▾'}${Math.round(own ? yl : 100 - yl)}` : '';
+  const spot = m.phase === 'scrimmage' && !m.over ? `<span class="pk-tri">${own ? '▲' : '▼'}</span>${Math.round(own ? yl : 100 - yl)}` : '';
   const goal = m.phase === 'scrimmage' && m.toGo >= 100 - m.yardLine - 0.01;
-  const dd = m.over ? 'FINAL' : flag ? '<b class="pk-flag">FLAG</b>' : stat ? `<span class="pk-stat">${stat.label} <b>${stat.v[1]}</b> · <b>${stat.v[0]}</b></span>`
+  const dd = m.over ? 'FINAL' : flag ? '<b class="pk-flag">FLAG</b>' : stat ? `<span class="pk-stat">${stat.label} <b>${stat.v[1]}</b>-<b>${stat.v[0]}</b></span>`
     : m.phase === 'scrimmage' ? `${m.down}<i>${ORD[m.down]}</i> &amp; ${goal ? 'GOAL' : Math.max(1, Math.round(m.toGo))}` : m.phase === 'try' ? 'PAT' : 'KICKOFF';
   const tos = (i, cls) => `<span class="${cls}">${[0, 1, 2].map((k) => `<i class="${k < m.timeouts[i] ? 'on' : blink === i && k === m.timeouts[i] ? 'used' : ''}"></i>`).join('')}</span>`;
   const img = (i) => `<img src="${logo(i)}" alt=""/>`;
+  const rec = (i) => `(${recs[i].replace('-', ' - ')})`;
   const words = pk.label.split(' ');
-  const mark = pk.mark || words.length > 1 ? words.map((w) => w[0]).join('').slice(0, 3) + (words.length === 2 ? 'G' : '') : words[0].slice(0, 3);
+  const mark = pk.mark || words.map((w) => w[0]).join('').slice(0, 3);
+  const ball = hasBall(1) ? 1 : hasBall(0) ? 0 : -1;
   if (lay === 'box') {
     const side = (i, right) => `<div class="bx-team${right ? ' right' : ''}" style="${tc(i)}"><div class="bx-logo">${img(i)}</div>
-      ${tos(i, 'bx-to')}<div class="bx-ab"><b>${T[i].abbr}</b><small>(${recs[i].replace('-', ' - ')})</small></div><div class="bx-sc">${m.score[i]}</div></div>`;
+      ${tos(i, 'bx-to')}<b class="bx-ab">${T[i].abbr}</b><div class="bx-sc">${m.score[i]}</div></div>`;
     return `<div class="pk pk-box" style="--pk:${pk.color}">${side(1, false)}
-      <div class="bx-mid"><div class="bx-dd">${dd}${hasBall(0) || hasBall(1) ? `<span class="bx-arrow">${hasBall(1) ? '◀' : '▶'}</span>` : ''}</div>
+      <div class="bx-mid"><div class="bx-dd">${ball >= 0 ? `<span class="bx-arrow">${ball === 1 ? '◀' : '▶'}</span>` : ''}<span>${dd}</span></div>
       <div class="bx-row"><span class="bx-q">${q}</span><b>${clk}</b><span class="bx-pc${low}">${pc}</span><span>${spot}</span></div></div>${side(0, true)}</div>`;
   }
   if (lay === 'slim') {
-    const team = (i, right) => `<div class="sl-team${right ? ' right' : ''}" style="${tc(i)}"><div class="sl-logo">${img(i)}</div><div class="sl-band">
-      <span class="sl-rec"><small>(${recs[i].replace('-', ' - ')})</small>${tos(i, 'sl-to')}</span><b class="sl-ab">${T[i].abbr}</b></div></div>`;
-    const sc = (i, right) => `<div class="sl-sc${right ? ' right' : ''}" style="${tc(i)}"><b>${m.score[i]}</b></div>`;
-    const ball = hasBall(1) ? 1 : hasBall(0) ? 0 : -1;
-    return `<div class="pk pk-slim" style="--pk:${pk.color}"><div class="sl-mark">${mark}</div>${team(1, false)}${sc(1, false)}
-      <div class="sl-pos"${ball >= 0 ? ` style="${tc(ball)}"` : ''}>${ball === 1 ? '◀' : ball === 0 ? '▶' : ''}</div>${sc(0, true)}${team(0, true)}
-      <div class="sl-clock"><span>${q}</span><b>${clk}</b>${pc ? `<span class="sl-pc${low}">${pc}</span>` : ''}</div><div class="sl-cut"></div><div class="sl-dd">${dd}</div><div class="sl-cut"></div><div class="sl-spot">${spot}</div></div>`;
+    const band = (i, right) => `<div class="sl-band${right ? ' right' : ''}" style="${tc(i)}"><div class="sl-logo">${img(i)}</div>
+      <span class="sl-rec"><small>${rec(i)}</small>${tos(i, 'sl-to')}</span><b class="sl-ab">${T[i].abbr}</b></div>`;
+    return `<div class="pk pk-slim" style="--pk:${pk.color}"><div class="sl-mark">${mark}</div>${band(1, false)}
+      <div class="sl-sc"><b>${m.score[1]}</b></div><div class="sl-pos"${ball >= 0 ? ` style="${tc(ball)}"` : ''}>${ball === 1 ? '◀' : ball === 0 ? '▶' : ''}</div><div class="sl-sc right"><b>${m.score[0]}</b></div>
+      ${band(0, true)}<div class="sl-clock"><span class="sl-q">${q}</span><b>${clk}</b>${pc ? `<span class="sl-pc${low}">${pc}</span>` : ''}</div>
+      <div class="sl-cut"></div><div class="sl-dd">${dd}</div><div class="sl-cut"></div><div class="sl-spot">${spot}</div></div>`;
   }
-  const team = (i, right) => `<div class="sh-end${right ? ' right' : ''}" style="${tc(i)}"><div class="sh-logo">${img(i)}</div>${tos(i, 'sh-to')}</div>`;
-  const half = (i, right) => `<div class="sh-half${right ? ' right' : ''}" style="${tc(i)}"><b class="sh-ab">${hasBall(i) && !right ? '<i>➤</i>' : ''}${T[i].abbr}${hasBall(i) && right ? '<i class="r">➤</i>' : ''}</b><b class="sh-sc">${m.score[i]}</b></div>`;
-  const shield = `<div class="sh-shield"><svg viewBox="0 0 80 96"><defs><linearGradient id="shm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f5f7"/><stop offset="0.45" stop-color="#b9bdc4"/><stop offset="0.55" stop-color="#e3e5e9"/><stop offset="1" stop-color="#8d929b"/></linearGradient></defs>
-    <path d="M40 2 L76 12 L76 58 Q72 80 40 94 Q8 80 4 58 L4 12 Z" fill="url(#shm)" stroke="#5d626b" stroke-width="2"/><path d="M40 8 L70 16 L70 57 Q66 75 40 87 Q14 75 10 57 L10 16 Z" fill="none" stroke="rgba(0,0,0,0.25)" stroke-width="1.5"/>
-    <text x="40" y="20" text-anchor="middle" font-family="Montserrat, sans-serif" font-weight="800" font-size="6" fill="#2a2d33" letter-spacing="0.6">GRIDIRON 27</text>
-    <text x="40" y="66" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="${mark.length > 2 ? 34 : 40}" fill="#17191d" textLength="${mark.length > 2 ? 58 : 44}" lengthAdjust="spacingAndGlyphs">${mark}</text></svg></div>`;
-  return `<div class="pk pk-shield" style="--pk:${pk.color}">${team(1, false)}<div class="sh-mid"><div class="sh-top">${half(1, false)}${shield}${half(0, true)}</div>
-    <div class="sh-row"><span class="sh-dd">${dd}</span><span class="sh-q">${q}</span><b>${clk}</b><span class="sh-pc${low}">${pc}</span><span class="sh-spot">${spot}</span></div></div>${team(0, true)}</div>`;
+  // shield: the passer's line of the team with the ball rides on a tab at the left.
+  const off = ball >= 0 ? ball : m.possession;
+  const qbl = Object.values(m.stats?.players || {}).filter((x) => x.team === off && x.passAtt > 0).sort((a, b) => b.passAtt - a.passAtt)[0];
+  const qbp = qbl && T[off].roster?.find((x) => x.id === qbl.rid);
+  const tab = qbp ? `<div class="sh-tab" style="${tc(off)}"><b>${qbp.first[0]}. ${qbp.last}</b><span>${Math.round(qbl.passYds)} YDS&nbsp;&nbsp;${qbl.passTD} TDS&nbsp;&nbsp;${qbl.int} INTS</span></div>` : '';
+  const end = (i, right) => `<div class="sh-end${right ? ' right' : ''}" style="${tc(i)}"><div class="sh-logo">${img(i)}</div>${tos(i, 'sh-to')}</div>`;
+  const half = (i, right) => `<div class="sh-half${right ? ' right' : ''}" style="${tc(i)}"><div class="sh-ab"><b>${ball === i && !right ? '<i>➤</i>' : ''}${T[i].abbr}</b><small>${rec(i)}</small></div><b class="sh-sc">${m.score[i]}</b></div>`;
+  const shield = `<div class="sh-shield"><svg viewBox="0 0 80 92"><defs><linearGradient id="shm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3f4f6"/><stop offset="0.48" stop-color="#a9adb5"/><stop offset="0.55" stop-color="#dfe1e5"/><stop offset="1" stop-color="#7f848d"/></linearGradient></defs>
+    <path d="M40 2 L76 12 L76 56 Q72 76 40 90 Q8 76 4 56 L4 12 Z" fill="url(#shm)" stroke="#4d5159" stroke-width="2.5"/>
+    <text x="40" y="20" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="700" font-size="7.5" fill="#33363c" letter-spacing="0.5">GRIDIRON</text>
+    <text x="40" y="66" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="40" fill="#15171b" textLength="${mark.length > 2 ? 56 : 42}" lengthAdjust="spacingAndGlyphs">${mark}</text></svg></div>`;
+  return `<div class="pk pk-shield" style="--pk:${pk.color}">${tab}${end(1, false)}<div class="sh-mid"><div class="sh-top">${half(1, false)}${shield}${half(0, true)}</div>
+    <div class="sh-row"><span class="sh-dd">${dd}</span><span class="sh-q">${q}</span><b>${clk}</b><span class="sh-pc${low}">${pc}</span><span class="sh-spot">${spot}</span></div></div>${end(0, true)}</div>`;
 }
 
 export class Hud {

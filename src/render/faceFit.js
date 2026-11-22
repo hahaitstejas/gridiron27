@@ -41,7 +41,10 @@ const cache = new Map();
 const STORE = 'g27.faceFit';
 let stored = null;
 const readStore = () => { if (!stored) { try { stored = JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { stored = {}; } } return stored; };
-const writeStore = () => { try { const keys = Object.keys(stored); if (keys.length > 400) for (const k of keys.slice(0, keys.length - 400)) delete stored[k]; localStorage.setItem(STORE, JSON.stringify(stored)); } catch { /* full or blocked: memory cache only */ } };
+let writeT = 0;
+// Batched: stringifying the whole store after every face was a small hitch of its own.
+const writeStore = () => { clearTimeout(writeT); writeT = setTimeout(saveStore, 3000); };
+const saveStore = () => { try { const keys = Object.keys(stored); if (keys.length > 400) for (const k of keys.slice(0, keys.length - 400)) delete stored[k]; localStorage.setItem(STORE, JSON.stringify(stored)); } catch { /* full or blocked: memory cache only */ } };
 
 async function load() {
   if (landmarker) return landmarker;

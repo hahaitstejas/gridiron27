@@ -85,8 +85,28 @@ export function faceImage(p, onLoad, opts = {}) {
  * Find the face (MediaPipe, render/faceFit.js) on a <= 512 px copy and replace the crop with the photo warped onto our 3D head's
  * face layout (render/faceWarp.js): eyes, nose, mouth and jaw where the mesh has them. Not in the offline single file.
  */
-async function fitEntry(entry, src) {
+// The fitter runs on the main thread (MediaPipe on the CPU: the model load and each detect block for tens to hundreds of
+// ms), so fits wait in a queue and run one at a time only while the gate is open (main.js: not during a live play).
+let fitGate = () => true;
+export function setFitGate(fn) { fitGate = fn; }
+const fitQueue = [];
+let fitBusy = false;
+function fitEntry(entry, src) {
   if (import.meta.env.MODE === 'offline' || !entry.full) return;
+  fitQueue.push([entry, src]);
+  pumpFits();
+}
+function pumpFits() {
+  if (fitBusy || !fitQueue.length) return;
+  fitBusy = true;
+  setTimeout(async () => {
+    if (!fitGate()) { fitBusy = false; setTimeout(pumpFits, 400); return; }
+    const [entry, src] = fitQueue.shift();
+    try { await runFit(entry, src); } finally { fitBusy = false; setTimeout(pumpFits, 150); }
+  }, 60);
+}
+async function runFit(entry, src) {
+  if (!entry.full) return;
   try {
     const src512 = shrink(entry.full, 512);
     entry.full = null;

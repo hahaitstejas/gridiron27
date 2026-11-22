@@ -240,11 +240,18 @@ export class GameRenderer {
     if (ft.length < 90) return;
     const avg = ft.reduce((a, b) => a + b, 0) / ft.length;
     ft.length = 0;
+    // Every change reallocates the HDR / bloom targets (a visible hitch), so never step back up to a ratio that was
+    // already too slow this session (it used to bounce between two ratios every 1.5 s), and wait a while before trying.
+    const now = performance.now();
     if (avg > 18.5 && this.pixelRatio > 1) {
+      this.tooSlow = Math.min(this.tooSlow ?? Infinity, this.pixelRatio);
       this.pixelRatio = Math.max(1, this.pixelRatio - 0.25);
       this.renderer.setPixelRatio(this.pixelRatio);
       this.resize();
-    } else if (avg < 13 && this.pixelRatio < this.maxPixelRatio && this.quality !== 'low') {
+      this._adaptAt = now;
+    } else if (avg < 13 && this.pixelRatio < this.maxPixelRatio && this.quality !== 'low'
+      && this.pixelRatio + 0.25 < (this.tooSlow ?? Infinity) && now - (this._adaptAt || 0) > 20000) {
+      this._adaptAt = now;
       this.pixelRatio = Math.min(this.maxPixelRatio, this.pixelRatio + 0.25);
       this.renderer.setPixelRatio(this.pixelRatio);
       this.resize();

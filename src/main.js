@@ -64,6 +64,7 @@ import * as SFX from './audio/audio.js';
 import { BoothAudio } from './audio/boothAudio.js';
 import { Booth } from './game/booth.js';
 import { voiceClips, slug as voiceSlug } from './game/voiceLines.js';
+import { setFitGate } from './ui/faces.js';
 const SPECIAL_ART = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike']);
 
 // ---- Boot ----
@@ -132,6 +133,8 @@ playcall.hud = hud; // for the NO HUDDLE scorebug note
 hud.prefs = prefs;
 // Commentary: recorded clips (`npm run voices` → voice/clips), game/booth.js decides what to say as the play happens,
 // audio/boothAudio.js stitches and plays the clips. Off when the voices haven't been recorded (no voice/index.json).
+// Face-photo fitting blocks the main thread for a moment: never during a live snap (it waits for the dead ball).
+setFitGate(() => !(app === 'game' && session?.sim && session.sim.state === 'live') && app !== 'replay');
 const boothAudio = new BoothAudio();
 const clipText = Object.fromEntries(voiceClips().map((c) => [c.id, c.text]));
 boothAudio.onLine = (who, ids) => hud.caption(prefs.commentarySubs && ids ? ids.map((id) => clipText[id] || '').join(' ') : null, who);

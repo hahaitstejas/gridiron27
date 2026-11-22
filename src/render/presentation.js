@@ -178,6 +178,7 @@ export class Presentation {
     this.cel.team = style === 'team' ? this.cel.team : this.cel.team;
     this.cel.teamParty = style === 'team';
     this.cel.picked = true;
+    this.cel.t = Math.min(this.cel.t, CEL_T - 2.8); // the picked celebration gets its own ~2.5 s close-up
     return true;
   }
 
@@ -199,10 +200,13 @@ export class Presentation {
     }
     const c = this.cel;
     if (!c || c.t > CEL_T - 0.3) return null;
-    const d = this.disp[c.idx];
+    // Until the huddle phase starts (the whistle's wind-down) the display proxies are last play's: use the live player.
+    const d = (this.mode === 'huddle' && this.disp[c.idx]) || this.lastSim?.players[c.idx];
     if (!d) return null;
     // One fixed angle on the scorer for the whole celebration (he turns to face the field; the camera doesn't swing).
     c.camAt ||= { x: d.x, z: d.z, facing: c.dir > 0 ? Math.PI : 0 };
+    // ...but it stays on him: he's often still running through the end zone when the shot starts.
+    c.camAt.x += (d.x - c.camAt.x) * 0.12; c.camAt.z += (d.z - c.camAt.z) * 0.12;
     // Once you've picked a celebration the camera moves in close on him (a team one stays wider for the group).
     return { x: c.camAt.x, z: c.camAt.z, facing: c.camAt.facing, t: c.t, close: c.picked ? (c.teamParty ? 0.6 : 1) : 0 };
   }

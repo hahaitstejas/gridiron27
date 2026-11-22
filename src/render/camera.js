@@ -108,7 +108,7 @@ export class CameraRig {
       this.pos.copy(p);
       this.look.copy(l);
     } else {
-      const k = 1 - Math.exp(-dt * (shot ? 2.2 : phase === 'presnap' ? 3 : 4.2));
+      const k = 1 - Math.exp(-dt * (shot ? (shot.close >= 0.6 ? 4 : 2.2) : phase === 'presnap' ? 3 : 4.2));
       const kl = 1 - Math.exp(-dt * 6);
       this.pos.lerp(p, k);
       this.look.lerp(l, kl);

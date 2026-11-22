@@ -33,4 +33,14 @@ describe('skills drills', () => {
     expect(medalFor('passing', sv)).toBe(1);
     expect(medalFor('passing', g + 500)).toBe(2);
   });
+
+  it('rushing drill with "you pick": you call the play, only runs are offered, no audibles', () => {
+    const s = new GameSession({ teams: [teams[1], teams[2]], settings: { quarterMinutes: 5, drill: { id: 'rushing', pick: true }, penalties: false }, humanTeam: 0, seed: 5 });
+    for (let i = 0; i < 600 && s.state !== 'playcall'; i++) s.tick(STEP, null);
+    expect(s.state).toBe('playcall');
+    expect(s.needsHumanCall).toBe(true);
+    expect(s.choice.def).toBeTruthy();
+    expect(s.playFilter({ type: 'pass', id: 'x' })).toBe(false);
+    expect(s.playFilter({ type: 'run', id: 'x' })).toBe(true);
+  });
 });

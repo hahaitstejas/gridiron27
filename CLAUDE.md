@@ -204,7 +204,10 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   screen), the human's player (`drillControl` → `drill.me`), watches the rep (`drillWatch`: pressure, broken tackles) and
   scores it (`drillScore`); after `reps` the match ends → `showDrillResult()` in main.js (medal, rep log, best scores in
   localStorage `g27.drills`). HUD `#drillbar`. Medal lines (`medals`) are set so the CPU doing the drill
-  (`settings.drillAuto`, tests) lands around silver.
+  (`settings.drillAuto`, tests) lands around silver. Play calling (UPDATE 5.4): X on the drills screen toggles "you pick"
+  (localStorage `g27.drillPick`) for the passing / rushing drills (`pickable`): `settings.drill.pick` → the session leaves
+  `choice.off` empty and the play-call screen offers only that kind of play (`session.playFilter`); audibles / hot routes are
+  off in every drill (`openAudible` returns).
 - Scenarios (`game/scenarios.js`, Practice → Scenarios, `Screens.scenarios` / `scenarioResult`): `SCENARIOS` (two-minute drill,
   last gasp, goal-line stand, protect the lead, fourth and long, seventeen down, sudden pressure) with a goal (`win` | `td`
   | `stop`). `settings.scenario = { id }` → `applyScenario(match, sc)` sets quarter, clock, score, timeouts, possession and
@@ -408,6 +411,9 @@ default behind your player = rig mode `follow` for non-QBs; a defender's stick i
   spy, Y hook zone (side by alignment), B deep middle, RB flat zone; the session rebuilds the play and keeps him controlled.
 - Hard count (`session.hardCount()`, LT at the line, once per play, not vs a human defense): ~5% a CPU lineman jumps (forced
   `offsides` → free play; less vs high-awareness lines), 4% your own lineman false-starts.
+- Taunting (UPDATE 5.4, human.js `taunt`): a human ball carrier 3+ yds past the line holding LT high-steps with the ball held
+  out (players.js: ball arm out, other arm pointing back; `carryPoint` puts the ball in that hand), at 84% speed; the ball can
+  come out: per second 5% in the clear + 2.2·(closeness)² with the nearest free defender inside 6 yds (~60%/s at 3 yds).
 - Passing: hold LB (high) / LT (low) while throwing (`b.place`: harder for defenders to play, -5% catch, no YAC);
   LS click = pump fake (coverage defenders may freeze ~0.4 s, less with awareness).
 
@@ -687,6 +693,8 @@ bring a league over with League → Saves & Files → export / import `.g27.json
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc
   behind him and `CameraRig.update(..., { shot })` cuts to a close-up (`Presentation.celebration()`); the session holds
   `post` 3 s after a TD (not fast/practice) so it plays before the PAT call.
+  Picking a celebration (UPDATE 5.4) resets its clock to give ~2.5 s of close-up, the shot keeps following the scorer (he is
+  often still running through the end zone when it starts) and the camera eases in faster (rate 4 for close shots).
 - Pregame intro (`render/intro.js` `introShot(t)`, app state `intro` in main.js, `Hud.intro()` lower-third): sweep, midfield
   dolly, crane to the kickoff; A/B/X/Menu skips; Settings → Pregame intro; never in practice or sped-up games.
 - Play-by-play: `Match.applyResult` → `afterResult()` sets `match.lastPlayText` ("3rd & 4 at CHI 35: … · FIRST DOWN", rich

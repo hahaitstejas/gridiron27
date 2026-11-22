@@ -913,6 +913,7 @@ export class PlayerRenderer {
       if (quat) quat.setFromAxisAngle(Y_AXIS, -p.facing);
       return out;
     }
+    if (hs && p.taunting) { const arm = p.ballArm === -1 ? 0 : 1; if (quat) quat.copy(this.foreQ[i][arm]).multiply(Q_ALONG); return out.copy(hs[arm]); } // held out in the hand
     if (cr) {
       const arm = p.ballArm === -1 ? 0 : 1;
       if (quat) quat.copy(this.foreQ[i][arm]).multiply(Q_ALONG);
@@ -1766,6 +1767,12 @@ function computePose(p, time, sim) {
     a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;
     pose.carryArm = left ? 0 : 1; // the gait's mocap leaves this arm alone
     if (p.protect) { const l = pose.arms[left ? 1 : 0]; l.pitch = 0.75; l.elbow = 1.9; l.out = -0.35; pose.carryArm = 2; }
+    // Taunting (LT): the ball held out at arm's length to the side, the other arm pointing back at the defense, chest up.
+    if (p.taunting) {
+      a.pitch = 1.05; a.elbow = 0.25; a.out = 0.75;
+      const o = pose.arms[left ? 1 : 0]; o.pitch = -0.7; o.elbow = 0.1; o.out = 0.25;
+      pose.carryArm = 2; pose.lean -= 0.12; pose.head += 0.1;
+    }
   }
   return pose;
 }

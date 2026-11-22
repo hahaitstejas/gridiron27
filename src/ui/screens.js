@@ -623,15 +623,25 @@ export class Screens {
       const t = el(`div.hub-tile${i === 0 ? '.feature' : ''}`, {}, el('div.ht-icon', { html: ICONS[icons[id]] || '' }),
         el('div.ht-text', {}, el('div.ht-label', { text: d.name }), el('div.ht-sub', { text: sub }), i === 0 ? el('div.ht-sub.dr-desc', { text: d.desc }) : null),
         medal >= 0 ? el(`div.dr-medal.m${medal}`, { text: MEDALS[medal][0] }) : null);
-      t.activate = () => onStart(id);
-      t.onfocusitem = () => { help.innerHTML = `<b>${d.name}</b> — ${d.desc} <small>Medals: ${d.medals.join(' / ')}</small>`; };
+      t.activate = () => { this.extraButtons = null; onStart(id, { pick: pickOwn && !!d.pickable }); };
+      t.onfocusitem = () => { help.innerHTML = `<b>${d.name}</b> — ${d.desc} <small>Medals: ${d.medals.join(' / ')}${d.pickable ? ` · Play calling: ${pickOwn ? 'you pick' : 'picked for you'} (X)` : ''}</small>`; };
       return t;
     });
     const help = el('div.dr-help', {});
+    // X: pick your own plays in the passing / rushing drills (only that kind of play; no audibles) or have them picked.
+    let pickOwn = false; try { pickOwn = localStorage.getItem('g27.drillPick') === '1'; } catch { /* private mode */ }
+    const foot = () => `<b class="btn A">A</b> Start drill &nbsp;&nbsp; <b class="btn X">X</b> Play calling: ${pickOwn ? 'You pick' : 'Picked for you'} &nbsp;&nbsp; <b class="btn B">B</b> Back`;
+    const footEl = el('div.hub-foot', { html: foot() });
     this.frame('drills-screen hub-screen', el('div.hub-top', {}, el('div.hub-logo', { html: 'SKILLS DRILLS' }), el('div.ps-brand', { text: teamName })),
-      el('div.hub-grid.drill-grid', {}, tiles), help,
-      el('div.hub-foot', { html: '<b class="btn A">A</b> Start drill &nbsp;&nbsp; <b class="btn B">B</b> Back' }));
-    this.nav.set(tiles, { spatial: true, onBack });
+      el('div.hub-grid.drill-grid', {}, tiles), help, footEl);
+    this.nav.set(tiles, { spatial: true, onBack: () => { this.extraButtons = null; onBack(); } });
+    this.extraButtons = (f) => {
+      if (!f.pressed?.X) return;
+      pickOwn = !pickOwn;
+      try { localStorage.setItem('g27.drillPick', pickOwn ? '1' : '0'); } catch { /* private mode */ }
+      footEl.innerHTML = foot();
+      this.nav.items[this.nav.index]?.onfocusitem?.();
+    };
   }
 
   /** Scenarios: late-game challenges; done = { id: true } for the ones you've beaten. */
@@ -771,7 +781,7 @@ export class Screens {
       ]],
       ['Ball carrier', [
         ['Sprint', 'RT'], ['Juke left / right', 'RS ←/→'], ['Truck', 'RS ↑'], ['Stiff arm', 'A'], ['Spin', 'B'],
-        ['Dive (QB: slide)', 'X'], ['Hurdle', 'Y'], ['Switch ball arm', 'RS click'], ['Lateral / pitch', 'LB'], ['Protect the ball (fewer fumbles)', 'hold RB'],
+        ['Dive (QB: slide)', 'X'], ['Hurdle', 'Y'], ['Switch ball arm', 'RS click'], ['Lateral / pitch', 'LB'], ['Protect the ball (fewer fumbles)', 'hold RB'], ['Taunt on the way in (big fumble risk near defenders)', 'hold LT'],
       ]],
       ['Defense at the line', [
         ['Switch player', 'B'], ['Move your player before the snap', 'Left stick'],

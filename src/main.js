@@ -477,7 +477,7 @@ function showDrills(p) {
   p = practicePrefs(p);
   app = 'menu';
   const t = teams[p.home];
-  screens.drills(drillBests(), `${t.city} ${t.name}`, { onStart: (id) => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id }, drillPrefs: p }), onBack: showPractice });
+  screens.drills(drillBests(), `${t.city} ${t.name}`, { onStart: (id, o = {}) => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id, pick: !!o.pick }, drillPrefs: p }), onBack: showPractice });
 }
 function showDrillResult() {
   const drill = session.drill, p = session.drillPrefs;
@@ -487,7 +487,7 @@ function showDrillResult() {
   bests[drill.id] = best;
   try { localStorage.setItem('g27.drills', JSON.stringify(bests)); } catch { /* private mode: no bests */ }
   leaveGame();
-  screens.drillResult(drill, prev ?? drill.score, { onRetry: () => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id: drill.id }, drillPrefs: p }), onDone: () => showDrills(p) });
+  screens.drillResult(drill, prev ?? drill.score, { onRetry: () => startGame({ ...p, side: 'home' }, { practice: { drill: true }, drill: { id: drill.id, pick: !!drill.pick }, drillPrefs: p }), onDone: () => showDrills(p) });
 }
 
 // Scenarios: beaten ones per browser (localStorage g27.scenarios).

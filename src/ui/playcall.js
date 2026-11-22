@@ -50,6 +50,21 @@ export class PlayCallScreen {
   buildTabs() {
     const m = this.session.match;
     const tabs = [];
+    const keep = this.session.playFilter; // skills drills you call yourself: only runs / only passes
+    if (this.side === 'offense' && keep) {
+      const fams = new Map();
+      for (const p of listOffPlays().filter(keep)) {
+        const fam = p.custom ? 'My Plays' : getOffFormation(p.formation).family;
+        if (!fams.has(fam)) fams.set(fam, new Map());
+        const fm = fams.get(fam);
+        if (!fm.has(p.formation)) fm.set(p.formation, []);
+        fm.get(p.formation).push(p);
+      }
+      const sugg = this.suggestions().filter(keep);
+      if (sugg.length) tabs.push({ name: 'Suggested', plays: sugg });
+      for (const [name, forms] of fams) tabs.push({ name, formations: forms });
+      return tabs;
+    }
     if (this.side === 'offense') {
       if (m.phase === 'kickoff') return [{ name: 'Kickoff', special: true, plays: ['st_kickoff', 'st_squib', 'st_onside'].map(getOffPlay) }];
       const sugg = this.suggestions();

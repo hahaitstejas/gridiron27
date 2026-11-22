@@ -63,7 +63,9 @@ export class GameSession {
     // No clock, no penalties, no fatigue; the situation resets after each play (or when a drive ends).
     this.practice = settings.practice || null;
     // Skills drill (drills.js): practice with fixed reps, the drill's plays and a score.
-    this.drill = settings.drill ? newDrill(settings.drill.id) : null;
+    this.drill = settings.drill ? newDrill(settings.drill.id, settings.drill.pick) : null;
+    // Drills where you call your own plays: only that kind of play (runs in the rushing drill, passes in the passing one).
+    this.playFilter = this.drill?.pick ? ((k) => (p) => p.type === k && !/^st_/.test(p.id))(DRILLS[this.drill.id].pickable) : null;
     if (this.drill) this.practice = { side: DRILLS[this.drill.id].side, after: 'reset', ...drillSpot(this.drill) };
     // The drill's human team (settings.drillAuto: the CPU runs the drill, for tools/tests).
     this.drillHuman = this.humanTeams[0] ?? 0;
@@ -213,7 +215,7 @@ export class GameSession {
     // CPU timeouts (stopping the clock between plays).
     for (const t of [0, 1]) if (!this.isHuman(t) && cpuTimeout(m, t) && m.callTimeout(t)) restAll(this.energy, 0.06);
     const off = this.offTeam, def = this.defTeam;
-    if (this.drill) { const d = drillPlays(this.drill); this.choice = { off: d.off, def: d.def }; this.flushMessages(); this.emit('playcall', { human: this.humanSide }); return; }
+    if (this.drill) { const d = drillPlays(this.drill); this.choice = { off: this.drill.pick ? null : d.off, def: d.def }; this.flushMessages(); this.emit('playcall', { human: this.humanSide }); return; }
     if (!this.calls(off)) {
       this.choice.off = chooseOffense(m, off, this.rng, this.smart);
       this.tempoTarget = cpuTempo(m, off, this.rng);
@@ -474,6 +476,7 @@ export class GameSession {
 
   // ---------- audibles & hot routes ----------
   openAudible(mode, team = this.humanTeam) {
+    if (this.drill) return; // drills: no audibles / hot routes (the rep is the play the drill or you called)
     const humanOff = this.offTeam === team;
     if (mode === 'menu') {
       const options = humanOff ? offenseAudibles(this.sim.offPlay) : defenseAudibles(this.sim.defPlay);

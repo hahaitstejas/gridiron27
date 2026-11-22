@@ -13,13 +13,13 @@ const pick = (list, i) => list[(i * 7 + 3) % list.length];
 
 export const DRILLS = {
   passing: {
-    name: 'Passing Targets', side: 'offense', reps: 10, yardLine: 30,
+    name: 'Passing Targets', side: 'offense', reps: 10, yardLine: 30, pickable: 'pass',
     desc: 'Ten dropbacks against zone coverage. Completions score by yards; touchdowns and big plays score big, picks cost you.',
     medals: [800, 1300, 1700],
     plays: (i) => ({ off: pick(passPlays(), i), def: pick(zoneDefs(), i + 2) }),
   },
   rushing: {
-    name: 'Rushing Gauntlet', side: 'offense', reps: 10, yardLine: 30,
+    name: 'Rushing Gauntlet', side: 'offense', reps: 10, yardLine: 30, pickable: 'run',
     desc: 'Ten carries into a loaded box. Yards, broken tackles and touchdowns score; lost yards count against you.',
     medals: [500, 900, 1400],
     plays: (i) => ({ off: pick(runPlays(), i), def: pick(baseDefs(), i + 5) }),
@@ -48,9 +48,9 @@ export const DRILLS = {
 export const DRILL_IDS = Object.keys(DRILLS);
 export const MEDALS = ['Bronze', 'Silver', 'Gold'];
 
-export function newDrill(id) {
+export function newDrill(id, pick = false) {
   if (!DRILLS[id]) throw new Error(`Unknown drill ${id}`);
-  return { id, rep: 0, score: 0, log: [], done: false };
+  return { id, rep: 0, score: 0, log: [], done: false, pick: pick && !!DRILLS[id].pickable };
 }
 
 /** The practice situation for the next rep (kicking moves back each rep). */

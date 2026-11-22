@@ -100,7 +100,7 @@ export function applyHuman(sim, inp, dt) {
     return;
   }
   if (hasBall) {
-    handleCarrier(sim, p, inp, cam);
+    handleCarrier(sim, p, inp, cam, dt);
     return;
   }
   if (onOffense) {
@@ -139,8 +139,9 @@ function handlePassing(sim, qb, inp) {
   }
 }
 
-function handleCarrier(sim, p, inp, cam) {
+function handleCarrier(sim, p, inp, cam, dt = 1 / 60) {
   p.protect = !!inp.down.RB;
+  taunt(sim, p, inp, dt);
   // RS click: switch the ball to the other arm (keep it away from the closest defender).
   if (inp.pressed.RS) { p.ballArm = -(p.ballArm || 1); p.armLocked = true; sim.emit('switchArm', { player: p.id, arm: p.ballArm }); }
   if (p.task?.option && inp.pressed.LB && sim.pitchOption()) return; // speed option pitch
@@ -202,4 +203,27 @@ function pumpFake(sim, qb) {
     if (sim.rng.next() < bite) { d.speedCap = Math.min(d.speedCap, 0.3); d.recoverAt = sim.t + 0.4; }
   }
   sim.emit('pumpFake', { qb: qb.id });
+}
+
+/**
+ * Taunting (UPDATE 5.4): hold LT with the ball (not the QB still in the pocket) to high-step / hold the ball out on the
+ * way in. A little slower, and the ball is loose: a defender closing in can knock it out (much likelier the closer he is),
+ * and even in space it can slip. Render: the ball arm held out, players.js `taunt`.
+ */
+function taunt(sim, p, inp, dt) {
+  // Only once he's 3+ yds past the line (LT also keeps a read option / pulls an RPO at the mesh).
+  const want = inp.lt > 0.5 && p.state === 'active' && !p.move && !(p.task?.type === 'qb_pass' && !sim.passThrown) && (p.x - sim.losX) * sim.teamDir(p.team) > 3;
+  if (!want) { if (p.taunting) { p.taunting = false; } return; }
+  if (!p.taunting) { p.taunting = true; sim.emit('taunt', { player: p.id }); }
+  p.speedCap = Math.min(p.speedCap, 0.84);
+  p.recoverAt = Math.max(p.recoverAt || 0, sim.t + 0.15);
+  let near = null, nd = 99;
+  for (const d of sim.players) {
+    if (d.team === p.team || d.state !== 'active' || d.engagement) continue;
+    const dd = Math.hypot(d.x - p.x, d.z - p.z);
+    if (dd < nd) { nd = dd; near = d; }
+  }
+  const close = Math.max(0, (6 - nd) / 6);
+  const rate = 0.05 + 2.2 * close * close; // per second: ~5% a second in the clear, ~60%/s with a man 3 yds away, ~1.5/s at 1 yd
+  if (sim.rng.next() < rate * dt) { p.taunting = false; sim.fumble(p, nd < 2.5 ? near : null); }
 }

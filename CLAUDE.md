@@ -732,7 +732,8 @@ and `color` (on `playcall`: 4th down, 3rd and long / short, red zone, late and c
 the score); pri 2 cuts in, 0 is filler; repeats avoided for ~3 min. `audio/voice.js` `Voice` speaks them with the browser's
 Web Speech voices (two voices picked by name, PBP quicker / higher, analyst slower / lower; a 2-line queue, stale lines
 dropped, stops whenever `app !== 'game'`). main.js `commentate(e)` from `onSessionEvent` (`boothOn()`: not fast / watched /
-practice / sped up). Settings → Commentary (default On), Commentary volume, Commentary subtitles (`hud.caption`, `#boothcap`).
+practice / sped up). Settings → Commentary (early test) (`prefs.booth`, default Off: the user found the browser voices flat and the after-the-play calls
+generic; the plan is recorded expressive clips called during the play), Commentary volume, Commentary subtitles (`hud.caption`, `#boothcap`).
 
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/

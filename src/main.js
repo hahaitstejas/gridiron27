@@ -133,7 +133,7 @@ hud.prefs = prefs;
 const booth = new Commentary((Date.now() % 1e6) | 0);
 const voice = new Voice();
 voice.onLine = (who, text) => hud.caption(prefs.commentarySubs ? text : null, who);
-const boothOn = () => prefs.commentary !== false && voice.available && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
+const boothOn = () => !!prefs.booth && voice.available && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
 function commentate(e) {
   if (!boothOn()) return;
   voice.volume = Math.max(0, Math.min(1, (prefs.commentaryVolume ?? 0.9) * (prefs.volume ?? 0.8) * 1.15));

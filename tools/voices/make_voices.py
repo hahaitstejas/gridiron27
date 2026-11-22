@@ -53,6 +53,7 @@ def fake_wav(path, text, energy):
 
 
 def load_model():
+    print('Starting Chatterbox. The first time this sits quiet for a few minutes (Python is warming up): do not press Ctrl+C.', flush=True)
     try:
         import torch, torchaudio  # noqa: F401
         from chatterbox.tts import ChatterboxTTS
@@ -64,7 +65,7 @@ def load_model():
     if device != 'cuda':
         load = torch.load
         torch.load = lambda *a, **k: load(*a, **{**k, 'map_location': torch.device(device)})
-    print(f'Loading Chatterbox on {device} (the first run downloads the model, about 3 GB)...')
+    print(f'Loading Chatterbox on {device} (the first run downloads the model, about 3 GB: wait for it)...', flush=True)
     return ChatterboxTTS.from_pretrained(device=device), device
 
 

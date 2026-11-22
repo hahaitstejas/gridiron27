@@ -101,10 +101,13 @@ describe('ball spotting', () => {
       // Forward progress: the spot is where his progress stopped, never behind the ball.
       if (r.forwardProgress) { expect((r.spotX - r.ballSpotX) * sim.dir).toBeGreaterThan(0); continue; }
       const c = sim.players[r.carrierId];
-      // Ball is spotted ahead of the carrier's feet in his facing direction (he falls forward).
+      // Ball is spotted where he lands it: ahead of his feet when he falls forward, behind when he goes over backward
+      // (the way the renderer draws the fall, c.fallDir).
       const ahead = (r.spotX - c.x) * Math.cos(c.facing) + (r.spotZ - c.z) * Math.sin(c.facing);
-      expect(ahead).toBeGreaterThan(0.5);
-      expect(ahead).toBeLessThan(1.6);
+      const back = c.fallDir && c.fallDir.fwd < -0.25;
+      if (back) { expect(ahead).toBeLessThan(0); expect(ahead).toBeGreaterThan(-1.4); }
+      else { expect(ahead).toBeGreaterThan(0.15); expect(ahead).toBeLessThan(1.6); }
+      expect(Math.hypot(r.spotX - c.x, r.spotZ - c.z)).toBeLessThan(1.6);
     }
   });
   it('spots a QB slide where the slide begins', async () => {

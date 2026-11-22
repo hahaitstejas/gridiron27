@@ -719,7 +719,7 @@ export class PlaySim {
       // Falling on the ball in a crowd: down by contact right there. Only a clean scoop gets returned.
       const crowd = this.players.some((q) => q.team !== best.team && q.state !== 'down' && Math.hypot(q.x - best.x, q.z - best.z) < 2.2);
       if (crowd || b.y < 0.2 && this.rng.chance(0.6)) {
-        best.state = 'tackled'; best.anim = 'falling'; best.animT = 0.45; best.fallT = 0.15; best.vx *= 0.2; best.vz *= 0.2;
+        best.state = 'tackled'; best.anim = 'falling'; best.animT = 0.45; best.fallT = 0.15; best.vx *= 0.2; best.vz *= 0.2; best.fallDir = { fwd: 1, side: 0 };
       }
     }
   }
@@ -857,13 +857,25 @@ export class PlaySim {
     const sc = c.height / 2.06;
     let fwd = 0.15, y = BALL_CARRY_HEIGHT;
     const falling = c.state === 'tackled' || (c.state === 'down' && c.anim !== 'getup');
+    let side = 0;
     if (falling && c.move?.type !== 'slide' && !c.slideSpot) {
       const k = c.state === 'down' ? 1 : Math.min(1, c.animT / 0.45);
       const a = k * 1.45;
-      fwd = 0.15 + 1.05 * Math.sin(a) * sc;
-      y = 0.18 + 1.0 * Math.cos(a) * sc;
+      const f = c.fallDir || { fwd: 1, side: 0 };
+      if (f.fwd < -0.25) {
+        // Over backward (render 'falling' back pose): the ball is at his chest as he lands on his back, behind his feet.
+        fwd = 0.15 - 0.85 * Math.sin(a) * sc;
+        y = 0.18 + 1.0 * Math.cos(a) * sc;
+      } else {
+        // Forward / to the side: the body pitches over by max(0.35, fwd) and rolls with `side` (players.js 'falling').
+        const reach = 1.05 * Math.sin(a) * sc;
+        fwd = 0.15 + reach * Math.max(0.35, f.fwd);
+        side = reach * f.side * 0.8;
+        y = 0.18 + 1.0 * Math.cos(a) * sc;
+      }
     }
-    return { x: c.x + fx * fwd, z: c.z + fz * fwd, y };
+    // side: + = to his left in sim angles (render rootRoll = -side)
+    return { x: c.x + fx * fwd - fz * side, z: c.z + fz * fwd + fx * side, y };
   }
 
   /** Called whenever someone new gains possession of the ball as a runner. */
@@ -929,6 +941,17 @@ export class PlaySim {
     c.anim = 'falling';
     c.animT = 0;
     c.fallT = 0.35 + Math.min(0.4, Math.hypot(c.vx, c.vz) * 0.04);
+    // Which way he goes down (his frame): his momentum plus the shove of the tackler. A runner hit head-on goes over
+    // backward, one wrapped from the side falls away from the tackler. The renderer draws the fall this way and the
+    // ball is spotted where it lands (carrierBallPos), so the spot matches the picture (sacks were up to 2 yds off).
+    let vx = c.vx, vz = c.vz;
+    if (tackler && tackler !== c) {
+      const dx = c.x - tackler.x, dz = c.z - tackler.z, d = Math.hypot(dx, dz) || 1;
+      const hit = Math.max(2, Math.hypot(tackler.vx, tackler.vz) * 0.6);
+      vx += (dx / d) * hit; vz += (dz / d) * hit;
+    }
+    const a = Math.hypot(vx, vz) > 0.6 ? Math.atan2(vz, vx) - c.facing : 0;
+    c.fallDir = { fwd: Math.cos(a), side: Math.sin(a) };
     this.stats.tackler = tackler ? tackler.id : null;
     this.emit('tackle', { player: c.id, tackler: tackler?.id, power });
   }

@@ -628,6 +628,8 @@ export class PlayerRenderer {
       const a = sp > 0.6 ? Math.atan2(vz, vx) - p.facing : 0;
       (this.fall[i] ||= { fwd: 1, side: 0 });
       this.fall[i].fwd = Math.cos(a); this.fall[i].side = Math.sin(a);
+      // The ball carrier's fall is decided by the sim (PlaySim.tackleCarrier) so the spot matches what's drawn.
+      if (p.fallDir && p.state !== 'active') { this.fall[i].fwd = p.fallDir.fwd; this.fall[i].side = p.fallDir.side; }
       this.fallAnim[i] = true;
     } else if (!falling) this.fallAnim[i] = false;
     FALL = pileFall || (falling ? this.fall[i] : null);

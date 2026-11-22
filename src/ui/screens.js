@@ -8,7 +8,7 @@ import { faceImg } from './faces.js';
 import { logoCanvas } from '../render/logo.js';
 import { teamRatings } from '../data/positions.js';
 import { DIFFICULTY, DIFFICULTY_KEYS } from '../ai/difficulty.js';
-import { KEY_HELP, keymap, setKeymap, DEFAULT_KEYMAP } from '../input/keyboard.js';
+import { keymap, setKeymap, DEFAULT_KEYMAP, keysFor } from '../input/keyboard.js';
 import { REMAPPABLE, BUTTONS } from '../input/actions.js';
 import { gameXP, lineText } from '../franchise/career.js';
 import { DRILLS, DRILL_IDS, MEDALS, medalFor } from '../game/drills.js';
@@ -732,26 +732,85 @@ export class Screens {
     this.nav.set(cards, { columns: 8, onBack, index: Math.max(0, focus) });
   }
 
-  controls({ onBack }) {
-    const pad = [
-      ['Pre-snap (offense)', 'A snap · X audible (Phase 3) · Y hot route (Phase 3) · View timeout'],
-      ['Pre-snap (defense)', 'B switch player · View timeout'],
-      ['Passing', 'Receiver icons A B X Y RB: tap = lob, hold = bullet · left stick leads the throw · RS click throw away'],
-      ['Ball carrier', 'RT sprint · A stiff arm · B spin · X dive / QB slide · Y hurdle · RS ←/→ juke · RS ↑ truck · RB protect ball'],
-      ['Defense', 'B switch to player nearest the ball · RT sprint · A swat / jump · X dive tackle · Y strip · RS ↑ hit stick · RS ←/→/↑ rush moves when blocked'],
-      ['Kicking', 'A start meter · A set power · A set accuracy at the line · left stick aims'],
-      ['Returns', 'Y fair catch (punts) · X kneel in the end zone'],
-      ['Play call', 'LB/RB change tab · A select · B back · X flip play · View timeout'],
-      ['Menus', 'Left stick / D-pad move · A select · B back · Menu pause'],
+  /**
+   * Controls (UPDATE 5.4): every control in the game, by situation, in the menu style (LB/RB tabs). Each row: what it does,
+   * the controller input, the keyboard key(s) from the live key map (Settings → Button Mapping changes them).
+   */
+  controls({ onBack }, tab = 0) {
+    const STICK = { LS: 'W A S D', RSdir: 'Arrow keys' };
+    const key = (inp) => inp.split(/\s*\+\s*|\s*\/\s*/).map((t) => {
+      const b = t.replace(/^(tap|hold|click)\s+/i, '').trim();
+      if (/^(Left stick|LS dir)/i.test(b)) return STICK.LS;
+      if (/^RS [←→↑↓]/.test(b) || /^Right stick/i.test(b)) return STICK.RSdir;
+      if (/^D-pad/.test(b)) return '1 2 3 4';
+      if (b === 'LS click') return (keysFor('LS')[0] || 'F');
+      if (b === 'RS click') return (keysFor('RS')[0] || 'R');
+      if (b === 'Receiver button') return 'J K U I O';
+      if (b === 'Both triggers') return `${keysFor('LT')[0] || 'E'} + ${keysFor('RT')[0] || 'Shift'}`;
+      const k = keysFor(b);
+      return k.length ? k.join(' / ') : '';
+    }).filter((v, i, a) => v && a.indexOf(v) === i).join(' + ');
+    const TABS = [
+      ['Offense at the line', [
+        ['Snap the ball', 'A'], ['Audible menu (then A quick · B deep · X run left · Y run right · RB flip)', 'X'],
+        ['Hot route (receiver button, then stick: up go · down hitch · in slant · out quick out · A block)', 'Y'],
+        ['Motion (receiver button, then stick toward / away from the ball)', 'RB'],
+        ['Pass protection (slide left / right, max protect, everyone out)', 'LB'], ['Hard count', 'LT'],
+        ['Play art + names, coverage read', 'hold RT'], ['Spike the ball', 'B'], ['Timeout', 'View / Both triggers'],
+        ['Camera angle', 'D-pad ◀ / D-pad ▶'],
+      ]],
+      ['Passing', [
+        ['Throw: tap = touch (lob), hold = bullet', 'Receiver button'], ['Lead the throw', 'Left stick'],
+        ['High pass / low pass', 'hold LB / hold LT'], ['Pump fake', 'LS click'], ['Throw it away', 'RS click'],
+        ['Step up / slide in the pocket', 'Left stick'], ['Zone read: keep it · RPO: pull and throw', 'hold LT'],
+        ['Option pitch', 'LB'],
+      ]],
+      ['Ball in the air', [
+        ['Possession catch (secure, feet in at the sideline)', 'A / B'], ['Catch and run', 'X'], ['Aggressive catch (traffic)', 'Y'],
+        ['Defense: play the ball / swat', 'A'], ['Defense: go for the interception', 'Y'], ['Switch to the defender nearest the ball', 'B'],
+      ]],
+      ['Ball carrier', [
+        ['Sprint', 'RT'], ['Juke left / right', 'RS ←/→'], ['Truck', 'RS ↑'], ['Stiff arm', 'A'], ['Spin', 'B'],
+        ['Dive (QB: slide)', 'X'], ['Hurdle', 'Y'], ['Switch ball arm', 'RS click'], ['Lateral / pitch', 'LB'], ['Protect the ball (fewer fumbles)', 'hold RB'],
+      ]],
+      ['Defense at the line', [
+        ['Switch player', 'B'], ['Move your player before the snap', 'Left stick'],
+        ['Audible (A zone · B man · X blitz · Y deep shell)', 'X'],
+        ['Defensive hot route (A blitz · X spy · Y hook · B deep middle · RB flat)', 'Y'],
+        ['Coverage: press / off, shade, disguise, bracket, bail', 'LB'], ['Front: pinch / spread, show blitz, simulated pressure', 'RB'],
+        ['Play art', 'hold RT'], ['Timeout', 'View / Both triggers'],
+      ]],
+      ['Defense (live)', [
+        ['Sprint', 'RT'], ['Switch player', 'B'], ['Dive tackle', 'X'], ['Strip the ball', 'Y'], ['Hit stick (big hit, fumble or a whiff)', 'RS ↑'],
+        ['Jump / swat', 'A'], ['Pass rush when blocked: bull rush', 'A / RS ↑'], ['Swim', 'X / RS ←'], ['Spin', 'Y / RS →'], ['Rip', 'RS ↓'],
+      ]],
+      ['Kicking & returns', [
+        ['Kick meter: start, set power, set accuracy', 'A'], ['Aim the kick', 'Left stick'],
+        ['Return call at the line (left / middle / right; punts: block / return / safe)', 'X / Y / B'],
+        ['Fair catch (punts)', 'Y'], ['Kneel in the end zone (touchback)', 'X'], ['Block a kick: jump / lay out', 'A / X'],
+        ['Tush push: snap on green', 'A'],
+      ]],
+      ['Game & menus', [
+        ['Pause', 'Menu'], ['Timeout', 'View / Both triggers'], ['Instant replay (between plays)', 'RS click'],
+        ['No-huddle (play-call screen)', 'LS click'], ['Flip play (play-call screen)', 'RT'], ['Change formation tab / page', 'LB / RB'],
+        ['Celebration after your touchdown', 'Right stick'], ['Menus: move · select · back', 'Left stick / A / B'],
+        ['Controls panel in a game', ''], ['FPS overlay', ''],
+      ]],
     ];
-    const back = el('div.start-btn', { text: 'Back' });
-    back.activate = onBack;
-    this.frame('controls-screen', el('h1', { text: 'Controls' }),
-      el('div.ctl-cols', {},
-        el('table.ctl', { html: `<tr><th colspan=2>Xbox controller</th></tr>${pad.map(([a, b]) => `<tr><td class="k">${a}</td><td>${b}</td></tr>`).join('')}` }),
-        el('table.ctl', { html: `<tr><th colspan=2>Keyboard</th></tr>${KEY_HELP.map(([a, b]) => `<tr><td class="k">${a}</td><td>${b}</td></tr>`).join('')}` })),
-      back);
-    this.nav.set([back], { onBack });
+    const ti = ((tab % TABS.length) + TABS.length) % TABS.length;
+    const [name, rows] = TABS[ti];
+    const extraKeys = { 'Controls panel in a game': 'H', 'FPS overlay': '`' };
+    const items = rows.map(([what, inp]) => {
+      const r = el('div.ct-row', {}, el('span.ct-what', { text: what }), el('span.ct-pad', { text: inp || '—' }), el('span.ct-key', { text: extraKeys[what] || key(inp) || '—' }));
+      r.activate = () => {};
+      return r;
+    });
+    this.frame('mono-screen ct-screen', el('h1', { text: 'Controls' }),
+      el('div.ct-tabs', {}, el('b.btn.LB', { text: 'LB' }), ...TABS.map(([n], i) => el(`span${i === ti ? '.on' : ''}`, { text: n })), el('b.btn.RB', { text: 'RB' })),
+      el('div.ct-head', {}, el('span', { text: name.toUpperCase() }), el('span', { text: 'CONTROLLER' }), el('span', { text: 'KEYBOARD' })),
+      el('div.ct-list', {}, ...items),
+      el('div.setup-help.pz-help', { html: '▲▼ Move &nbsp; <b class="btn LB">LB</b>/<b class="btn RB">RB</b> Situation &nbsp; <b class="btn B">B</b> Back &nbsp; Settings → Button Mapping changes buttons and keys' }));
+    this.nav.set(items, { columns: 1, onBack, onTab: (d) => this.controls({ onBack }, ti + d) });
   }
 
   /**

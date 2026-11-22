@@ -489,6 +489,7 @@ export class PlayerRenderer {
   /** Update all instance matrices. alpha interpolates between the previous and current sim tick. */
   update(sim, alpha, time, controlledId, refs = null) {
     const P = this.parts;
+    this.frameNo = (this.frameNo || 0) + 1;
     const n = Math.min(MAX, sim.players.length + (refs ? refs.length : 0));
     for (const m of Object.values(P)) m.count = this.pairs.has(m) ? n * 2 : n;
     // The first 22 + 7 rows (players, officials) use the full body; the sideline rows use the light copy.
@@ -526,8 +527,10 @@ export class PlayerRenderer {
       const cp = (ids[i] >= 0 && this.display?.[ids[i]]) || sim.players[ids[i]];
       ring.visible = !!cp;
       if (!cp) return;
-      ring.position.x = cp.px + (cp.x - cp.px) * alpha;
-      ring.position.z = cp.pz + (cp.z - cp.pz) * alpha;
+      const at = this.drawnAt?.[ids[i]];
+      // The body can be drawn off its sim spot (a tackler wrapped onto the pile, a gang tackler): the ring sits under the body.
+      if (at && at.frame === this.frameNo) { ring.position.x = at.x; ring.position.z = at.z; }
+      else { ring.position.x = cp.px + (cp.x - cp.px) * alpha; ring.position.z = cp.pz + (cp.z - cp.pz) * alpha; }
       ring.material.color.set(i === 0 ? 0x2f8cff : 0xff8a2f); // player 1 blue; player 2 (local 2-player) orange
     });
   }
@@ -592,6 +595,7 @@ export class PlayerRenderer {
         }
       }
     }
+    (this.drawnAt ||= [])[i] = { x, z, frame: this.frameNo }; // where the body is actually drawn (the hexagon follows it)
     const sc = p.height / 2.06;
     const wide = 1 + p.bulk * 0.28;
     const limb = 0.88 + p.bulk * 0.42; // linemen are thick through the arms and legs, receivers and DBs lean

@@ -2067,3 +2067,16 @@ body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #
 #logocard .lc-name b { display: block; font: 700 9vw/0.9 var(--fo, var(--fd)); text-shadow: 0 6px 0 rgba(0,0,0,0.25); }
 @keyframes lcWipe { 0% { clip-path: polygon(0 0, 0 0, -20% 100%, -20% 100%); } 22%, 80% { clip-path: polygon(0 0, 120% 0, 100% 100%, -20% 100%); } 100% { clip-path: polygon(120% 0, 120% 0, 100% 100%, 100% 100%); } }
 @keyframes lcPop { 0%, 12% { opacity: 0; transform: scale(1.25); } 26%, 78% { opacity: 1; transform: none; } 92%, 100% { opacity: 0; transform: translateX(-4vw); } }
+/* Controls (UPDATE 5.4, Screens.controls): situation tabs, one row per control with the pad input and the live key. */
+.screen.ct-screen { display: flex; flex-direction: column; align-items: center; padding: 4vh 4vw 70px; gap: 1.6vh; }
+.ct-tabs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.ct-tabs span { font: 600 14px var(--fo, var(--fd)); letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 12px; color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.05); }
+.ct-tabs span.on { background: #fff; color: #000; }
+.ct-head, .ct-row { display: grid; grid-template-columns: 1fr 230px 190px; gap: 16px; width: min(1100px, 92vw); align-items: center; }
+.ct-head { font: 600 12px var(--fb, var(--fd)); letter-spacing: 0.25em; color: rgba(255,255,255,0.5); padding: 0 18px; }
+.ct-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; max-height: 64vh; }
+.ct-row { padding: 11px 18px; background: rgba(255,255,255,0.06); color: #fff; font: 500 17px var(--fb, var(--fd)); }
+.ct-row .ct-pad, .ct-row .ct-key { font: 600 16px var(--fo, var(--fd)); letter-spacing: 0.04em; }
+.ct-row .ct-key { color: rgba(255,255,255,0.7); }
+.ct-row.focus, .ct-row.focused, .ct-row.sel { background: #fff; color: #000; }
+.ct-row.focus .ct-key, .ct-row.focused .ct-key, .ct-row.sel .ct-key { color: #333; }

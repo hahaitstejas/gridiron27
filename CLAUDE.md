@@ -582,6 +582,13 @@ scorebug shows a player closing in on 300 passing / 100 rushing or receiving yar
 play clock | down & distance, which turns into a yellow FLAG while a foul is on the field. Records come from
 `session.records` (franchise games, else 0-0).
 
+### Controls screen (UPDATE 5.4)
+`Screens.controls({ onBack }, tab)`: every control by situation (LB/RB tabs: offense at the line, passing, ball in the air,
+ball carrier, defense at the line, defense live, kicking & returns, game & menus), one row per control with the pad input and
+the keyboard key(s) read from the live key map (`keysFor`), so Button Mapping changes show up; CSS `.ct-*`. The hexagon
+under the controlled player follows where the body is drawn (`PlayerRenderer.drawnAt`, a tackler wrapped onto the pile is
+drawn off his sim spot).
+
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /
 tight / high — `CameraRig.zoom` and the `sky` mode), name tags, post-play stat card, auto replay of big plays

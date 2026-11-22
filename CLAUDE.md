@@ -1154,6 +1154,8 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
 - QB slide (UPDATE 5.5): a short tap of X slides (human.js `slidePend`: released before 0.22 s), holding X dives; the slide
   keeps its own pose to the whistle (anim.js / tackleCarrier keep `slide` while `slideSpot` is set): feet first, lead leg out,
   the other folded under, ball in both hands at the chest.
+- Fumble recovery in a crowd (UPDATE 5.5): the recoverer dives on the ball (`best.smother`, anim `smother` held to the
+  whistle like the slide): a short dive, face down and curled over it, one knee up; defenders close by pile on (gang tackle).
 - Ball spotting: the dead-ball spot and the goal-line plane use the **ball's** position
   (`PlaySim.carrierBallPos`), which moves forward as a tackled runner falls (matching the animation). A QB
   slide is spotted where the slide began.

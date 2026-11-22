@@ -180,19 +180,32 @@ export class PlayerRenderer {
       this.contact.frustumCulled = false; this.contact.renderOrder = 1; this.contact.count = 0;
       scene.add(this.contact);
     }
-    // Marker under the user-controlled player: a blue hexagon outline (UPDATE 5.1; a flat side facing each way).
-    this.ring = new THREE.Mesh(
-      new THREE.RingGeometry(0.58, 0.74, 6, 1, Math.PI / 6),
-      new THREE.MeshBasicMaterial({ color: 0x2f8cff, transparent: true, opacity: 0.95, depthWrite: false }),
-    );
+    // Marker under the user-controlled player (UPDATE 5.4, the user's reference): a thin solid teal hexagon inside a broken
+    // bright-green one with a dark edge, points to the sides of the screen. Painted once into a texture; player 2's is orange.
+    const hexTex = (outer, inner) => {
+      const S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+      const g = c.getContext('2d');
+      const hex = (r) => { g.beginPath(); for (let k = 0; k < 6; k++) { const a = Math.PI / 2 + (k * Math.PI) / 3; const x = S / 2 + Math.cos(a) * r, y = S / 2 + Math.sin(a) * r * 0.92; if (k) g.lineTo(x, y); else g.moveTo(x, y); } g.closePath(); };
+      g.lineJoin = 'miter';
+      // Outer: a dark band, then the bright broken line on it (long dashes, a few short ones).
+      hex(112); g.strokeStyle = 'rgba(5, 20, 8, 0.75)'; g.lineWidth = 22; g.stroke();
+      hex(112); g.strokeStyle = outer; g.lineWidth = 11; g.setLineDash([62, 12, 20, 12, 90, 16]); g.lineDashOffset = 30; g.stroke(); g.setLineDash([]);
+      // Inner: thin solid line with a soft glow, lighter toward the bottom of the cell (the near side).
+      const grad = g.createLinearGradient(0, 30, 0, 226); grad.addColorStop(0, inner[0]); grad.addColorStop(1, inner[1]);
+      hex(88); g.shadowColor = inner[1]; g.shadowBlur = 8; g.strokeStyle = grad; g.lineWidth = 6; g.stroke(); g.shadowBlur = 0;
+      const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+      return t;
+    };
+    const hexMat = (tex) => new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -2 });
+    this.ring = new THREE.Mesh(new THREE.PlaneGeometry(1.75, 1.75), hexMat(hexTex('#3dff6e', ['#2fd8c8', '#7ff3e6'])));
     this.ring.rotation.x = -Math.PI / 2;
     this.ring.position.y = 0.03;
     this.ring.renderOrder = 2;
     this.ring.visible = false;
     scene.add(this.ring);
-    // Second ring for player 2 in local 2-player games.
+    // Second marker for player 2 in local 2-player games (orange).
     this.ring2 = this.ring.clone();
-    this.ring2.material = this.ring.material.clone();
+    this.ring2.material = hexMat(hexTex('#ff9a2f', ['#ffcf5a', '#ffe7a8']));
     scene.add(this.ring2);
     // Pulse ring: flashes under whoever ends up with the ball on a pass (team-colored), so it's clear who caught it.
     this.pulse = new THREE.Mesh(new THREE.RingGeometry(0.8, 1.0, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
@@ -531,7 +544,6 @@ export class PlayerRenderer {
       // The body can be drawn off its sim spot (a tackler wrapped onto the pile, a gang tackler): the ring sits under the body.
       if (at && at.frame === this.frameNo) { ring.position.x = at.x; ring.position.z = at.z; }
       else { ring.position.x = cp.px + (cp.x - cp.px) * alpha; ring.position.z = cp.pz + (cp.z - cp.pz) * alpha; }
-      ring.material.color.set(i === 0 ? 0x2f8cff : 0xff8a2f); // player 1 blue; player 2 (local 2-player) orange
     });
   }
 

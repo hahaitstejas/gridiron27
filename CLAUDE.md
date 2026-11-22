@@ -593,7 +593,8 @@ play clock | down & distance, which turns into a yellow FLAG while a foul is on 
 ball carrier, defense at the line, defense live, kicking & returns, game & menus), one row per control with the pad input and
 the keyboard key(s) read from the live key map (`keysFor`), so Button Mapping changes show up; CSS `.ct-*`. The hexagon
 under the controlled player follows where the body is drawn (`PlayerRenderer.drawnAt`, a tackler wrapped onto the pile is
-drawn off his sim spot).
+drawn off his sim spot). Its look (the user's reference): a thin solid teal hexagon inside a broken bright-green one with a dark
+edge, points to the sides (canvas texture, `hexTex` in the PlayerRenderer constructor; player 2 orange).
 
 ### Settings
 Settings (prefs in localStorage `g27.settings`, `DEFAULT_PREFS` in `ui/screens.js`): camera (standard / wide /

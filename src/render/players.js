@@ -534,6 +534,10 @@ export class PlayerRenderer {
 
   /** Flash a team-colored ring under player `id` (catch = offense color, interception = defense color). */
   flash(id, color) { this.pulseId = id; this.pulseT = 1.1; this.pulse.material.color.set(color); }
+  /** A short render-only gesture on a live player (arms only, faded in / out), so a play's outcome reads without text:
+   *  'nope' = a defender who broke up a pass waves it off (arms crossing, like the incomplete signal); 'hands' = a receiver
+   *  who dropped it throws his hands up. Cleared on a new play (`sim` changes). */
+  gesture(id, kind, sim, delay = 0.3, dur = 1.4) { (this.gestures ||= new Map()).set(id, { kind, sim, t: 0, delay, dur }); }
 
   drawPlayer(sim, p, i, alpha, time, dt = 1 / 60, official = false) {
     const P = this.parts;
@@ -617,6 +621,12 @@ export class PlayerRenderer {
     if (sim?.ball?.state === 'air') this.airY = sim.ball.y;
     if (p.anim === 'pick') { const pk = (this.pickH ||= []); if (!pk[i] || p.animT < pk[i].t - 0.02) pk[i] = { h: this.airY ?? 1.5, t: p.animT }; else pk[i].t = p.animT; PICKH = Math.max(0, Math.min(1, (pk[i].h - 1.55) / 0.75)); }
     const pose = this.blend(i, holdingKick(p, sim) ? 'hold' : p.anim, computePose(p, time, sim), dt);
+    const gs = !official && this.gestures?.get(p.id);
+    if (gs) {
+      gs.t += dt;
+      if (gs.sim !== sim || gs.t > gs.delay + gs.dur) this.gestures.delete(p.id);
+      else if (gs.t > gs.delay && !LIMP_ANIMS.has(p.anim) && p.state === 'active') applyGesture(pose, gs.kind, gs.t - gs.delay, gs.dur);
+    }
     (this.ballHand ||= [])[i] = pose.ballHand ?? -1; // a QB reaching the ball out (handoff / fake): it rides in that hand
     if (!official) kickWindup(p, sim, pose);
     if (!official) this.limp(i, p, pose, dt);
@@ -974,6 +984,23 @@ function reachForBall(pose, p, b, x, z, f, sc, w, alpha, mode = null) {
   }
   // Eyes on the ball.
   pose.head += (-Math.max(-0.6, Math.min(0.9, Math.atan2(by / sc - shY - 0.2, Math.hypot(lx, lz)))) - pose.head) * k; // negative = up
+}
+
+// ---------- Gestures (render only, over the live pose) ----------
+function applyGesture(pose, kind, t, dur) {
+  const w = Math.min(1, t / 0.15, (dur - t) / 0.2);
+  if (w <= 0) return;
+  const mix = (a, k, v) => { a[k] += (v - a[k]) * w; };
+  if (kind === 'nope') {
+    // Waving it off: both arms out straight at chest height, crossing back and forth; head shaking.
+    const sw = Math.sin(t * 8);
+    for (const a of pose.arms) { mix(a, 'pitch', 1.4); mix(a, 'elbow', 0.05); mix(a, 'out', -0.35 + sw * 0.95); mix(a, 'twist', 0); }
+    pose.lean += (0.05 - pose.lean) * w;
+  } else if (kind === 'hands') {
+    // Hands up to the helmet after a drop.
+    for (const a of pose.arms) { mix(a, 'pitch', 2.7); mix(a, 'elbow', 2.0); mix(a, 'out', 0.35); }
+    pose.head += (0.25 - pose.head) * w;
+  }
 }
 
 // ---------- Pose packing (for crossfades) ----------

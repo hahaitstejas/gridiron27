@@ -686,6 +686,11 @@ function passCallout(e) {
   const p = sim.players[e.player];
   const who = p ? `#${p.number} ${p.name || ''}`.trim() : '';
   const col = (pl) => { const c = session.teams[pl.team].colors; return pl.team === 1 && isDarkHex(c.primary) ? '#ffffff' : c.primary; };
+  // Body language so the result reads without text: the defender who broke it up waves it off, a receiver who dropped it
+  // puts his hands to his helmet (render only).
+  if (e.type === 'deflection' && p && p.team !== sim.possTeam && sim.ball.kind !== 'throwaway') renderer.players.gesture(e.player, 'nope', sim, 0.35, 1.3);
+  else if ((e.type === 'drop' || e.type === 'fingertips') && p) renderer.players.gesture(e.player, 'hands', sim, 0.75, 1.1);
+  if (prefs.callouts === false) return; // Settings → Play result text: Off
   const recent = hud.calloutAt && performance.now() - hud.calloutAt < 900;
   if (e.type === 'catch') { hud.callout('CAUGHT', who, '#3ddc84'); renderer.players.flash(e.player, col(p)); }
   else if (e.type === 'interception') { hud.callout('INTERCEPTED', who, '#ff4d4d', 2200); renderer.players.flash(e.player, '#ff4d4d'); }

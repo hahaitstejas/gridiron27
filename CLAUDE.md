@@ -661,6 +661,11 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   A failed catch roll is shown by its cause (same odds): in traffic (contest > 0.12) the nearest defender within 1.3 yd knocks it
   away (`deflection`, swat pose, BROKEN UP); a stretched / diving / placed / late ball goes off the fingertips (`fingertips`,
   OFF THE FINGERTIPS); only a clean miss is a `drop` (~14% of attempts instead of ~22%).
+  Reading the play without text (the user's goal is to drop the arcade callouts later): `PlayerRenderer.gesture(id, kind, sim)`
+  (render only, arms over the live pose, cleared on a new play, not in replays): the defender who broke a pass up waves it off
+  (`nope`), a receiver who dropped it puts his hands to his helmet (`hands`); a recovered fumble gets the nearest official pointing
+  the recovering team's way (`signal(..., faceAng)`). Settings → Play result text (`prefs.callouts`, default On) hides the
+  CAUGHT / BROKEN UP / DROPPED callouts and pulse rings.
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js); it covers the whole screen (solid black) and hides the scorebug / ticker / milestone bar (UPDATE 5.2: it used to stop 58 px short and the field showed through around the prime-time bugs).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

@@ -109,7 +109,11 @@ export class Presentation {
       const sp = sim.players[idx];
       if (sp && !session.fast) this.cel = { idx, team: sp.team, t: 0, style: CEL_STYLES[(sp.number + sp.id) % CEL_STYLES.length], x: sp.x, z: sp.z, dir: session.match.dirOf(sp.team) };
     } else if (e.type === 'incomplete' && e.why !== 'spike') this.signal(nearest(ball.x, ball.z), 'sig_incomplete', 1.8);
-    else if (e.type === 'flag' && e.live) {
+    else if (e.type === 'recovery' && e.team !== undefined) {
+      // A loose ball recovered: the nearest official points the way the recovering team is going (whose ball it is).
+      const pl = sim.players[e.player];
+      this.signal(nearest(pl ? pl.x : ball.x, pl ? pl.z : ball.z), 'sig_first', 1.8, session.match.dirOf(e.team) > 0 ? 0 : Math.PI);
+    } else if (e.type === 'flag' && e.live) {
       // A flag flies on the field: the nearest official throws it.
       const pl = sim.players.find((p) => p.team === e.team) || null;
       this.signal(pl ? nearest(pl.x, pl.z) : this.refs[1], 'sig_flag', 0.6);
@@ -127,7 +131,7 @@ export class Presentation {
     }
   }
 
-  signal(r, sig, secs) { if (r) { r.sig = sig; r.sigT = secs; r.animT = 0; } }
+  signal(r, sig, secs, faceAng = null) { if (r) { r.sig = sig; r.sigT = secs; r.animT = 0; r.sigFace = faceAng; } }
 
   /**
    * Per frame: returns { display, refs } — display[i] overrides sim player i (or null when the sim's own
@@ -527,7 +531,8 @@ export class Presentation {
         r.cycle += dt * (2.2 + v * 1.05);
       } else {
         r.vx = r.vz = 0;
-        if (face) r.facing = turn(r.facing, Math.atan2(face.z - r.z, face.x - r.x), dt * 5);
+        if (signaling && r.sigFace != null) r.facing = turn(r.facing, r.sigFace, dt * 8);
+        else if (face) r.facing = turn(r.facing, Math.atan2(face.z - r.z, face.x - r.x), dt * 5);
       }
       const sp = Math.hypot(r.vx, r.vz);
       // Any movement gets a stride (slow drifts used to slide in the idle pose: "floating" officials); sideways

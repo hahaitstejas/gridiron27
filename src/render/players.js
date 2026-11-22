@@ -1506,9 +1506,26 @@ function computePose(p, time, sim) {
       break;
     }
     case 'getup': {
+      // Up off the turf in two beats, not a plank swinging upright: face down he pushes up on both hands and brings
+      // one knee under him (0-45%), then drives up off that leg to standing; on his back he sits up, rolls onto that
+      // knee and rises. Smoothstep in each beat so it starts and lands softly.
       const k = Math.min(1, t / 0.6);
-      pose.rootPitch = (FALL && FALL.fwd < -0.25 ? -1.45 : 1.5) * (1 - k); pose.crouch = -0.3 * (1 - k);
-      pose.legs[0].hip = pose.legs[1].hip = 1.2 * (1 - k); pose.legs[0].knee = pose.legs[1].knee = 1.6 * (1 - k);
+      const back = FALL && FALL.fwd < -0.25;
+      const ss = (v) => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };
+      const a = ss(k / 0.45), b = ss((k - 0.45) / 0.55);
+      pose.noGait = true;
+      if (back) {
+        pose.rootPitch = -1.45 * (1 - a) + 0.55 * a * (1 - b); // sit up, lean over the knee, stand
+        pose.arms[0].pitch = pose.arms[1].pitch = 0.6 * (1 - b); pose.arms[0].elbow = pose.arms[1].elbow = 0.5 * (1 - b);
+      } else {
+        pose.rootPitch = 1.5 - 0.75 * a - 0.75 * b; // chest comes up on the push, then upright
+        const push = (1 - b);
+        for (const s2 of pose.arms) { s2.pitch = 1.5 * push; s2.elbow = (1.3 - 1.1 * a) * push; s2.out = 0.2 * push; }
+        pose.head = -0.3 * push;
+      }
+      pose.crouch = -0.35 * (1 - b);
+      pose.legs[0].hip = (0.4 + 1.1 * a) * (1 - b); pose.legs[0].knee = (0.6 + 1.3 * a) * (1 - b); // the knee he stands up from
+      pose.legs[1].hip = (0.3 + 0.3 * a) * (1 - b); pose.legs[1].knee = (0.5 + 0.9 * a) * (1 - b);
       break;
     }
     case 'stumble':

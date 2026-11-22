@@ -327,7 +327,8 @@ export class Hud {
       // The scorebug's middle turns into the scoring team's TOUCHDOWN / FIELD GOAL bar for a few seconds (slide 6).
       const st = session.match.lastScore?.team;
       if (st !== undefined && !/PAT|2-point/.test(what)) { this.bugTake = { text: big.replace(/!$/, ''), team: st, until: performance.now() + 5000 }; this._bugKey = null; }
-    } else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
+    } else if (k === 'turnover' && !this.prefs?.resultText && !/downs/.test(msg.text)) { /* interception / fumble: the freeze, camera swing and crowd show it */ }
+    else if (k === 'turnover') this.banner(/Intercept/.test(msg.text) ? 'INTERCEPTED!' : /downs/.test(msg.text) ? 'TURNOVER ON DOWNS' : 'FUMBLE!', msg.text, 2.4, 'turnover');
     else if (k === 'penalty') this.flag(msg.text);
     else if (k === 'miss') this.banner('NO GOOD', msg.text, 2, 'miss');
     else if (k === 'timeout') {

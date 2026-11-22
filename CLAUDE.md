@@ -683,8 +683,9 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   Reading the play without text (the user's goal is to drop the arcade callouts later): `PlayerRenderer.gesture(id, kind, sim)`
   (render only, arms over the live pose, cleared on a new play, not in replays): the defender who broke a pass up waves it off
   (`nope`), a receiver who dropped it puts his hands to his helmet (`hands`); a recovered fumble gets the nearest official pointing
-  the recovering team's way (`signal(..., faceAng)`). Settings → Play result text (`prefs.callouts`, default On) hides the
-  CAUGHT / BROKEN UP / DROPPED callouts and pulse rings.
+  the recovering team's way (`signal(..., faceAng)`). Settings → Play result text (`prefs.resultText`, default Off since UPDATE 5.4; the
+  old `callouts` key is ignored so everyone gets the new default) shows the CAUGHT / BROKEN UP / DROPPED callouts, pulse rings and
+  the INTERCEPTED / FUMBLE banners (`hud.message`; TURNOVER ON DOWNS always shows).
   Change of possession (the user's reference): an interception or a fumble the defense recovers, in a game with a human (not
   kicks, sped-up or watched snaps), freezes the game `TURN_FREEZE` 1.8 s (main.js `turnFreeze`: no sim ticks, `animTime` stops)
   while the camera swings behind the new ball carrier (`sim.turnCam` → camDir = -sim.dir; `sim.camDir` too, so the stick

@@ -16,7 +16,7 @@ import { SCENARIOS } from '../game/scenarios.js';
 
 const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random', gameDay: 'auto',
-  nameTags: true, callouts: true, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
+  nameTags: true, resultText: false, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false,
   volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8 };
 
@@ -70,7 +70,7 @@ export const OPTION_HELP = {
   'start game': 'Kick it off.',
   'stadium': 'Home stadium, or a neutral site with no home crowd.',
   'weather': 'Rain makes the ball slick, snow slows footing and kicks, wind moves kicks and deep passes.',
-  'play result text': 'CAUGHT / BROKEN UP / DROPPED / INTERCEPTED text over the field after a pass. Off = read the play from the players, officials and crowd, like a TV broadcast.',
+  'play result text': 'CAUGHT / BROKEN UP / DROPPED / INTERCEPTED / FUMBLE text over the field. Off (default) = read the play from the players, the officials, the camera and the crowd, like a TV broadcast.',
   'time of day': 'Day, dusk or a night game under the lights.',
   'game day': 'The day of the game: Sunday, a prime-time night (its own broadcast scorebug), Thanksgiving leaves, Christmas flurries, an international game. With Time of day on Random, the usual kickoff time for that day.',
   'gameplay sliders': 'Fine-tune passing, blocking, catching, tackling and more, separately for you and the CPU.',
@@ -926,7 +926,7 @@ export class Screens {
       option('Camera', Object.keys(CAMERAS), 'camera', (k) => CAMERAS[k]),
       option('Graphics', ['high', 'medium', 'low'], 'graphics', (v) => ({ high: 'High (bloom, grade)', medium: 'Medium (grade)', low: 'Low (fastest)' })[v]),
       option('Name tags', [true, false], 'nameTags', (v) => (v ? 'On' : 'Off')),
-      option('Play result text', [true, false], 'callouts', (v) => (v ? 'On' : 'Off')),
+      option('Play result text', [true, false], 'resultText', (v) => (v ? 'On' : 'Off')),
       option('Post-play stat card', [true, false], 'statCard', (v) => (v ? 'On' : 'Off')),
       option('Auto replay big plays', [true, false], 'autoReplay', (v) => (v ? 'On' : 'Off')),
       option('Pregame intro', [true, false], 'intro', (v) => (v ? 'On' : 'Off')),

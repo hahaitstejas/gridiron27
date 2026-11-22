@@ -8,3 +8,9 @@ dist-offline/
 release/
 dist-app/
 dist-web/
+
+# Commentary recorder (tools/voices): the Python environment and scratch files; voice/clips + voice/index.json are committed
+.venv-voice/
+voice/.tmp/
+voice/lines.json
+voice/ref_*.wav

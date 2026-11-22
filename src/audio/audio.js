@@ -4,11 +4,11 @@
 // Volumes come from prefs (`volume`, `crowdVolume`, `sfxVolume`, 0..1); nothing plays until the first user gesture.
 
 let ctx = null;
-let master = null, crowdBus = null, sfxBus = null;
+let master = null, crowdBus = null, sfxBus = null, voiceBus = null;
 let noiseBuf = null, brownBuf = null;
 let bed = null; // { gain, roar, roarF } the crowd bed
 let level = 0.2, target = 0.2, swell = 0; // crowd excitement (0..1) and a short extra swell after events
-let vols = { volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8 };
+let vols = { volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8, commentaryVolume: 0.9 };
 let unlocked = false;
 
 /** Create the audio graph (call from a user gesture: key, click or pad button). Safe to call repeatedly. */
@@ -25,6 +25,7 @@ export function unlockAudio() {
     comp.connect(master);
     crowdBus = ctx.createGain(); crowdBus.connect(comp);
     sfxBus = ctx.createGain(); sfxBus.connect(comp);
+    voiceBus = ctx.createGain(); voiceBus.connect(master); // commentary: after the compressor, so a roar never squashes it
     noiseBuf = makeNoise(2.5, false);
     brownBuf = makeNoise(3.5, true);
     applyVolumes();
@@ -34,7 +35,7 @@ export function unlockAudio() {
 }
 
 export function setVolumes(prefs = {}) {
-  vols = { volume: prefs.volume ?? 0.8, crowdVolume: prefs.crowdVolume ?? 0.7, sfxVolume: prefs.sfxVolume ?? 0.8 };
+  vols = { volume: prefs.volume ?? 0.8, crowdVolume: prefs.crowdVolume ?? 0.7, sfxVolume: prefs.sfxVolume ?? 0.8, commentaryVolume: prefs.commentaryVolume ?? 0.9 };
   applyVolumes();
 }
 
@@ -44,6 +45,7 @@ function applyVolumes() {
   master.gain.setTargetAtTime(vols.volume, t, 0.05);
   crowdBus.gain.setTargetAtTime(vols.crowdVolume, t, 0.05);
   sfxBus.gain.setTargetAtTime(vols.sfxVolume, t, 0.05);
+  voiceBus.gain.setTargetAtTime(vols.commentaryVolume * 1.4, t, 0.05);
 }
 
 function makeNoise(secs, brown) {
@@ -299,4 +301,9 @@ export function uiTick(kind = 'move') {
 }
 
 /** For tests / dev tools: is the context running, is the crowd bed up, and how loud is the crowd right now. */
+/** The commentary's way out (audio/boothAudio.js): the context and its bus, or null before the first user gesture. */
+export function voiceOut() { return ctx && voiceBus ? { ctx, out: voiceBus } : null; }
+/** Lower the crowd a touch while the booth talks (0..1). */
+export function duckCrowd(k) { if (crowdBus) crowdBus.gain.setTargetAtTime(vols.crowdVolume * (1 - 0.35 * k), ctx.currentTime, 0.12); }
+
 export const audioDebug = () => ({ state: ctx?.state ?? 'none', bed: !!bed, level: +(level + swell).toFixed(2) });

@@ -56,6 +56,20 @@ Then open **http://localhost:5173**. No internet later? `npm run build:offline` 
 **Your own league (local copy):** `npm run export-league` writes `public/local/league.csv` (the same one file, plus the
 separate sheets); edit it in any spreadsheet app (or have an AI fill it in) and reload. That folder never leaves your computer.
 
+## Commentary voices (record them once, free)
+
+The booth calls the game live from recorded clips. Record them on your own computer with
+[Chatterbox](https://github.com/resemble-ai/chatterbox) (free, open source, MIT). On a Mac:
+
+```bash
+brew install python@3.11 ffmpeg   # once, if you don't have them
+npm run voices:setup              # once: a private Python environment with Chatterbox (~3 GB download)
+npm run voices                    # records every clip into voice/clips (a few hours; stop any time, run again to resume)
+```
+
+Optional own voices: about 10 seconds of a clean recording of a voice you're allowed to use (yours, a friend who agreed;
+never a real announcer) saved as `voice/ref_pbp.wav` (play-by-play) and `voice/ref_color.wav` (analyst) before recording.
+
 Developers: see [CLAUDE.md](CLAUDE.md) for architecture, data formats and tests. Credits for third-party art and motion
 data are in Settings → Credits and [src/assets/CREDITS.md](src/assets/CREDITS.md).
 

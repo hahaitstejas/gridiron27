@@ -724,16 +724,31 @@ back, tabs), `setChant` (the home crowd's "DE-FENSE, clap clap" on the visitors'
 (`unlockAudio`; pad buttons try too). Settings: Master / Crowd / Effects volume (`prefs.volume`, `crowdVolume`, `sfxVolume`,
 applied by `savePrefs` → `setVolumes`). Dev: `__g27.sfx.audioDebug()`.
 
-### Commentary (UPDATE 5.4, option A)
-`game/commentary.js` `Commentary` (pure, its own LCG, never the game RNG): session / sim events + the match → lines for a
-two-man booth, `pbp` (throws, picks, fumbles, touchdowns, breakups, drops, flags; a summary line on `result`: runner / passer
-to receiver / sack / incomplete with yards and "first down"; FGs, punts, kickoffs; two-minute warning, timeouts, the final)
-and `color` (on `playcall`: 4th down, 3rd and long / short, red zone, late and close, then every few plays a player's day or
-the score); pri 2 cuts in, 0 is filler; repeats avoided for ~3 min. `audio/voice.js` `Voice` speaks them with the browser's
-Web Speech voices (two voices picked by name, PBP quicker / higher, analyst slower / lower; a 2-line queue, stale lines
-dropped, stops whenever `app !== 'game'`). main.js `commentate(e)` from `onSessionEvent` (`boothOn()`: not fast / watched /
-practice / sped up). Settings → Commentary (early test) (`prefs.booth`, default Off: the user found the browser voices flat and the after-the-play calls
-generic; the plan is recorded expressive clips called during the play), Commentary volume, Commentary subtitles (`hud.caption`, `#boothcap`).
+### Commentary (recorded clips, UPDATE 5.4 option B)
+The user found browser speech flat and after-the-play summaries generic, so the booth calls the play AS IT HAPPENS from
+recorded clips. `game/voiceLines.js` (pure) lists every clip (~566: `{ id, text, voice: pbp|color, energy 0|1|2 }`): phrase
+groups with numbered variants (`VARIANTS`: throw / throw_deep / handoff / catch_by / room / gonna_score / td / int / sack /
+gain_of / first_down / fg_good …), the breakaway countdown `count_40..10`, spots `yl_1..50`, gains `yds_1..29, 30..95`, every
+generator last name `name_<slug>` (243), the default team names `team_<slug>`, and the analyst's lines `c_<situation>_<n>`.
+Recording (on the user's Mac, free): `npm run voices:setup` (tools/voices/setup.sh: Python 3.10-3.12 venv `.venv-voice` +
+`chatterbox-tts`, MIT) then `npm run voices` (tools/voices/lines.mjs → voice/lines.json, tools/voices/make_voices.py: Chatterbox
+on mps/cuda/cpu, `ENERGY` → exaggeration / cfg_weight, peak-normalised, ffmpeg trims silence → mono 24 kHz 64 kbps MP3 in
+voice/clips, resumable, `--only` / `--redo` / `--fake` beeps for testing; optional voice/ref_pbp.wav / ref_color.wav reference
+voices, git-ignored; without ref_color the analyst is the same voice pitched down) → voice/index.json. voice/clips +
+index.json are committed; vite's `g27-voice` plugin serves /voice in dev and copies it next to every build but the offline
+file (~700 files in the web build, under itch's 1000).
+`game/booth.js` `Booth` (pure, own LCG): events → calls `{ parts: [clip ids], who, pri, ttl }` live: throw (deep / quick, with
+the QB's name), handoff, catch (contested = catch_big), broken tackle, big hit, TD / pick / fumble / recovery / sack (pri 2 cut
+in), breakup / drop, flags, kicks; `tick(sim)` each frame = the breakaway (`room` once the carrier is 10+ past the line with
+nobody within 6 yds, the 40/30/20/10 countdown, `gonna_score`); `result` = the gain / stop / first down unless a big call
+covered it; `playcall` = the analyst (a reaction to the last play first, then 4th down / goal line / 3rd and long / short / red
+zone / late game, else every 4+ plays a general word). Names / teams without a clip are left out. `audio/boothAudio.js`
+`BoothAudio` loads voice/index.json (retries; 404 = off), prefetches the phrases + this game's names (`boothForGame` in main.js,
+also lazily when the list arrives late), decodes on demand (LRU 160), stitches clips with a 35 ms gap on the audio.js `voiceOut()`
+bus (after the compressor, `commentaryVolume`), ducks the crowd while talking, pri 2 cuts in, pri 0 dropped when busy, stale
+calls (past `ttl`) skipped. main.js: `commentate(e)` from `onSessionEvent`, `booth.tick` after the sim steps, `boothOn()` (not
+fast / watched / practice / sped up), quiet whenever `app !== 'game'`. Settings → Commentary (`prefs.voiceBooth`, default On; does
+nothing until the clips exist), Commentary volume, Commentary subtitles (`hud.caption`).
 
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/

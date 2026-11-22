@@ -20,7 +20,9 @@
     "export-league": "node tools/export-league.js",
     "fetch-faces": "node tools/fetch-faces.mjs",
     "app": "vite build --mode app && electron .",
-    "app:build": "node tools/app-build.mjs"
+    "app:build": "node tools/app-build.mjs",
+    "voices:setup": "bash tools/voices/setup.sh",
+    "voices": "node tools/voices/lines.mjs && .venv-voice/bin/python tools/voices/make_voices.py"
   },
   "engines": {
     "node": ">=20.19"

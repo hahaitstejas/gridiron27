@@ -61,8 +61,9 @@ import { playArt } from './game/playArt.js';
 import { scenarioById, scenarioFinal } from './game/scenarios.js';
 import { crowdNoise } from './game/penalties.js';
 import * as SFX from './audio/audio.js';
-import { Voice } from './audio/voice.js';
-import { Commentary } from './game/commentary.js';
+import { BoothAudio } from './audio/boothAudio.js';
+import { Booth } from './game/booth.js';
+import { voiceClips, slug as voiceSlug } from './game/voiceLines.js';
 const SPECIAL_ART = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike']);
 
 // ---- Boot ----
@@ -129,15 +130,27 @@ const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
 playcall.hud = hud; // for the NO HUDDLE scorebug note
 hud.prefs = prefs;
-// Commentary (game/commentary.js picks the lines, audio/voice.js speaks them with the browser's voices).
-const booth = new Commentary((Date.now() % 1e6) | 0);
-const voice = new Voice();
-voice.onLine = (who, text) => hud.caption(prefs.commentarySubs ? text : null, who);
-const boothOn = () => !!prefs.booth && voice.available && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
+// Commentary: recorded clips (`npm run voices` → voice/clips), game/booth.js decides what to say as the play happens,
+// audio/boothAudio.js stitches and plays the clips. Off when the voices haven't been recorded (no voice/index.json).
+const boothAudio = new BoothAudio();
+const clipText = Object.fromEntries(voiceClips().map((c) => [c.id, c.text]));
+boothAudio.onLine = (who, ids) => hud.caption(prefs.commentarySubs && ids ? ids.map((id) => clipText[id] || '').join(' ') : null, who);
+boothAudio.load();
+let booth = null;
+const boothOn = () => prefs.voiceBooth !== false && boothAudio.ready && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
+/** A new game: a fresh booth, and the clips it will need fetched ahead (phrases + this game's names). */
+function boothForGame(s) {
+  booth = boothAudio.ready ? new Booth(boothAudio.have, (Date.now() % 1e6) | 0) : null;
+  if (!booth) return;
+  booth.session = s;
+  const ids = [...boothAudio.have].filter((id) => !id.startsWith('name_') && !id.startsWith('team_'));
+  for (const t of s.teams) { ids.push(`team_${voiceSlug(t.name)}`); for (const p of t.roster || []) ids.push(`name_${voiceSlug(p.last)}`); }
+  boothAudio.prefetch(ids);
+}
 function commentate(e) {
   if (!boothOn()) return;
-  voice.volume = Math.max(0, Math.min(1, (prefs.commentaryVolume ?? 0.9) * (prefs.volume ?? 0.8) * 1.15));
-  voice.say(booth.onEvent(e, { match: session.match, sim: session.sim, teams: session.teams, now: performance.now() / 1000 }));
+  if (!booth || booth.session !== session) { boothForGame(session); if (!booth) return; } // the clip list can arrive after the game starts
+  boothAudio.say(booth.onEvent(e, { match: session.match, sim: session.sim, teams: session.teams }));
 }
 
 const league = new LeagueUI({
@@ -329,6 +342,7 @@ function startGame(p, opts = {}) {
   snapCam = true;
   lastSim = null;
   speed = opts.speed || 1;
+  boothForGame(session);
   for (const e of session.events.splice(0)) onSessionEvent(e);
   // Broadcast package (scorebug accent + intro badge) by time slot: franchise prime-time windows, holidays, night games.
   hud.pkg = broadcastPackage(opts.gameDay, conditions, !!opts.practice, championship);
@@ -665,7 +679,7 @@ window.addEventListener('keydown', (e) => {
 
 // Debug hooks for automated testing.
 window.__g27 = { screens, get session() { return session; }, get speed() { return speed; }, set speed(v) { speed = v; }, // speed: dev slow-motion checks
- get app() { return app; }, get replay() { return replay; }, sfx: SFX, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills, showScenarios };
+ get app() { return app; }, get replay() { return replay; }, sfx: SFX, boothAudio, get booth() { return booth; }, renderer, input, hud, startGame, startReplay, teams, prefs, toMenu, league, franchiseUI, input2, showDrills, showScenarios };
 
 // URL shortcuts: ?auto&speed=6 (CPU vs CPU), ?play (skip menus), ?home=..&away=..
 const teamArg = (v) => (/^\d+$/.test(v) ? +v : teams.findIndex((t) => t.abbr.toUpperCase() === v.toUpperCase()));
@@ -841,7 +855,7 @@ const setCalled = new WeakSet(); // plays whose QB already called "Set!" (render
 let crowdLevel = null; // the stadium crowd this frame (audio): null = no crowd (menus, practice)
 function frameBody(now) {
   crowdLevel = null;
-  if (app !== 'game' && voice.busy) voice.stop(); // the booth goes quiet in menus, pauses and replays
+  if (app !== 'game' && (boothAudio.playing || boothAudio.queue.length)) boothAudio.stop(); // the booth goes quiet in menus, pauses and replays
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;
@@ -922,6 +936,7 @@ function frameBody(now) {
       if (app !== 'game') break;
     }
     if (steps >= 6 * sp) acc = 0;
+    if (booth && steps && boothOn()) boothAudio.say(booth.tick(session.sim)); // the breakaway call ("he's got room!", the yard lines)
     // Quick-start card: hide after three plays. (Counted by plays: the sim's 'snap' event is cleared by its next tick
     // before the session copies it.)
     if (firstHelp && session.plays >= firstHelp) { firstHelp = 0; hud.quickstart(false); }

@@ -1566,6 +1566,19 @@ function computePose(p, time, sim) {
       pose.legs[0].hip = -0.4; pose.legs[1].hip = -0.15; pose.legs[0].knee = 0.5 + 0.4 * k; pose.legs[1].knee = 0.9;
       break;
     }
+    case 'smother': {
+      // Falling on a loose ball: a short dive, chest down onto it, then curled around it on his side (both forearms
+      // wrapped under him, knees drawn up) so it reads as "he's got it" without any text.
+      const k = Math.min(1, t / 0.32), e = k * k * (3 - 2 * k);
+      pose.noGait = true;
+      pose.carryArm = 2;
+      pose.rootPitch = 1.42 * e; pose.rootRoll = 0.3 * e; pose.rootY = Math.sin(k * Math.PI) * 0.12 - 0.03 * e; pose.lean = 0;
+      for (const a of pose.arms) { a.pitch = 1.6 - 0.75 * e; a.elbow = 0.4 + 1.75 * e; a.out = 0.25 - 0.45 * e; }
+      pose.legs[0].hip = 0.25 + 0.75 * e; pose.legs[0].knee = 0.4 + 1.15 * e; pose.legs[0].out = 0.2 * e;
+      pose.legs[1].hip = 0.15 + 0.5 * e; pose.legs[1].knee = 0.3 + 1.0 * e;
+      pose.head = -0.2 - 0.25 * e; // tucked over the ball
+      break;
+    }
     case 'slide': {
       // Feet-first QB slide: hips drop to the turf, the body leans back, the lead leg shoots out straight in front, the
       // other folds under him (knee bent, foot under the hip); the ball clutched in both hands at the chest, chin tucked.
@@ -1786,7 +1799,7 @@ function computePose(p, time, sim) {
   }
   // A ball carrier cradles it in the right arm (both arms when protecting it) instead of pumping that arm.
   const b = sim?.ball;
-  if (!qbDone && b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.anim !== 'slide' && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
+  if (!qbDone && b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.anim !== 'slide' && p.anim !== 'smother' && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
     const left = p.ballArm === -1;
     const a = pose.arms[left ? 0 : 1];
     a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;
@@ -1958,7 +1971,7 @@ function qbCarriage(pose, p, sim, time) {
 }
 
 // Includes going down and getting up: a tackled runner keeps the ball cradled (drawn in his hand), so it never looks loose.
-const CARRY_ANIMS = new Set(['run', 'idle', 'juke', 'spin', 'truck', 'stiffarm', 'stumble', 'hurdle', 'backpedal', 'falling', 'down', 'getup', 'dive', 'slide']);
+const CARRY_ANIMS = new Set(['smother', 'run', 'idle', 'juke', 'spin', 'truck', 'stiffarm', 'stumble', 'hurdle', 'backpedal', 'falling', 'down', 'getup', 'dive', 'slide']);
 
 /** Per-player gear, stable by number: visors on ~35% (more for skill players), towels on QBs and some skill players. */
 function gearOf(p) {

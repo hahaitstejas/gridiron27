@@ -719,7 +719,9 @@ export class PlaySim {
       // Falling on the ball in a crowd: down by contact right there. Only a clean scoop gets returned.
       const crowd = this.players.some((q) => q.team !== best.team && q.state !== 'down' && Math.hypot(q.x - best.x, q.z - best.z) < 2.2);
       if (crowd || b.y < 0.2 && this.rng.chance(0.6)) {
-        best.state = 'tackled'; best.anim = 'falling'; best.animT = 0.45; best.fallT = 0.15; best.vx *= 0.2; best.vz *= 0.2; best.fallDir = { fwd: 1, side: 0 };
+        // He dives on it (render pose 'smother': face down, curled over the ball); a short dive toward where it lay.
+        best.facing = Math.atan2(b.z - best.z, b.x - best.x) || best.facing;
+        best.state = 'tackled'; best.anim = 'smother'; best.animT = 0; best.smother = true; best.fallT = 0.3; best.vx *= 0.35; best.vz *= 0.35; best.fallDir = { fwd: 1, side: 0 };
       }
     }
   }
@@ -974,7 +976,7 @@ export class PlaySim {
     if (c.fallT <= 0) {
       c.state = 'down';
       c.downT = 2;
-      c.anim = c.slideSpot ? 'slide' : 'down';
+      c.anim = c.slideSpot ? 'slide' : c.smother ? 'smother' : 'down';
       this.whistle('tackle');
     }
   }

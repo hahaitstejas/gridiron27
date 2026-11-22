@@ -370,8 +370,14 @@ export function scoutingScreen(ui, filter = 0, focus = 0) {
 }
 
 /** Your roster by position against what a 53-man roster usually carries (for the draft / re-signing / trades). */
+const TARGET = { QB: 3, HB: 4, FB: 1, WR: 6, TE: 3, T: 4, G: 4, C: 2, DE: 4, DT: 4, OLB: 4, MLB: 3, CB: 6, FS: 2, SS: 2, K: 1, P: 1 };
+/** Positions short of a full 53-man shape: [pos, have, want] (the re-sign screen's NEEDS chip). */
+export function rosterShort(roster) {
+  const have = {};
+  for (const p of roster) have[p.pos] = (have[p.pos] || 0) + 1;
+  return Object.entries(TARGET).filter(([pos, n]) => (have[pos] || 0) < n).map(([pos, n]) => [pos, have[pos] || 0, n]);
+}
 export function needsPanel(team) {
-  const TARGET = { QB: 3, HB: 4, FB: 1, WR: 6, TE: 3, T: 4, G: 4, C: 2, DE: 4, DT: 4, OLB: 4, MLB: 3, CB: 6, FS: 2, SS: 2, K: 1, P: 1 };
   const have = {}, best = {};
   for (const p of team.roster) { have[p.pos] = (have[p.pos] || 0) + 1; best[p.pos] = Math.max(best[p.pos] || 0, p.ovr); }
   return el('div.fd-needs', {}, Object.entries(TARGET).map(([pos, n]) => el(`div${(have[pos] || 0) >= n ? '.ok' : (have[pos] || 0) === 0 ? '.none' : ''}`, {},

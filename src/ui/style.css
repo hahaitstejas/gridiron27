@@ -2083,3 +2083,11 @@ body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #
 /* Commentary subtitles (hud.caption). */
 #boothcap { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); max-width: min(760px, 80vw); background: rgba(5, 8, 16, 0.78); color: #fff; padding: 6px 14px; font: 500 17px var(--fb, var(--fd)); display: flex; gap: 10px; align-items: baseline; pointer-events: none; }
 #boothcap b { font: 600 11px var(--fo, var(--fd)); letter-spacing: 0.2em; color: rgba(255,255,255,0.6); white-space: nowrap; }
+
+/* UPDATE 5.5: action panels with many rows (contract talks) were taller than their 46% band: the title ran over the
+   table and the last offers fell off the screen. A long list gets the whole screen, a wrapped title and a scroll. */
+.rx-actions.tall { top: 0; height: auto; justify-content: center; padding: 24px 0;
+  background: rgba(0,0,0,0.9); }
+.rx-actions.tall .rx-acth { font-size: 26px; max-width: 80%; text-align: center; line-height: 1.2; }
+.rx-actions.tall .rx-actlist { max-height: calc(100% - 90px); overflow-y: auto; padding: 2px 6px; }
+.rx-actions.tall .rx-act { width: 460px; background: #1d1f24; }

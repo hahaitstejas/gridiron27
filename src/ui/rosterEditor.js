@@ -216,7 +216,7 @@ export function actionsPanel(screens, title, list, back) {
     it.activate = fn;
     return it;
   });
-  screens.root.append(el('div.rx-actions', {}, el('div.rx-acth', { text: title }), el('div.rx-actlist', {}, items)));
+  screens.root.append(el(`div.rx-actions${items.length > 4 || title.length > 40 ? '.tall' : ''}`, {}, el('div.rx-acth', { text: title }), el('div.rx-actlist', {}, items)));
   screens.extraButtons = null;
   screens.nav.set(items, { columns: 1, onBack: back });
 }

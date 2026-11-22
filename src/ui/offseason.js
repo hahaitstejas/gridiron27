@@ -1,12 +1,12 @@
 import { el } from './nav.js';
 import { cutDownScreen } from './franchiseMore.js';
-import { actionsPanel } from './rosterEditor.js';
+import { actionsPanel, playerTable } from './rosterEditor.js';
 import { talksWith, makeOffer, PATIENCE } from '../franchise/negotiation.js';
 import { numberPicker } from './rosterEditor.js';
 import { logoCanvas } from '../render/logo.js';
 import { draftDayOffers, executeDeal, dealText } from '../franchise/trades.js';
 import { RNG } from '../core/rng.js';
-import { needsPanel } from './franchiseMore.js';
+import { needsPanel, rosterShort } from './franchiseMore.js';
 import { applyTag, tagSalary } from '../franchise/honors.js';
 import { LEAGUE } from '../data/leagueInfo.js';
 import { POSITIONS, OVERALL_WEIGHTS, RATINGS } from '../data/positions.js';
@@ -73,37 +73,42 @@ function resignStep(ctx, ui, f, focus = 0, note = null) {
   for (const p of list) if (talksWith(f, p).walked) keep[p.id] = false;
   const keepIds = () => new Set(list.filter((p) => keep[p.id]).map((p) => p.id));
   const proj = projectedPayroll(team, keepIds(), terms);
-  const rows = list.map((p, i) => {
-    const t = talksWith(f, p), tm = terms(p);
-    const status = t.walked ? 'Walked' : !keep[p.id] ? 'Let go' : t.done ? `Signed ${tm.years} yr` : `Asks ${tm.years} yr`;
-    const r = row([el('span.dc-pos', { text: p.pos }), el('span.st-name', { text: who(p) }), el('span.st-num', { text: `age ${p.age}` }),
-      el('span.st-num', { text: String(p.ovr) }), el('span.st-num', { text: `${money(p.salary || 0)} → ${money(tm.salary)}` }),
-      el(`span.st-num${keep[p.id] && !t.walked ? '.up' : '.down'}`, { text: status })]);
-    r.activate = () => talksPanel(ctx, ui, f, p, keep, i);
-    return r;
-  });
-  const done = button('Done: on to free agency', () => {
+  const finish = () => {
     if (projectedPayroll(team, keepIds(), terms) > f.cap) { window.alert(`That's over the ${money(f.cap)} salary cap: let someone go.`); return; }
+    ctx.screens.extraButtons = null;
     for (const p of list) if (keep[p.id]) resign(team, p.id, terms(p));
     delete f.offseason.keep; delete f.offseason.talks;
     finishResigning(f, ctx.teams);
     save(ctx);
     offseasonScreen(ctx, ui);
-  });
-  frame(ctx, 'Re-sign Players', note || (list.length ? `${list.length} contracts expired · next season's payroll ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (over the cap!)' : ''}${f.tagUsed === f.year ? ' · franchise tag used' : ''}` : 'No contracts expired this year'),
-    el('div.fr-sched', {}, el('div.st-table', {}, rows), el('div.fr-week', {}, el('div.dc-head', { text: 'Your roster (under contract)' }), needsPanel({ roster: team.roster.filter((p) => p.years > 0 || keep[p.id]) }))),
-    [done], `Salary now → his terms (kept players sign at them when you're done). &nbsp; <b class="btn A">A</b> negotiate &nbsp; <b class="btn Y">Y</b> franchise tag (1 year, top-5 average at his position)`, { rows, index: focus });
-  ctx.screens.extraButtons = (fr) => {
-    if (!fr.pressed.Y) return;
-    const p = list[ctx.screens.nav.index];
-    if (!p) return;
-    const price = tagSalary(ctx.teams, p);
-    if (!window.confirm(`Franchise tag ${who(p)} for one year at ${money(price)}?`)) return;
-    const r = applyTag(f, ctx.teams, team, p);
-    if (!r.ok) { window.alert(r.reason); return; }
-    logTransaction(f, `${team.abbr} use the franchise tag on ${p.pos} ${who(p)} (${money(r.salary)})`);
-    save(ctx); resignStep(ctx, ui, f);
   };
+  // The roster-table look (same as the practice squad / cut-downs): one clean row per expiring player, his card on top.
+  const head = (list.length ? `${list.length} contracts expired · next season ${money(proj)} of ${money(f.cap)}${proj > f.cap ? ' (OVER THE CAP)' : ''}${f.tagUsed === f.year ? ' · tag used' : ''}` : 'No contracts expired this year');
+  playerTable(ctx.screens, {
+    title: 'Re-sign Players', head: ['PLAYER', 'POS', 'AGE', 'OVR', 'NOW', 'TERMS', 'STATUS'],
+    rows: list.map((p, i) => {
+      const t = talksWith(f, p), tm = terms(p);
+      const status = t.walked ? 'WALKED' : !keep[p.id] ? 'LET GO' : t.done ? 'SIGNED' : 'KEEP';
+      return { p, team, cls: keep[p.id] && !t.walked ? 'hl' : '', cells: [`${p.first[0]}. ${p.last}`, p.pos, p.age, p.ovr, money(p.salary || 0), `${tm.years} yr ${money(tm.salary)}`, status],
+        act: () => talksPanel(ctx, ui, f, p, keep, i) };
+    }),
+    count: note ? `${note} · ${head}` : head,
+    chips: [(() => { const sh = rosterShort(team.roster.filter((p) => p.years > 0 || keep[p.id])); return sh.length ? `NEEDS ${sh.map(([pos, h, n]) => `${pos} ${h}/${n}`).join(' · ')}` : 'ROSTER SHAPE OK'; })()],
+    bar: '<span><b class="btn A">A</b> NEGOTIATE</span><span><b class="btn Y">Y</b> FRANCHISE TAG</span><span><b class="btn X">X</b> DONE: FREE AGENCY</span><span><b class="btn B">B</b> MAIN MENU</span>',
+    empty: 'No expiring contracts. X goes on to free agency.', focus, onBack: ctx.onExit,
+    extra: (fr) => {
+      if (fr.pressed.X) { finish(); return; }
+      if (!fr.pressed.Y) return;
+      const p = ctx.screens.nav.current?.player;
+      if (!p) return;
+      const price = tagSalary(ctx.teams, p);
+      if (!window.confirm(`Franchise tag ${who(p)} for one year at ${money(price)}?`)) return;
+      const r = applyTag(f, ctx.teams, team, p);
+      if (!r.ok) { window.alert(r.reason); return; }
+      logTransaction(f, `${team.abbr} use the franchise tag on ${p.pos} ${who(p)} (${money(r.salary)})`);
+      save(ctx); resignStep(ctx, ui, f);
+    },
+  });
 }
 
 /** Contract talks with one expiring player: offers at his ask / below it / with more or fewer years, or let him go. */

@@ -666,6 +666,10 @@ bring a league over with League → Saves & Files → export / import `.g27.json
   (`nope`), a receiver who dropped it puts his hands to his helmet (`hands`); a recovered fumble gets the nearest official pointing
   the recovering team's way (`signal(..., faceAng)`). Settings → Play result text (`prefs.callouts`, default On) hides the
   CAUGHT / BROKEN UP / DROPPED callouts and pulse rings.
+  Change of possession (the user's reference): an interception or a fumble the defense recovers, in a game with a human (not
+  kicks, sped-up or watched snaps), freezes the game `TURN_FREEZE` 1.8 s (main.js `turnFreeze`: no sim ticks, `animTime` stops)
+  while the camera swings behind the new ball carrier (`sim.turnCam` → camDir = -sim.dir; `sim.camDir` too, so the stick
+  matches), then play resumes from that frame.
 - `passCallout` (main.js): CAUGHT / INTERCEPTED / DROPPED / BROKEN UP… callout plus a pulse ring on the player.
 - Pause menu: hub-style tiles under a situation banner (`Screens.pause({ game })`, `pauseInfo` in main.js); it covers the whole screen (solid black) and hides the scorebug / ticker / milestone bar (UPDATE 5.2: it used to stop 58 px short and the field showed through around the prime-time bugs).
 - Touchdowns: the scorer does one of `CEL_STYLES` (spike, point, flex, leap) facing the field, teammates gather in an arc

@@ -735,6 +735,12 @@ function soundFor(e) {
 
 function onSessionEvent(e) {
   soundFor(e);
+  const tsim = session?.sim;
+  if (tsim && !session.fast && !session.watching && speed <= 1.5 && (session.humanTeams?.length || session.humanTeam !== null) && !tsim.isKick
+      && (e.type === 'interception' || (e.type === 'recovery' && e.team !== tsim.offIdx))) {
+    tsim.turnCam = true; tsim.camDir = -tsim.dir; // the camera and the stick follow the new ball carrier's way
+    turnFreeze = { sim: tsim, t: TURN_FREEZE };
+  }
   renderer.presentation.onEvent(e, session);
   if (e.type === 'touchdown' && session && !session.fast) renderer.lightShow();
   // Your touchdown: the celebration wheel (RS: up Dance, left Flex, right Spike, down Team) for a couple of seconds.
@@ -811,6 +817,11 @@ let time = 0;
 // Animation clock: runs at the game's speed (slow motion, 4x career fast-forward, a paused or slow replay), so pose crossfades,
 // the limp-limb springs and the gait stay in step with the sim instead of the wall clock.
 let animTime = 0;
+// Change of possession (UPDATE 5.3, the user's reference): on an interception / a fumble the defense recovers, a game with
+// a human freezes ~1.8 s while the camera swings around behind the new ball carrier (the field he runs at in front of him,
+// the stick turned to match), then play goes on from that frame.
+let turnFreeze = null; // { sim, t }
+const TURN_FREEZE = 1.8;
 let attract = 0;
 const setCalled = new WeakSet(); // plays whose QB already called "Set!" (render-side bookkeeping, the sim stays untouched)
 let crowdLevel = null; // the stadium crowd this frame (audio): null = no crowd (menus, practice)
@@ -879,7 +890,8 @@ function frameBody(now) {
     // Co-op: player 2's frame rides along (PlaySim runs his man with it, sim.withCoop).
     const gameInput = two ? { perTeam: true, [p1]: f, [1 - p1]: input2.frame } : session.settings.coop && input2.connected ? { ...f, coop: input2.frame } : f;
     // Career: snaps your player sits out run at 4x (the next one he's in comes up quickly).
-    const sp = session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed;
+    if (turnFreeze && (turnFreeze.sim !== session.sim || (turnFreeze.t -= dt) <= 0)) turnFreeze = null;
+    const sp = turnFreeze ? 0 : session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed;
     acc += dt * sp;
     let steps = 0;
     // Events raised between ticks (a timeout from the play-call screen, audibles, the hard count) would otherwise be
@@ -889,6 +901,7 @@ function frameBody(now) {
       session.tick(STEP, pcOpen ? null : gameInput);
       for (const e of session.events.splice(0)) onSessionEvent(e);
       if (!pcOpen) { input.consume(); input2.consume(); }
+      if (turnFreeze) { acc = 0; break; } // the change-of-possession freeze starts on this frame
       acc -= STEP;
       steps++;
       if (app !== 'game') break;
@@ -909,7 +922,7 @@ function frameBody(now) {
   }
 
   // ---- Render ----
-  const animRate = app === 'replay' ? (replay?.playing ? (replay.speed ?? 1) : 0) : app === 'game' && session ? (session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed) : app === 'paused' ? 0 : 1;
+  const animRate = app === 'replay' ? (replay?.playing ? (replay.speed ?? 1) : 0) : app === 'game' && session ? (turnFreeze ? 0 : session.watching && session.state !== 'playcall' ? Math.max(speed, 4) : speed) : app === 'paused' ? 0 : 1;
   animTime += dt * animRate;
   const sim = session?.sim || null;
   if (app !== 'replay' && sim !== lastSim) {
@@ -995,7 +1008,8 @@ function frameBody(now) {
     // From the line on (not once the return starts), and the stick follows the camera (sim.camDir) so up = upfield.
     const humanReturn = sim && sim.isKick && sim.offPlay.type !== 'fg' && session.humanSide === 'defense' && !session.watching;
     if (humanReturn && sim.camDir !== -sim.dir) sim.camDir = -sim.dir;
-    const camDir = playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : humanReturn ? -sim.dir : m.dirOf(m.possession);
+    const flipped = sim && sim.turnCam && sim.state === 'live';
+    const camDir = flipped ? -sim.dir : playerCam ? (pc.team === sim.offIdx ? sim.dir : -sim.dir) : humanReturn ? -sim.dir : m.dirOf(m.possession);
     // While the kick is in the air, a human returner's camera stays on him (behind him, looking at the ball coming
     // down onto the marker), so he can choose to field it, back off or let it bounce.
     let camPhase = phase;

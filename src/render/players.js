@@ -1574,8 +1574,9 @@ function computePose(p, time, sim) {
       pose.carryArm = 2;
       pose.rootPitch = 1.42 * e; pose.rootRoll = 0.3 * e; pose.rootY = Math.sin(k * Math.PI) * 0.12 - 0.03 * e; pose.lean = 0;
       for (const a of pose.arms) { a.pitch = 1.6 - 0.75 * e; a.elbow = 0.4 + 1.75 * e; a.out = 0.25 - 0.45 * e; }
-      pose.legs[0].hip = 0.25 + 0.75 * e; pose.legs[0].knee = 0.4 + 1.15 * e; pose.legs[0].out = 0.2 * e;
-      pose.legs[1].hip = 0.15 + 0.5 * e; pose.legs[1].knee = 0.3 + 1.0 * e;
+      // Prone: a big hip bend would drive the thighs into the turf, so one knee comes up beside him (like 'down').
+      pose.legs[0].hip = 0.25 + 0.5 * e; pose.legs[0].knee = 0.4 + 0.85 * e; pose.legs[0].out = 0.3 * e;
+      pose.legs[1].hip = 0.15 - 0.05 * e; pose.legs[1].knee = 0.3 + 0.1 * e;
       pose.head = -0.2 - 0.25 * e; // tucked over the ball
       break;
     }

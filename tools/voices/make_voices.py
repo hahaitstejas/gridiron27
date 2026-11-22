@@ -75,6 +75,13 @@ def load_model():
     return ChatterboxTTS.from_pretrained(device=device), device
 
 
+def write_index():
+    """The index the game reads: which clips exist."""
+    have = sorted(f[:-4] for f in os.listdir(CLIPS) if f.endswith('.mp3'))
+    json.dump({'version': 1, 'clips': have}, open(os.path.join(VOICE, 'index.json'), 'w'))
+    return have
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--fake', action='store_true')
@@ -119,10 +126,9 @@ def main():
         os.remove(tmp)
         done = i + 1
         rate = (time.time() - t0) / done
+        if done % 10 == 0: write_index()  # stop any time: the game uses whatever is recorded so far
         print(f'[{done}/{len(todo)}] {c["id"]}: {c["text"]}   (~{int(rate * (len(todo) - done) / 60)} min left)', flush=True)
-    # The index the game reads: which clips exist.
-    have = sorted(f[:-4] for f in os.listdir(CLIPS) if f.endswith('.mp3'))
-    json.dump({'version': 1, 'clips': have}, open(os.path.join(VOICE, 'index.json'), 'w'))
+    have = write_index()
     shutil.rmtree(TMP, ignore_errors=True)
     print(f'Done: {len(have)} clips in voice/clips, voice/index.json written.')
 

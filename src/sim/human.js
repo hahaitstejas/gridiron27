@@ -150,7 +150,13 @@ function handleCarrier(sim, p, inp, cam, dt = 1 / 60) {
   const isQB = p.slot === 'QB';
   if (inp.pressed.A) startMove(sim, p, 'stiffarm');
   else if (inp.pressed.B) startMove(sim, p, 'spin');
-  else if (inp.pressed.X) startMove(sim, p, isQB ? 'slide' : 'dive');
+  else if (inp.pressed.X && !isQB) startMove(sim, p, 'dive');
+  else if (isQB && (inp.pressed.X || p.slidePend)) {
+    // QB: a short tap of X slides (gives himself up, spotted where the slide starts); holding X dives for the yards.
+    p.slidePend = true;
+    if (!inp.down.X) { p.slidePend = false; startMove(sim, p, 'slide'); }
+    else if (inp.held.X >= 0.22) { p.slidePend = false; startMove(sim, p, 'dive'); }
+  }
   else if (inp.pressed.Y) startMove(sim, p, 'hurdle');
   else if (inp.flick.up) startMove(sim, p, 'truck');
   else if (inp.flick.left || inp.flick.right) {

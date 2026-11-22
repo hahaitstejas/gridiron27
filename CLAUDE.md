@@ -494,6 +494,12 @@ used to show through a smooth jersey; arms hang at `out` 0.24 (clear of the pads
 procedural drape / underarm / sleeve folds and the baked `jersey_fold.png` term jumped between arm and torso triangles and
 left streaks on the shoulders (the pants' pad creases and hip / knee bunching stay).
 
+### Freezes (UPDATE 5.5)
+Face fitting (MediaPipe on the main thread) runs from a queue in ui/faces.js, one photo at a time and only while
+`setFitGate` (main.js) allows it: never during a live snap or a replay; its localStorage cache is written in one batch
+3 s later. `GameRenderer.adapt()` never steps the pixel ratio back up to one that was already too slow (`tooSlow`) and waits
+20 s between raises: it used to bounce every 1.5 s, and each change reallocates the HDR / bloom targets.
+
 ### Photo faces fitted to the head (MediaPipe)
 A player photo used to be a square crop painted on the face (eyes lined up by luck). Now, when the 3D renderer asks for a photo
 (`faceImage(p, onLoad, { fit: true })` in ui/faces.js; menus never trigger it), the full photo is shrunk to <= 512 px and
@@ -1142,6 +1148,12 @@ Home team priority: `?home=<index|abbr>` > `play_as` > the single team in a part
 - Forward progress (`PlaySim.forwardProgress`): while a free defender is within 0.9 yd of the runner, the furthest
   point the ball reached is kept (`c.fp`); a tackle behind it is spotted there (`result.forwardProgress`), and being
   driven back 2+ yards in contact blows the whistle (not for a QB in the pocket). 0.35 s free resets it.
+- Fall direction (UPDATE 5.5): `PlaySim.tackleCarrier` sets `c.fallDir = { fwd, side }` (his momentum + the tackler's shove,
+  his frame); `carrierBallPos` puts the ball ahead / behind / to the side by it and players.js draws the carrier's fall from the
+  same `p.fallDir`, so the spot matches the picture (backward falls on sacks were spotted ~2 yds ahead).
+- QB slide (UPDATE 5.5): a short tap of X slides (human.js `slidePend`: released before 0.22 s), holding X dives; the slide
+  keeps its own pose to the whistle (anim.js / tackleCarrier keep `slide` while `slideSpot` is set): feet first, lead leg out,
+  the other folded under, ball in both hands at the chest.
 - Ball spotting: the dead-ball spot and the goal-line plane use the **ball's** position
   (`PlaySim.carrierBallPos`), which moves forward as a tackled runner falls (matching the animation). A QB
   slide is spotted where the slide began.

@@ -938,8 +938,8 @@ export class PlaySim {
   tackleCarrier(c, tackler, power = 1) {
     if (c.state === 'tackled') return;
     c.state = 'tackled';
-    c.anim = 'falling';
-    c.animT = 0;
+    // A slide keeps its own pose through the end of the play (no fall).
+    if (!c.slideSpot) { c.anim = 'falling'; c.animT = 0; }
     c.fallT = 0.35 + Math.min(0.4, Math.hypot(c.vx, c.vz) * 0.04);
     // Which way he goes down (his frame): his momentum plus the shove of the tackler. A runner hit head-on goes over
     // backward, one wrapped from the side falls away from the tackler. The renderer draws the fall this way and the
@@ -974,7 +974,7 @@ export class PlaySim {
     if (c.fallT <= 0) {
       c.state = 'down';
       c.downT = 2;
-      c.anim = 'down';
+      c.anim = c.slideSpot ? 'slide' : 'down';
       this.whistle('tackle');
     }
   }

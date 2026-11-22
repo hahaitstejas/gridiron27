@@ -1566,9 +1566,19 @@ function computePose(p, time, sim) {
       pose.legs[0].hip = -0.4; pose.legs[1].hip = -0.15; pose.legs[0].knee = 0.5 + 0.4 * k; pose.legs[1].knee = 0.9;
       break;
     }
-    case 'slide':
-      pose.rootPitch = -1.0 * Math.min(1, t / 0.3); pose.legs[0].hip = 1.4; pose.legs[1].hip = 1.2;
+    case 'slide': {
+      // Feet-first QB slide: hips drop to the turf, the body leans back, the lead leg shoots out straight in front, the
+      // other folds under him (knee bent, foot under the hip); the ball clutched in both hands at the chest, chin tucked.
+      const k = Math.min(1, t / 0.28), e = k * k * (3 - 2 * k);
+      pose.noGait = true;
+      pose.carryArm = 2;
+      pose.rootY = -0.62 * e; pose.rootPitch = -0.95 * e; pose.lean = -0.15 * e; pose.crouch = 0;
+      pose.legs[0].hip = 0.25 + 1.15 * e; pose.legs[0].knee = 0.5 * (1 - e) + 0.12;
+      pose.legs[1].hip = 0.2 + 0.45 * e; pose.legs[1].knee = 0.5 + 1.6 * e; pose.legs[1].out = 0.15 * e;
+      for (const a of pose.arms) { a.pitch = 0.75 + 0.2 * e; a.elbow = 1.9; a.out = -0.12; }
+      pose.head = 0.35 * e;
       break;
+    }
     case 'strip':
       runLegs(Math.min(1, run));
       pose.arms[1].pitch = 2.2; pose.arms[1].elbow = 0.2;
@@ -1775,7 +1785,7 @@ function computePose(p, time, sim) {
   }
   // A ball carrier cradles it in the right arm (both arms when protecting it) instead of pumping that arm.
   const b = sim?.ball;
-  if (!qbDone && b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
+  if (!qbDone && b && b.carrier === p.id && b.state === 'held' && CARRY_ANIMS.has(p.anim) && p.anim !== 'slide' && p.slot !== undefined && !(p.task?.type === 'qb_pass' && !sim.passThrown)) {
     const left = p.ballArm === -1;
     const a = pose.arms[left ? 0 : 1];
     a.pitch = 0.55; a.elbow = 2.0; a.out = -0.2; a.twist = 0;

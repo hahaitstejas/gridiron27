@@ -19,6 +19,7 @@ export function updateAnimations(sim, dt) {
       }
       if (p.move && p.move.type === 'spin') p.facing = p.move.startFacing + (p.move.t / p.move.dur) * Math.PI * 2;
     }
+    if (p.slideSpot && (p.state === 'down' || p.state === 'tackled')) { p.anim = 'slide'; continue; } // sat down: hold the slide
     if (p.state === 'down') { if (p.kneeling) p.anim = 'kneel'; else if (p.anim !== 'tackle' || p.animT > 0.6) p.anim = 'down'; continue; }
     if (p.kneeling && p.state === 'tackled') { p.anim = 'kneel'; continue; }
     if (p.state === 'tackled') { p.anim = 'falling'; continue; }

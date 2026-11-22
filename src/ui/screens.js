@@ -784,7 +784,7 @@ export class Screens {
       ]],
       ['Ball carrier', [
         ['Sprint', 'RT'], ['Juke left / right', 'RS ←/→'], ['Truck', 'RS ↑'], ['Stiff arm', 'A'], ['Spin', 'B'],
-        ['Dive (QB: slide)', 'X'], ['Hurdle', 'Y'], ['Switch ball arm', 'RS click'], ['Lateral / pitch', 'LB'], ['Protect the ball (fewer fumbles)', 'hold RB'], ['Taunt on the way in (big fumble risk near defenders)', 'hold LT'],
+        ['Dive (QB: tap = slide, hold = dive)', 'X'], ['Hurdle', 'Y'], ['Switch ball arm', 'RS click'], ['Lateral / pitch', 'LB'], ['Protect the ball (fewer fumbles)', 'hold RB'], ['Taunt on the way in (big fumble risk near defenders)', 'hold LT'],
       ]],
       ['Defense at the line', [
         ['Switch player', 'B'], ['Move your player before the snap', 'Left stick'],

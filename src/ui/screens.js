@@ -18,7 +18,7 @@ const SETTINGS_KEY = 'g27.settings';
 export const DEFAULT_PREFS = { home: 20, away: 28, side: 'home', difficulty: 'pro', quarterMinutes: 5, accelClock: 20, penalties: true, weather: 'random', time: 'random', gameDay: 'auto',
   nameTags: true, resultText: false, statCard: true, autoReplay: true, intro: true, careerCam: 'player', camera: 'standard', graphics: 'high', sliders: null,
   practiceSide: 'offense', practiceYL: 25, practiceSit: '1-10', practiceAfter: 'reset', autoNumbers: false,
-  volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8 };
+  volume: 0.8, crowdVolume: 0.7, sfxVolume: 0.8, commentary: true, commentaryVolume: 0.9, commentarySubs: false };
 
 const VOL_STEPS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1];
 const volLabel = (v) => (v ? `${Math.round(v * 100)}%` : 'Off');
@@ -54,6 +54,9 @@ export const OPTION_HELP = {
   'auto replay big plays': 'Touchdowns, interceptions and big hits replay automatically once the play is over.',
   'master volume': 'Everything you hear: the crowd, whistles, hits, kicks and menu clicks (all made live in the browser, no sound files).',
   'crowd volume': 'The stadium: it murmurs between plays, gets loud on big downs and the home team\'s big plays, and groans when the visitors score.',
+  'commentary': 'A two-man booth: play-by-play calls during and after each play, an analyst between plays (situations, who is having a big day). Uses your computer\'s built-in voices, so it sounds best on a Mac or in Edge; off in sped-up games and practice.',
+  'commentary volume': 'How loud the booth is (times the master volume).',
+  'commentary subtitles': 'Show what the booth says in a small line above the scorebug.',
   'effects volume': 'Whistles, pad hits, kicks, the snap call, catches, the touchdown horn and menu clicks.',
   'pregame intro': 'The stadium flyover and run-out before kickoff. A, B or Menu skips it.',
   'career camera': 'In Career mode: the camera behind your player, or the broadcast view.',
@@ -933,6 +936,9 @@ export class Screens {
       option('Master volume', VOL_STEPS, 'volume', volLabel),
       option('Crowd volume', VOL_STEPS, 'crowdVolume', volLabel),
       option('Effects volume', VOL_STEPS, 'sfxVolume', volLabel),
+      option('Commentary', [true, false], 'commentary', (v) => (v ? 'On' : 'Off')),
+      option('Commentary volume', VOL_STEPS, 'commentaryVolume', volLabel),
+      option('Commentary subtitles', [false, true], 'commentarySubs', (v) => (v ? 'On' : 'Off')),
       option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
       option('Franchise signings: jersey #', [false, true], 'autoNumbers', (v) => (v ? 'Automatic' : 'You pick')),
     ];

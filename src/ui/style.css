@@ -2080,3 +2080,6 @@ body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #
 .ct-row .ct-key { color: rgba(255,255,255,0.7); }
 .ct-row.focus, .ct-row.focused, .ct-row.sel { background: #fff; color: #000; }
 .ct-row.focus .ct-key, .ct-row.focused .ct-key, .ct-row.sel .ct-key { color: #333; }
+/* Commentary subtitles (hud.caption). */
+#boothcap { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); max-width: min(760px, 80vw); background: rgba(5, 8, 16, 0.78); color: #fff; padding: 6px 14px; font: 500 17px var(--fb, var(--fd)); display: flex; gap: 10px; align-items: baseline; pointer-events: none; }
+#boothcap b { font: 600 11px var(--fo, var(--fd)); letter-spacing: 0.2em; color: rgba(255,255,255,0.6); white-space: nowrap; }

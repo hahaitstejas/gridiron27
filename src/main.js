@@ -61,6 +61,8 @@ import { playArt } from './game/playArt.js';
 import { scenarioById, scenarioFinal } from './game/scenarios.js';
 import { crowdNoise } from './game/penalties.js';
 import * as SFX from './audio/audio.js';
+import { Voice } from './audio/voice.js';
+import { Commentary } from './game/commentary.js';
 const SPECIAL_ART = new Set(['kickoff', 'punt', 'fg', 'kneel', 'spike']);
 
 // ---- Boot ----
@@ -127,6 +129,17 @@ const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
 playcall.hud = hud; // for the NO HUDDLE scorebug note
 hud.prefs = prefs;
+// Commentary (game/commentary.js picks the lines, audio/voice.js speaks them with the browser's voices).
+const booth = new Commentary((Date.now() % 1e6) | 0);
+const voice = new Voice();
+voice.onLine = (who, text) => hud.caption(prefs.commentarySubs ? text : null, who);
+const boothOn = () => prefs.commentary !== false && voice.available && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
+function commentate(e) {
+  if (!boothOn()) return;
+  voice.volume = Math.max(0, Math.min(1, (prefs.commentaryVolume ?? 0.9) * (prefs.volume ?? 0.8) * 1.15));
+  voice.say(booth.onEvent(e, { match: session.match, sim: session.sim, teams: session.teams, now: performance.now() / 1000 }));
+}
+
 const league = new LeagueUI({
   teams, prefs, screens,
   onExit: () => toMenu(),
@@ -735,6 +748,7 @@ function soundFor(e) {
 
 function onSessionEvent(e) {
   soundFor(e);
+  commentate(e);
   const tsim = session?.sim;
   if (tsim && !session.fast && !session.watching && speed <= 1.5 && (session.humanTeams?.length || session.humanTeam !== null) && !tsim.isKick
       && (e.type === 'interception' || (e.type === 'recovery' && e.team !== tsim.offIdx))) {
@@ -827,6 +841,7 @@ const setCalled = new WeakSet(); // plays whose QB already called "Set!" (render
 let crowdLevel = null; // the stadium crowd this frame (audio): null = no crowd (menus, practice)
 function frameBody(now) {
   crowdLevel = null;
+  if (app !== 'game' && voice.busy) voice.stop(); // the booth goes quiet in menus, pauses and replays
   const frameMs = now - last;
   const dt = Math.min(0.1, frameMs / 1000);
   last = now;

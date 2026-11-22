@@ -724,6 +724,16 @@ back, tabs), `setChant` (the home crowd's "DE-FENSE, clap clap" on the visitors'
 (`unlockAudio`; pad buttons try too). Settings: Master / Crowd / Effects volume (`prefs.volume`, `crowdVolume`, `sfxVolume`,
 applied by `savePrefs` → `setVolumes`). Dev: `__g27.sfx.audioDebug()`.
 
+### Commentary (UPDATE 5.4, option A)
+`game/commentary.js` `Commentary` (pure, its own LCG, never the game RNG): session / sim events + the match → lines for a
+two-man booth, `pbp` (throws, picks, fumbles, touchdowns, breakups, drops, flags; a summary line on `result`: runner / passer
+to receiver / sack / incomplete with yards and "first down"; FGs, punts, kickoffs; two-minute warning, timeouts, the final)
+and `color` (on `playcall`: 4th down, 3rd and long / short, red zone, late and close, then every few plays a player's day or
+the score); pri 2 cuts in, 0 is filler; repeats avoided for ~3 min. `audio/voice.js` `Voice` speaks them with the browser's
+Web Speech voices (two voices picked by name, PBP quicker / higher, analyst slower / lower; a 2-line queue, stale lines
+dropped, stops whenever `app !== 'game'`). main.js `commentate(e)` from `onSessionEvent` (`boothOn()`: not fast / watched /
+practice / sped up). Settings → Commentary (default On), Commentary volume, Commentary subtitles (`hud.caption`, `#boothcap`).
+
 ### Instant replay (`src/replay/replay.js`)
 `ReplayRecorder` stores one compact `Float32Array` frame per sim tick (player x/z/facing/anim/state/velocity/
 move, ball) from the snap to the end of the play; the session keeps the last one (`session.lastReplay`, not

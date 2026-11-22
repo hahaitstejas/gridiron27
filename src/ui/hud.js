@@ -276,6 +276,17 @@ export class Hud {
     c.style.display = 'flex';
   }
 
+  /** Commentary subtitles (Settings → Commentary subtitles): the booth's current line above the scorebug; null hides it. */
+  caption(text, who) {
+    const el = (this._cap ||= (() => { const d = document.createElement('div'); d.id = 'boothcap'; d.className = 'hidden'; this.root.append(d); return d; })());
+    if (!text) { el.classList.add('hidden'); return; }
+    el.innerHTML = '';
+    const b = document.createElement('b'); b.textContent = who === 'color' ? 'ANALYST' : 'PLAY-BY-PLAY';
+    const s = document.createElement('span'); s.textContent = text;
+    el.append(b, s);
+    el.classList.remove('hidden');
+  }
+
   /** First game in a browser: a small quick-start card (the essentials, controller and keyboard). */
   quickstart(on) {
     const el = this.$('quickstart');

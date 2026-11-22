@@ -1572,11 +1572,12 @@ function computePose(p, time, sim) {
       const k = Math.min(1, t / 0.28), e = k * k * (3 - 2 * k);
       pose.noGait = true;
       pose.carryArm = 2;
-      pose.rootY = -0.62 * e; pose.rootPitch = -0.95 * e; pose.lean = -0.15 * e; pose.crouch = 0;
-      pose.legs[0].hip = 0.25 + 1.15 * e; pose.legs[0].knee = 0.5 * (1 - e) + 0.12;
-      pose.legs[1].hip = 0.2 + 0.45 * e; pose.legs[1].knee = 0.5 + 1.6 * e; pose.legs[1].out = 0.15 * e;
-      for (const a of pose.arms) { a.pitch = 0.75 + 0.2 * e; a.elbow = 1.9; a.out = -0.12; }
-      pose.head = 0.35 * e;
+      // Sat back ~40 deg (not flat on his back), lead leg along the turf, trail knee bent under, ball low at the chest.
+      pose.rootY = -0.58 * e; pose.rootPitch = -0.62 * e; pose.lean = 0.05 * e; pose.crouch = 0;
+      pose.legs[0].hip = 0.25 + 0.42 * e; pose.legs[0].knee = 0.5 * (1 - e) + 0.08;
+      pose.legs[1].hip = 0.2 + 0.1 * e; pose.legs[1].knee = 0.5 + 1.5 * e; pose.legs[1].out = 0.2 * e;
+      for (const a of pose.arms) { a.pitch = 0.45; a.elbow = 1.95; a.out = -0.18; }
+      pose.head = 0.3 * e;
       break;
     }
     case 'strip':

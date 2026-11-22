@@ -22,7 +22,7 @@
     "app": "vite build --mode app && electron .",
     "app:build": "node tools/app-build.mjs",
     "voices:setup": "bash tools/voices/setup.sh",
-    "voices": "node tools/voices/lines.mjs && .venv-voice/bin/python tools/voices/make_voices.py"
+    "voices": "node tools/voices/lines.mjs && (test -x .venv-voice/bin/python || (echo 'First run: npm run voices:setup' && exit 1)) && .venv-voice/bin/python tools/voices/make_voices.py"
   },
   "engines": {
     "node": ">=20.19"

@@ -10,6 +10,13 @@ Also on **[itch.io](https://hahaitstejas.itch.io/gridiron-27)**. Desktop Chrome,
 Press any button, pick **Play Now**, choose two teams, play. Your first game shows the basic controls; press **H** in a
 game for all of them. Saves stay in your browser.
 
+## Your own league: one file
+
+The whole league is **one spreadsheet**, `league.csv`: teams, colors, logos, rosters, ratings, depth charts, coaches,
+uniforms, stadiums, schedule, free agents. Get it from **Edit League → Rosters → Spreadsheets → Export everything as one file**, fill it in,
+and import it back. The top of the file has a README section that explains every column, so you can hand the file to an
+AI (ChatGPT, Claude, …) and ask it to *"fill this in with my custom league"* or *"design uniforms for these teams"*.
+
 ## Controls (the essentials)
 
 | | Controller | Keyboard |
@@ -22,7 +29,7 @@ game for all of them. Saves stay in your browser.
 | Timeout · pause | View / both triggers · Menu | T · Esc |
 
 Everything else (audibles, hot routes, coverage calls, rush moves, catch types) is on the in-game **H** panel and in
-Settings → Controls.
+Settings → Controls (every control, by situation).
 
 ## Modes
 
@@ -46,8 +53,8 @@ npm run dev
 Then open **http://localhost:5173**. No internet later? `npm run build:offline` makes one file,
 `dist-offline/Gridiron27.html`, that you can double-click anywhere.
 
-**Your own league:** `npm run export-league` writes editable spreadsheets to `public/local/` (teams, rosters, depth
-charts, uniforms, stadiums, coaches); edit them in any spreadsheet app and reload. That folder never leaves your computer.
+**Your own league (local copy):** `npm run export-league` writes `public/local/league.csv` (the same one file, plus the
+separate sheets); edit it in any spreadsheet app (or have an AI fill it in) and reload. That folder never leaves your computer.
 
 Developers: see [CLAUDE.md](CLAUDE.md) for architecture, data formats and tests. Credits for third-party art and motion
 data are in Settings → Credits and [src/assets/CREDITS.md](src/assets/CREDITS.md).

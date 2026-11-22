@@ -331,6 +331,10 @@ export class GameSession {
       // Trick plays and fakes work once: a defense that has seen this one today reads it.
       trickSeen: (off.trick || off.fake) ? (this.tricksRun[`${m.possession}:${off.id}`] || 0) : 0,
       // The last play of a half (or a game you're losing by one score): laterals until somebody's down.
+      // Clock management: a ball carrier whose team needs to stop the clock gets out of bounds (trailing or tied late in
+      // the 4th, or driving before the half).
+      clockOut: m.phase === 'scrimmage' && ((m.quarter >= 4 && m.score[m.possession] <= m.score[1 - m.possession] && m.clock <= 150)
+        || (m.quarter === 2 && m.clock <= 70 && m.yardLine >= 30)),
       lastGasp: m.phase === 'scrimmage' && (m.quarter === 2 || (m.quarter >= 4 && m.score[m.possession] < m.score[1 - m.possession] && m.score[1 - m.possession] - m.score[m.possession] <= 8)) && m.clock <= 6,
     });
     if (this.lock !== null) this.lockOn(this.sim);

@@ -119,6 +119,7 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   // stay away from runs in the middle of the field that keep the clock moving.
   const drill = hurryUp(m, team);
   if (drill) run = m.timeouts[team] === 0 ? 0.02 : 0.1;
+  // Needing points with the clock nearly gone (no time to line up again after a tackle in bounds): throw, never run.
   if (q4 && lead > 0 && m.clock < 360) run = 0.75;
   if (q4 && lead < -8 && m.clock < 480) run *= 0.5;
   // The offensive coordinator's run/pass lean (coaches.csv run_pct; 45 = league average).
@@ -128,10 +129,12 @@ export function chooseOffense(m, team, rng, smart = 0.85) {
   const style = m.settings?.styles?.[team];
   if (style === 'power') run += 0.12; else if (style === 'spread') run -= 0.08; else if (style === 'airraid') run -= 0.14; else if (style === 'westcoast') run -= 0.04;
   run = clamp01(run);
+  const desperate = (q4 && lead < 0 && m.clock <= 40) || (m.quarter === 2 && m.clock <= 20 && m.yardLine >= 40);
+  if (desperate || (drill && m.timeouts[team] === 0 && m.clockRunning)) run = 0;
   const wantRun = rng.chance(run);
   return pickPlay(m, rng, {
     run: wantRun,
-    deep: !wantRun && (toGo >= 12 || style === 'airraid' || (m.inTwoMinutes && lead < 0 && m.yardLine < 60)) && rng.chance(style === 'airraid' ? 0.45 : 0.55),
+    deep: !wantRun && ((q4 && lead < -3 && m.clock <= 40 && m.yardLine < 70) || toGo >= 12 || style === 'airraid' || (m.inTwoMinutes && lead < 0 && m.yardLine < 60)) && rng.chance(style === 'airraid' ? 0.45 : 0.55),
     quick: !wantRun && (toGo <= 5 || (m.down === 3 && toGo <= 7) || style === 'westcoast' || style === 'spread') && rng.chance(style === 'westcoast' ? 0.75 : 0.6),
     sideline: !wantRun && drill && m.timeouts[team] <= 1,
     goalLine: m.yardLine >= 97,
@@ -172,10 +175,13 @@ export function shouldKneel(m, team) {
   if (lead <= 0) return false;
   const oppTO = m.timeouts[1 - team];
   // Snaps left before a turnover on downs, each burning ~40s, minus opponent timeouts.
+  // Snaps left before a turnover on downs: each kneel takes ~2 s and the play clock runs ~40 s before the next one,
+  // unless the opponent stops it with a timeout. A 4th-down kneel hands the ball over, so it only works when that
+  // snap ends the game (or the half).
   const snaps = 5 - m.down;
-  const killable = snaps * 40 + 2 - oppTO * 40;
+  const killable = snaps * 2 + Math.max(0, snaps - 1 - oppTO) * 38;
   if (m.quarter >= 4 && m.clock <= killable) return true;
-  if (m.quarter === 2 && m.clock <= 25 && m.yardLine < 50 && lead >= -100) return true;
+  if (m.quarter === 2 && m.clock <= 25 && m.yardLine < 50 && (m.down < 4 || m.clock <= 2)) return true;
   return false;
 }
 
@@ -281,6 +287,7 @@ export function defenseForSpecial(offPlay) {
 /** Seconds of play clock the CPU offense uses before snapping (tempo). */
 export function cpuTempo(m, team, rng) {
   const lead = m.score[team] - m.score[1 - team];
+  if (m.phase === 'scrimmage' && m.possession === team && shouldKneel(m, team)) return 39.5; // victory formation: let the play clock run all the way down
   if (hurryUp(m, team) && (m.quarter !== 2 || lead <= 0)) return 8 + rng.next() * 6; // hurry-up
   if (m.quarter >= 4 && m.clock < 480 && lead < -8) return 14 + rng.next() * 6; // down two scores: quicker before the two-minute warning
   if (m.quarter >= 4 && lead > 0 && m.clock < 360) return 37 + rng.next() * 2; // milk the clock

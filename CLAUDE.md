@@ -223,7 +223,12 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   clock management, timeouts). `cpuTempo`: hurry-up inside two minutes when not ahead and in Q4 under 5:30 when down 9+,
   milking with a lead. Icing (`wantsIce`): a CPU defense with a timeout calls it right before a field goal that would tie
   or win inside 0:40 of Q4 / in OT (`session.snap()`, once per kick, `iced` event); the iced kick has a faster meter needle
-  (human, `meter.fall` 1.12) or +15% aim noise (CPU, `cfg.iced`). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
+  (human, `meter.fall` 1.12) or +15% aim noise (CPU, `cfg.iced`).
+  Clock management (UPDATE 5.4): `shouldKneel` counts ~2 s a kneel plus a ~38 s runoff before each later snap (minus the
+  defense's timeouts), so a 4th-down kneel only happens when it ends the game / half, and `cpuTempo` lets the play clock run
+  to 39.5 s in victory formation; trailing in Q4 inside 0:40 (or driving at the end of the half, or no timeouts in the drill)
+  the CPU never runs (deep shots in its own end); `cfg.clockOut` (session: trailing / tied in Q4 inside 2:30, or Q2 inside
+  1:10 past its own 30) makes ball carriers work to the sideline and step out (carrier.js; ~17% of plays end out of bounds vs ~3%). `ai/difficulty.js`: Rookie / Pro / All-Pro / Legend — rating boosts per side
   plus CPU reaction, accuracy, tackling, fumbles, blitz rate and play-call smarts.
 
 ### League management (Phase 4)

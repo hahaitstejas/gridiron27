@@ -27,6 +27,13 @@ export function carrierAI(sim, p, dt) {
     t.ezDecided = !(near > 11 && deep < 4);
     if (t.ezDecided) { p.anim = 'down'; p.vx = p.vz = 0; sim.tackleCarrier(p, null, 0); p.fallT = 0.15; return; }
   }
+  // Clock management: when his team needs the clock stopped he works to the sideline and steps out (CPU carriers; not on
+  // kicks or returns after a turnover).
+  const out = sim.cfg.clockOut && p.team === sim.offIdx && !sim.isKick;
+  const side = Math.sign(p.z) || 1;
+  let closest = 99;
+  if (out) for (const d of opp) closest = Math.min(closest, Math.hypot(d.x - p.x, d.z - p.z));
+  const outK = out ? (Math.abs(p.z) > 14 || closest < 4.5 ? 1.0 : 0.3) : 0;
   let bestA = base, bestS = -1e9;
   for (const a0 of ANGLES) {
     const a = base + a0;
@@ -42,8 +49,9 @@ export function carrierAI(sim, p, dt) {
         if (dd < md) md = dd;
       }
       s -= Math.max(0, 3.2 - md) * (r < 2 ? 0.9 : r < 4 ? 0.6 : 0.3);
-      if (Math.abs(pz) > HALF_WIDTH - 1) s -= 1.5 + (Math.abs(pz) - HALF_WIDTH + 1);
+      if (Math.abs(pz) > HALF_WIDTH - 1) s += out && Math.sign(pz) === side ? 0.4 : -(1.5 + (Math.abs(pz) - HALF_WIDTH + 1));
     }
+    if (outK) s += dz * side * outK;
     if (t.lastA !== undefined) s -= Math.abs(a - t.lastA) * 0.25;
     // A called return (left / right): early on, the returner heads for that side's lane.
     if (sim.returnSide && sim.kick && (p.slot === 'KR' || p.slot === 'PR') && Math.abs(p.z - (t.retZ ??= p.z)) < 12) s += dz * sim.returnSide * 0.35;

@@ -11,4 +11,6 @@ echo "Using $PY"
 "$PY" -m venv .venv-voice
 .venv-voice/bin/python -m pip install --upgrade pip
 .venv-voice/bin/python -m pip install chatterbox-tts
+# The watermark library (resemble-perth) still imports pkg_resources, which new setuptools dropped.
+.venv-voice/bin/python -m pip install "setuptools<81"
 echo "Done. Now run: npm run voices"

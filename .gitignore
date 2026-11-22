@@ -14,3 +14,4 @@ dist-web/
 voice/.tmp/
 voice/lines.json
 voice/ref_*.wav
+__pycache__/

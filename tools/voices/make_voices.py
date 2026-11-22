@@ -65,6 +65,12 @@ def load_model():
     if device != 'cuda':
         load = torch.load
         torch.load = lambda *a, **k: load(*a, **{**k, 'map_location': torch.device(device)})
+    # Chatterbox stamps every clip with Resemble's inaudible Perth watermark. If that library failed to load (it needs
+    # pkg_resources: setup.sh pins setuptools<81) fall back to its no-op stand-in instead of crashing.
+    import perth
+    if perth.PerthImplicitWatermarker is None:
+        print('Note: the Perth watermark library did not load (run: .venv-voice/bin/pip install "setuptools<81"); recording without it.')
+        perth.PerthImplicitWatermarker = perth.DummyWatermarker
     print(f'Loading Chatterbox on {device} (the first run downloads the model, about 3 GB: wait for it)...', flush=True)
     return ChatterboxTTS.from_pretrained(device=device), device
 

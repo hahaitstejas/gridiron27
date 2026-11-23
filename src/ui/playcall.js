@@ -18,14 +18,19 @@ export class PlayCallScreen {
 
   situationKey(session) {
     const m = session.match;
-    return [session.plays, m.phase, m.possession, m.down, Math.round(m.yardLine), session.humanSide].join('|');
+    return [session.plays, m.phase, m.possession, m.down, Math.round(m.yardLine), this.sideFor(session)].join('|');
   }
 
-  show(session, onPick) {
+  /** The team this panel calls for: fixed in 2-player split screen (`team` given to show), else the session's human. */
+  get team() { return this.fixedTeam ?? this.session.humanTeam; }
+  sideFor(session) { const t = this.fixedTeam ?? session.humanTeam; return t === null || t === undefined ? null : t === session.offTeam ? 'offense' : 'defense'; }
+
+  show(session, onPick, team = null) {
     this.session = session;
+    this.fixedTeam = team;
     this.key = this.situationKey(session);
     this.onPick = onPick;
-    this.side = session.humanSide;
+    this.side = this.sideFor(session);
     this.flipped = false;
     this.tabs = this.buildTabs();
     this.list = this.groups();
@@ -70,7 +75,7 @@ export class PlayCallScreen {
       const sugg = this.suggestions();
       tabs.push({ name: 'Suggested', plays: sugg });
       // Recent: the last plays you called this game (newest first).
-      const recent = (this.session.recentOff?.[this.session.humanTeam] || []).filter((p) => p && !/^st_/.test(p.id));
+      const recent = (this.session.recentOff?.[this.team] || []).filter((p) => p && !/^st_/.test(p.id));
       if (recent.length) tabs.push({ name: 'Recent', plays: recent.slice(0, 9) });
       const fams = new Map();
       if (listOffPlays().some((p) => p.custom)) fams.set('My Plays', new Map()); // the user's plays, right after Suggested
@@ -112,7 +117,7 @@ export class PlayCallScreen {
 
   suggestions() {
     const m = this.session.match;
-    const team = this.session.humanTeam;
+    const team = this.team;
     const out = [];
     // With the clock running out and no timeouts, the staff doesn't suggest runs (or trick plays).
     const noRuns = this.side === 'offense' && hurryUp(m, team) && m.timeouts[team] === 0;
@@ -163,24 +168,20 @@ export class PlayCallScreen {
       el('div.pc2-count', { text: `${grp.plays.length} PLAYS` }));
     // Three play cards: X / A / Y pick them.
     const W = this.root.clientWidth || window.innerWidth;
-    const cw = Math.max(240, Math.min(560, Math.floor((W - 140) / 3)));
+    const cw = Math.max(200, Math.min(this.fixedTeam !== null ? 330 : 560, Math.floor((W - 140) / 3)));
     const ch = Math.round(cw * 0.46);
     const cards = grp.plays.slice(this.page * 3, this.page * 3 + 3).map((p, i) => this.playCard(p, ['X', 'A', 'Y'][i], cw, ch));
     this.cards = cards;
-    const crumb = el('div.pc2-crumb', { text: `${m.teams[s.humanTeam]?.abbr || sideLabel} / SELECT A PLAY`.toUpperCase() });
+    const crumb = el('div.pc2-crumb', { text: `${m.teams[this.team]?.abbr || sideLabel} / SELECT A PLAY`.toUpperCase() });
     const pager = el('div.pc2-pager', { html: pages > 1 ? `◀ ${this.page + 1} / ${pages} ▶` : '' });
     const help = el('div.pc-help', { html:
       `<b class="btn LB">LB</b>/<b class="btn RB">RB</b> formation &nbsp; ◀▶ more plays &nbsp; ▲▼ group &nbsp; <b class="btn X">X</b> <b class="btn A">A</b> <b class="btn Y">Y</b> call play` +
       (this.side === 'offense' ? ` &nbsp; <b class="btn RB">RT</b> flip${this.flipped ? ' (on)' : ''}` : '') +
       (this.side === 'offense' && this.session.lastOffPlay && m.phase === 'scrimmage' && !m.justWarned ? ` &nbsp; <b class="btn LB">LS</b> no huddle${s.twoPlayer ? '' : ` (${this.session.lastOffPlay.name})`}` : '') +
-      ` &nbsp; <b class="btn view">View</b> / <b class="btn LB">LT</b>+<b class="btn RB">RT</b> timeout (${m.timeouts[s.humanTeam]})` });
-    // 2 players on one screen: the plays stay covered until the caller holds LT (the other player looks away).
-    const secret = !!s.twoPlayer;
-    this.root.classList.toggle('pc-secret', secret);
-    if (secret) {
-      const other = m.teams[1 - s.humanTeam];
-      this.root.append(el('div.pc2-lookaway', { html: `<b>${(m.teams[s.humanTeam]?.abbr || '').toUpperCase()} CALLING</b> · ${(other?.abbr || '').toUpperCase()} LOOK AWAY · hold <b class="btn LB">LT</b> to see your plays` }));
-    }
+      ` &nbsp; <b class="btn view">View</b> / <b class="btn LB">LT</b>+<b class="btn RB">RT</b> timeout (${m.timeouts[this.team]})` });
+    // 2 players: split screen (UPDATE 5.5, the user's call): each player's panel is always fully visible, away on top,
+    // home at the bottom, both calling at once; no cover / look-away.
+    this.root.classList.toggle('pc-split', this.fixedTeam !== null);
     this.root.append(top, strip, el('div.pc2-body', {}, crumb, el('div.pc2-cards', {}, cards)), pager, help);
     this.root.querySelector('.pc2-pill.on')?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
     this.nav.clear();
@@ -209,8 +210,7 @@ export class PlayCallScreen {
   update(f, dt) {
     if (!this.open) return;
     // The situation changed underneath us (e.g. a penalty or timeout re-opened the call): rebuild.
-    if (this.situationKey(this.session) !== this.key) { this.show(this.session, this.onPick); return; }
-    if (this.session.twoPlayer) this.root.classList.toggle('peek', !!f.down?.LT); // hold LT: see your plays
+    if (this.situationKey(this.session) !== this.key) { this.show(this.session, this.onPick, this.fixedTeam); return; }
     const n = this.list.length;
     if (f.pressed.LB || f.pressed.RB) { this.g = (this.g + (f.pressed.LB ? -1 : 1) + n) % n; this.page = 0; this.render(); return; }
     // Stick / d-pad with repeat: left/right page, up/down jump to the next family of formations.
@@ -220,7 +220,7 @@ export class PlayCallScreen {
     if (dir !== this.held) { this.held = dir; this.repT = 0.38; if (dir) this.step(dir); }
     else if (dir && (this.repT -= dt) <= 0) { this.repT = 0.14; this.step(dir); }
     for (const [i, b] of ['X', 'A', 'Y'].entries()) if (f.pressed[b] && this.cards?.[i]) { this.cards[i].activate(); return; }
-    if (f.pressed.View || bothTriggers(f)) { this.rtHeld = true; this.session.callTimeout(this.session.humanTeam); this.render(); return; }
+    if (f.pressed.View || bothTriggers(f)) { this.rtHeld = true; this.session.callTimeout(this.team); this.render(); return; }
     const rt = f.rt > 0.6;
     if (rt && !this.rtHeld && this.side === 'offense' && !f.down?.LT) { this.flipped = !this.flipped; this.render(); } // LT held: that's the timeout combo
     this.rtHeld = rt;

@@ -191,10 +191,11 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   `inputFor(input, team)` splits `{ perTeam: true, 0: frame, 1: frame }`. `PlaySim` keeps `controlled[team]` per
   human and runs human control in each team's context (`withHuman`); two rings show both controlled players.
   Difficulty boosts don't apply (no CPU side).
-  No tells on the shared screen (UPDATE 5.0): the play-call screen is covered (`.pc-secret`: blurred diagrams, masked names /
-  badges / formation strip) until the caller holds LT (`.peek`, banner "X CALLING · Y LOOK AWAY"); pre-snap menus mask their
-  labels unless D-pad ▲ is held (`hud.peek`, `#audible.secret`); receiver icons show on every snap before it (`sim.iconMap(true)`),
-  the protection menu opens on runs too, the hint is the same for runs / passes / fakes, and audible tickers carry no names.
+  Split-screen play calling (UPDATE 5.5, replaces the UPDATE 5.0 blur / look-away cover, the user's call): two `PlayCallScreen`s,
+  `#playcall` (player 1 = `p1Team`, bottom) and `#playcall2` (player 2, top), each bound to its team (`show(session, onPick, team)`,
+  `.pc-split`, smaller cards) and its own pad; both call at once (`session.needsCallFrom(team)` / `humanChooseFor(team, play)`),
+  the snap waits for both. Pre-snap menus are not masked any more. Still no tells in play: receiver icons show on every snap
+  (`sim.iconMap(true)`), the protection menu opens on runs too, the hint is the same for runs / passes / fakes.
 - Practice mode: `GameSession` with `settings.practice = { side, yardLine, down, toGo, after: 'reset'|'continue' }`
   — no clocks, no penalties, fresh legs every rep; `practiceReset()` puts the ball back after each play (or when
   the drive ends). Set up from the main menu (`Screens.practice`).

@@ -248,13 +248,21 @@ export class GameSession {
   }
 
   /** The human picked a play on the play-call screen. */
-  humanChoose(play) {
+  humanChoose(play) { this.humanChooseFor(this.humanTeam, play); }
+
+  /** True while `team` (a human) still has to call this play (2 players: both play-call panels are open at once). */
+  needsCallFrom(team) {
+    if (this.state !== 'playcall' || !this.isHuman(team) || !this.calls(team)) return false;
+    return team === this.offTeam ? !this.choice.off : !this.choice.def;
+  }
+
+  humanChooseFor(team, play) {
     if (this.state !== 'playcall') return;
-    if (this.humanSide === 'offense') {
+    if (team === this.offTeam) {
       this.choice.off = play;
       if (!/^st_/.test(play.id)) {
         this.lastOffPlay = play;
-        const r = (this.recentOff ||= {})[this.humanTeam] ||= [];
+        const r = (this.recentOff ||= {})[team] ||= [];
         const i = r.indexOf(play); if (i >= 0) r.splice(i, 1);
         r.unshift(play); r.length = Math.min(r.length, 9);
       }

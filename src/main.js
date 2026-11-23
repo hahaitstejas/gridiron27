@@ -129,7 +129,11 @@ await renderer.players.loadHuman(); // the CC0 MakeHuman body (src/assets/human.
 const nav = new Nav();
 const screens = new Screens(document.getElementById('screen'), nav);
 const playcall = new PlayCallScreen(document.getElementById('playcall'), new Nav());
-playcall.hud = hud; // for the NO HUDDLE scorebug note
+// 2 players: a second play-call panel at the top of the screen for the away player (both call at the same time).
+const playcall2 = new PlayCallScreen(document.getElementById('playcall2'), new Nav());
+const hideCalls = () => { playcall.hide(); playcall2.hide(); };
+const pcOpenNow = () => playcall.open || playcall2.open;
+playcall.hud = hud; playcall2.hud = hud; // for the NO HUDDLE scorebug note
 hud.prefs = prefs;
 // Commentary: recorded clips (`npm run voices` → voice/clips), game/booth.js decides what to say as the play happens,
 // audio/boothAudio.js stitches and plays the clips. Off when the voices haven't been recorded (no voice/index.json).
@@ -260,7 +264,7 @@ function toMenu() {
   session = null;
   lastSim = null;
   hud.hideAll();
-  playcall.hide();
+  hideCalls();
   screens.mainMenu({
     onPlayNow: () => { screens._ts = null; screens.playNow(teams, prefs, { onStart: startGame, onBack: toMenu, p2: () => input2.connected }); },
     onPractice: showPractice,
@@ -340,7 +344,7 @@ function startGame(p, opts = {}) {
   hud.toggleHelp(false);
   // First game in this browser: a quick-start card with the essentials for the first three snaps (H = all controls).
   firstHelp = 0; hud.quickstart(false);
-  try { if (session.humanTeam !== null && !localStorage.getItem('g27.seenHelp')) { localStorage.setItem('g27.seenHelp', '1'); firstHelp = session.plays + 3; hud.quickstart(true); } } catch { /* storage blocked */ }
+  try { if (session.humanTeam !== null && !session.twoPlayer && !localStorage.getItem('g27.seenHelp')) { localStorage.setItem('g27.seenHelp', '1'); firstHelp = session.plays + 3; hud.quickstart(true); } } catch { /* storage blocked */ }
   app = 'game';
   snapCam = true;
   lastSim = null;
@@ -404,7 +408,7 @@ function startReplay(auto = false, reel = null) {
   if (reel) hud.ticker(`Highlight ${(reel.i ?? 0) + 1} of ${reel.items.length}: ${reel.items[reel.i ?? 0].label}`);
   app = 'replay';
   screens.clear();
-  playcall.hide();
+  hideCalls();
   hud.hideAll();
   renderer.players.setColors(player.ghost, session.teams);
   lastSim = null;
@@ -483,13 +487,13 @@ function qbInfo(t) {
 function showHalftimeBoard() {
   app = 'halftime';
   hud.hideAll();
-  playcall.hide();
+  hideCalls();
   screens.halftimeBoard(session, showHalftime);
 }
 function showHalftime() {
   app = 'halftime';
   hud.hideAll();
-  playcall.hide();
+  hideCalls();
   screens.gameOver(session, { halftime: true, doneLabel: 'Start 2nd Half',
     onDone: () => { screens.clear(); app = 'game'; snapCam = true; },
     onStats: () => statsScreen(screens, session.match, { onBack: showHalftime }) });
@@ -566,7 +570,7 @@ function leaveGame() {
   session = null;
   lastSim = null;
   hud.hideAll();
-  playcall.hide();
+  hideCalls();
 }
 
 function pause() {
@@ -830,7 +834,7 @@ function onSessionEvent(e) {
   else if (e.type === 'kickBlocked') hud.banner('BLOCKED!', e.kind === 'punt' ? 'Punt blocked' : 'Kick blocked', 2.4, 'turnover');
   else if (e.type === 'gameOver') {
     app = 'over';
-    playcall.hide();
+    hideCalls();
     setTimeout(() => { if (app === 'over' && session) { hud.hideAll(); if (session.drill) showDrillResult(); else if (session.scenario) showScenarioResult(); else showFinal(); } }, session.drill ? 1500 : 2500);
   } else if (e.type === 'tackle' && e.power > 0.9) renderer.rig.shake = Math.min(1, e.power * 0.5);
   else if (e.type === 'bigHit') { renderer.rig.shake = 1; input.rumble(0.9, 250); }
@@ -899,23 +903,32 @@ function frameBody(now) {
       startReplay(true); input.consume(); requestAnimationFrame(frame); return;
     }
     // D-pad ◀▶ in a game (not on the play-call screen): cycle the broadcast camera packages.
-    if ((f.pressed.Left || f.pressed.Right) && !playcall.open && session.state !== 'playcall') {
+    if ((f.pressed.Left || f.pressed.Right) && !pcOpenNow() && session.state !== 'playcall') {
       const keys = Object.keys(CAMERAS);
       prefs.camera = keys[(keys.indexOf(prefs.camera) + (f.pressed.Right ? 1 : -1) + keys.length) % keys.length];
       savePrefs(prefs); applyCamera();
       hud.ticker(`Camera: ${CAMERAS[prefs.camera]}`);
     }
     // RS click between plays: instant replay of the last play.
-    if (f.pressed.RS && session.lastReplay && (playcall.open || session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))) {
+    if (f.pressed.RS && session.lastReplay && (pcOpenNow() || session.state === 'playcall' || (session.state === 'presnap' && session.sim?.state === 'presnap'))) {
       startReplay(); input.consume(); requestAnimationFrame(frame); return;
     }
     // Play-call screen.
-    if (session.needsHumanCall && !playcall.open) playcall.show(session, (play) => session.humanChoose(play));
-    if (playcall.open && !session.needsHumanCall) playcall.hide();
-    const pcOpen = playcall.open;
-    // 2-player: the play-call screen listens to whoever is calling; the session gets both controllers.
     const p1 = session.p1Team ?? 0; // 2 players: the game team player 1 has (0 home, 1 away)
-    if (pcOpen) { playcall.update(two && session.humanTeam !== p1 ? input2.frame : f, dt); }
+    if (two) {
+      // Split screen: player 1's panel at the bottom, player 2's at the top, each on its own controller, at the same time.
+      for (const [pc, team, fr] of [[playcall, p1, f], [playcall2, 1 - p1, input2.frame]]) {
+        const need = session.needsCallFrom(team);
+        if (need && !pc.open) pc.show(session, (play) => session.humanChooseFor(team, play), team);
+        if (pc.open && !need) pc.hide();
+        if (pc.open) pc.update(fr, dt);
+      }
+    } else {
+      if (session.needsHumanCall && !playcall.open) playcall.show(session, (play) => session.humanChoose(play));
+      if (playcall.open && !session.needsHumanCall) playcall.hide();
+      if (playcall.open) playcall.update(f, dt);
+    }
+    const pcOpen = playcall.open || playcall2.open;
     // 2 players: hold D-pad ▲ to see a pre-snap menu (only the pad of the player whose menu it is).
     hud.peek = !!(two && session.audible && (session.audible.team === p1 ? f : input2.frame).down?.Up);
     if (session.sim) session.sim.fakeLook = two && session.sim.state === 'presnap' && !!session.sim.offPlay?.fake; // a fake dresses like the kick
@@ -1009,7 +1022,7 @@ function frameBody(now) {
     const rtNow = input.frame.rt || 0;
     if (sim !== artSim) { artSim = sim; artReleased = false; }
     if (rtNow < 0.25) artReleased = true;
-    const showArt = sim && artReleased && !session.twoPlayer && !session.watching && !playcall.open && session.state === 'presnap' && sim.state === 'presnap'
+    const showArt = sim && artReleased && !session.twoPlayer && !session.watching && !pcOpenNow() && session.state === 'presnap' && sim.state === 'presnap'
       && session.humanTeam !== null && session.humanTeam !== undefined && (input.frame.rt || 0) > 0.5 && !SPECIAL_ART.has(sim.offPlay.type);
     const art = showArt ? playArt(sim, session.humanTeam) : null;
     renderer.playArt.update(art, dt);
@@ -1078,7 +1091,7 @@ function frameBody(now) {
     crowdLevel = session.practice || session.settings.neutral || session.watching || speed > 2 ? (session.settings.neutral && !session.practice ? excite * 0.6 : null) : excite;
     snapCam = false;
     hud.artOn = artView;
-    hud.update(session, renderer, dt, frameMs, playcall.open);
+    hud.update(session, renderer, dt, frameMs, pcOpenNow());
   } else {
     // Menus: slow orbit over the empty stadium.
     renderer.hidePlayers();

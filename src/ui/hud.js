@@ -149,7 +149,8 @@ export class Hud {
       <div id="help" class="hidden"></div>
       <div id="quickstart" class="hidden"></div>
       <div id="fps"></div>
-      <div id="playcall" class="hidden"></div>`;
+      <div id="playcall" class="hidden"></div>
+      <div id="playcall2" class="hidden"></div>`;
     this.$ = (id) => root.querySelector('#' + id);
     this.icons = {};
     for (const b of Object.keys(ICON_COLORS)) {
@@ -713,7 +714,7 @@ export class Hud {
     const a = pre ? session.audible : null;
     au.classList.toggle('hidden', !a);
     // 2 players: the menu's choices are covered unless the player holds D-pad ▲ (the other player looks away).
-    au.classList.toggle('secret', !!(a && session.twoPlayer && !this.peek));
+    au.classList.remove('secret'); // 2 players: menus are visible (UPDATE 5.5: no look-away, the user's call)
     if (a) {
       const key = a.mode === 'menu' ? 'm' + a.options.map((o) => o.play.id).join() : a.mode + (a.slot || '');
       if (au.dataset.key !== key) {

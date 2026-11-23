@@ -749,11 +749,16 @@ function soundFor(e) {
     case 'catch': SFX.catchSound(); cheer(teamOf(e.player), 0.25); break;
     case 'interception': SFX.catchSound(); cheer(teamOf(e.player), 0.9); break;
     case 'incomplete': if (crowd && sim && e.why !== 'spike') (home(sim.offIdx) ? SFX.crowdGroan(0.25) : SFX.crowdSwell(0.2)); break;
-    case 'deflection': SFX.hit(0.25); break;
+    // Pass outcomes you can hear (like a broadcast): a breakup is a sharp smack, a drop / tip a soft touch and the ball
+    // bouncing on the turf, each with the crowd going the right way for the home team.
+    case 'deflection': SFX.swat(1); if (sim) cheer(1 - sim.offIdx, 0.35); break;
+    case 'drop': SFX.catchSound(); SFX.ballBounce(2, 0.9); if (sim) cheer(1 - sim.offIdx, 0.3); break;
+    case 'fingertips': SFX.ballBounce(2, 0.8); if (sim) cheer(1 - sim.offIdx, 0.25); break;
+    case 'recovery': cheer(e.team, 0.7); break;
     case 'tackle': SFX.hit(Math.min(1.2, 0.35 + (e.power || 0) * 0.6)); if (sim?.result?.sack) cheer(1 - sim.offIdx, 0.6); break;
     case 'bigHit': SFX.hit(1.3); cheer(teamOf(e.tackler), 0.45); break;
     case 'brokenTackle': SFX.hit(0.6); cheer(teamOf(e.player), 0.35); break;
-    case 'fumble': cheer(sim ? 1 - sim.offIdx : 1, 0.6); break;
+    case 'fumble': SFX.ballBounce(3, 1); cheer(sim ? 1 - sim.offIdx : 1, 0.6); break;
     case 'kick': SFX.kick(e.kind === 'fg' ? 0.9 : 1); break;
     case 'kickBlocked': SFX.hit(0.8); if (sim) cheer(1 - sim.offIdx, 0.8); break;
     case 'whistle': SFX.whistle(1); break;

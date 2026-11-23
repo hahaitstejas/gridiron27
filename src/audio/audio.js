@@ -226,6 +226,33 @@ export function catchSound() {
   s.connect(f).connect(g).connect(sfxBus); s.start(t, Math.random()); s.stop(t + 0.12);
 }
 
+/** A pass knocked away: a sharp, bright leather smack (hand on ball), much harder than a catch. */
+export function swat(power = 1) {
+  if (!ctx) return;
+  const t = ctx.currentTime;
+  const s = noiseSrc(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+  f.type = 'highpass'; f.frequency.value = 2200;
+  env(g, t, 0.001, 0.55 * power, 0.045);
+  s.connect(f).connect(g).connect(sfxBus); s.start(t, Math.random()); s.stop(t + 0.1);
+  const o = ctx.createOscillator(), og = ctx.createGain();
+  o.frequency.setValueAtTime(260, t); o.frequency.exponentialRampToValueAtTime(110, t + 0.06);
+  env(og, t, 0.001, 0.35 * power, 0.07);
+  o.connect(og).connect(sfxBus); o.start(t); o.stop(t + 0.12);
+}
+
+/** The ball hitting the turf (a drop, an incompletion, a fumble): a hollow thud and a couple of smaller bounces. */
+export function ballBounce(n = 2, power = 1) {
+  if (!ctx) return;
+  const t0 = ctx.currentTime;
+  for (let i = 0; i <= n; i++) {
+    const t = t0 + i * (0.24 - i * 0.05), k = power * Math.pow(0.45, i);
+    const o = ctx.createOscillator(), og = ctx.createGain();
+    o.frequency.setValueAtTime(150 + i * 20, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+    env(og, t, 0.002, 0.45 * k, 0.1);
+    o.connect(og).connect(sfxBus); o.start(t); o.stop(t + 0.15);
+  }
+}
+
 /** The throw: a short whoosh of air. */
 export function whoosh(strength = 1) {
   if (!ctx) return;

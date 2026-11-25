@@ -2096,7 +2096,10 @@ body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #
 .bug-pass { position: absolute; left: 0; bottom: 100%; margin-bottom: 0.23vw; height: 1.48vw; padding: 0 0.78vw; display: flex; align-items: center;
   background: var(--tc); color: #fff; font: 600 0.94vw/1 var(--fb, 'Saira Condensed'), sans-serif; letter-spacing: 0.2px; white-space: nowrap;
   text-shadow: 0 1px 2px rgba(0,0,0,0.45); box-shadow: 0 2px 8px rgba(0,0,0,0.35); pointer-events: none; }
-/* The everyday bar (the slide with the light bar): a light strip with dark type over the away logo panel. */
-.sb3 .bug-pass { background: #dcdcdc; color: #1a1a1a; text-shadow: none; bottom: 100%; margin-bottom: 0; height: 22px; font-size: 13px; padding: 0 12px; }
+/* Symmetry: the home team's strip ends at the right edge of its panel. Team colors on every layout (the user's note). */
+.bug-pass.right { left: auto; right: 0; }
+.bug-pass { white-space: pre; gap: 0.55vw; font-weight: 500; }
+.bug-pass b { font-weight: 700; letter-spacing: 0.4px; }
+.sb3 .bug-pass { height: 22px; font-size: 13px; padding: 0 12px; margin-bottom: 0; }
 .pk-box, .pk-slim { position: relative; }
 #scorebug, #scorebug .sb3 { overflow: visible !important; } /* the stat strip rides above the bar */

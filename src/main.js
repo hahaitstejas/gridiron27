@@ -135,16 +135,17 @@ const hideCalls = () => { playcall.hide(); playcall2.hide(); };
 const pcOpenNow = () => playcall.open || playcall2.open;
 playcall.hud = hud; playcall2.hud = hud; // for the NO HUDDLE scorebug note
 hud.prefs = prefs;
-// Commentary: recorded clips (`npm run voices` → voice/clips), game/booth.js decides what to say as the play happens,
-// audio/boothAudio.js stitches and plays the clips. Off when the voices haven't been recorded (no voice/index.json).
+// Commentary is off (UPDATE 5.6, the user's call: "remove the commentary"). The booth code stays dormant: nothing is loaded
+// or fetched (no voice/index.json request), boothOn() is always false and the Settings rows are gone.
+const COMMENTARY = false;
 // Face-photo fitting blocks the main thread for a moment: never during a live snap (it waits for the dead ball).
 setFitGate(() => !(app === 'game' && session?.sim && session.sim.state === 'live') && app !== 'replay');
 const boothAudio = new BoothAudio();
 const clipText = Object.fromEntries(voiceClips().map((c) => [c.id, c.text]));
 boothAudio.onLine = (who, ids) => hud.caption(prefs.commentarySubs && ids ? ids.map((id) => clipText[id] || '').join(' ') : null, who);
-boothAudio.load();
+if (COMMENTARY) boothAudio.load();
 let booth = null;
-const boothOn = () => prefs.voiceBooth !== false && boothAudio.ready && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
+const boothOn = () => COMMENTARY && prefs.voiceBooth !== false && boothAudio.ready && app === 'game' && session && !session.fast && !session.watching && !session.practice && speed <= 1.5;
 /** A new game: a fresh booth, and the clips it will need fetched ahead (phrases + this game's names). */
 function boothForGame(s) {
   booth = boothAudio.ready ? new Booth(boothAudio.have, (Date.now() % 1e6) | 0) : null;

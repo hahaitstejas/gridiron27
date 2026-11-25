@@ -405,6 +405,7 @@ export class GameSession {
       m.presnapRunoff(Math.max(0, this.runoffBudget() - this.presnapUsed));
       if (m.clock <= 0) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
       if (!m.clockRunning) { this.flushMessages(); } // two-minute warning stopped it
+      if (m.warnedNow && !this.drill) { m.warnedNow = false; this.audible = null; this.enterPlaycall(); return; } // back to the huddle
     }
     // Icing the kicker: a CPU defense calls timeout as the kick is about to go (once per kick).
     if (sim.offPlay.type === 'fg' && !this.iced && !this.isHuman(this.defTeam) && wantsIce(m, this.defTeam, this.offTeam)) {
@@ -778,6 +779,8 @@ export class GameSession {
     m.playClock = Math.max(0, m.playClock - gdt);
     this.flushMessages();
     if (m.clock <= 0 && m.clockRunning) { m.afterPlay(true); this.flushMessages(); this.enterPlaycall(); return; }
+    // The two-minute warning works like a timeout (UPDATE 5.6): new play call for both teams, fresh play clock.
+    if (m.warnedNow) { m.warnedNow = false; if (this.state === 'presnap' && !this.drill) { this.audible = null; this.enterPlaycall(); return; } }
     // Delay of game on the human offense.
     if (m.playClock <= 0 && this.calls(this.offTeam) && m.phase === 'scrimmage') {
       const foul = { type: 'delay_of_game', team: this.offTeam };

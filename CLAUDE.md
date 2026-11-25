@@ -223,6 +223,9 @@ catch, tackle, bigHit, brokenTackle, interception, touchdown…) for UI/audio.
   (`evaluateTarget` in qb.js) adds +1.3 past the line to gain (+0.4 on early downs) and docks throws well short of it.
   A touchdown on 3rd down counts as a conversion in the team stats. Measured (8 games): 3rd-down conversion 39% (1-2 to go
   58%, 3-4 57%, 5-6 38%, 7-9 26%, 10+ 16%; was 29% overall with 7-9 at 13%); box score ~35%.
+- Two-minute warning (UPDATE 5.6): works like a timeout: `Match.presnapRunoff` sets `warnedNow` and a 25 s play clock, and the
+  session sends both teams back to the play call if they were already at the line (both runoff paths); after a play it is the
+  next play call anyway (`afterPlay` also resets the play clock to 25).
 - `ai/playcaller.js`: CPU play calls (situational run/pass, 4th down, FG range, 2-pt chart, kneel/spike,
   clock management, timeouts). `cpuTempo`: hurry-up inside two minutes when not ahead and in Q4 under 5:30 when down 9+,
   milking with a lead. Icing (`wantsIce`): a CPU defense with a timeout calls it right before a field goal that would tie
@@ -734,7 +737,9 @@ back, tabs), `setChant` (the home crowd's "DE-FENSE, clap clap" on the visitors'
 (`unlockAudio`; pad buttons try too). Settings: Master / Crowd / Effects volume (`prefs.volume`, `crowdVolume`, `sfxVolume`,
 applied by `savePrefs` → `setVolumes`). Dev: `__g27.sfx.audioDebug()`.
 
-### Commentary (recorded clips, UPDATE 5.4 option B)
+### Commentary (recorded clips, UPDATE 5.4 option B) — OFF since UPDATE 5.6
+The user had it removed ("remove the commentary"): main.js `COMMENTARY = false` (no voice/index.json fetch, `boothOn()` false), the
+Settings rows and the README section are gone; the code below stays dormant in case it comes back.
 The user found browser speech flat and after-the-play summaries generic, so the booth calls the play AS IT HAPPENS from
 recorded clips. `game/voiceLines.js` (pure) lists every clip (~566: `{ id, text, voice: pbp|color, energy 0|1|2 }`): phrase
 groups with numbered variants (`VARIANTS`: throw / throw_deep / handoff / catch_by / room / gonna_score / td / int / sack /

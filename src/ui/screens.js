@@ -936,9 +936,6 @@ export class Screens {
       option('Master volume', VOL_STEPS, 'volume', volLabel),
       option('Crowd volume', VOL_STEPS, 'crowdVolume', volLabel),
       option('Effects volume', VOL_STEPS, 'sfxVolume', volLabel),
-      option('Commentary', [true, false], 'voiceBooth', (v) => (v ? 'On' : 'Off')),
-      option('Commentary volume', VOL_STEPS, 'commentaryVolume', volLabel),
-      option('Commentary subtitles', [false, true], 'commentarySubs', (v) => (v ? 'On' : 'Off')),
       option('Career camera', ['player', 'broadcast'], 'careerCam', (v) => (v === 'player' ? 'Behind your player' : 'Broadcast')),
       option('Franchise signings: jersey #', [false, true], 'autoNumbers', (v) => (v ? 'Automatic' : 'You pick')),
     ];

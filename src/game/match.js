@@ -167,6 +167,8 @@ export class Match {
       this.clock = 120;
       this.clockRunning = false;
       this.twoMinPending = false;
+      // Like a timeout (UPDATE 5.6): the play clock resets and both teams go back to the play call (session.js).
+      this.playClock = 25; this.warnedNow = true;
       this.say('Two-minute warning', 'twoMinute'); this.justWarned = true;
     }
     return before - this.clock;
@@ -471,6 +473,7 @@ export class Match {
     if (this.twoMinPending) {
       this.twoMinPending = false;
       this.clockRunning = false;
+      this.playClock = 25;
       this.say('Two-minute warning', 'twoMinute'); this.justWarned = true;
     }
     if (this.clock <= 0 && !this.over && this.phase !== 'try') this.endPeriod();

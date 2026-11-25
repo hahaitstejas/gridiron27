@@ -67,7 +67,7 @@ function milestone(m) {
  *   shield - Thursday night (also openers, international): solid team-color logo panels at the ends, letters / record and big
  *            scores either side of a metal shield, the situation on a black strip underneath, and the passer's line on a tab.
  */
-function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo }) {
+function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo, strip = '' }) {
   const T = m.teams, tc = (i) => `--tc:${T[i].colors.primary};--tc2:${T[i].colors.secondary}`;
   const ORD = ['', 'ST', 'ND', 'RD', 'TH'];
   const q = m.over ? 'FINAL' : m.quarter > 4 ? 'OT' : `${m.quarter}<i>${ORD[m.quarter]}</i>`;
@@ -89,31 +89,43 @@ function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo }) 
   if (lay === 'box') {
     const side = (i, right) => `<div class="bx-team${right ? ' right' : ''}" style="${tc(i)}"><div class="bx-logo">${img(i)}</div>
       ${tos(i, 'bx-to')}<b class="bx-ab">${T[i].abbr}</b><div class="bx-sc">${m.score[i]}</div></div>`;
-    return `<div class="pk pk-box" style="--pk:${pk.color}">${side(1, false)}
+    return `<div class="pk pk-box" style="--pk:${pk.color}">${strip}${side(1, false)}
       <div class="bx-mid"><div class="bx-dd">${ball >= 0 ? `<span class="bx-arrow">${ball === 1 ? '◀' : '▶'}</span>` : ''}<span>${dd}</span></div>
       <div class="bx-row"><span class="bx-q">${q}</span><b>${clk}</b><span class="bx-pc${low}">${pc}</span><span>${spot}</span></div></div>${side(0, true)}</div>`;
   }
   if (lay === 'slim') {
     const band = (i, right) => `<div class="sl-band${right ? ' right' : ''}" style="${tc(i)}"><div class="sl-logo">${img(i)}</div>
       <span class="sl-rec"><small>${rec(i)}</small>${tos(i, 'sl-to')}</span><b class="sl-ab">${T[i].abbr}</b></div>`;
-    return `<div class="pk pk-slim" style="--pk:${pk.color}"><div class="sl-mark">${mark}</div>${band(1, false)}
+    return `<div class="pk pk-slim" style="--pk:${pk.color}"><div class="sl-mark">${mark}</div>${strip}${band(1, false)}
       <div class="sl-sc"><b>${m.score[1]}</b></div><div class="sl-pos"${ball >= 0 ? ` style="${tc(ball)}"` : ''}>${ball === 1 ? '◀' : ball === 0 ? '▶' : ''}</div><div class="sl-sc right"><b>${m.score[0]}</b></div>
       ${band(0, true)}<div class="sl-clock"><span class="sl-q">${q}</span><b>${clk}</b>${pc ? `<span class="sl-pc${low}">${pc}</span>` : ''}</div>
       <div class="sl-cut"></div><div class="sl-dd">${dd}</div><div class="sl-cut"></div><div class="sl-spot">${spot}</div></div>`;
   }
-  // shield: the passer's line of the team with the ball rides on a tab at the left.
-  const off = ball >= 0 ? ball : m.possession;
-  const qbl = Object.values(m.stats?.players || {}).filter((x) => x.team === off && x.passAtt > 0).sort((a, b) => b.passAtt - a.passAtt)[0];
-  const qbp = qbl && T[off].roster?.find((x) => x.id === qbl.rid);
-  const tab = qbp ? `<div class="sh-tab" style="${tc(off)}"><b>${qbp.first[0]}. ${qbp.last}</b><span>${Math.round(qbl.passYds)} YDS&nbsp;&nbsp;${qbl.passTD} TDS&nbsp;&nbsp;${qbl.int} INTS</span></div>` : '';
   const end = (i, right) => `<div class="sh-end${right ? ' right' : ''}" style="${tc(i)}"><div class="sh-logo">${img(i)}</div>${tos(i, 'sh-to')}</div>`;
   const half = (i, right) => `<div class="sh-half${right ? ' right' : ''}" style="${tc(i)}"><div class="sh-ab"><b>${ball === i && !right ? '<i>➤</i>' : ''}${T[i].abbr}</b><small>${rec(i)}</small></div><b class="sh-sc">${m.score[i]}</b></div>`;
   const shield = `<div class="sh-shield"><svg viewBox="0 0 80 92"><defs><linearGradient id="shm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f3f4f6"/><stop offset="0.48" stop-color="#a9adb5"/><stop offset="0.55" stop-color="#dfe1e5"/><stop offset="1" stop-color="#7f848d"/></linearGradient></defs>
     <path d="M40 2 L76 12 L76 56 Q72 76 40 90 Q8 76 4 56 L4 12 Z" fill="url(#shm)" stroke="#4d5159" stroke-width="2.5"/>
     <text x="40" y="20" text-anchor="middle" font-family="Saira Condensed, sans-serif" font-weight="700" font-size="7.5" fill="#33363c" letter-spacing="0.5">GRIDIRON</text>
     <text x="40" y="66" text-anchor="middle" font-family="Oswald, sans-serif" font-weight="700" font-size="40" fill="#15171b" textLength="${mark.length > 2 ? 56 : 42}" lengthAdjust="spacingAndGlyphs">${mark}</text></svg></div>`;
-  return `<div class="pk pk-shield" style="--pk:${pk.color}">${tab}${end(1, false)}<div class="sh-mid"><div class="sh-top">${half(1, false)}${shield}${half(0, true)}</div>
+  return `<div class="pk pk-shield" style="--pk:${pk.color}">${strip}${end(1, false)}<div class="sh-mid"><div class="sh-top">${half(1, false)}${shield}${half(0, true)}</div>
     <div class="sh-row"><span class="sh-dd">${dd}</span><span class="sh-q">${q}</span><b>${clk}</b><span class="sh-pc${low}">${pc}</span><span class="sh-spot">${spot}</span></div></div>${end(0, true)}</div>`;
+}
+
+/**
+ * The stat strip on top of the scorebug (UPDATE 5.6, the user's Scorebugs slides): the passer of the team with the ball,
+ * "First Last 24/35 276 YDS 3 TD 1 INT", on a thin bar in his team's color at the left end of the bug. Only between plays
+ * (it would cover the field in a live play) and once he has thrown a pass. A zero-width anchor carries it, so every layout
+ * places it the same way: just before the left (away) team panel.
+ */
+function passStrip(m, state) {
+  if (m.over || m.phase !== 'scrimmage' || state === 'live') return { html: '', key: '' };
+  const off = m.possession;
+  const line = Object.values(m.stats?.players || {}).filter((x) => x.team === off && x.passAtt > 0).sort((a, b) => b.passAtt - a.passAtt)[0];
+  const p = line && m.teams[off].roster?.find((x) => x.id === line.rid);
+  if (!p) return { html: '', key: '' };
+  const text = `${p.first} ${p.last} ${line.passCmp}/${line.passAtt} ${Math.round(line.passYds)} YDS ${line.passTD} TD ${line.int} INT`;
+  const c = m.teams[off].colors;
+  return { key: text, html: `<span class="bug-anchor"><span class="bug-pass" style="--tc:${c.primary};--tc2:${c.secondary}">${text}</span></span>` };
 }
 
 const ordinal = (n) => `${n}${[, 'st', 'nd', 'rd'][(n % 100 >> 3 ^ 1) && n % 10] || 'th'}`;
@@ -972,7 +984,8 @@ export class Hud {
     if (session.state !== this._bugState) { this._bugState = session.state; this._bugSince = performance.now(); }
     const stat = !m.over && !take && (session.state === 'playcall' || session.state === 'post') && performance.now() - this._bugSince < 6000 && (m.playLog?.length || 0) >= 6
       && m.playLog.length % 3 === 0 ? bugStat(m) : null;
-    const key = [stat?.label, m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, note?.text, this.pkg?.id].join('|');
+    const ps = passStrip(m, session.state);
+    const key = [ps.key, stat?.label, m.score, m.quarter, Math.ceil(m.clock), Math.ceil(m.playClock), m.down, Math.round(m.toGo), Math.round(m.yardLine), m.timeouts, m.possession, m.phase, m.over, m.kicker, flag, recs, blink, take?.text, note?.text, this.pkg?.id].join('|');
     if (key === this._bugKey) return;
     this._bugKey = key;
     // Full-width bar: brand | away logo | (rec) AWY • 0 × 0 HOM (rec) | home logo | quarter, clock, play clock | down & distance.
@@ -994,14 +1007,14 @@ export class Hud {
     // big games), a slim slanted bar (Monday night), a centered box with a shield (Thursday night, openers, international).
     const lay = pk && !take ? ({ sun: 'box', night: 'box', title: 'box', holiday: 'box', mon: 'slim', thu: 'shield', open: 'shield', intl: 'shield' })[pk.id] : null;
     if (lay) {
-      bug.innerHTML = primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo: (i) => this.logoFor(m.teams[i]) });
+      bug.innerHTML = primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo: (i) => this.logoFor(m.teams[i]), strip: ps.html });
       bug.classList.add('pkg-bug');
       return;
     }
     bug.classList.remove('pkg-bug');
     bug.innerHTML = `<div class="sb3${pk ? ` pkg pkg-${pk.id}` : ''}"${pk ? ` style="--pk:${pk.color}"` : ''}>
       <div class="sb3-brand">GRIDIRON<img class="sb3-lg" src="${this.leagueLogo()}" alt=""/>27</div>
-      ${take ? `<div class="sb3-take" style="--tc:${m.teams[take.team].colors.primary}"><img src="${this.logoFor(m.teams[take.team])}" alt=""/><b>${take.text}</b></div>` : `${logo(1)}
+      ${take ? `<div class="sb3-take" style="--tc:${m.teams[take.team].colors.primary}"><img src="${this.logoFor(m.teams[take.team])}" alt=""/><b>${take.text}</b></div>` : `${ps.html}${logo(1)}
       ${stat ? `<div class="sb3-mid sb3-stat"><b>${m.teams[1].abbr}</b><b class="sb3-sv">${stat.v[1]}</b><span>${stat.label}</span><b class="sb3-sv">${stat.v[0]}</b><b>${m.teams[0].abbr}</b></div>`
         : `<div class="sb3-mid">${name(1, 'away')}<b class="sb3-sc">${m.score[1]}</b><span class="sb3-x">×</span><b class="sb3-sc">${m.score[0]}</b>${name(0, 'home')}</div>`}
       ${logo(0)}`}

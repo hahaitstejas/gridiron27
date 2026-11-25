@@ -585,6 +585,9 @@ opposite way to sim angles (headYaw follows sim angles). Pause →
 Play History (`match.playLog`, `Screens.playHistory`): every play newest first, scores / turnovers / flags marked.
 
 ### Scorebug
+Passer strip (UPDATE 5.6, the user's Scorebugs slides): hud.js `passStrip(m, state)` puts "First Last 24/35 276 YDS 3 TD 1 INT"
+(the offense's passer with the most attempts) on a thin bar on top of every scorebug layout at its left end (`.bug-anchor` /
+`.bug-pass`: team color on the prime bugs, light grey on the everyday bar), between plays only, once he has thrown.
 Short notes (`hud.note(text, team)`, main.js `bugNote(e)`): adjustments at the line (AUDIBLE, OFFENSE FLIPPED, HOT ROUTE,
 SLIDE LEFT, SHOWING BLITZ, MOTION, HARD COUNT, NO HUDDLE, ICING THE KICKER; 2-player: only OFFENSE / DEFENSE ADJUSTS) take the
 down & distance cell for ~2.6 s in the team's color (prime layouts too, `.pk-note`).

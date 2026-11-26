@@ -442,13 +442,10 @@ export class Screens {
     };
     const step = (key, d) => {
       const i = order.indexOf(p[key]);
-      p[key] = order[(i + d + order.length) % order.length];
-      if (p.home === p.away) p[key] = order[(order.indexOf(p[key]) + d + order.length) % order.length];
+      p[key] = order[(i + d + order.length) % order.length]; // the same team on both sides is fine (UPDATE 5.7: Bears vs Bears)
     };
     const random = (key) => {
-      const other = key === 'home' ? p.away : p.home;
-      const pool = order.filter((i) => i !== other);
-      p[key] = pool[Math.floor(Math.random() * pool.length)];
+      p[key] = order[Math.floor(Math.random() * order.length)];
     };
     const sideIdx = (player) => (st.cols[player] === 2 ? 0 : 1); // team index in the game: 0 home, 1 away
     const STYLES = ['balanced', 'power', 'spread', 'westcoast', 'airraid'];
@@ -492,9 +489,13 @@ export class Screens {
       let d = null;
       if (f.down.Left || f.lx < -0.6) d = 'l'; else if (f.down.Right || f.lx > 0.6) d = 'r';
       else if (f.down.Up || f.ly < -0.6) d = 'u'; else if (f.down.Down || f.ly > 0.6) d = 'd';
+      // Holding ▲▼ keeps scrolling through the teams (UPDATE 5.7): a first step, a pause, then a quick repeat.
+      const now = performance.now();
       const fresh = d !== st.held[i];
       st.held[i] = d;
-      return fresh ? d : null;
+      if (fresh) { (st.rep ||= [0, 0])[i] = now + 380; return d; }
+      if ((d === 'u' || d === 'd') && now >= (st.rep?.[i] || Infinity)) { st.rep[i] = now + 110; return d; }
+      return null;
     };
     this.frame('mono-screen ts-screen', el('h1', { text: 'Team Select' }),
       el('div.ts-row', {}, away, el('div.ts-at', { text: '@' }), home), pads, menuHost,

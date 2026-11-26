@@ -2103,3 +2103,9 @@ body:has(.hb-screen:not(.hidden)) #scorebug, body:has(.hb-screen:not(.hidden)) #
 .sb3 .bug-pass { height: 22px; font-size: 13px; padding: 0 12px; margin-bottom: 0; }
 .pk-box, .pk-slim { position: relative; }
 #scorebug, #scorebug .sb3 { overflow: visible !important; } /* the stat strip rides above the bar */
+
+/* UPDATE 5.7: a team's lines stack upward over its end of the bug (the newest play's most relevant line nearest the bug). */
+.bug-stack { position: absolute; left: 0; bottom: 100%; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 2px; margin-bottom: 0.23vw; }
+.bug-stack.right { left: auto; right: 0; align-items: flex-end; }
+.bug-stack .bug-pass { position: static; margin: 0; }
+.sb3 .bug-stack { margin-bottom: 0; }

@@ -120,21 +120,17 @@ function primeBug(lay, pk, { m, recs, flag, stat, note, blink, hasBall, logo, st
  */
 function bugStrips(m, state, post) {
   const none = { L: '', R: '', key: '' };
-  if (m.over || state === 'live') return none;
-  const lines = [null, null];
-  if (post) for (const l of post) if (!lines[l.team]) lines[l.team] = [l.name.toUpperCase(), l.line.replace(/ · /g, '   ')];
-  if (!post && m.phase === 'scrimmage') {
-    const off = m.possession;
-    const line = Object.values(m.stats?.players || {}).filter((x) => x.team === off && x.passAtt > 0).sort((a, b) => b.passAtt - a.passAtt)[0];
-    const p = line && m.teams[off].roster?.find((x) => x.id === line.rid);
-    if (p) lines[off] = [`${p.first} ${p.last}`.toUpperCase(), `${line.passCmp}/${line.passAtt}   ${Math.round(line.passYds)} YDS   ${line.passTD} TD   ${line.int} INT`];
-  }
+  if (m.over || state === 'live' || !post) return none;
+  // UPDATE 5.7: every line of the play shows (stacked over that team's end), not just one; nothing between plays otherwise.
+  const lines = [[], []];
+  for (const l of post) if (lines[l.team].length < 3) lines[l.team].push([l.name.toUpperCase(), l.line.replace(/ · /g, '   ')]);
   const strip = (team, right) => {
-    if (!lines[team]) return '';
+    if (!lines[team].length) return '';
     const c = m.teams[team].colors;
-    return `<span class="bug-anchor${right ? ' right' : ''}"><span class="bug-pass${right ? ' right' : ''}" style="--tc:${c.primary};--tc2:${c.secondary}"><b>${lines[team][0]}</b>${lines[team][1]}</span></span>`;
+    const rows = lines[team].map(([n, t]) => `<span class="bug-pass${right ? ' right' : ''}" style="--tc:${c.primary};--tc2:${c.secondary}"><b>${n}</b>${t}</span>`).join('');
+    return `<span class="bug-anchor${right ? ' right' : ''}"><span class="bug-stack${right ? ' right' : ''}">${rows}</span></span>`;
   };
-  return { L: strip(1, false), R: strip(0, true), key: lines.map((l) => l && l.join(' ')).join('|') };
+  return { L: strip(1, false), R: strip(0, true), key: lines.map((ls) => ls.map((l) => l.join(' ')).join(',')).join('|') };
 }
 
 const ordinal = (n) => `${n}${[, 'st', 'nd', 'rd'][(n % 100 >> 3 ^ 1) && n % 10] || 'th'}`;

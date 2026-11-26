@@ -287,12 +287,22 @@ function toMenu() {
 }
 
 let lastStart = null;
+const MIRROR_ID = 1000000;
+function mirrorTeam(t) {
+  const roster = t.roster.map((p) => ({ ...p, id: p.id + MIRROR_ID }));
+  const depth = Object.fromEntries(Object.entries(t.depth || {}).map(([k, ids]) => [k, (ids || []).map((id) => id + MIRROR_ID)]));
+  return { ...t, roster, depth, ps: [], mirrorOf: t };
+}
+
 function startGame(p, opts = {}) {
   autoReplayPending = false;
   // Franchise games don't touch the Play Now preferences.
   const cfg = opts.franchise ? { ...prefs, ...p } : Object.assign(prefs, p);
   if (!opts.franchise) savePrefs(prefs);
-  const home = teams[cfg.home], away = teams[cfg.away];
+  const home = teams[cfg.home];
+  // The same team on both sides (UPDATE 5.7): the away side plays a copy of it (its own player ids, so injuries, stats and
+  // depth edits stay with one side), in the other uniform (Team Select's fixClash).
+  const away = cfg.home === cfg.away ? mirrorTeam(teams[cfg.away]) : teams[cfg.away];
   // Local 2-player needs a second controller: ask player 2 to press A first.
   if ((cfg.side === '2p' || cfg.side === 'coop') && !input2.connected) {
     input2.claiming = true;

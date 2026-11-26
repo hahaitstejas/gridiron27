@@ -457,7 +457,9 @@ navy gradients, filled panels with no outlines, the focused item white; team col
   every `stats-screen` table and non-hub `hub-screen` page shares the monochrome table look. Shared helpers in rosterEditor.js:
   `playerTable` (header card + table + hint bar), `actionsPanel`, `numberPicker` (new signings pick a jersey number unless
   `prefs.autoNumbers`). Practice squad (`practiceSquadScreen`) and cut-downs (`cutDownScreen` in franchiseMore.js) use them.
-- Quick Play Team Select, pause, post-game etc. keep their layouts with the new type / panels.
+- Quick Play Team Select, pause, post-game etc. keep their layouts with the new type / panels. Team Select (UPDATE 5.7): holding ▲▼
+  keeps scrolling teams (`dirOf` repeat: 380 ms, then every 110 ms); the same team may take both sides: main.js `mirrorTeam` gives
+  the away side a copy with its own player ids (+1e6) and depth chart, and `fixClash` puts it in the other uniform.
 Tiles use `Nav.set(items, { spatial: true })`: the stick moves to the nearest item in that direction by on-screen
 rectangles (any layout). Original line-art icons (`ICONS` in screens.js). The design is our own; don't copy other games'
 menus or trade dress.
@@ -588,11 +590,11 @@ opposite way to sim angles (headYaw follows sim angles). Pause →
 Play History (`match.playLog`, `Screens.playHistory`): every play newest first, scores / turnovers / flags marked.
 
 ### Scorebug
-Stat strips (UPDATE 5.6, the user's Scorebugs slides and note): hud.js `bugStrips(m, state, post)` puts at most one thin
-team-color strip per team on top of every scorebug layout, symmetrical: the away team's from the left edge of its panel, the
-home team's ending at the right edge of its panel (`.bug-anchor` / `.bug-pass`, `.right`). After a play it shows that team's
-post-play line (what the old top-left stat card showed: `statCard()` now just stores `hud.postLines` for ~6.5 s); otherwise
-the offense's passer ("NAME  24/35  276 YDS  3 TD  1 INT"). Never during a live play. Settings → stat card off hides them.
+Stat strips (UPDATE 5.6 / 5.7, the user's Scorebugs slides and notes): hud.js `bugStrips(m, state, post)` shows the post-play
+stat lines (what the old top-left card showed; `statCard()` now just stores `hud.postLines` for ~6.5 s) as thin team-color
+strips on top of every scorebug layout, every line at once: each team's lines stack upward over its own end of the bug
+(`.bug-anchor` / `.bug-stack` / `.bug-pass`, `.right` for the home end), so the two sides mirror each other. Nothing between
+plays otherwise (a passer line only after a pass), never during a live play; Settings → stat card off hides them.
 Short notes (`hud.note(text, team)`, main.js `bugNote(e)`): adjustments at the line (AUDIBLE, OFFENSE FLIPPED, HOT ROUTE,
 SLIDE LEFT, SHOWING BLITZ, MOTION, HARD COUNT, NO HUDDLE, ICING THE KICKER; 2-player: only OFFENSE / DEFENSE ADJUSTS) take the
 down & distance cell for ~2.6 s in the team's color (prime layouts too, `.pk-note`).

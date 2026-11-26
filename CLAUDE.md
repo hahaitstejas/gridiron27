@@ -503,7 +503,11 @@ left streaks on the shoulders (the pants' pad creases and hip / knee bunching st
 ### Freezes (UPDATE 5.5)
 Face fitting (MediaPipe on the main thread) runs from a queue in ui/faces.js, one photo at a time and only while
 `setFitGate` (main.js) allows it: never during a live snap or a replay; its localStorage cache is written in one batch
-3 s later. `GameRenderer.adapt()` never steps the pixel ratio back up to one that was already too slow (`tooSlow`) and waits
+3 s later. UPDATE 5.8 (lag / crashes with a league full of photos): the Face Landmarker runs in a worker
+(`render/faceFitWorker.js`: evaluates the wasm glue itself since module workers can't `importScripts`; falls back to the main
+thread if the worker fails), only a <= 512 px copy of a photo waits for the fitter (full 1000+ px photos were ~4 MB each in the
+queue), the photo cache is capped (`CACHE_MAX` 360, least recently used dropped) and the fit store keeps 4000 photos (was 400:
+leagues refit every session). Measured with no photos: GPU geometries / textures and the JS heap stay flat over 5 games. `GameRenderer.adapt()` never steps the pixel ratio back up to one that was already too slow (`tooSlow`) and waits
 20 s between raises: it used to bounce every 1.5 s, and each change reallocates the HDR / bloom targets.
 
 ### Photo faces fitted to the head (MediaPipe)

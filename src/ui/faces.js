@@ -58,11 +58,13 @@ export function faceImage(p, onLoad, opts = {}) {
   if (!src) return null;
   const c = cache.get(src);
   if (c) {
+    cache.delete(src); cache.set(src, c); // most recently used last (the cap below drops the oldest)
     if (opts.fit && !c.fitting) { c.fitting = true; c.onFit = onLoad; if (c.ok) fitEntry(c, src); }
     return c.ok ? c.img : null;
   }
   const entry = { img: new Image(), ok: false, fitting: !!opts.fit, onFit: opts.fit ? onLoad : null };
   cache.set(src, entry);
+  trimCache();
   if (/^https?:/i.test(src)) entry.img.crossOrigin = 'anonymous';
   const img = entry.img;
   img.onload = async () => {
@@ -70,7 +72,9 @@ export function faceImage(p, onLoad, opts = {}) {
     // the full image into the face atlas / skin sampler every time a player comes on the field decoded and scaled it
     // on the main thread (a visible hitch per substitution with a league full of photos).
     try { await img.decode?.(); } catch { /* already decoded or not decodable: drawImage still works */ }
-    entry.full = img; // kept until the face fitter has used it (only the 3D renderer asks for a fit)
+    // Only a <= 512 px copy is kept for the face fitter (a full 1000+ px photo is ~4 MB decoded; a league of them waiting
+    // in the fit queue ran the tab out of memory), and only when the 3D renderer asked for a fit.
+    entry.full = entry.fitting && import.meta.env.MODE !== 'offline' ? shrink(img, 512) : null;
     entry.img = thumb(img);
     entry.ok = true;
     onLoad?.(entry.img);
@@ -79,6 +83,17 @@ export function faceImage(p, onLoad, opts = {}) {
   img.onerror = () => { entry.ok = false; };
   img.src = src;
   return null;
+}
+
+// A franchise season brings every player in the league on the field once: without a cap the cache kept a canvas per photo
+// (and the fitted copy) for the whole session. Settled entries not used lately are dropped (they reload from the source).
+const CACHE_MAX = 360;
+function trimCache() {
+  if (cache.size <= CACHE_MAX) return;
+  for (const [k, e] of cache) {
+    if (cache.size <= CACHE_MAX) break;
+    if (e.ok && !e.full) cache.delete(k);
+  }
 }
 
 /**
@@ -108,7 +123,7 @@ function pumpFits() {
 async function runFit(entry, src) {
   if (!entry.full) return;
   try {
-    const src512 = shrink(entry.full, 512);
+    const src512 = entry.full;
     entry.full = null;
     const [F, W] = await Promise.all([import('../render/faceFit.js'), import('../render/faceWarp.js')]);
     const pts = await F.fitFace(src512, src);

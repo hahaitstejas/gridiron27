@@ -44,7 +44,7 @@ const readStore = () => { if (!stored) { try { stored = JSON.parse(localStorage.
 let writeT = 0;
 // Batched: stringifying the whole store after every face was a small hitch of its own.
 const writeStore = () => { clearTimeout(writeT); writeT = setTimeout(saveStore, 3000); };
-const saveStore = () => { try { const keys = Object.keys(stored); if (keys.length > 400) for (const k of keys.slice(0, keys.length - 400)) delete stored[k]; localStorage.setItem(STORE, JSON.stringify(stored)); } catch { /* full or blocked: memory cache only */ } };
+const saveStore = () => { try { const keys = Object.keys(stored); if (keys.length > 4000) for (const k of keys.slice(0, keys.length - 4000)) delete stored[k]; localStorage.setItem(STORE, JSON.stringify(stored)); } catch { try { const keys = Object.keys(stored); for (const k of keys.slice(0, keys.length - 800)) delete stored[k]; localStorage.setItem(STORE, JSON.stringify(stored)); } catch { /* full or blocked: memory cache only */ } } };
 
 async function load() {
   if (landmarker) return landmarker;
@@ -52,6 +52,40 @@ async function load() {
     baseOptions: { modelAssetPath, delegate: 'CPU' }, runningMode: 'IMAGE', numFaces: 1,
   }).then((l) => (landmarker = l)).catch((e) => { console.warn('[Gridiron 27] face fitting unavailable', e); loading = null; return null; });
   return loading;
+}
+
+// The detector normally runs in a worker (faceFitWorker.js) so the game never waits on it; if the worker can't start or
+// fails, fitting falls back to the main thread (the old way: a short hitch per photo).
+let worker = null, workerBad = false, nextId = 1;
+const pending = new Map();
+const PATHS = { loader: new URL(wasmLoaderPath, location.href).href, binary: new URL(wasmBinaryPath, location.href).href, model: new URL(modelAssetPath, location.href).href };
+function getWorker() {
+  if (worker || workerBad || typeof Worker === 'undefined' || typeof createImageBitmap === 'undefined') return worker;
+  try {
+    worker = new Worker(new URL('./faceFitWorker.js', import.meta.url), { type: 'module' });
+    worker.onmessage = (e) => { const p = pending.get(e.data.id); if (!p) return; pending.delete(e.data.id); if (e.data.err) p.reject(new Error(e.data.err)); else p.resolve(e.data.pts); };
+    worker.onerror = (e) => { console.warn('[Gridiron 27] face worker failed, fitting on the main thread', e.message || e); workerBad = true; worker = null; for (const p of pending.values()) p.reject(new Error('worker')); pending.clear(); };
+  } catch (e) { workerBad = true; worker = null; }
+  return worker;
+}
+async function detect(img) {
+  const w = getWorker();
+  if (w) {
+    try {
+      const bitmap = await createImageBitmap(img);
+      return await new Promise((resolve, reject) => {
+        const id = nextId++;
+        pending.set(id, { resolve, reject });
+        w.postMessage({ id, bitmap, idx: KEYS.map(([k]) => k), paths: PATHS }, [bitmap]);
+      });
+    } catch (e) {
+      if (!workerBad) { console.warn('[Gridiron 27] face worker failed, fitting on the main thread', e); workerBad = true; worker?.terminate(); worker = null; }
+    }
+  }
+  const l = await load();
+  if (!l) return undefined;
+  const lm = l.detect(img).faceLandmarks?.[0];
+  return lm ? KEYS.map(([k]) => [lm[k].x, lm[k].y]) : null;
 }
 
 /** Short stable id for a photo source (sources can be long data URLs). */
@@ -63,13 +97,10 @@ export async function fitFace(img, src) {
   if (key && cache.has(key)) return cache.get(key);
   const st = key ? readStore()[key] : undefined;
   if (st !== undefined) { const pts = st && st.map(([x, y]) => [x * img.width, y * img.height]); cache.set(key, pts); return pts; }
-  const l = await load();
-  if (!l) return null;
   let pts = null;
   try {
-    const r = l.detect(img);
-    const lm = r.faceLandmarks?.[0];
-    if (lm) pts = KEYS.map(([k]) => [lm[k].x, lm[k].y]);
+    pts = await detect(img);
+    if (pts === undefined) return null; // no detector at all
   } catch (e) { console.warn('[Gridiron 27] face fit failed', e); return null; }
   if (key) { readStore()[key] = pts && pts.map(([x, y]) => [+x.toFixed(4), +y.toFixed(4)]); writeStore(); }
   const px = pts && pts.map(([x, y]) => [x * img.width, y * img.height]);
